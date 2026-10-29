@@ -80,12 +80,10 @@ const game = (league: Lg) => (games[league] ??= loadGzJson(FIXTURES[league].file
  * from one. These render the page and check the tables where they actually land.
  * A fresh game object per call: both page components mutate what they are given.
  */
-async function renderPage(twin: 'classic' | 'v2', league: Lg): Promise<{ g: any, html: string }> {
+async function renderPage(league: Lg): Promise<{ g: any, html: string }> {
     const { retrieveProcessedGame } = await import('../src/resources/python');
     const g: any = await retrieveProcessedGame(FIXTURES[league].id, 30, league);
-    const Page = twin === 'classic'
-        ? (await import('../src/components/game/classic/GamePage.astro')).default
-        : (await import('../src/components/game/GamePage.astro')).default;
+    const Page = (await import('../src/components/game/GamePage.astro')).default;
     const html = await container.renderToString(Page, {
         props: { id: String(FIXTURES[league].id), game: g, league },
         request: new Request(`https://gameonpaper.com/game/${FIXTURES[league].id}`),
@@ -169,8 +167,6 @@ const V2_METRIC_TABLES: MetricTable[] = [
     { title: 'Turnovers', teamKey: 'pos_team', useSuffix: false, decimalPoints: 2, columns: dotted('turnover', classic('Turnovers')) },
 ];
 
-type Twin = 'classic' | 'v2';
-
 /**
  * TWIN EXCEPTIONS -- the complete list of rows where the v2 twin may differ from
  * the classic twin, as of AE/design-fixes at 69a9029f (#270), keyed by the row's
@@ -211,7 +207,7 @@ const V2_ROW_LABELS: Record<string, string> = { EPA_success: 'Plays', early_down
  * fixed-decimal column, a bare count, a scripted-drive metric, and anything
  * else is "count (rate%)".
  */
-function expectedMetricCell(item: string, row: any, useSuffix: boolean, decimalPoints: number, twin: Twin): string {
+function expectedMetricCell(item: string, row: any, useSuffix: boolean, decimalPoints: number): string {
     // the shared guard (#269): an explicit 0 means zero places, a missing value means one
     const dp = metricDecimalPoints(decimalPoints);
     const v = (k: string) => row[k] || 0;
@@ -272,7 +268,7 @@ function rowFor(rows: any[], team: string, teamKey: string, item: string): any {
  * ones, so the page is checked against the same expectation rather than against
  * its own wiring. `twin` picks the side of each TWIN EXCEPTION the table is on.
  */
-function assertMetricTable(html: string, cfg: MetricTable, box: Record<string, any[]>, twin: Twin): void {
+function assertMetricTable(html: string, cfg: MetricTable, box: Record<string, any[]>): void {
     const { rows, rowHtml } = parseTable(html);
     // row 0 is the header: the title, then one logo per team in column order
     const teams = [...rowHtml[0].matchAll(/team-logo-(\d+)/g)].map((m) => m[1]);
@@ -282,25 +278,23 @@ function assertMetricTable(html: string, cfg: MetricTable, box: Record<string, a
     cfg.columns.forEach((key, i) => {
         const [section, item] = splitKey(key, cfg.section);
         const [label, ...cells] = body[i];
-        expect(label, `${cfg.title} row ${i} label`).toBe((twin === 'v2' && V2_ROW_LABELS[item]) || text(METRIC_KEY_TITLE_MAPPING[item] || item));
+        expect(label, `${cfg.title} row ${i} label`).toBe(V2_ROW_LABELS[item] || text(METRIC_KEY_TITLE_MAPPING[item] || item));
         expect(cells, `${cfg.title} / ${key}: one cell per team`).toHaveLength(teams.length);
         teams.forEach((team, t) => {
             const row = rowFor(box[section] ?? [], team, cfg.teamKey, item);
             expect(row, `${cfg.title} / ${key}: a ${section} row for team ${team}`).toBeTruthy();
             expect(cells[t], `${cfg.title} / ${key} / team ${team}`)
-                .toBe(expectedMetricCell(item, row, cfg.useSuffix, cfg.decimalPoints, twin));
+                .toBe(expectedMetricCell(item, row, cfg.useSuffix, cfg.decimalPoints));
         });
     });
 }
 
-async function renderMetricTable(twin: 'classic' | 'v2', league: Lg, cfg: (typeof METRIC_TABLES)[number]) {
+async function renderMetricTable(league: Lg, cfg: (typeof METRIC_TABLES)[number]) {
     const g = game(league);
     const rows = g.advBoxScore[cfg.section];
     const shared = { title: cfg.title, teamKey: cfg.teamKey, season: g.season.year, useSuffix: cfg.useSuffix, decimalPoints: cfg.decimalPoints };
     // the v2 table reads a box by `<section>.<field>` keys and takes the league as a prop (#270)
-    const [mod, props] = twin === 'classic'
-        ? [await import('../src/components/game/classic/TeamMetricsTable.astro'), { ...shared, columns: [...cfg.columns], teamBoxScores: rows }]
-        : [await import('../src/components/game/metrics/TeamMetricsTable.svelte'), { ...shared, league, columns: dotted(cfg.section, cfg.columns), box: { [cfg.section]: rows } }];
+    const [mod, props] = [await import('../src/components/game/metrics/TeamMetricsTable.svelte'), { ...shared, league, columns: dotted(cfg.section, cfg.columns), box: { [cfg.section]: rows } }];
     return container.renderToString(mod.default as any, { props, locals: locals(league) });
 }
 
@@ -311,80 +305,15 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
                 const g = game(league);
                 const rowsData: any[] = g.advBoxScore[cfg.section];
                 expect(rowsData.length, `${cfg.section} has rows`).toBeGreaterThan(0);
-                assertMetricTable(await renderMetricTable('classic', league, cfg), cfg, g.advBoxScore, 'classic');
+                assertMetricTable(await renderMetricTable(league, cfg), cfg, g.advBoxScore);
             }, 30_000);
         }
 
         test('the team columns are in the payload order, one per box row', async () => {
             const g = game(league);
-            const html = await renderMetricTable('classic', league, METRIC_TABLES[0]);
+            const html = await renderMetricTable(league, METRIC_TABLES[0]);
             const ids = [...html.matchAll(/team-logo-(\d+)/g)].map((m) => m[1]);
             expect(ids).toEqual(g.advBoxScore.team.map((r: any) => String(r.pos_team)));
-        }, 30_000);
-    });
-
-    describe(`[${league}] twin parity: classic vs v2`, () => {
-        for (const cfg of METRIC_TABLES) {
-            test(`${cfg.title} renders identical numbers in both twins`, async () => {
-                const [classic, v2] = await Promise.all([
-                    renderMetricTable('classic', league, cfg),
-                    renderMetricTable('v2', league, cfg),
-                ]);
-                const body = (h: string) => parseTable(h).rows.slice(1);
-                const [c, v] = [body(classic), body(v2)];
-                expect(c, `${cfg.title}: one classic row per configured column`).toHaveLength(cfg.columns.length);
-                expect(v, `${cfg.title}: the same rows in both twins`).toHaveLength(c.length);
-                const box: any[] = game(league).advBoxScore[cfg.section];
-                cfg.columns.forEach((item, i) => {
-                    const [cLabel, ...cCells] = c[i];
-                    const [vLabel, ...vCells] = v[i];
-                    // Identical, label and cells, unless TWIN EXCEPTIONS names the row; and a
-                    // named row has each twin on its own source and the two really apart.
-                    if (item in V2_ROW_LABELS) {
-                        expect(cLabel, `${item}: the classic label`).toBe(text(METRIC_KEY_TITLE_MAPPING[item]));
-                        expect(vLabel, `${item}: the v2 label`).toBe(V2_ROW_LABELS[item]);
-                        expect(vLabel, `${item}: V2_ROW_LABELS entry is stale, the twins agree`).not.toBe(cLabel);
-                    } else {
-                        expect(vLabel, `${cfg.title} / ${item}: label`).toBe(cLabel);
-                    }
-                    if (V2_ONLY_VALUES.includes(item)) {
-                        const want = (twin: Twin) => box.map((row) => expectedMetricCell(item, row, cfg.useSuffix, cfg.decimalPoints, twin));
-                        expect(cCells, `${item}: the classic cells`).toEqual(want('classic'));
-                        expect(vCells, `${item}: the v2 cells`).toEqual(want('v2'));
-                        expect(vCells, `${item}: V2_ONLY_VALUES entry is stale, the twins agree`).not.toEqual(cCells);
-                        // what the classic twin prints is what v2 keeps as the cell's tooltip
-                        const tips = [...parseTable(v2).rowHtml[i + 1].matchAll(/title="ESPN: ([^"]*)"/g)].map((m) => roundNumber(parseFloat(m[1]), 2, 2));
-                        expect(tips, `${item}: the v2 tooltips`).toEqual(cCells);
-                    } else {
-                        expect(vCells, `${cfg.title} / ${item}: cells`).toEqual(cCells);
-                    }
-                });
-            }, 30_000);
-        }
-
-        test('PlayerBoxScore: the five numeric columns agree in both twins', async () => {
-            const g = game(league);
-            const teamId = parseInt(g.header.competitions[0].competitors[0].team.id);
-            const box = {
-                pass: g.advBoxScore.pass.filter((r: any) => r.pos_team == teamId),
-                rush: g.advBoxScore.rush.filter((r: any) => r.pos_team == teamId),
-                receiver: g.advBoxScore.receiver.filter((r: any) => r.pos_team == teamId),
-            };
-            const classic = await container.renderToString(
-                (await import('../src/components/game/classic/PlayerBoxScore.astro')).default,
-                { props: { ...box }, locals: locals(league) });
-            const v2 = await container.renderToString(
-                (await import('../src/components/game/metrics/PlayerBoxScore.astro')).default,
-                { props: { ...box, plays: g.plays, teamId }, locals: locals(league) });
-            // a player's name row is name + Yards/play, EPA/play, EPA, SR, WPA; the stat
-            // line is its own spanning row (#274) and differs by design (v2 appends LNG /
-            // best-play extremes). The header row also has six cells, so drop it by name.
-            const tail = (h: string) => parseTable(h).rows.filter((r) => r.length === 6 && r[1] !== 'Yards/play').map((r) => r.slice(1).join('|'));
-            const c = tail(classic);
-            expect(c.length).toBeGreaterThan(3);
-            // v2 also renders a Defense block the classic twin has no equivalent for;
-            // compare the rows the classic twin actually has, in order.
-            expect(tail(v2).slice(0, c.length)).toEqual(c);
         }, 30_000);
     });
 
@@ -398,7 +327,7 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
                 .toSorted((a: any, b: any) => b.EPA - a.EPA);
             const [pass, rush, receiver] = ['pass', 'rush', 'receiver'].map(pick);
             const html = await container.renderToString(
-                (await import('../src/components/game/classic/PlayerBoxScore.astro')).default,
+                (await import('../src/components/game/metrics/PlayerBoxScore.astro')).default,
                 { props: { pass, rush, receiver }, locals: locals(league) });
             const { rows } = parseTable(html);
             // name rows are six cells (the stat line is a spanning row of its own, #274);
@@ -426,8 +355,9 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
 
         test('BinionBoxScore: each row reads the section its label names', async () => {
             const g = game(league);
+            const { default: BinionBoxScore } = await import('../src/components/game/metrics/BinionBoxScore.svelte');
             const html = await container.renderToString(
-                (await import('../src/components/game/classic/BinionBoxScore.astro')).default,
+                BinionBoxScore as any,
                 { props: { season: g.season.year, advancedBoxScore: g.advBoxScore, percentiles: [] }, locals: locals(league) });
             const { rows } = parseTable(html);
             const body = rows.slice(1);
@@ -463,17 +393,6 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
                     expect(cells[1 + t].split(' ')[0], `${label} / team ${t}`).toBe(expectedStart);
                 });
             });
-        }, 30_000);
-
-        test('BinionBoxScore renders identical numbers in both twins', async () => {
-            const g = game(league);
-            const props = { season: g.season.year, advancedBoxScore: g.advBoxScore, percentiles: [] };
-            const [classic, v2] = await Promise.all([
-                container.renderToString((await import('../src/components/game/classic/BinionBoxScore.astro')).default, { props, locals: locals(league) }),
-                container.renderToString((await import('../src/components/game/metrics/BinionBoxScore.svelte')).default as any, { props: { ...props, league }, locals: locals(league) }),
-            ]);
-            const strip = (h: string) => parseTable(h).rows.slice(1).map((r) => r.join('|'));
-            expect(strip(v2)).toEqual(strip(classic));
         }, 30_000);
     });
 
@@ -538,7 +457,7 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             for (const cfg of V2_METRIC_TABLES) {
                 const table = tableWithHeading(html, cfg.title);
                 expect(table, `the island renders a "${cfg.title}" table`).toBeTruthy();
-                assertMetricTable(table!, cfg, g.advBoxScore, 'v2');
+                assertMetricTable(table!, cfg, g.advBoxScore);
             }
         }, 30_000);
 
@@ -556,7 +475,7 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             const html = await container.renderToString(
                 (await import('../src/components/game/metrics/TeamMetricsTable.svelte')).default as any,
                 { props: { ...cfg, league, season: g.season.year, box }, locals: locals(league) });
-            assertMetricTable(html, cfg, box, 'v2');
+            assertMetricTable(html, cfg, box);
             expect(parseTable(html).rows.slice(1).flatMap((r) => r.slice(1))).toEqual(Array(8).fill('—'));
         }, 30_000);
     });
@@ -657,37 +576,8 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
     });
 
     describe(`[${league}] the page wires each section to the payload its heading names`, () => {
-        // The component tests above supply their own props, so they cannot see a
-        // PAGE that hands a table the wrong advBoxScore section or drops a column
-        // from one. These render the real page and re-run the same contract where
-        // the tables actually land.
-        test('classic: all eight team-metric tables, against the sections their titles name', async () => {
-            const { g, html } = await renderPage('classic', league);
-            for (const cfg of METRIC_TABLES) {
-                const table = tableWithHeading(html, cfg.title);
-                expect(table, `the classic page renders a "${cfg.title}" table`).toBeTruthy();
-                assertMetricTable(table!, cfg, g.advBoxScore, 'classic');
-            }
-        }, 60_000);
-
-        test('classic: the player box and, for the cfb only, the Binion box', async () => {
-            const { g, html } = await renderPage('classic', league);
-            const away = g.header.competitions[0].competitors.find((c: any) => c.homeAway === 'away').team;
-            const passer = g.advBoxScore.pass
-                .filter((r: any) => r.pos_team == parseInt(away.id) && (r.passer_player_name?.length ?? 0) > 0)
-                .toSorted((a: any, b: any) => b.EPA - a.EPA)[0];
-            expect(passer, 'the fixture has a passer for the away team').toBeTruthy();
-            // his line must appear with the numbers his box row carries
-            const row = html.split('<tr').find((r) => r.includes(String(passer.passer_player_name)) && r.includes('numeral'));
-            expect(row, `a player row for ${passer.passer_player_name}`).toBeTruthy();
-            const cells = [...row!.matchAll(/<td\b[\s\S]*?<\/td>/g)].map((m) => text(m[0]));
-            // name row: name, yards/play, EPA/play, EPA, SR, WPA (the stat line is the next row, #274)
-            expect(cells[3]).toBe(roundNumber(passer.EPA, 2, 2));
-            expect(cells[4]).toBe(`${roundNumber(passer.SR * 100, 2, 0)}%`);
-        }, 60_000);
-
         test('v2: the Paper Index, linescore, Team Stats, usage box and drives all read the payload', async () => {
-            const { g, html } = await renderPage('v2', league);
+            const { g, html } = await renderPage(league);
             const competitors = g.header.competitions[0].competitors;
             const awayTeam = competitors[1].team;
 
@@ -712,7 +602,7 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             for (const cfg of V2_METRIC_TABLES) {
                 const table = tableWithHeading(teamStats, cfg.title);
                 expect(table, `the v2 page renders a "${cfg.title}" table`).toBeTruthy();
-                assertMetricTable(table!, cfg, g.advBoxScore, 'v2');
+                assertMetricTable(table!, cfg, g.advBoxScore);
             }
 
             // Usage box -- the away team's leading player, in the away panel
@@ -783,7 +673,7 @@ for (const league of Object.keys(FIXTURES) as Lg[]) {
             const homePct = Math.min(99, Math.max(1, Math.round(g.paperIndex.homeShare * 100)));
             const meters = html.match(/<[^>]*\brole="meter"[^>]*>/g) ?? [];
             expect(meters, 'exactly one meter').toHaveLength(1);
-            expect(meters[0].match(/\baria-valuenow="([^"]*)"/)?.[1]).toBe(String(homePct));
+            expect(meters[0]?.match(/\baria-valuenow="([^"]*)"/)?.[1]).toBe(String(homePct));
             const at = html.indexOf(meters[0]);
             expect(text(html.slice(0, at)).split(' ').at(-1)).toBe(`${100 - homePct}%`);
             expect(text(html.slice(at)).split(' ')[0]).toBe(`${homePct}%`);
@@ -805,13 +695,6 @@ describe('twin inventory: which sections each twin renders', () => {
     };
 
     for (const league of Object.keys(FIXTURES) as Lg[]) {
-        test(`[${league}] the classic twin renders the Binion box for the cfb only`, async () => {
-            // The divergence the PR reports: promoting game-page-v2 would add a
-            // Binion box to every NFL game page. Asserted from the rendered page.
-            const { html } = await renderPage('classic', league);
-            expect(binionRows(html) !== null, `classic ${league} Binion box`).toBe(league === 'cfb');
-        }, 60_000);
-
         test(`[${league}] the v2 Team Stats island renders the Binion box for both leagues`, async () => {
             // Populated, not just present: its 11 metric rows, a value per team.
             const v2 = binionRows((await renderSituationalSection(league)).html);
@@ -822,7 +705,7 @@ describe('twin inventory: which sections each twin renders', () => {
                 expect(r.slice(1).every((c) => /\d/.test(c)), r[0]).toBe(true);
             }
             // and where both twins render it, the same fixture gives the same rows
-            if (league === 'cfb') expect(v2).toEqual(binionRows((await renderPage('classic', league)).html));
+            if (league === 'cfb') expect(v2).toEqual(binionRows((await renderPage(league)).html));
         }, 60_000);
 
         test(`[${league}] neither twin renders TraditionalTeamStats or PenaltyBreakdown`, async () => {
@@ -831,8 +714,7 @@ describe('twin inventory: which sections each twin renders', () => {
             // (test/penalties.test.ts) but no call site. Pinned by rendering all
             // three surfaces that could carry them, so wiring either in goes red here.
             const surfaces = [
-                (await renderPage('classic', league)).html,
-                (await renderPage('v2', league)).html,
+                (await renderPage(league)).html,
                 (await renderSituationalSection(league)).html,
             ];
             for (const html of surfaces) {

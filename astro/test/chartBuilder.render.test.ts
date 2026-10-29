@@ -60,9 +60,9 @@ beforeEach(() => { feed.calls = []; });
 
 /** What pages/{,nfl/}charts/builder.astro do: the loader (with a stub Astro, since the container has
  *  no Workers Caching), then the route component with its result spread in. */
-async function render(league: 'cfb' | 'nfl', query: string, preview: boolean) {
+async function render(league: 'cfb' | 'nfl', query: string) {
     const url = `https://gameonpaper.com${league === 'nfl' ? '/nfl' : ''}/charts/builder?${query}`;
-    const locals = (preview ? { preview: true } : {}) as App.Locals;
+    const locals = {} as App.Locals;
     const { loadChartBuilder } = await import('../src/routes/charts');
     const data = await loadChartBuilder({ url: new URL(url), locals, cache: { set: () => {} } } as any, league);
     const { default: Route } = await import('../src/components/routes/ChartBuilderRoute.astro');
@@ -71,9 +71,9 @@ async function render(league: 'cfb' | 'nfl', query: string, preview: boolean) {
 
 /** The island is client:only, so the page above never holds its markup: render the component itself
  *  (svelte/server, with the browser globals its script reads at load) from the props the page passed it. */
-async function islandMarkup(league: 'cfb' | 'nfl', query: string, preview: boolean) {
+async function islandMarkup(league: 'cfb' | 'nfl', query: string) {
     // decoded from the page, so untyped: the island's own prop types are checked where the route passes them
-    const props: any = island(await render(league, query, preview));
+    const props: any = island(await render(league, query));
     const g = globalThis as any;
     g.document = { readyState: 'loading', addEventListener() {}, documentElement: { clientWidth: 1280 } };
     g.window = { innerWidth: 1280, matchMedia: () => ({ matches: false }), location: { pathname: `${league === 'nfl' ? '/nfl' : ''}/charts/builder` } };
@@ -87,43 +87,16 @@ async function islandMarkup(league: 'cfb' | 'nfl', query: string, preview: boole
     }
 }
 
-describe('chart-builder-v2 off: the public builder is what main renders', () => {
-    // Hashes of the flag-off page and island markup for these fixtures on origin/main b8b8eaad,
-    // before 'chart-builder-v2' existed (same test body, run against main's builder files).
-    // nfl re-pinned on main 17541e54: #314/#316 changed the NFL page's shared chrome, and main
-    // itself renders 4237a0b8 there (cfb and both island hashes did not move).
-    // Another PR that changes the builder page moves these on purpose: re-run with
-    // PRINT_GOLDEN=1 and paste. Delete this block when the flag is promoted.
-    const GOLDEN = { cfb: 'aa30c215d693c66e', nfl: '4237a0b87af77701' };
-    const ISLAND_GOLDEN = { cfb: 'a3765f8a15df88f2', nfl: '7d80aa9ee6adcb12' };
-
-    test.each(['cfb', 'nfl'] as const)('%s: same island props, same request, same page', async (league) => {
-        const html = await render(league, QUERY[league], false);
-        expect(Object.keys(island(html))).toEqual(['season', 'x', 'y', 'points', 'league']);
-        expect(feed.calls).toEqual([REQUEST[league]]);
-        if (process.env.PRINT_GOLDEN) console.log(`GOLDEN ${league} ${sha(normalise(html))}`);
-        expect(sha(normalise(html))).toBe(GOLDEN[league]);
-        // the v2 parameters are not read for a public viewer
-        expect(normalise(await render(league, `${QUERY[league]}&hl=SEC&mode=dots`, false))).toBe(normalise(html));
-    });
-
-    test.each(['cfb', 'nfl'] as const)('%s: the classic island markup is main\'s', async (league) => {
-        const markup = await islandMarkup(league, QUERY[league], false);
-        if (process.env.PRINT_GOLDEN) console.log(`ISLAND_GOLDEN ${league} ${sha(markup)}`);
-        expect(sha(markup)).toBe(ISLAND_GOLDEN[league]);
-    });
-});
-
-describe('chart-builder-v2 on', () => {
+describe('chart-builder-v2 on: the public builder is what main renders', () => {
     test.each(['cfb', 'nfl'] as const)('%s: v2, highlight and mode reach the island; the read is unchanged', async (league) => {
-        const props = island(await render(league, `${QUERY[league]}&hl=SEC&mode=dots`, true));
+        const props = island(await render(league, `${QUERY[league]}&hl=SEC&mode=dots`));
         expect(props).toMatchObject({ v2: true, highlight: 'SEC', mode: 'dots' });
         expect(props.points).toHaveLength(ROWS[league].length);
         expect(feed.calls).toEqual([REQUEST[league]]);
     });
 
     test.each(['cfb', 'nfl'] as const)('%s: one control bar above the chart: Season, X, Y (grouped), Random, Plot', async (league) => {
-        const html = await islandMarkup(league, `${QUERY[league]}&hl=SEC&mode=dots`, true);
+        const html = await islandMarkup(league, `${QUERY[league]}&hl=SEC&mode=dots`);
         const [, x, y] = QUERY[league].match(/x=(\w+)&y=(\w+)/)!;
         const bar = html.slice(html.indexOf('<form class="row" id="builder-controls"'), html.indexOf('id="chart_container"'));
         expect(bar).not.toBe('');
@@ -150,12 +123,12 @@ describe('chart-builder-v2 on', () => {
     });
 
     test('an unknown mode falls back to logos, and the highlight is capped at 60 characters', async () => {
-        const props = island(await render('cfb', `${QUERY.cfb}&mode=hexes&hl=${'x'.repeat(80)}`, true));
+        const props = island(await render('cfb', `${QUERY.cfb}&mode=hexes&hl=${'x'.repeat(80)}`));
         expect(props).toMatchObject({ mode: 'logos', highlight: 'x'.repeat(60) });
     });
 
     test('the crosshair medians over the island points skip the team with no x, on both axes', async () => {
-        const { points } = island(await render('cfb', QUERY.cfb, true));
+        const { points } = island(await render('cfb', QUERY.cfb));
         expect(points.find((p: any) => p.team_id === 242).x).toBeNull();
         expect(plottedMedians(points)).toEqual({ teams: 137, x: 0.38461538461538464, y: 0.4369369369369369 });
     });

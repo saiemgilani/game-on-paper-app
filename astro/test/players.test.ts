@@ -233,14 +233,14 @@ describe('one href decides every player link', () => {
     // player; every one of them asks this, so the flag and the id shape are
     // checked once rather than per call site.
     test('the flag and the id shape are both part of the decision', () => {
-        expect(playerHref('4433971', { league: 'cfb', preview: true })).toBe('/players/4433971');
-        expect(playerHref('4433971', { league: 'cfb', preview: true }, 2023)).toBe('/players/4433971?season=2023');
-        expect(playerHref('4433971', { league: 'cfb' })).toBeNull();          // no preview cookie
-        expect(playerHref(null, { league: 'cfb', preview: true })).toBeNull();
-        expect(playerHref('4433971.0', { league: 'cfb', preview: true })).toBeNull();
+        expect(playerHref('4433971', { league: 'cfb'})).toBe('/players/4433971');
+        expect(playerHref('4433971', { league: 'cfb' }, 2023)).toBe('/players/4433971?season=2023');
+        // no preview cookie
+        expect(playerHref(null, { league: 'cfb' })).toBeNull();
+        expect(playerHref('4433971.0', { league: 'cfb' })).toBeNull();
         // the NFL leaderboards key on gsis; the route 301s it to the ESPN id
-        expect(playerHref('00-0031381', { league: 'nfl', preview: true })).toBe('/nfl/players/00-0031381');
-        expect(playerHref('00-0031381', { league: 'cfb', preview: true })).toBeNull();
+        expect(playerHref('00-0031381', { league: 'nfl' })).toBe('/nfl/players/00-0031381');
+        expect(playerHref('00-0031381', { league: 'cfb' })).toBeNull();
     });
 });
 
