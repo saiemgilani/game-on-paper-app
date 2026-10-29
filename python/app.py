@@ -382,18 +382,24 @@ def _game_roster(game_id: int) -> list[dict]:
     game, each with sportsdataverse's 15 x 30s retry budget). Under ESPN
     throttling that held every gunicorn thread and took the whole API down
     (2026-10-29). The processor reads only the athlete id, team id, position
-    $ref and a name from it, and each roster entry carries all four. Fail-open:
-    [] (not None, which would trigger the per-athlete fetch) leaves the
-    participants and box score to name the players, as a failed fetch did.
+    $ref and a name from it, and each roster entry carries all four. The name is
+    ESPN's short form ("B. Glenn"), which the processor's initial tier matches;
+    without it a game whose plays carry names but no participant ids loses most
+    of its player ids. Fail-open: what was collected, possibly [] (not None,
+    which would trigger the per-athlete fetch), as a failed fetch did.
     """
     url = _CORE_COMPETITORS.format(gid=game_id)
     headers = {"User-Agent": espn_proxy.ESPN_UA}
+
+    def get(u):
+        r = requests.get(u, headers=headers, timeout=5)
+        r.raise_for_status()
+        return r.json()
+
+    roster = []
     try:
-        roster = []
-        competitors = requests.get(url, headers=headers, timeout=5).json()
-        for item in competitors.get("items") or []:
+        for item in get(url).get("items") or []:
             team_id = item["$ref"].split("/competitors/")[1].split("?")[0]
-            page = requests.get(f"{url}/{team_id}/roster", headers=headers, timeout=5).json()
             roster += [
                 {
                     "athlete_id": e["playerId"],
@@ -401,13 +407,12 @@ def _game_roster(game_id: int) -> list[dict]:
                     "full_name": e.get("displayName"),
                     "position_href": (e.get("position") or {}).get("$ref"),
                 }
-                for e in page.get("entries") or []
+                for e in get(f"{url}/{team_id}/roster").get("entries") or []
                 if e.get("playerId")
             ]
-        return roster
     except Exception as e:
-        logging.getLogger("root").warning(f"roster fetch failed for {game_id}, processing without it: {e}")
-        return []
+        logging.getLogger("root").warning(f"roster fetch failed for {game_id}, processing with {len(roster)} rows: {e}")
+    return roster
 
 
 def _process_game(league: str, game_id: int, source: str | None = None):

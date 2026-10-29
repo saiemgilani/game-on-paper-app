@@ -19,6 +19,10 @@ class _Resp:
     def __init__(self, body):
         self.body = body
 
+    def raise_for_status(self):
+        if "error" in self.body:
+            raise RuntimeError("HTTP 503")
+
     def json(self):
         return self.body
 
@@ -35,8 +39,18 @@ def test_one_row_per_rostered_athlete_with_its_team(monkeypatch):
 
 def test_a_failed_fetch_is_an_empty_roster_not_none(monkeypatch):
     # None would send CFBPlayProcess to its own per-athlete fetch
+    calls = []
+
     def boom(url, **k):
+        calls.append(url)
         raise TimeoutError("espn")
 
     monkeypatch.setattr(app.requests, "get", boom)
     assert app._game_roster(401871058) == []
+    assert calls == [BASE]
+
+
+def test_an_error_page_keeps_the_team_already_read(monkeypatch):
+    pages = {**PAGES, f"{BASE}/2393/roster": {"error": {"code": 503}}}
+    monkeypatch.setattr(app.requests, "get", lambda url, **k: _Resp(pages[url]))
+    assert [r["athlete_id"] for r in app._game_roster(401871058)] == [5265490]
