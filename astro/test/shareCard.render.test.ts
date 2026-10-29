@@ -286,7 +286,10 @@ describe('the card route', () => {
         const ids = Object.fromEntries(header(espnState).competitions[0].competitors.map((c: any) => [c.homeAway, c.team.id]));
         expect(q.get('home_logo')).toBe(`https://a.espncdn.com/i/teamlogos/ncaa/500/${ids.home}.png`);
         expect(q.get('away_logo')).toBe(`https://a.espncdn.com/i/teamlogos/ncaa/500/${ids.away}.png`);
-        if (state === 'pre') expect(api!.init.cf.cacheKey).toContain(`home_logo=${encodeURIComponent(q.get('home_logo')!)}`);
+        if (state === 'pre') {
+            expect(api!.init.cf.cacheKey).toContain(`home_logo=${encodeURIComponent(q.get('home_logo')!)}`);
+            expect(api!.init.cf.cacheKey).toContain(`away_logo=${encodeURIComponent(q.get('away_logo')!)}`);
+        }
         expect(set).toHaveBeenCalledWith({ maxAge: ttl, tags: ['share-card'] });
     });
 

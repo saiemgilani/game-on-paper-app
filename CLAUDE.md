@@ -1,6 +1,6 @@
 # game-on-paper-app — working notes
 
-Astro 5 SSR on Cloudflare Workers (Svelte 5 islands) in `astro/`; a Flask
+Astro 7 SSR on Cloudflare Workers (Svelte 5 islands) in `astro/`; a Flask
 processor (`sportsdataverse` play-by-play) in `python/`. The site renders two
 leagues: `cfb` (unprefixed, the default) and `nfl` (explicit pages under
 `astro/src/pages/nfl/**`; see `astro/src/utils/league.ts`).

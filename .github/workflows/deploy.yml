@@ -35,21 +35,17 @@ jobs:
           node-version: 22
           check-latest: true
       # The API-layer cache key (resources/python.ts PROCESSOR_VERSION): the python/
-      # tree plus the sportsdataverse-py the live API reports installing (the image
-      # re-resolves main itself, so a ref resolved here could differ). A deploy that
-      # changes neither keeps every cached processed game. To re-key them all (ESPN
-      # corrected finished games), bump python/CACHE_GENERATION: it is in the tree.
+      # tree plus the sportsdataverse-py the deployed image installed (deploy-api reads
+      # it from the image). A deploy that changes neither keeps every cached processed
+      # game. To re-key them all (ESPN corrected finished games), bump
+      # python/CACHE_GENERATION: it is in the tree.
       - name: Processor version
         id: procver
         env:
-          RESOLVED_SHA: ${{ needs.deploy-api.outputs.sdv_sha }}
+          SDV_SHA: ${{ needs.deploy-api.outputs.sdv_sha }}
         run: |
-          sdv="$(curl -fsS --max-time 60 --retry 5 --retry-delay 10 --retry-max-time 300 -A gop-deploy https://api.gameonpaper.com/healthcheck | jq -r '.sportsdataverse.sha // empty' || true)"
-          if ! echo "$sdv" | grep -qE '^[0-9a-f]{40}$'; then
-            echo "::warning::the API reported no sportsdataverse sha (got '$sdv'); keying on the main deploy-api resolved"
-            sdv="$RESOLVED_SHA"
-          fi
-          v="$(git rev-parse --short=12 HEAD:python)-${sdv:0:12}"
+          [[ "$SDV_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::deploy-api reported no sportsdataverse-py sha: '$SDV_SHA'"; exit 1; }
+          v="$(git rev-parse --short=12 HEAD:python)-${SDV_SHA:0:12}"
           echo "v=$v" >> "$GITHUB_OUTPUT"
           echo "processor version $v"
       - uses: cloudflare/wrangler-action@v4
@@ -95,7 +91,7 @@ jobs:
   deploy-api:
     runs-on: ubuntu-latest
     outputs:
-      sdv_sha: ${{ steps.sdvpy.outputs.sha }}
+      sdv_sha: ${{ steps.installed.outputs.sha }}
     # Two merges minutes apart ran this job twice in parallel on 2026-08-31: run A
     # pulled its image, run B overwrote docker-compose.yml on the host, run A's
     # down+up then pulled B's image into a full disk and the API stayed down.
@@ -120,7 +116,8 @@ jobs:
           if [ -z "$sha" ]; then
             sha="$(git ls-remote https://github.com/sportsdataverse/sportsdataverse-py.git refs/heads/main | cut -f1)"
           fi
-          echo "$sha" | grep -qE '^[0-9a-f]{40}$' || { echo "::error::not a sportsdataverse-py sha: '$sha'"; exit 1; }
+          # [[ =~ ]] matches the whole value: a grep would pass a sha line followed by an injected one
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::not a sportsdataverse-py sha: '$sha'"; exit 1; }
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "sportsdataverse-py main @ $sha"
       - name: Publish Python container to GitHub
@@ -135,6 +132,16 @@ jobs:
           addLatest: true
           tags: ${{ github.sha }}
           buildArgs: SDV_PY_MAIN_SHA=${{ steps.sdvpy.outputs.sha }}
+      # what the image actually installed (it re-resolves main, which can move past the sha
+      # above): deploy-web keys the API-layer cache on it. Before the host deploy, so a
+      # failure here leaves the running API alone. The tag is docker-compose.do.yml's image.
+      - name: sportsdataverse-py the image installed
+        id: installed
+        run: |
+          sha="$(docker run --rm --entrypoint cat "ghcr.io/saiemgilani/saiemgilani/game-on-paper-python-api:${GITHUB_SHA}" /code/sdv_py_sha.txt)"
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::the image reports no sportsdataverse-py sha: '$sha'"; exit 1; }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "image installed sportsdataverse-py @ $sha"
       - name: Update SHA for docker compose
         run: |
           DOCKER_COMPOSE_CONTENT="$(cat ./docker-compose.do.yml)"
