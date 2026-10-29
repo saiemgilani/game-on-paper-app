@@ -16,14 +16,8 @@ const render = (locals: Record<string, unknown>, url = 'https://gameonpaper.com/
     container.renderToString(Header, { request: new Request(url), locals: locals as unknown as App.Locals });
 
 describe('Header search', () => {
-    test('absent without the flag: no box, no island', async () => {
+    test('the box inside the collapsed nav, an island, a combobox wired to its list', async () => {
         const html = await render({});
-        expect(html).not.toContain('id="site-search"');
-        expect(html).not.toContain('astro-island');
-    });
-
-    test('preview: the box inside the collapsed nav, an island, a combobox wired to its list', async () => {
-        const html = await render({ preview: true });
         expect(html).toContain('id="site-search"');
         expect(html).toContain('astro-island');
         // inside #navOptions, so on a phone it lives in the menu the toggle opens
@@ -35,7 +29,7 @@ describe('Header search', () => {
     });
 
     test('from sm to lg a magnifier button opens the same box as a panel; phones and xl show it inline', async () => {
-        const html = await render({ preview: true });
+        const html = await render({});
         const button = html.match(/<button[^>]*aria-controls="site-search-form"[^>]*>[\s\S]*?<\/button>/)?.[0] ?? '';
         expect(button).toContain('class="btn btn-sm btn-outline-primary d-none d-sm-inline-block d-xl-none"');
         expect(button).toContain('aria-label="Open search"');

@@ -147,18 +147,11 @@ describe('searchQuery', () => {
 });
 
 describe('GET /api/search', () => {
-    const call = async (qs: string, locals: Record<string, unknown> = { preview: true }) => {
+    const call = async (qs: string, locals: Record<string, unknown> = { }) => {
         const { GET } = await import('../src/pages/api/search');
         const url = new URL(`https://gameonpaper.com/api/search?${qs}`);
         return GET({ url, locals, request: new Request(url) } as any) as Promise<Response>;
     };
-
-    test('404 without the flag, and no upstream call', async () => {
-        const res = await call('q=alab&league=cfb', {});
-        expect(res.status).toBe(404);
-        expect(res.headers.get('Cache-Control')).toBe('no-store');
-        expect(seen).toHaveLength(0);
-    });
 
     test.each(['q=a', `q=${'x'.repeat(65)}`, 'q=', 'q=alab&league=mlb'])('%s -> [] and no upstream call', async (qs) => {
         const res = await call(qs);

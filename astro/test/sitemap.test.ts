@@ -53,12 +53,8 @@ describe('sitemap.xml', () => {
     }
   });
 
-  // The head-coach boards sit behind the 'coaches' flag: a gated route answers
-  // 404, so none is advertised until the flag is public (sitemapCoachesOn.test.ts
-  // covers the promoted sitemap).
-  test('no coach board URL while the coaches flag is not public (they are 404s)', () => {
-    expect(xml).not.toContain('/coaches/');
-    expect(xml).not.toContain('/coaches<');
+  test('coach board URLs exist with coaches flag now live', () => {
+    expect(xml).toContain('/coaches/');
   });
 
   test('no /nfl URL while the nfl flag is not public (they are 404s)', () => {

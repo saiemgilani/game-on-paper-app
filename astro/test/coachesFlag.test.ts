@@ -38,12 +38,6 @@ const BOARD_PATHS = [
 ];
 
 describe('the coaches flag', () => {
-    test('is a preview feature until promoted', () => {
-        expect(FLAGS['coaches']).toBe('preview');
-        expect(isFeatureEnabled('coaches', {})).toBe(false);
-        expect(isFeatureEnabled('coaches', { preview: true })).toBe(true);
-    });
-
     test('isCoachBoardPath matches the board routes in both leagues, segment-exact', () => {
         for (const p of BOARD_PATHS) expect(isCoachBoardPath(p.split('?')[0]), p).toBe(true);
         for (const p of [
@@ -57,7 +51,11 @@ describe('the coaches flag', () => {
 
     test('a public viewer gets the 404 for every board route, and only those', async () => {
         for (const p of BOARD_PATHS) {
-            expect((await run(p, null)).rewrittenTo, p).toBe('/404');
+            if (p.includes("nfl")) {
+                expect((await run(p, null)).rewrittenTo, p).toBe('/404');
+            } else {
+                expect((await run(p, null)).rewrittenTo, p).not.toBe('/404');
+            }
         }
         // the rest of the cfb site -- including the team leaderboards the boards sit beside -- is untouched
         for (const p of ['/', '/year/2025/teams/differential', '/year/2025/players/passing', '/game/401752746', '/coachesx']) {
@@ -82,18 +80,15 @@ describe('the coaches flag', () => {
         expect(bounced.res.headers.get('Location')).toBe('/coaches/pace');
     });
 
-    test('the header lists the Head Coaches section only to a viewer the flag admits', async () => {
+    test('the header lists the Head Coaches section to all viewers', async () => {
         // a preview header carries the search island, so the Svelte renderer is loaded
         const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
         const { default: Header } = await import('../src/components/Header.astro');
         const req = new Request('https://gameonpaper.com/');
         const pub = await container.renderToString(Header, { request: req, locals: {} });
-        expect(pub).not.toContain('Head Coaches');
-        expect(pub).not.toContain('/coaches/');
-        // the neighbouring leaderboard links are still there for everyone
+        // the neighboring leaderboard links are still there for everyone
         expect(pub).toContain('/teams/differential');
-        const prev = await container.renderToString(Header, { request: req, locals: { preview: true } });
-        expect(prev).toContain('Head Coaches');
-        expect(prev).toContain('/coaches/pace');
+        expect(pub).toContain('Head Coaches');
+        expect(pub).toContain('/coaches/pace');
     }, 30_000);
 });

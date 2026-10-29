@@ -28,8 +28,8 @@ export const FIVE_FACTORS: FiveFactor[] = [
     { label: 'Turnovers', metric: 'Giveaways or Takeaways per game', hover: 'Giveaways per Game (Offense) / Takeaways per Game (Defense)', off: 'turnovers_off', def: 'turnovers_def', margin: 'turnover_margin', format: 'num2' },
     { label: 'Expected', metric: 'Expected per game', hover: 'Expected giveaways (Offense) / takeaways (Defense) per game: fumbles 50/50, INTs at the national share of passes defensed', off: 'expected_turnovers_off', def: 'expected_turnovers_def', margin: 'expected_turnover_margin', format: 'num2', sub: true },
     { label: 'Luck (pts)', metric: 'Points vs expected', hover: 'Turnover luck, points per game: 5 x (expected - actual giveaways) on Offense, 5 x (actual - expected takeaways) on Defense; positive = lucky', off: 'turnover_luck_off', def: 'turnover_luck_def', margin: 'turnover_luck', format: 'num2', sub: true },
-    { label: 'Havoc', metric: 'Havoc rate', hover: 'Havoc Rate: sacks, INTs, fumbles, PBUs and TFLs per play (Offense allowed / Defense created; Margin = created - allowed)', off: 'havoc_off', def: 'havoc_def', margin: 'havoc_margin', format: 'pct' },
-    { label: 'EPA / Game', metric: 'EPA on havoc plays', hover: 'EPA per game on havoc plays (Offense lost / Defense inflicted)', off: 'havoc_EPAgame_off', def: 'havoc_EPAgame_def', margin: 'havoc_EPAgame_margin', format: 'num2', sub: true },
+    { label: 'Havoc %', metric: 'Havoc rate', hover: 'Havoc Rate: sacks, INTs, fumbles, PBUs and TFLs per play (Offense allowed / Defense created; Margin = created - allowed)', off: 'havoc_off', def: 'havoc_def', margin: 'havoc_margin', format: 'pct', sub: true, },
+    { label: 'Havoc EPA / Game', metric: 'EPA on havoc plays', hover: 'EPA per game on havoc plays (Offense lost / Defense inflicted)', off: 'havoc_EPAgame_off', def: 'havoc_EPAgame_def', margin: 'havoc_EPAgame_margin', format: 'num2', sub: true },
 ];
 
 /**

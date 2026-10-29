@@ -33,14 +33,14 @@ async function run(path: string, cookies: Record<string, string> = {}) {
 }
 
 describe('the query parameters are inert without an admin session', () => {
-    const path = '/game/401856682?view=preview&flags=game-page-v2:on&source=shield';
+    const path = '/game/401856682?view=preview&flags=share-card:on&source=shield';
 
     test('an anonymous request keeps the public flag state', async () => {
         const { locals } = await run(path);
         expect(locals.adminAuthed).toBeUndefined();
         expect(locals.preview).toBeUndefined();
         expect(locals.flagOverrides).toBeUndefined();
-        expect(isFeatureEnabled('game-page-v2', locals as any)).toBe(false);
+        expect(isFeatureEnabled('share-card', locals as any)).toBe(false);
     });
 
     test('a preview cookie is not an admin session: ?view=live cannot turn it off', async () => {
@@ -66,27 +66,27 @@ describe('an authenticated admin overrides the flag state for one request', () =
         const { locals } = await run('/game/401856682?view=live',
             { ...(await admin()), [PREVIEW_COOKIE]: await mintPreviewCookie('test-secret') });
         expect(locals.preview).toBe(false);
-        expect(isFeatureEnabled('game-page-v2', locals as any)).toBe(false);
+        expect(isFeatureEnabled('share-card', locals as any)).toBe(false);
         expect(isFeatureEnabled('source-switch', locals as any)).toBe(false);
     });
 
     test('?view=preview turns every preview flag on without a preview cookie', async () => {
         const { locals } = await run('/game/401856682?view=preview', await admin());
         expect(locals.preview).toBe(true);
-        expect(isFeatureEnabled('game-page-v2', locals as any)).toBe(true);
+        expect(isFeatureEnabled('share-card', locals as any)).toBe(true);
         expect(isFeatureEnabled('coaches', locals as any)).toBe(true);
     });
 
     test('a per-flag override moves ONLY that flag', async () => {
-        const { locals } = await run('/game/401856682?view=preview&flags=game-page-v2:off', await admin());
-        expect(isFeatureEnabled('game-page-v2', locals as any)).toBe(false);
+        const { locals } = await run('/game/401856682?view=preview&flags=share-card:off', await admin());
+        expect(isFeatureEnabled('share-card', locals as any)).toBe(false);
         expect(isFeatureEnabled('source-switch', locals as any)).toBe(true);
         expect(isFeatureEnabled('coaches', locals as any)).toBe(true);
     });
 
     test('the two compose: Live plus one flag on', async () => {
         const { locals } = await run('/game/401856682?view=live&flags=source-switch:on', await admin());
-        expect(isFeatureEnabled('game-page-v2', locals as any)).toBe(false);
+        expect(isFeatureEnabled('share-card', locals as any)).toBe(false);
         expect(isFeatureEnabled('source-switch', locals as any)).toBe(true);
     });
 
@@ -148,8 +148,8 @@ describe('the toggle hrefs compose instead of replacing each other', () => {
     });
     test('a flag override merges into any already present', () => {
         const withFlags = new URL('https://gameonpaper.com/game/1?flags=coaches:on');
-        expect(adminToolsHref(withFlags, { flags: { 'game-page-v2': false } }))
-            .toBe('/game/1?flags=coaches%3Aon%2Cgame-page-v2%3Aoff');
+        expect(adminToolsHref(withFlags, { flags: { 'share-card': false } }))
+            .toBe('/game/1?flags=coaches%3Aon%2Cshare-card%3Aoff');
         expect(adminToolsHref(withFlags, { flags: { coaches: null } })).toBe('/game/1');
     });
 });

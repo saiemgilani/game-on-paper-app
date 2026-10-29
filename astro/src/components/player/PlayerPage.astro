@@ -41,7 +41,7 @@ import NeighborRanks from '../leaderboards/NeighborRanks.astro';
 import type { SDVPlayer } from '../../resources/sdv';
 import type { PlayerSections } from '../../routes/player';
 import { LEAGUES, espnLogoLeague, leaguePath, teamCountOf } from '../../utils/league';
-import { cleanTextForTeam, formatRank, formatNumber, formatPercent, generateColorRampValue, numberOrNull } from '../../utils/misc';
+import { cleanTextForTeam, formatRank, formatNumber, formatPercent, generateColorRampValue, numberOrNull, cleanField } from '../../utils/misc';
 import { datasetJsonLd, playerDescription, playerTitle, PLAYER_PAGE_VARIABLES } from '../../utils/seo';
 import { formatHeight, playerPath, splitPercentileCaption, totalGameLog } from '../../utils/players';
 import { SPLIT_PERCENTILE_MIN_PLAYS } from '../../resources/sdv';
@@ -294,7 +294,7 @@ const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
                                             <img class={`img-fluid team-logo-${t.team_id}`} width="20px"
                                                 src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${t.team_id}.png`}
                                                 alt={`${t.pos_team} logo`} />
-                                            <span class="d-none d-md-inline">{t.pos_team}</span>
+                                            <span class="d-none d-md-inline">{cleanField(t, "pos_team")}</span>
                                         </a>
                                     </td>
                                     {teamContextColumns.map(([value, rank]) => (
