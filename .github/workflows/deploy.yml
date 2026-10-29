@@ -16,27 +16,36 @@ on:
   repository_dispatch:
     types: [ deploy ]
   workflow_dispatch:
+    inputs:
+      bust_processor_cache:
+        description: Re-key every cached API response (e.g. ESPN corrected finished games)
+        type: boolean
+        default: false
   workflow_call:
 
 jobs:
   deploy-web:
+    # After the API: the web build keys the API-layer cache on what the API now runs
+    # (PROCESSOR_VERSION below), so the new key must never cache an old API's answer.
+    needs: deploy-api
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
           repository: saiemgilani/game-on-paper-app
       # The API-layer cache key (resources/python.ts PROCESSOR_VERSION): the python/
-      # tree plus the sportsdataverse-py main the API image resolves (deploy-api below
-      # resolves the same ref), so a deploy that changes neither keeps every cached
-      # processed game.
+      # tree plus the sportsdataverse-py the live API reports installing (the image
+      # re-resolves main itself, so a ref resolved here could differ). A deploy that
+      # changes neither keeps every cached processed game; the bust_processor_cache
+      # input re-keys them all.
       - name: Processor version
         id: procver
+        env:
+          BUST: ${{ inputs.bust_processor_cache && github.run_id || '' }}
         run: |
-          sdv="${{ github.event.client_payload.sportsdataverse_py_sha }}"
-          if [ -z "$sdv" ]; then
-            sdv="$(git ls-remote https://github.com/sportsdataverse/sportsdataverse-py.git refs/heads/main | cut -f1)"
-          fi
-          v="$(git rev-parse --short=12 HEAD:python)-${sdv:0:12}"
+          sdv="$(curl -fsS --retry 5 --retry-delay 10 -A gop-deploy https://api.gameonpaper.com/healthcheck | jq -r '.sportsdataverse.sha // empty')"
+          echo "$sdv" | grep -qE '^[0-9a-f]{40}$' || { echo "::error::the API reported no sportsdataverse sha (got '$sdv')"; exit 1; }
+          v="$(git rev-parse --short=12 HEAD:python)-${sdv:0:12}${BUST:+-$BUST}"
           echo "v=$v" >> "$GITHUB_OUTPUT"
           echo "processor version $v"
       - uses: cloudflare/wrangler-action@v4
@@ -48,9 +57,8 @@ jobs:
           ADMIN_PASS: ${{ secrets.ADMIN_PASS }}
           GOP_INGEST_KEY: ${{ secrets.GOP_INGEST_KEY }}
           TELEMETRY_ENABLED: ${{ secrets.TELEMETRY_ENABLED }}
-          # sha alone is NOT unique per deploy: repository_dispatch (sdv-py main moved)
-          # re-deploys the same repo sha with a new parser. run_id makes every deploy
-          # bust the API-layer cacheKey in resources/python.ts.
+          # Unique per deploy (sha-run_id): the footer, the admin version endpoint and
+          # the share-card key. The API-layer cache keys on PROCESSOR_VERSION instead.
           APP_VERSION: ${{ github.sha }}-${{ github.run_id }}
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -97,12 +105,16 @@ jobs:
         id: sdvpy
         # The image re-resolves sportsdataverse-py main at build time; this SHA is
         # the cache-buster that makes a new main commit invalidate that layer. A
-        # repository_dispatch from sportsdataverse-py carries it directly.
+        # repository_dispatch from sportsdataverse-py carries it directly -- through env
+        # and checked as a sha, never interpolated into the script.
+        env:
+          DISPATCH_SHA: ${{ github.event.client_payload.sportsdataverse_py_sha }}
         run: |
-          sha="${{ github.event.client_payload.sportsdataverse_py_sha }}"
+          sha="$DISPATCH_SHA"
           if [ -z "$sha" ]; then
             sha="$(git ls-remote https://github.com/sportsdataverse/sportsdataverse-py.git refs/heads/main | cut -f1)"
           fi
+          echo "$sha" | grep -qE '^[0-9a-f]{40}$' || { echo "::error::not a sportsdataverse-py sha: '$sha'"; exit 1; }
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "sportsdataverse-py main @ $sha"
       - name: Publish Python container to GitHub

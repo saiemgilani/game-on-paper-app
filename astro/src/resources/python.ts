@@ -1362,7 +1362,8 @@ export async function retrieveShareCard(gameId: string | number, league: League,
         query.set('proj_margin', String(pregame.margin));
         if (pregame.homeWinProb != null) query.set('proj_wp', String(pregame.homeWinProb));
     }
-    // each side's art (shareTags cardLogoUrl): fixed per team and deploy, so it stays out of the cache key
+    // each side's art (shareTags cardLogoUrl), in the cache key too: PROCESSOR_VERSION does not move with an
+    // Astro-only deploy that changes a team's art
     const art = new URLSearchParams(logos ? { home_logo: logos.home, away_logo: logos.away } : {});
     const url = `${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}${logos ? `&${art}` : ''}`;
     const auth = { "Authorization": `Bearer ${btoa(PYTHON_HTTP_TOKEN)}`, "Referer": "gameonpaper.com" };
@@ -1374,7 +1375,7 @@ export async function retrieveShareCard(gameId: string | number, league: League,
                 cf: {
                     cacheEverything: true,
                     cacheTtlByStatus: { "200-299": CARD_MAX_AGE[state], 404: 1, "500-599": 0 },
-                    cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}&v=${PROCESSOR_VERSION}`,
+                    cacheKey: `${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?${query}${logos ? `&${art}` : ''}&v=${PROCESSOR_VERSION}`,
                 }
             });
         } else {
