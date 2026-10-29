@@ -16,11 +16,6 @@ on:
   repository_dispatch:
     types: [ deploy ]
   workflow_dispatch:
-    inputs:
-      bust_processor_cache:
-        description: Re-key every cached API response (e.g. ESPN corrected finished games)
-        type: boolean
-        default: false
   workflow_call:
 
 jobs:
@@ -36,20 +31,19 @@ jobs:
       # The API-layer cache key (resources/python.ts PROCESSOR_VERSION): the python/
       # tree plus the sportsdataverse-py the live API reports installing (the image
       # re-resolves main itself, so a ref resolved here could differ). A deploy that
-      # changes neither keeps every cached processed game; the bust_processor_cache
-      # input re-keys them all.
+      # changes neither keeps every cached processed game. To re-key them all (ESPN
+      # corrected finished games), bump python/CACHE_GENERATION: it is in the tree.
       - name: Processor version
         id: procver
         env:
-          BUST: ${{ inputs.bust_processor_cache && github.run_id || '' }}
           RESOLVED_SHA: ${{ needs.deploy-api.outputs.sdv_sha }}
         run: |
-          sdv="$(curl -fsS --retry 5 --retry-delay 10 -A gop-deploy https://api.gameonpaper.com/healthcheck | jq -r '.sportsdataverse.sha // empty' || true)"
+          sdv="$(curl -fsS --max-time 60 --retry 5 --retry-delay 10 --retry-max-time 300 -A gop-deploy https://api.gameonpaper.com/healthcheck | jq -r '.sportsdataverse.sha // empty' || true)"
           if ! echo "$sdv" | grep -qE '^[0-9a-f]{40}$'; then
             echo "::warning::the API reported no sportsdataverse sha (got '$sdv'); keying on the main deploy-api resolved"
             sdv="$RESOLVED_SHA"
           fi
-          v="$(git rev-parse --short=12 HEAD:python)-${sdv:0:12}${BUST:+-$BUST}"
+          v="$(git rev-parse --short=12 HEAD:python)-${sdv:0:12}"
           echo "v=$v" >> "$GITHUB_OUTPUT"
           echo "processor version $v"
       - uses: cloudflare/wrangler-action@v4
