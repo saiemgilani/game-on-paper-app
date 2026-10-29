@@ -12,9 +12,9 @@ describe('FIVE_FACTORS', () => {
     test('ten rows: the five factors, four of them followed by a sub-row', () => {
         expect(FIVE_FACTORS.map((f) => f.label)).toEqual([
             'Efficiency', 'Explosiveness', 'Field Position', 'Start (yds)', 'Finishing Drives',
-            'Turnovers', 'Expected', 'Luck (pts)', 'Havoc', 'EPA / Game',
+            'Turnovers', 'Expected', 'Luck (pts)', 'Havoc %', 'Havoc EPA / Game',
         ]);
-        expect(FIVE_FACTORS.filter((f) => f.sub).map((f) => f.label)).toEqual(['Start (yds)', 'Expected', 'Luck (pts)', 'EPA / Game']);
+        expect(FIVE_FACTORS.filter((f) => f.sub).map((f) => f.label)).toEqual(['Start (yds)', 'Expected', 'Luck (pts)', 'Havoc %', 'Havoc EPA / Game']);
         // every row names its metric for the column beside the label, and formats
         // through the site's one spec in misc.ts
         for (const f of FIVE_FACTORS) {
@@ -37,7 +37,7 @@ describe('FIVE_FACTORS', () => {
         expect(byLabel['Field Position']).toMatchObject({ off: 'drive_start_ep_off', def: 'drive_start_ep_def', margin: 'drive_start_ep_margin' });
         expect(byLabel['Start (yds)']).toMatchObject({ off: 'start_position_off', def: 'start_position_def', margin: 'start_position_margin' });
         expect(byLabel['Luck (pts)']).toMatchObject({ off: 'turnover_luck_off', def: 'turnover_luck_def', margin: 'turnover_luck' });
-        expect(byLabel['Havoc'].margin).toBe('havoc_margin');
+        expect(byLabel['Havoc %'].margin).toBe('havoc_margin');
         expect(byLabel['Explosiveness'].margin).toBe('explosive_margin');
     });
 

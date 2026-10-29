@@ -100,17 +100,14 @@ describe('A1: each game is ranked against its own season', () => {
         expect(percentileRequests[0]).toContain('/v1/nfl/percentiles?season=2025');
     });
 
-    for (const twin of ['classic', 'v2'] as const) {
-        test(`${twin} game page asks for the game's season, not 2025`, async () => {
-            const { retrieveProcessedGame } = await import('../src/resources/python');
-            const game = await retrieveProcessedGame(GAME_ID, 30);
-            const Page = (await import(twin === 'classic' ? '../src/components/game/classic/GamePage.astro' : '../src/components/game/GamePage.astro')).default;
-            const html = await container.renderToString(Page, { props: { id: GAME_ID, game }, request: new Request(`https://gameonpaper.com/game/${GAME_ID}`), locals: locals('cfb') });
-            expect(game.season.year).toBe(2024);
-            expect(seasonsAsked()).toEqual(['2024']);
-            if (twin === 'classic') expect(html).toContain('performances in that stat in 2024');
-        }, 60_000);
-    }
+    test(`game page asks for the game's season, not 2025`, async () => {
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game = await retrieveProcessedGame(GAME_ID, 30);
+        const Page = (await import('../src/components/game/GamePage.astro')).default;
+        const html = await container.renderToString(Page, { props: { id: GAME_ID, game }, request: new Request(`https://gameonpaper.com/game/${GAME_ID}`), locals: locals('cfb') });
+        expect(game.season.year).toBe(2024);
+        expect(seasonsAsked()).toEqual(['2024']);
+    }, 60_000);
 });
 
 // One game's box: the home team (2) has no red-zone snaps and comes from a payload
@@ -128,48 +125,46 @@ const box = {
     defensive: [{ def_pos_team: 1, havoc_total_rate: 0.15 }, { def_pos_team: 2, havoc_total_rate: 0.15 }],
 };
 
-async function renderBox(twin: 'classic' | 'v2', props: Record<string, unknown>, league = 'cfb'): Promise<string> {
-    const C = (await import(twin === 'classic' ? '../src/components/game/classic/BinionBoxScore.astro' : '../src/components/game/metrics/BinionBoxScore.svelte')).default as any;
-    return container.renderToString(C, { props: { season: 2025, advancedBoxScore: box, percentiles: ladder(2025), ...props, ...(twin === 'v2' ? { league } : {}) }, locals: locals(league) });
+async function renderBox(props: Record<string, unknown>, league = 'cfb'): Promise<string> {
+    const C = (await import('../src/components/game/metrics/BinionBoxScore.svelte')).default as any;
+    return container.renderToString(C, { props: { season: 2025, advancedBoxScore: box, percentiles: ladder(2025), ...props, ...({ league }) }, locals: locals(league) });
 }
 
 const cells = (html: string, label: string) => parseTable(html).rows.find((r) => r[0] === label)!.slice(1);
 const rowHtml = (html: string, label: string) => html.match(new RegExp(`<tr[^>]*>(?:(?!</tr>)[\\s\\S])*?${label}(?:(?!</tr>)[\\s\\S])*?</tr>`))![0];
 
-for (const twin of ['classic', 'v2'] as const) {
-    describe(`[${twin}] Binion box cells`, () => {
-        test('A5: a value tied with breakpoints 55-65 is the 60th, not the 65th', async () => {
-            expect(cells(await renderBox(twin, {}), 'Red Zone Success Rate')[0]).toBe('50% 60th %ile');
-        });
-
-        test('A5: an untied value keeps its rank', async () => {
-            // 0.4 sits on breakpoint 40 alone: 39 below it, one tie, rounds to the 40th
-            expect(cells(await renderBox(twin, {}), '3rd Down Success Rate')).toEqual(['40% 40th %ile', '40% 40th %ile']);
-        });
-
-        test('A4: no red-zone snaps is a dash, unranked and unshaded', async () => {
-            const html = await renderBox(twin, {});
-            expect(cells(html, 'Red Zone Success Rate')[1]).toBe('—');
-            const td = rowHtml(html, 'Red Zone Success Rate').match(/<td class="numeral[^>]*>[^<]*—/)![0];
-            expect(td).not.toContain('hulk-bg');
-        });
-
-        test("A2: Yards/Dropback is the payload's yards_per_dropback, else its yards_per_pass", async () => {
-            // away: yards_per_dropback (240 + -20) / 30 = 7.33, ranked 73rd on the yardsdropback
-            // ladder; home: none in the payload, so yards_per_pass as before. Not rebuilt from
-            // the home team's pass and sack yards, which would read (195 + -15) / 30 = 6.00
-            expect(cells(await renderBox(twin, {}), 'Yards/Dropback')).toEqual(['7.33 73rd %ile', '6.50 65th %ile']);
-        });
-
-        test('no ladder: values only, no percentile, no shading, no caption', async () => {
-            const html = await renderBox(twin, { percentiles: [] });
-            expect(html).not.toContain('%ile');
-            expect(html).not.toContain('hulk-bg');
-            expect(html).not.toContain('Cell colors reflect');
-            expect(cells(html, 'Yards/Dropback')).toEqual(['7.33', '6.50']);
-        });
+describe(`Binion box cells`, () => {
+    test('A5: a value tied with breakpoints 55-65 is the 60th, not the 65th', async () => {
+        expect(cells(await renderBox({}), 'Red Zone Success Rate')[0]).toBe('50% 60th %ile');
     });
-}
+
+    test('A5: an untied value keeps its rank', async () => {
+        // 0.4 sits on breakpoint 40 alone: 39 below it, one tie, rounds to the 40th
+        expect(cells(await renderBox({}), '3rd Down Success Rate')).toEqual(['40% 40th %ile', '40% 40th %ile']);
+    });
+
+    test('A4: no red-zone snaps is a dash, unranked and unshaded', async () => {
+        const html = await renderBox({});
+        expect(cells(html, 'Red Zone Success Rate')[1]).toBe('—');
+        const td = rowHtml(html, 'Red Zone Success Rate').match(/<td class="numeral[^>]*>[^<]*—/)![0];
+        expect(td).not.toContain('hulk-bg');
+    });
+
+    test("A2: Yards/Dropback is the payload's yards_per_dropback, else its yards_per_pass", async () => {
+        // away: yards_per_dropback (240 + -20) / 30 = 7.33, ranked 73rd on the yardsdropback
+        // ladder; home: none in the payload, so yards_per_pass as before. Not rebuilt from
+        // the home team's pass and sack yards, which would read (195 + -15) / 30 = 6.00
+        expect(cells(await renderBox({}), 'Yards/Dropback')).toEqual(['7.33 73rd %ile', '6.50 65th %ile']);
+    });
+
+    test('no ladder: values only, no percentile, no shading, no caption', async () => {
+        const html = await renderBox({ percentiles: [] });
+        expect(html).not.toContain('%ile');
+        expect(html).not.toContain('hulk-bg');
+        expect(html).not.toContain('Cell colors reflect');
+        expect(cells(html, 'Yards/Dropback')).toEqual(['7.33', '6.50']);
+    });
+});
 
 describe('A5: a tie ranks at the mean of its one-based ranks', () => {
     // `success` breakpoint k is k/100 (k = 1..99); `run` flattens breakpoints lo..hi to one value
@@ -197,7 +192,7 @@ describe('A5: a tie ranks at the mean of its one-based ranks', () => {
 
 describe('A6: the v2 box ranks the full game only', () => {
     test('a quarter shows its values unranked', async () => {
-        const html = await renderBox('v2', { span: 'q1' });
+        const html = await renderBox({ span: 'q1' });
         expect(html).not.toContain('%ile');
         expect(html).not.toContain('hulk-bg');
         expect(html).not.toContain('Cell colors reflect');
@@ -205,14 +200,14 @@ describe('A6: the v2 box ranks the full game only', () => {
     });
 
     test('the full game keeps them', async () => {
-        const html = await renderBox('v2', { span: 'all' });
+        const html = await renderBox({ span: 'all' });
         expect(html).toContain('Cell colors reflect');
         expect(cells(html, 'Red Zone Success Rate')[0]).toBe('50% 60th %ile');
     });
 });
 
 test('nfl: the v2 box ranks against the NFL ladder of the season it is given', async () => {
-    const html = await renderBox('v2', { percentiles: ladder(2025) }, 'nfl');
+    const html = await renderBox({ percentiles: ladder(2025) }, 'nfl');
     expect(html).toContain('single-game NFL performances in that stat in 2025');
     expect(cells(html, 'Red Zone Success Rate')[0]).toBe('50% 60th %ile');
 });
@@ -238,18 +233,14 @@ describe('A7: the previous season ranks the first weeks of a season still being 
         expect(percentileSeason(h as any)).toBe(expected);
     });
 
-    for (const twin of ['classic', 'v2'] as const) {
-        test(`${twin}: a week-2 game of the season being played asks for the previous season`, async () => {
-            const { retrieveProcessedGame } = await import('../src/resources/python');
-            const game = structuredClone(await retrieveProcessedGame(GAME_ID, 30));
-            game.season = { ...game.season, year: 2026 };
-            game.header.season = { year: 2026, type: 2, current: true };
-            game.header.week = 2;
-            const Page = (await import(twin === 'classic' ? '../src/components/game/classic/GamePage.astro' : '../src/components/game/GamePage.astro')).default;
-            const html = await container.renderToString(Page, { props: { id: GAME_ID, game }, request: new Request(`https://gameonpaper.com/game/${GAME_ID}`), locals: locals('cfb') });
-            expect(seasonsAsked()).toEqual(['2025']);
-            // the caption names the season the ranks came from
-            if (twin === 'classic') expect(html).toContain('performances in that stat in 2025');
-        }, 60_000);
-    }
+    test(`a week-2 game of the season being played asks for the previous season`, async () => {
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        const game = structuredClone(await retrieveProcessedGame(GAME_ID, 30));
+        game.season = { ...game.season, year: 2026 };
+        game.header.season = { year: 2026, type: 2, current: true };
+        game.header.week = 2;
+        const Page = (await import('../src/components/game/GamePage.astro')).default;
+        const html = await container.renderToString(Page, { props: { id: GAME_ID, game }, request: new Request(`https://gameonpaper.com/game/${GAME_ID}`), locals: locals('cfb') });
+        expect(seasonsAsked()).toEqual(['2025']);
+    }, 60_000);
 });
