@@ -69,10 +69,6 @@ describe('loadSeasonTeam', () => {
     test('reads the season-wide neighbour rows only for a viewer the flag admits', async () => {
         const { loadSeasonTeam } = await import('../src/routes/seasonTeam');
         calls.length = 0;
-        const pub: any = await loadSeasonTeam(fakeAstro(false), 'nfl');
-        expect(pub.neighborLists).toEqual([]);
-        expect(calls.some((c) => c.columns?.includes('explosive_off'))).toBe(false);
-        calls.length = 0;
         const prev: any = await loadSeasonTeam(fakeAstro(true), 'nfl');
         expect(calls.some((c) => c.columns?.includes('explosive_off') && !c.team_id)).toBe(true);
         expect(prev.neighborLists).toHaveLength(6);

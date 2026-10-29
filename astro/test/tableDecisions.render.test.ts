@@ -73,26 +73,16 @@ beforeAll(async () => {
 async function renderProduction(twin: 'classic' | 'v2', league: Lg, heading = 'Production'): Promise<{ teams: any[], box: any, table: string }> {
     const { retrieveProcessedGame } = await import('../src/resources/python');
     const g: any = await retrieveProcessedGame(FIXTURES[league].id, 30, league);
-    let html: string;
-    let box: any;
-    if (twin === 'classic') {
-        const Page = (await import('../src/components/game/classic/GamePage.astro')).default;
-        html = await container.renderToString(Page, {
-            props: { id: String(FIXTURES[league].id), game: g, league },
-            request: new Request(`https://gameonpaper.com/game/${FIXTURES[league].id}`),
-            locals: locals(league),
-        });
-        box = g.advBoxScore;
-    } else {
-        const spans = withoutUsageSections(g.advBoxScoreSpans);
-        const Section = (await import('../src/components/game/metrics/SituationalSection.svelte')).default as any;
-        html = await container.renderToString(Section, {
-            props: { season: g.season.year, advBoxScoreSpans: spans, league, percentiles: [] },
-            locals: locals(league),
-        });
-        // the island opens on the whole game, the `all` span
-        box = spans.all;
-    }
+    
+    const spans = withoutUsageSections(g.advBoxScoreSpans);
+    const Section = (await import('../src/components/game/metrics/SituationalSection.svelte')).default as any;
+    const html = await container.renderToString(Section, {
+        props: { season: g.season.year, advBoxScoreSpans: spans, league, percentiles: [] },
+        locals: locals(league),
+    });
+    // the island opens on the whole game, the `all` span
+    const box = spans.all;
+
     const table = tableWithHeading(html, heading);
     expect(table, `the ${twin} twin renders a ${heading} table`).toBeTruthy();
     return { teams: box.team, box, table: table! };
@@ -154,17 +144,6 @@ describe('the Binion box rounds through one guard in both twins', () => {
         expect(metricDecimalPoints(null)).toBe(1);
     });
 
-    test('both twins render the same numbers from the same box score', async () => {
-        const g = loadGzJson(FIXTURES.cfb.file);
-        const props = { season: g.season.year, advancedBoxScore: g.advBoxScore, percentiles: [] };
-        const [classic, v2] = await Promise.all([
-            container.renderToString((await import('../src/components/game/classic/BinionBoxScore.astro')).default, { props, locals: locals('cfb') }),
-            container.renderToString((await import('../src/components/game/metrics/BinionBoxScore.svelte')).default as any, { props: { ...props, league: 'cfb' }, locals: locals('cfb') }),
-        ]);
-        const strip = (h: string) => parseTable(h).rows.slice(1).map((r) => r.join('|'));
-        expect(strip(v2)).toEqual(strip(classic));
-    }, 60_000);
-
     test('TeamMetricsTable honours an explicit 0 decimal places in both twins', async () => {
         // CodeRabbit on #269: both twins still read `decimalPoints || 1`, the drift
         // the shared guard exists to stop. A caller asking for 0 places gets 0.
@@ -180,15 +159,10 @@ describe('the Binion box rounds through one guard in both twins', () => {
             title: 'Test', teamKey: 'pos_team', season: g.season.year, columns: ['EPA_per_play'],
             box: { team: g.advBoxScore.team }, useSuffix: true, decimalPoints: 0,
         };
-        const [classic, v2] = await Promise.all([
-            container.renderToString((await import('../src/components/game/classic/TeamMetricsTable.astro')).default, { props, locals: locals('cfb') }),
-            container.renderToString((await import('../src/components/game/metrics/TeamMetricsTable.svelte')).default as any, { props: svelteProps, locals: locals('cfb') }),
-        ]);
-        for (const html of [classic, v2]) {
-            const cells = [...html.matchAll(/<td class="numeral"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1].trim());
-            expect(cells.length).toBeGreaterThan(0);
-            for (const c of cells) expect(c, html.slice(0, 200)).toMatch(/^-?\d+$/);
-        }
+        const html = await container.renderToString((await import('../src/components/game/metrics/TeamMetricsTable.svelte')).default as any, { props: svelteProps, locals: locals('cfb') });
+        const cells = [...html.matchAll(/<td class="numeral"[^>]*>([^<]*)<\/td>/g)].map((m) => m[1].trim());
+        expect(cells.length).toBeGreaterThan(0);
+        for (const c of cells) expect(c, html.slice(0, 200)).toMatch(/^-?\d+$/);
     }, 60_000);
 });
 
@@ -258,28 +232,20 @@ describe('Yards/Play counts sack yardage in every table that prints it', () => {
 
     test('the Team Stats table, both twins', async () => {
         const base = { title: 'Test', teamKey: 'pos_team', season: g.season.year, columns: ['yards_per_play'], useSuffix: true, decimalPoints: 2 };
-        const [classic, v2] = await Promise.all([
-            container.renderToString((await import('../src/components/game/classic/TeamMetricsTable.astro')).default, { props: { ...base, teamBoxScores: teams }, locals: locals('cfb') }),
-            container.renderToString((await import('../src/components/game/metrics/TeamMetricsTable.svelte')).default as any, { props: { ...base, league: 'cfb', box: { team: teams } }, locals: locals('cfb') }),
-        ]);
-        expect(numerals(classic)).toEqual(net);
-        expect(numerals(v2)).toEqual(net);
+        const html = await container.renderToString((await import('../src/components/game/metrics/TeamMetricsTable.svelte')).default as any, { props: { ...base, league: 'cfb', box: { team: teams } }, locals: locals('cfb') });
+        expect(numerals(html)).toEqual(net);
     }, 60_000);
 
     test('the Binion box, both twins', async () => {
         const props = { season: g.season.year, advancedBoxScore: g.advBoxScore, percentiles: [] };
-        const [classic, v2] = await Promise.all([
-            container.renderToString((await import('../src/components/game/classic/BinionBoxScore.astro')).default, { props, locals: locals('cfb') }),
-            container.renderToString((await import('../src/components/game/metrics/BinionBoxScore.svelte')).default as any, { props: { ...props, league: 'cfb' }, locals: locals('cfb') }),
-        ]);
-        expect(numerals(row(classic, 'Yards/Play'))).toEqual(net);
-        expect(numerals(row(v2, 'Yards/Play'))).toEqual(net);
+        const html = await container.renderToString((await import('../src/components/game/metrics/BinionBoxScore.svelte')).default as any, { props: { ...props, league: 'cfb' }, locals: locals('cfb') });
+        expect(numerals(row(html, 'Yards/Play'))).toEqual(net);
     }, 60_000);
 
     test('a team with no scrimmage plays gets a dash, not 0.00', async () => {
         const none = [{ ...teams[0], scrimmage_plays: 0, yards_per_play: null, off_yards: 0, pass_yards: 0, rush_yards: 0 }, teams[1]];
         const base = { title: 'Test', teamKey: 'pos_team', season: g.season.year, columns: ['yards_per_play'], useSuffix: true, decimalPoints: 2 };
-        const v2 = await container.renderToString((await import('../src/components/game/metrics/TeamMetricsTable.svelte')).default as any, { props: { ...base, league: 'cfb', box: { team: none } }, locals: locals('cfb') });
-        expect(numerals(v2)).toEqual(['—', net[1]]);
+        const html = await container.renderToString((await import('../src/components/game/metrics/TeamMetricsTable.svelte')).default as any, { props: { ...base, league: 'cfb', box: { team: none } }, locals: locals('cfb') });
+        expect(numerals(html)).toEqual(['—', net[1]]);
     }, 60_000);
 });

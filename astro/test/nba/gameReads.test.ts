@@ -84,6 +84,7 @@ describe('requestProcessor cache key', () => {
         const { requestProcessor, retrieveProcessedGame } = await import('../../src/resources/python');
         await requestProcessor('cfb/401520150/process', 60);
         const url = 'http://python:5000/cfb/401520150/process';
+
         expect(urls).toContain(url);
         expect(inits[url].cf.cacheKey).toBe('http://python:5000/cfb/401520150/process?v=dev');
         // and processPlays, which now goes through it, builds the same one
