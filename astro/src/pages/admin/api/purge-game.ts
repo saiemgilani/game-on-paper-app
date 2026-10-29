@@ -18,7 +18,10 @@ const KNOWN_TAGS = new Set(['game-completed', 'game-in-progress', 'game-schedule
     'week-complete', 'week-in-progress', 'week-scheduled-current-week',
     'week-scheduled-current-season', 'chart',
     // every individual player page (routes/player.ts), after a producer republish
-    'player']);
+    'player',
+    // /year/* and /team/* (route rules in astro.config.mjs, 3-day maxAge) and the teams
+    // index pages: without these a summaries republish waits out the TTL or a redeploy
+    'season', 'team', 'teams-index']);
 
 export const GET: APIRoute = async (context) => purge(context);
 export const POST: APIRoute = async (context) => purge(context);
