@@ -280,12 +280,16 @@ describe('the card route', () => {
             expect(api!.init.cf.cacheTtlByStatus['200-299']).toBe(ttl);
             expect(api!.init.cf.cacheKey).toContain(`state=${state}&variant=full`);
         }
-        // each side's art rides along to the API, never into the cache key or the public URL
+        // each side's art rides along to the API and into its cache key (an Astro-only deploy that
+        // changes a team's art no longer moves the key's version), never into the public URL
         const q = new URL(api!.url).searchParams;
         const ids = Object.fromEntries(header(espnState).competitions[0].competitors.map((c: any) => [c.homeAway, c.team.id]));
         expect(q.get('home_logo')).toBe(`https://a.espncdn.com/i/teamlogos/ncaa/500/${ids.home}.png`);
         expect(q.get('away_logo')).toBe(`https://a.espncdn.com/i/teamlogos/ncaa/500/${ids.away}.png`);
-        if (state === 'pre') expect(api!.init.cf.cacheKey).not.toContain('logo');
+        if (state === 'pre') {
+            expect(api!.init.cf.cacheKey).toContain(`home_logo=${encodeURIComponent(q.get('home_logo')!)}`);
+            expect(api!.init.cf.cacheKey).toContain(`away_logo=${encodeURIComponent(q.get('away_logo')!)}`);
+        }
         expect(set).toHaveBeenCalledWith({ maxAge: ttl, tags: ['share-card'] });
     });
 

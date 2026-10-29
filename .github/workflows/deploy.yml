@@ -20,22 +20,45 @@ on:
 
 jobs:
   deploy-web:
+    # After the API: the web build keys the API-layer cache on what the API now runs
+    # (PROCESSOR_VERSION below), so the new key must never cache an old API's answer.
+    needs: deploy-api
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
           repository: saiemgilani/game-on-paper-app
+      # astro needs node >=22.23.4 (astro/package.json engines); check-latest so a runner's
+      # older cached 22.x is not used for the build wrangler-action runs below
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          check-latest: true
+      # The API-layer cache key (resources/python.ts PROCESSOR_VERSION): the python/
+      # tree plus the sportsdataverse-py the deployed image installed (deploy-api reads
+      # it from the image). A deploy that changes neither keeps every cached processed
+      # game. To re-key them all (ESPN corrected finished games), bump
+      # python/CACHE_GENERATION: it is in the tree.
+      - name: Processor version
+        id: procver
+        env:
+          SDV_SHA: ${{ needs.deploy-api.outputs.sdv_sha }}
+        run: |
+          [[ "$SDV_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::deploy-api reported no sportsdataverse-py sha: '$SDV_SHA'"; exit 1; }
+          v="$(git rev-parse --short=12 HEAD:python)-${SDV_SHA:0:12}"
+          echo "v=$v" >> "$GITHUB_OUTPUT"
+          echo "processor version $v"
       - uses: cloudflare/wrangler-action@v4
         env:
+          PROCESSOR_VERSION: ${{ steps.procver.outputs.v }}
           PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
           SDV_AUTH_TOKEN: ${{ secrets.SDV_AUTH_TOKEN }}
           ADMIN_USER: ${{ secrets.ADMIN_USER }}
           ADMIN_PASS: ${{ secrets.ADMIN_PASS }}
           GOP_INGEST_KEY: ${{ secrets.GOP_INGEST_KEY }}
           TELEMETRY_ENABLED: ${{ secrets.TELEMETRY_ENABLED }}
-          # sha alone is NOT unique per deploy: repository_dispatch (sdv-py main moved)
-          # re-deploys the same repo sha with a new parser. run_id makes every deploy
-          # bust the API-layer cacheKey in resources/python.ts.
+          # Unique per deploy (sha-run_id): the footer, the admin version endpoint and
+          # the share-card key. The API-layer cache keys on PROCESSOR_VERSION instead.
           APP_VERSION: ${{ github.sha }}-${{ github.run_id }}
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -53,6 +76,7 @@ jobs:
             TELEMETRY_ENABLED
           vars: |
             APP_VERSION
+            PROCESSOR_VERSION
           preCommands: |
             npm ci
             npm run build
@@ -66,6 +90,8 @@ jobs:
 
   deploy-api:
     runs-on: ubuntu-latest
+    outputs:
+      sdv_sha: ${{ steps.installed.outputs.sha }}
     # Two merges minutes apart ran this job twice in parallel on 2026-08-31: run A
     # pulled its image, run B overwrote docker-compose.yml on the host, run A's
     # down+up then pulled B's image into a full disk and the API stayed down.
@@ -81,12 +107,17 @@ jobs:
         id: sdvpy
         # The image re-resolves sportsdataverse-py main at build time; this SHA is
         # the cache-buster that makes a new main commit invalidate that layer. A
-        # repository_dispatch from sportsdataverse-py carries it directly.
+        # repository_dispatch from sportsdataverse-py carries it directly -- through env
+        # and checked as a sha, never interpolated into the script.
+        env:
+          DISPATCH_SHA: ${{ github.event.client_payload.sportsdataverse_py_sha }}
         run: |
-          sha="${{ github.event.client_payload.sportsdataverse_py_sha }}"
+          sha="$DISPATCH_SHA"
           if [ -z "$sha" ]; then
             sha="$(git ls-remote https://github.com/sportsdataverse/sportsdataverse-py.git refs/heads/main | cut -f1)"
           fi
+          # [[ =~ ]] matches the whole value: a grep would pass a sha line followed by an injected one
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::not a sportsdataverse-py sha: '$sha'"; exit 1; }
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "sportsdataverse-py main @ $sha"
       - name: Publish Python container to GitHub
@@ -101,6 +132,16 @@ jobs:
           addLatest: true
           tags: ${{ github.sha }}
           buildArgs: SDV_PY_MAIN_SHA=${{ steps.sdvpy.outputs.sha }}
+      # what the image actually installed (it re-resolves main, which can move past the sha
+      # above): deploy-web keys the API-layer cache on it. Before the host deploy, so a
+      # failure here leaves the running API alone. The tag is docker-compose.do.yml's image.
+      - name: sportsdataverse-py the image installed
+        id: installed
+        run: |
+          sha="$(docker run --rm --entrypoint cat "ghcr.io/saiemgilani/saiemgilani/game-on-paper-python-api:${GITHUB_SHA}" /code/sdv_py_sha.txt)"
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::the image reports no sportsdataverse-py sha: '$sha'"; exit 1; }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "image installed sportsdataverse-py @ $sha"
       - name: Update SHA for docker compose
         run: |
           DOCKER_COMPOSE_CONTENT="$(cat ./docker-compose.do.yml)"

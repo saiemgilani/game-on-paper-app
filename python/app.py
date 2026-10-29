@@ -13,7 +13,6 @@ import logging
 import base64
 import urllib.parse
 import urllib.request
-import requests
 
 from telemetry import TEL, stage, init_flask
 import gop_routes
@@ -368,53 +367,6 @@ def _fill_success(plays):
             )
 
 
-_CORE_COMPETITORS = (
-    "https://sports.core.api.espn.com/v2/sports/football/leagues/college-football"
-    "/events/{gid}/competitions/{gid}/competitors"
-)
-
-
-def _game_roster(game_id: int) -> list[dict]:
-    """The CFB game roster from ESPN's two team-roster pages: 3 requests.
-
-    Left unset, CFBPlayProcess fetches it itself through espn_cfb_game_rosters,
-    which asks Core v2 for every rostered athlete one at a time (~230 requests a
-    game, each with sportsdataverse's 15 x 30s retry budget). Under ESPN
-    throttling that held every gunicorn thread and took the whole API down
-    (2026-10-29). The processor reads only the athlete id, team id, position
-    $ref and a name from it, and each roster entry carries all four. The name is
-    ESPN's short form ("B. Glenn"), which the processor's initial tier matches;
-    without it a game whose plays carry names but no participant ids loses most
-    of its player ids. Fail-open: what was collected, possibly [] (not None,
-    which would trigger the per-athlete fetch), as a failed fetch did.
-    """
-    url = _CORE_COMPETITORS.format(gid=game_id)
-    headers = {"User-Agent": espn_proxy.ESPN_UA}
-
-    def get(u):
-        r = requests.get(u, headers=headers, timeout=5)
-        r.raise_for_status()
-        return r.json()
-
-    roster = []
-    try:
-        for item in get(url).get("items") or []:
-            team_id = item["$ref"].split("/competitors/")[1].split("?")[0]
-            roster += [
-                {
-                    "athlete_id": e["playerId"],
-                    "team_id": team_id,
-                    "full_name": e.get("displayName"),
-                    "position_href": (e.get("position") or {}).get("$ref"),
-                }
-                for e in get(f"{url}/{team_id}/roster").get("entries") or []
-                if e.get("playerId")
-            ]
-    except Exception as e:
-        logging.getLogger("root").warning(f"roster fetch failed for {game_id}, processing with {len(roster)} rows: {e}")
-    return roster
-
-
 def _process_game(league: str, game_id: int, source: str | None = None):
     """Process one game. `source` is None for every request the public makes.
 
@@ -443,10 +395,10 @@ def _process_game(league: str, game_id: int, source: str | None = None):
             # cost the default response its participant-derived columns.
             game = cls(gameId=game_id)
             game.join_participants = True
-            if league == "cfb":
-                with stage(timings, "roster_fetch"):
-                    game.game_roster = _game_roster(game_id)
-            game.resolve_missing = False  ## this doesn't work as expected or there needs to be a way to set this as expected.
+            # serving requests: skip the per-athlete lookups for names the participants
+            # sidecar omits (sportsdataverse-py#1034 reads this; the processor's own roster
+            # fetch is three requests from that release on)
+            game.resolve_missing = False
             with stage(timings, "espn_fetch"):
                 getattr(game, fetch_name)()
             served, fallback_used, processed_game = "espn", False, None

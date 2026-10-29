@@ -188,7 +188,7 @@ export async function livePlayerGames(
     await Promise.all(ids.map(async (id) => {
         try {
             // the game page's live-game maxAge; the cache KEY is TTL-independent
-            // (`.../process?v=<APP_VERSION>`), so this shares its entry.
+            // (`.../process?v=<PROCESSOR_VERSION>`), so this shares its entry.
             out[id].qa = qaBadge(await retrieveProcessedGame(id, CURRENT_SEASON_CONFIG.liveGameRefreshRate, league));
         } catch (e) {
             console.warn(`live badge: no processed payload for ${league} ${id}: ${e}`);

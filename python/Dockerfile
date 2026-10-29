@@ -57,6 +57,9 @@ ENV PYTHONUNBUFFERED=1
 # (gunicorn.conf.py), so a throttled ESPN must fail the request quickly.
 ENV SDV_PY_HTTP_TIMEOUT=10
 ENV SDV_PY_HTTP_RETRIES=3
+# and the total Retry-After sleep per call (sportsdataverse default 180s); read by
+# sportsdataverse-py from sportsdataverse-py#1034 on, ignored before it
+ENV SDV_PY_HTTP_MAX_WAIT=20
 
 COPY *.py ./
 # the share card's Chivo (share_card.py)

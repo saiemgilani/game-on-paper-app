@@ -10,8 +10,9 @@ export const prerender = false;
 // basic auth.
 //   ?tags=game-completed          every final game page (after a parser fix)
 //   ?ids=401856766,401864570      specific games (also resets their regression mark)
-// Both may be combined. The API-layer response cache is keyed on APP_VERSION,
-// so a deploy already invalidates it; this only has to clear the rendered pages.
+// Both may be combined. The API-layer response cache is keyed on PROCESSOR_VERSION,
+// so a deploy that changes python/ or sportsdataverse-py main already invalidates it;
+// this only has to clear the rendered pages.
 const KNOWN_TAGS = new Set(['game-completed', 'game-in-progress', 'game-scheduled-today',
     'game-scheduled-future', 'scoreboard', 'matchup', 'favorites-enabled',
     // week/schedule + chart pages (see the tags: lists in utils/config.ts and pages/)

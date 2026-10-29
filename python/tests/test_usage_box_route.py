@@ -93,17 +93,16 @@ def body(league):
     import app as app_mod
 
     importlib.reload(app_mod)
-    saved = (app_mod._PROCESSORS[league], app_mod.TEL.push, app_mod._emit_dq, app_mod._game_roster)
+    saved = (app_mod._PROCESSORS[league], app_mod.TEL.push, app_mod._emit_dq)
     app_mod._PROCESSORS[league] = PROCESSORS[league]
     app_mod.TEL.push = lambda *a, **k: None
     app_mod._emit_dq = lambda *a, **k: None
-    app_mod._game_roster = lambda game_id: []  # offline: no Core v2 roster
     try:
         r = app_mod.app.test_client().get(f"/{league}/{GAMES[league]}/process", headers=_auth())
         assert r.status_code == 200, r.get_data(as_text=True)[:300]
         yield r.get_json()
     finally:
-        app_mod._PROCESSORS[league], app_mod.TEL.push, app_mod._emit_dq, app_mod._game_roster = saved
+        app_mod._PROCESSORS[league], app_mod.TEL.push, app_mod._emit_dq = saved
         if prior_token is None:
             os.environ.pop("PYTHON_HTTP_TOKEN", None)
         else:
