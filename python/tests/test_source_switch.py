@@ -43,6 +43,7 @@ def app_mod(monkeypatch):
     monkeypatch.setitem(mod._PROCESSORS, "cfb", (_FakeCFB, "espn_cfb_pbp"))
     monkeypatch.setattr(mod.TEL, "push", lambda *a, **k: None)
     monkeypatch.setattr(mod, "_emit_dq", lambda *a, **k: None)
+    monkeypatch.setattr(mod, "_game_roster", lambda game_id: [])
     return mod
 
 

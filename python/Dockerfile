@@ -52,6 +52,11 @@ COPY --from=pybuilder /code/sdv_py_sha.txt ./sdv_py_sha.txt
 ENV PATH="/code/.venv/bin:$PATH"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+# sportsdataverse retries each ESPN request up to 15 x 30s by default. A gthread
+# worker's stuck thread is never reaped by gunicorn's timeout, so a throttled
+# ESPN must fail the request quickly instead of holding the thread for minutes.
+ENV SDV_PY_HTTP_TIMEOUT=10
+ENV SDV_PY_HTTP_RETRIES=3
 
 COPY *.py ./
 # the share card's Chivo (share_card.py)
