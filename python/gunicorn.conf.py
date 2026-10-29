@@ -54,13 +54,15 @@ def _pick_workers():
 workers, _cores_found, _mem_found, _by_mem = _pick_workers()
 
 bind = "0.0.0.0:5000"
-# sync, not gthread: a gthread worker keeps heartbeating while its threads hang
-# on ESPN, so `timeout` never reaps them -- on 2026-10-29 every thread sat in
-# sportsdataverse retries and the API stopped answering, /healthcheck included.
-# A sync worker stuck past `timeout` is killed and replaced. threads must stay 1:
-# gunicorn silently turns sync into gthread when threads > 1.
-worker_class = "sync"
-threads = 1
+# gthread, not sync: on a ~2-worker droplet, sync workers each held by an 8s
+# CPU-bound /process left /healthcheck and /gop/ingest queued for a free
+# worker (2026-10-29: the deploy health gate failed and cold game pages
+# 524'd). A spare thread answers those light requests. A gthread worker's
+# stuck thread is never reaped by `timeout`, so every ESPN call in the request
+# path must stay bounded: the roster is 3 requests (app._game_roster) and the
+# Dockerfile caps sportsdataverse's timeout and retries.
+worker_class = "gthread"
+threads = 2                  # a spare for the light requests above
 timeout = 120
 graceful_timeout = 30
 # recycle workers periodically: the model stack leaks slowly and a fresh
