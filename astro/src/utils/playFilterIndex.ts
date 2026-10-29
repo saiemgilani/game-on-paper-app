@@ -33,6 +33,45 @@ const ROLE_FIELDS: Record<Role, [string, string]> = {
     pret: ["punt_return_player_id", "punt_return_player_name"],
 };
 
+/** A blocked punt or field goal the kicking side kept (the processor flags the ones the blockers took). */
+const keptBlockedKick = (p: any) => (p.punt_blocked === true || p.fg_block_player_id != null)
+    && p.is_blocked_punt_turnover !== true && p.is_blocked_fg_turnover !== true;
+
+/**
+ * The team a role's player plays for. Not simply "the team with the ball": a kickoff's
+ * pos_team is the RECEIVING team, a punt's the kicking team, and a fumble can be
+ * recovered by either side. So each role reads the side column the processor
+ * (sportsdataverse-py, `football/attribution.py`) derives for it, falling back to
+ * the side the possession convention implies when a payload lacks the column. A
+ * recovery with no fumble_recovery_team is a blocked kick or a return: the blockers'
+ * unless the kicking side kept it. PR #346 checked these against box-score rosters
+ * on 222 games (2004-2026).
+ */
+const ROLE_TEAM: Record<Role, (p: any) => unknown> = {
+    pass: (p) => p.pos_team, rush: (p) => p.pos_team, recv: (p) => p.pos_team,
+    fumble: (p) => p.fumbling_team ?? p.pos_team,
+    sack: (p) => p.def_pos_team, int: (p) => p.def_pos_team, pbu: (p) => p.def_pos_team,
+    ff: (p) => p.forced_fumble_team ?? p.def_pos_team,
+    fumrec: (p) => p.fumble_recovery_team
+        ?? (keptBlockedKick(p) ? p.kicking_team : p.kick_return_team)
+        ?? (p.fumble_lost === true ? p.def_pos_team : p.pos_team),
+    punt: (p) => p.kicking_team ?? p.pos_team,
+    fg: (p) => p.kicking_team ?? p.pos_team,
+    kickoff: (p) => p.kicking_team ?? p.def_pos_team,
+    kret: (p) => p.kick_return_team ?? p.pos_team,
+    pret: (p) => p.punt_return_team ?? p.def_pos_team,
+};
+/**
+ * Roles whose team column is the least certain (a fumble's side is inferred from text,
+ * a recovery's from who ends with the ball). They never override another role: on a
+ * play, any other role of the same player decides his side, and across the game his
+ * other plays outvote them.
+ */
+const FUMBLE_ROLES = new Set<Role>(["fumble", "fumrec"]);
+
+/** ESPN's team pseudo-athlete, credited with team rushes and the like. Its id is usually but not always negative; its name is always TEAM. */
+const isTeamRow = (name: unknown) => String(name ?? "").trim().toUpperCase() === "TEAM";
+
 /** Play-type filters that are not about one player. */
 export const PLAY_TAGS = {
     scoring: "Scoring plays", turnover: "Turnovers", penalty: "Penalties",
@@ -71,43 +110,64 @@ export interface PlayIndex {
 
 const keyOf = (p: any) => String(p.game_play_number ?? p.id ?? "");
 
-/**
- * @param plays every play in the game
- * @param teamId when given, only players of that team are offered
- */
-export function buildPlayIndex(plays: any[], teamId?: number | string): PlayIndex {
+/** @param plays every play in the game */
+export function buildPlayIndex(plays: any[]): PlayIndex {
     const byPlay: Record<string, string[]> = {};
     const players = new Map<string, PlayerOption>();
     const tagCounts: Partial<Record<PlayTag, number>> = {};
+    // player id -> team -> [plays from a firm role, plays from a fumble role]. A player's
+    // team is his majority, firm plays first, so one odd row (a returner's fumble, a
+    // mislabelled recovery) cannot move his whole menu entry.
+    const votes = new Map<string, Map<string, [number, number]>>();
 
     for (const p of plays) {
         const key = keyOf(p);
         if (!key) continue;
         const sels: string[] = [];
 
+        // this play's roles by player, so a player gets one side per play
+        const here = new Map<string, { name: unknown; roles: Role[]; owner: string; firm: boolean }>();
         for (const role of Object.keys(ROLE_FIELDS) as Role[]) {
             const [idf, namef] = ROLE_FIELDS[role];
             const id = p[idf];
             if (id === null || id === undefined || id === "") continue;
-            // a defender belongs to the team without the ball; everyone else to pos_team
-            const defensive = role === "sack" || role === "int" || role === "pbu" || role === "ff";
-            const owner = String((defensive ? p.def_pos_team : p.pos_team) ?? "");
-            if (teamId !== undefined && String(teamId) !== owner) continue;
+            if (isTeamRow(p[namef])) continue;
+            // the processor also fills fg_kicker on kickoffs; only an attempt is a field goal
+            if (role === "fg" && p.fg_attempt !== true) continue;
+            const owner = String(ROLE_TEAM[role](p) ?? "");
             const sid = String(id);
-            sels.push(`r:${role}:${sid}`);
+            const h = here.get(sid) ?? { name: p[namef], roles: [] as Role[], owner: "", firm: false };
+            h.roles.push(role);
+            const firm = !FUMBLE_ROLES.has(role);
+            // the first firm role's side stands; a fumble role's only until a firm one turns up
+            if (owner && (!h.owner || (firm && !h.firm))) {
+                h.owner = owner;
+                h.firm = firm;
+            }
+            here.set(sid, h);
+        }
+
+        for (const [sid, h] of here) {
             let e = players.get(sid);
             if (!e) {
-                e = { id: sid, name: String(p[namef] ?? sid), teamId: owner, roles: {}, total: 0 };
+                e = { id: sid, name: String(h.name ?? sid), teamId: h.owner, roles: {}, total: 0 };
                 players.set(sid, e);
             }
-            e.roles[role] = (e.roles[role] ?? 0) + 1;
-            e.total++;
+            for (const role of h.roles) {
+                sels.push(`r:${role}:${sid}`);
+                e.roles[role] = (e.roles[role] ?? 0) + 1;
+                e.total++;
+            }
+            if (!h.owner) continue;
+            const v = votes.get(sid) ?? new Map<string, [number, number]>();
+            const n = v.get(h.owner) ?? [0, 0];
+            n[h.firm ? 0 : 1]++;
+            v.set(h.owner, n);
+            votes.set(sid, v);
         }
 
         for (const tag of Object.keys(TAG_TEST) as PlayTag[]) {
             if (!TAG_TEST[tag](p)) continue;
-            if (teamId !== undefined && String(p.pos_team ?? "") !== String(teamId)
-                && tag !== "penalty" && tag !== "turnover") continue;
             sels.push(`t:${tag}`);
             tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
         }
@@ -120,6 +180,12 @@ export function buildPlayIndex(plays: any[], teamId?: number | string): PlayInde
 
         if (sels.length) byPlay[key] = sels;
     }
+
+    // most firm plays, then most fumble plays; an exact tie (none in PR #346's 222-game
+    // audit) stays with the side of his earliest play, since the sort is stable and each
+    // vote map is in play order
+    const byVotes = ([, a]: [string, [number, number]], [, b]: [string, [number, number]]) => b[0] - a[0] || b[1] - a[1];
+    for (const [sid, v] of votes) players.get(sid)!.teamId = [...v].sort(byVotes)[0][0];
 
     return {
         byPlay,
