@@ -9,11 +9,10 @@ import {
     type SDVRushingSummary,
 } from '../../resources/sdv';
 import { cleanAbbreviation, roundNumber } from '../../utils/misc';
-import { PLAYER_STAT_MINIMUMS, watchLeader } from '../../utils/players';
+import { watchLeader } from '../../utils/players';
 
 import { espnLogoLeague, leaguePath } from '../../utils/league';
 
-const qualifierNote = [PLAYER_STAT_MINIMUMS.passing, PLAYER_STAT_MINIMUMS.rushing, PLAYER_STAT_MINIMUMS.receiving].join('; ');
 
 interface Props {
     homeTeam: ESPNTeam
@@ -29,11 +28,9 @@ interface WatchRow {
     subtitle: string
 }
 
-// Our leaders, not ESPN's: the season's most VALUABLE passer, rusher and
-// receiver by total EPA, described in EPA/play. ESPN's summary.leaders block
-// ranks by raw yards, which is the one thing this site exists not to do. Only
-// players who clear the leaderboards' minimums count (watchLeader), or one long
-// completion by a backup outranks the starter.
+// Each team's main passer, rusher and receiver -- most dropbacks, carries and
+// targets (watchLeader) -- described in EPA/play. Ranking by total EPA named a
+// 1-dropback backup with one long completion over the starter.
 const yds = (n: number) => `${n} yd${Math.abs(n) === 1 ? "" : "s"}`;
 const named = (rows: SDVPlayerSummary[], key: string) =>
     rows.filter((r) => {
@@ -42,7 +39,7 @@ const named = (rows: SDVPlayerSummary[], key: string) =>
     });
 
 async function watchRows(teamId: string | number): Promise<WatchRow[]> {
-    // by volume, not TEPA: every qualifier is in the window, however poor his total
+    // ordered by volume, so the leader is always in the window
     const [pass, rush, rec] = await Promise.all([
         retrievePlayerSummaries(metricYear, SummaryType.PASSING, teamId, "dropbacks", false, 10, metricYear, Astro.locals.league),
         retrievePlayerSummaries(metricYear, SummaryType.RUSHING, teamId, "plays", false, 20, metricYear, Astro.locals.league),
@@ -81,7 +78,7 @@ const [away, home] = await Promise.all([watchRows(awayTeam.id), watchRows(homeTe
         <div class="card border rounded">
             <div class="card-body py-3">
                 <h2 class="fs-5 mb-1">Players to Watch</h2>
-                <p class="small text-muted mb-3">Season leaders by total EPA, {metricYear}, among qualifiers ({qualifierNote}).</p>
+                <p class="small text-muted mb-3">Each team's leader in dropbacks, carries and targets, {metricYear}.</p>
                 <div class="row gy-3">
                     {[{ team: awayTeam, rows: away }, { team: homeTeam, rows: home }].map(({ team, rows }) => (
                     <div class="col-md-6 col-12">
