@@ -95,6 +95,17 @@ carries both runs.
 - `mbb_summary_401829457.json.gz`: same endpoint, `event=401829457`, captured 2026-10-18: 2025-11-23, Coastal Carolina (324) vs North Dakota
   (155, home) at Western Hall, 75-58 to CCU, neutral, no pickcenter, 538 plays; every ESPN play row carries the away team's score in
   `homeScore` (plan #1's neutral-site swap). The processor's repaired score.
+- `wbb_summary_401805076.json.gz`: ESPN women's college basketball summary
+  (`https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/summary?event=401805076`, captured 2026-10-19, verbatim,
+  gzip -9 -n): 2026-03-07, UTEP (2638) at Louisiana Tech (2348), 87-91, four quarters and one overtime (period 5), 479 plays, no pickcenter,
+  not neutral. The quarters-era OT final.
+- `wbb_summary_401856459.json.gz`: same endpoint, `event=401856459`, captured 2026-10-19: 2026-03-15, CAA final, Hofstra (2275) vs Charleston
+  (232, home) at CareFirst Arena, 56-68, `neutralSite` true, no pickcenter, 411 plays. The neutral prior (D13).
+- `wbb_summary_400550784.json.gz`: same endpoint, `event=400550784`, captured 2026-10-19: 2014-04-05, WNIT final, Rutgers (164) at UTEP (2638),
+  56-54, two halves, 355 plays, no coordinates; ESPN's last two rows read 54-54 and 52-54 (plan #1's un-re-based rows). The halves-era
+  final; the processor serves the rebuilt 54-56.
+- `wbb_summary_273130043.json.gz`: same endpoint, `event=273130043`, captured 2026-10-19: 2007-11-09, Stanford (24) at Yale (43), 100-44, two
+  halves, 358 plays, no turnovers under any box key. The D12 game (turnover rates null before 2009).
 - `nba_process_401585607.payload.json` moved with main's sportsdataverse lock f94d8cb9 (GOP #348), patched cell by cell through
   `test_nba_process_parity._body`: sdv-py plan #1's 17 rebuilt running-score rows (`home_score` / `away_score` / `home_win_prob`,
   `wp_delta` on them and the row after; first at sequence 128, 26-24) and 9 `start_game_seconds_remaining` values that lost a

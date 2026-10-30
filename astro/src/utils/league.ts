@@ -1,6 +1,6 @@
 import { AVAILABLE_SEASONS, CURRENT_YEAR } from './constants';
 import { wnbaLogoId } from '../nba/data/wnbaTeams';
-import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_SEASON, WNBA_FIRST_SEASON, WNBA_LAST_KNOWN_SEASON, MBB_FIRST_SEASON, MBB_LAST_KNOWN_SEASON } from '../nba/seasonRange';
+import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_SEASON, WNBA_FIRST_SEASON, WNBA_LAST_KNOWN_SEASON, MBB_FIRST_SEASON, MBB_LAST_KNOWN_SEASON, WBB_FIRST_SEASON, WBB_LAST_KNOWN_SEASON } from '../nba/seasonRange';
 
 /**
  * The site renders one league per request. The NFL and the NBA live at explicit pages
@@ -12,7 +12,7 @@ import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_S
  */
 /** The basketball leagues, in the order their prefixes are tried. Adding a league starts here: the compiler then
  *  asks for its LEAGUES and BASKETBALL (basketball/config.ts) entries, and FLAGS needs a key with its slug. */
-export const BASKETBALL_LEAGUES = ['nba', 'wnba', 'mbb'] as const;
+export const BASKETBALL_LEAGUES = ['nba', 'wnba', 'mbb', 'wbb'] as const;
 export type BasketballLeague = (typeof BASKETBALL_LEAGUES)[number];
 /** The professional leagues: their box scores carry plus-minus and a DNP reason; college box scores carry neither. */
 export const PRO_LEAGUES: readonly BasketballLeague[] = ['nba', 'wnba'];
@@ -125,6 +125,19 @@ export const LEAGUES: Record<League, LeagueConfig> = {
         regularSeasonWeeks: 0, postseasonWeeks: 0,
         // ESPN's core D-I list for 2026 (D34); a season's page list is plan #9's withSeasonMembers (D43/D47)
         logoLeague: 'ncaa', teamCount: 366, pool: 'D-I', extraTeamCategories: [],
+    },
+    wbb: {
+        slug: 'wbb', sport: 'basketball', name: "Women's College Basketball", shortName: 'WBB', urlPrefix: '/wbb',
+        espnPath: 'womens-college-basketball', espnCoreLeague: 'womens-college-basketball',
+        // the Top 25 / all-D-I / conference choice is BASKETBALL.wbb.scoreboardGroups (getScoreboardForDay's group option)
+        scoreboardQuery: '', defaultGroup: null, scoreboardCacheKey: 'scoreboard:wbb',
+        // one schema for the ESPN-keyed game tables (BASKETBALL.wbb.gamesSource) and plans #7/#11's stats.ncaa.org shot tables
+        sdvApiBase: 'https://data.sportsdataverse.org/v1/wbb', sdvSchema: 'wbb', sdvEnabled: true,
+        scheduleTable: 'schedule',
+        get seasons() { return range(WBB_FIRST_SEASON, WBB_LAST_KNOWN_SEASON); },
+        regularSeasonWeeks: 0, postseasonWeeks: 0,
+        // D38: ESPN's 357 core D-I programs + the six reclassifiers that played a full 2026 D-I schedule (WBB_OTHER_DI)
+        logoLeague: 'ncaa', teamCount: 363, pool: 'D-I', extraTeamCategories: [],
     },
 };
 
