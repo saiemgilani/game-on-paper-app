@@ -86,6 +86,15 @@ carries both runs.
 - `nba_process_401585607.payload.json` regenerated 2026-10-18 on the sportsdataverse lock b4229f1c (sdv-py main, includes #900's
   `format` guard) through `test_nba_process_parity._body`: differs from 4298cacf only on sdv-py plan #1's 17 rebuilt running-score
   rows (`home_score` / `away_score` / `home_win_prob`) and `wp_delta` on them and the row after each (resolution R15; first at sequence 128, 26-24).
+- `mbb_summary_401820775.json.gz`: ESPN men's college basketball summary
+  (`https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary?event=401820775`, captured 2026-10-18, verbatim,
+  gzip -9 -n): 2026-02-28, NC State (152) at Notre Dame (87), 90-96, two halves and one overtime (period 3), 466 plays, DraftKings line
+  (NCSU -6.5), not neutral. The OT final.
+- `mbb_summary_401744223.json.gz`: same endpoint, `event=401744223`, captured 2026-10-18: 2025-03-07, Old Dominion (295) vs Texas State
+  (326, home) at Pensacola Bay Center (Sun Belt tournament), 64-61, `neutralSite` true, no pickcenter, 485 plays. The neutral prior (D13).
+- `mbb_summary_401829457.json.gz`: same endpoint, `event=401829457`, captured 2026-10-18: 2025-11-23, Coastal Carolina (324) vs North Dakota
+  (155, home) at Western Hall, 75-58 to CCU, neutral, no pickcenter, 538 plays; every ESPN play row carries the away team's score in
+  `homeScore` (plan #1's neutral-site swap). The processor's repaired score.
 - `nba_process_401585607.payload.json` moved with main's sportsdataverse lock f94d8cb9 (GOP #348), patched cell by cell through
   `test_nba_process_parity._body`: sdv-py plan #1's 17 rebuilt running-score rows (`home_score` / `away_score` / `home_win_prob`,
   `wp_delta` on them and the row after; first at sequence 128, 26-24) and 9 `start_game_seconds_remaining` values that lost a

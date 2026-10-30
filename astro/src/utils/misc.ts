@@ -1037,7 +1037,11 @@ export function isChampionshipEvent(gameNote: string): boolean {
 
 
 
-export function getRecordString(competitor: ESPNCompetitor): string {
+/**
+ * `conferences`: a league's own conference list (MBB's scoreboard groups); without it the football group list and its
+ * independents, as CFB, NFL, NBA and WNBA cards have always read.
+ */
+export function getRecordString(competitor: ESPNCompetitor, conferences?: readonly { id: string; label: string }[]): string {
     if (!competitor.records) {
         return '';
     }
@@ -1053,14 +1057,14 @@ export function getRecordString(competitor: ESPNCompetitor): string {
     const confStuff = records.filter(item => item.type == "vsconf")[0];
     const confRec = confStuff?.summary || "0-0"
 
-    const indyConfs = [18, 35, 80, 81];
+    const indyConfs = conferences ? [] : [18, 35, 80, 81];
     const confId = parseInt(competitor.team.conferenceId);
     // const conf = CONFERENCE_MAP[confId];
-    const conf = GLOBAL_GROUP_LIST.find((p) => p.id == confId);
-    if (confStuff && conf && !indyConfs.includes(confId)) {
-        base += `, ${confRec} ${conf.name}`
-    } else if (conf) {
-        base += ` ${conf.name}`
+    const confName = conferences ? conferences.find((c) => c.id === String(confId))?.label : GLOBAL_GROUP_LIST.find((p) => p.id == confId)?.name;
+    if (confStuff && confName && !indyConfs.includes(confId)) {
+        base += `, ${confRec} ${confName}`
+    } else if (confName) {
+        base += ` ${confName}`
     }
     return `<span class="small text-muted h6">${base}</span>`;
 }

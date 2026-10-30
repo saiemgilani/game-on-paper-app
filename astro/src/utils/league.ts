@@ -1,6 +1,6 @@
 import { AVAILABLE_SEASONS, CURRENT_YEAR } from './constants';
 import { wnbaLogoId } from '../nba/data/wnbaTeams';
-import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_SEASON, WNBA_FIRST_SEASON, WNBA_LAST_KNOWN_SEASON } from '../nba/seasonRange';
+import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_SEASON, WNBA_FIRST_SEASON, WNBA_LAST_KNOWN_SEASON, MBB_FIRST_SEASON, MBB_LAST_KNOWN_SEASON } from '../nba/seasonRange';
 
 /**
  * The site renders one league per request. The NFL and the NBA live at explicit pages
@@ -12,8 +12,10 @@ import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_S
  */
 /** The basketball leagues, in the order their prefixes are tried. Adding a league starts here: the compiler then
  *  asks for its LEAGUES and BASKETBALL (basketball/config.ts) entries, and FLAGS needs a key with its slug. */
-export const BASKETBALL_LEAGUES = ['nba', 'wnba'] as const;
+export const BASKETBALL_LEAGUES = ['nba', 'wnba', 'mbb'] as const;
 export type BasketballLeague = (typeof BASKETBALL_LEAGUES)[number];
+/** The professional leagues: their box scores carry plus-minus and a DNP reason; college box scores carry neither. */
+export const PRO_LEAGUES: readonly BasketballLeague[] = ['nba', 'wnba'];
 export type League = 'cfb' | 'nfl' | BasketballLeague;
 export type Sport = 'football' | 'basketball';
 export const DEFAULT_LEAGUE: League = 'cfb';
@@ -109,6 +111,20 @@ export const LEAGUES: Record<League, LeagueConfig> = {
         get seasons() { return range(WNBA_FIRST_SEASON, WNBA_LAST_KNOWN_SEASON); },
         regularSeasonWeeks: 0, postseasonWeeks: 0,
         logoLeague: 'wnba', teamCount: 15, pool: 'WNBA', extraTeamCategories: [],
+    },
+    mbb: {
+        slug: 'mbb', sport: 'basketball', name: "Men's College Basketball", shortName: 'MBB', urlPrefix: '/mbb',
+        espnPath: 'mens-college-basketball', espnCoreLeague: 'mens-college-basketball',
+        // the Top 25 / all-D-I / conference choice is BASKETBALL.mbb.scoreboardGroups (getScoreboardForDay's group option);
+        // the football defaultGroup machinery (getRemoteGames, ScheduleDropdown) never sees a basketball league
+        scoreboardQuery: '', defaultGroup: null, scoreboardCacheKey: 'scoreboard:mbb',
+        // one schema for the ESPN-keyed game tables (BASKETBALL.mbb.gamesSource) and plans #7/#9's stats.ncaa.org shot tables
+        sdvApiBase: 'https://data.sportsdataverse.org/v1/mbb', sdvSchema: 'mbb', sdvEnabled: true,
+        scheduleTable: 'schedule',
+        get seasons() { return range(MBB_FIRST_SEASON, MBB_LAST_KNOWN_SEASON); },
+        regularSeasonWeeks: 0, postseasonWeeks: 0,
+        // ESPN's core D-I list for 2026 (D34); a season's page list is plan #9's withSeasonMembers (D43/D47)
+        logoLeague: 'ncaa', teamCount: 366, pool: 'D-I', extraTeamCategories: [],
     },
 };
 

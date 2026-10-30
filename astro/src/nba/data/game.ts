@@ -14,6 +14,20 @@ export function shotsOf(plays: NbaPlay[], teamId: number): NbaPlay[] {
     return plays.filter((p) => p.xLegacy != null && p.yLegacy != null && p.teamId === teamId)
 }
 
+const RIM = (p: NbaPlay) => p.xLegacy === 0 && p.yLegacy === 0
+
+/**
+ * ESPN's college feeds put a field goal they did not locate at the rim, (25, 0), legacy (0, 0) (plan #8 Decision 6). A layup,
+ * dunk or tip there is a real rim attempt; a jump shot or a three there is not; and when at least half of a team's attempts in
+ * the game sit there, ESPN located none of them (2025's whole-game placeholders; the per-team-game share is bimodal).
+ * Selection only: the caller passes one team's attempts in one game (shotsOf).
+ */
+export function unlocatedShots(shots: readonly NbaPlay[]): ReadonlySet<NbaPlay> {
+    const atRim = shots.filter(RIM)
+    const whole = atRim.length > 0 && atRim.length * 2 >= shots.length
+    return new Set(atRim.filter((p) => whole || /jump|three point/i.test(`${p.typeText ?? ''} ${p.text}`)))
+}
+
 export function orderPlayers(rows: NbaPlayerRow[]): { starters: NbaPlayerRow[]; bench: NbaPlayerRow[]; dnp: NbaPlayerRow[] } {
     const byMin = (a: NbaPlayerRow, b: NbaPlayerRow) => (b.minutes ?? 0) - (a.minutes ?? 0)
     return {

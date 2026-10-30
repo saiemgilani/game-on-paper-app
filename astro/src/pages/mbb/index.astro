@@ -1,0 +1,14 @@
+---
+// /mbb: BASKETBALL.mbb.landing is 'teams-index', which plan #9 builds. Until then the scoreboard is the landing; never cached,
+// so plan #9's page is not hidden behind a held redirect.
+import { uncacheable } from '../../routes/basketball/cache';
+import { leaguePath } from '../../utils/league';
+import { PREVIEW_PATH_PREFIX } from '../../utils/preview';
+
+Astro.locals.league = 'mbb';
+uncacheable(Astro);
+// a preview viewer stays on the uncacheable /preview surface: the public URL can serve a cached copy (or the gated 404)
+// without running the Worker (the same fix as /wbb's d60ec0b2)
+const location = `${Astro.locals.preview ? PREVIEW_PATH_PREFIX : ''}${leaguePath('mbb', '/scoreboard')}`;
+return new Response(null, { status: 302, headers: { Location: location, 'Cache-Control': 'no-store' } });
+---

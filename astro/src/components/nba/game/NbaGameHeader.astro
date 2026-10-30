@@ -8,7 +8,7 @@ import { fmtPct } from '../../../nba/format';
 import { dash } from '../../../nba/data/game';
 import { scoreboardDayHref, teamHrefFromEspn } from '../../../nba/links';
 import { linescoreLabel } from '../../../basketball/periods';
-import { basketball } from '../../../basketball/config';
+import { basketball, noLineText } from '../../../basketball/config';
 import { cleanAbbreviation } from '../../../utils/misc';
 import type { NbaGame } from '../../../resources/nbaGame';
 
@@ -28,7 +28,7 @@ const int = (n: number) => String(n);
 // the line already prices the venue; without one the prior is the home edge, or no edge at a neutral site (D13)
 const PRIOR_NOTE = { spread: ' (from the spread)', hfa: ' (home-court advantage only)', neutral: '' } as const;
 const priorText = prior ? `pregame prior ${homeAbbr} ${fmtPct(prior.homeWinProb, 0)}${PRIOR_NOTE[prior.source]}` : null;
-const lineText = `${line ? `Line: ${line}` : prior?.source === 'neutral' ? 'Neutral site, no line' : 'No line'}, ${priorText ?? 'no prior'}`;
+const lineText = `${line ? `Line: ${line}` : prior?.source === 'neutral' ? 'Neutral site, no line' : noLineText(league, game.season, game.source)}, ${priorText ?? 'no prior'}`;
 const back = scoreboardDayHref(league, game.date);
 ---
 <div class="py-3 text-center">

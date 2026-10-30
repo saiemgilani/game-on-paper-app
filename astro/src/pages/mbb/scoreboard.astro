@@ -1,0 +1,12 @@
+---
+// src/pages/mbb/scoreboard.astro: plan #4's basketball scoreboard for men's college basketball, with ?group= (spec D3).
+import NbaScoreboardRoute from '../../components/routes/NbaScoreboardRoute.astro';
+import { prepareBasketballScoreboard } from '../../routes/basketball/scoreboard';
+
+const r = await prepareBasketballScoreboard(Astro, 'mbb');
+if ('badDate' in r) {
+    Astro.response.status = 400;
+}
+---
+
+<NbaScoreboardRoute data={r} />
