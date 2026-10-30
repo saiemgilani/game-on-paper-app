@@ -145,7 +145,7 @@ jobs:
         with:
           name: sdv-py-sha
           path: sdv_py_sha.txt
-          retention-days: 1
+          retention-days: 30  # GitHub's re-run window: a re-run deploy-web still finds it
       - name: Update SHA for docker compose
         run: |
           DOCKER_COMPOSE_CONTENT="$(cat ./docker-compose.do.yml)"
