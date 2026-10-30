@@ -309,7 +309,7 @@ and Lighthouse runs only ever see v2 — they cannot catch a classic-only regres
 2. **`git log --author=akeaswaran --since=<3 months ago> -- astro/`** — recent corrections are the
    freshest statement of the conventions, and several post-date this file.
 3. **Run the local gates:** `cd astro && npx vitest run` and `cd python && pytest`. (`astro check` /
-   `astro build` need Node ≥ 22.12 and often can't run locally; CI covers the templates.)
+   `astro build` need Node ≥ 22.23.4 and often can't run locally; CI covers the templates.)
 4. **Shoot the four-shot matrix** — {desktop 1280×800, mobile 390×844} × {light, dark}:
    ```bash
    cd astro && BASE=https://gameonpaper.com npm run visual-check -- <routes…>

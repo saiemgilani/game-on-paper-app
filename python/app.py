@@ -396,7 +396,10 @@ def _process_game(league: str, game_id: int, source: str | None = None):
             # cost the default response its participant-derived columns.
             game = cls(gameId=game_id)
             game.join_participants = True
-            game.resolve_missing = False  ## this doesn't work as expected or there needs to be a way to set this as expected.
+            # serving requests: skip the per-athlete lookups for names the participants
+            # sidecar omits (sportsdataverse-py#1034 reads this; the processor's own roster
+            # fetch is three requests from that release on)
+            game.resolve_missing = False
             with stage(timings, "espn_fetch"):
                 getattr(game, fetch_name)()
             served, fallback_used, processed_game = "espn", False, None

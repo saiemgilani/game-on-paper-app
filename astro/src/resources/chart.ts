@@ -2,10 +2,24 @@ import {LineController, type UpdateMode, Chart, type Plugin} from "chart.js";
 import { color } from "chart.js/helpers";
 
 // The grid-line colour every Chart.js axis on the site shares: the theme's text colour (`ink`, the
-// canvas's computed `color`), faded. 0.3 on white reads as a grid line yet stays lighter than the
-// #AAAAAA zero lines; 0.2 on the dark background keeps the grid quiet under the brighter axis lines.
+// canvas's computed `color`), faded. 0.3 on white reads as a grid line; 0.2 on the dark background keeps
+// the grid quiet under the brighter axis lines.
 export function chartGridColor(ink: string, dark: boolean): string {
     return color(ink).alpha(dark ? 0.2 : 0.3).rgbString();
+}
+
+type GridContext = { tick?: { value?: number } };
+
+// An axis's grid with its zero line drawn bold: the same ink at 0.75 and twice the width. The charts kept a
+// fixed #AAAAAA/#ACACAC zero line when #339 moved the grid to chartGridColor, which on white (#BCBEBF) is
+// nearly as dark, so the zero line disappeared into the grid.
+export function chartGridLines(ink: string, dark: boolean) {
+    const grid = chartGridColor(ink, dark);
+    const zero = color(ink).alpha(0.75).rgbString();
+    return {
+        color: (c: GridContext) => (c.tick?.value === 0 ? zero : grid),
+        lineWidth: (c: GridContext) => (c.tick?.value === 0 ? 2 : 1),
+    };
 }
 
 export interface ValuePercentile {
