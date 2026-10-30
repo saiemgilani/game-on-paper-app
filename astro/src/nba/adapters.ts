@@ -108,9 +108,9 @@ export function headshotsFromRows(rows: SeasonPlayerRow[]): Map<number, string> 
     return out;
 }
 
-/** Tricodes of every team he shot for this season, most attempts first (the page header). */
+/** Tricodes of every team he shot for this season, most attempts first (the page header). team_id 0 is no team (teamsFromSeasonRows). */
 export function teamsOfPlayer(rows: SeasonPlayerRow[], personId: number): string[] {
-    return rows.filter((r) => r.person_id === personId).sort((a, b) => b.attempts - a.attempts || Number(b.is_primary) - Number(a.is_primary)).map((r) => r.team_tricode);
+    return rows.filter((r) => r.person_id === personId && r.team_id !== 0).sort((a, b) => b.attempts - a.attempts || Number(b.is_primary) - Number(a.is_primary)).map((r) => r.team_tricode);
 }
 
 /**
