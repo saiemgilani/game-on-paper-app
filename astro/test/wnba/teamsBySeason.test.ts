@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, test, vi } from 'vitest';
 import { BASKETBALL } from '../../src/basketball/config';
-import { headshotsFromRows, playerSeasonsFromRows } from '../../src/nba/adapters';
+import { headshotsFromRows, playerSeasonsFromRows, teamsOfPlayer } from '../../src/nba/adapters';
 import { scatterPoints } from '../../src/nba/data/scatter';
 import { teamInSeason, teamById } from '../../src/nba/data/teams';
 import { WNBA_TEAMS, wnbaFranchiseOf, wnbaTeamInSeason } from '../../src/nba/data/wnbaTeams';
@@ -34,6 +34,8 @@ describe('WNBA teams by season, on the real season rows', () => {
         const teams = teamsFromSeasonRows(seasonPlayers(2025), 2025, 'wnba');
         expect(teams).toHaveLength(13);
         expect(teams.some((t) => t.team_id === 0 || t.tricode === '')).toBe(false);
+        // nor in a player's header: Rachel Banham's one team_id 0 shot read "CHI, · 2025"
+        expect(teamsOfPlayer(seasonPlayers(2025), 1627671)).toEqual(['CHI']);
         expect(names(2025).GSV).toBe('Golden State Valkyries');
     });
     test('2026: the fifteen current franchises, with their colours', () => {
