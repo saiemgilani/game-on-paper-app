@@ -232,7 +232,9 @@ export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, {
 
 /** A text version for assistive tech: every zone's makes/attempts, FG% and the league FG%. */
 export function describeHex(data: HexShotChartData): string {
-  const zones = (Object.keys(ZONE_LABELS) as Zone[]).map((z) => {
+  // D32: no restricted area before the league drew one (restrictedRadius 0), as zoneAreas leaves it off the picture
+  const noRim = (data.court ?? COURT).restrictedRadius === 0;
+  const zones = (Object.keys(ZONE_LABELS) as Zone[]).filter((z) => !(noRim && z === "restricted_area")).map((z) => {
     const { player, league } = data.zones[z];
     return `${ZONE_LABELS[z]} ${player.makes}/${player.attempts} (${fmtPct(player.fgPct)}, league ${fmtPct(league.fgPct)})`;
   });
