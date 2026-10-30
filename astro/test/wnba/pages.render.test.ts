@@ -84,6 +84,9 @@ describe('the WNBA dashboard pages', () => {
         const html = await page('team/[id].astro', `/wnba/team/${SEA}?season=2003`, { id: String(SEA) });
         wnbaPage(html, '2003 regular season');
         expect(html).toContain(hexDesc(leagueShots2003().filter((s) => s.team_id === SEA).map(lite), 2003));
+        // D32: no restricted area on the 2003 court, so the chart's text version does not list one (it does on 2026's)
+        expect(hexDesc(leagueShots2003().filter((s) => s.team_id === SEA).map(lite), 2003)).not.toContain('Restricted area');
+        expect(hexDesc(seaShots(2026), 2026)).toContain('Restricted area');
         expect(html).toContain('424 of 2,045 shots this season have no recorded location.');
     });
     test("a team page's season picker lists only its franchise's seasons (Charlotte 1997-2006, Detroit's franchise 1998-2026)", async () => {
