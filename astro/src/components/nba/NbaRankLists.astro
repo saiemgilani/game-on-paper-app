@@ -4,15 +4,17 @@
 // (blazing's RankLists.tsx), as Bootstrap cards.
 import { RANK_MIN_FG3A, RANK_MIN_FGA, type RankEntry, type RankMetric, type RankSummary } from '../../nba/data/ranks';
 import { fmtInt, fmtPct } from '../../nba/format';
+import { basketball } from '../../basketball/config';
 import { playerHref } from '../../nba/links';
 interface Props { ranks: RankSummary[]; personId: number; seasonQuery: string }
 const { ranks, personId, seasonQuery } = Astro.props;
+const league = basketball(Astro.locals.league).league;
 const fmt = (metric: RankMetric, v: number) => (metric === 'fga' ? fmtInt(v) : fmtPct(v));
 const why: Record<RankMetric, string> = {
   fga: `under ${RANK_MIN_FGA} FGA`, fgPct: `under ${RANK_MIN_FGA} FGA`, efgPct: `under ${RANK_MIN_FGA} FGA`,
   fg3Pct: `under ${RANK_MIN_FGA} FGA or ${RANK_MIN_FG3A} 3PA`, tsPct: `under ${RANK_MIN_FGA} FGA or no season stats`,
 };
-const row = (r: RankEntry, metric: RankMetric) => ({ href: playerHref(r.person_id, seasonQuery), label: `${r.rank}. ${r.name}`, value: fmt(metric, r.value), me: r.person_id === personId });
+const row = (r: RankEntry, metric: RankMetric) => ({ href: playerHref(r.person_id, seasonQuery, league), label: `${r.rank}. ${r.name}`, value: fmt(metric, r.value), me: r.person_id === personId });
 const listOf = (s: RankSummary) => [...s.top, ...(s.me && !s.top.some((r) => r.person_id === personId) ? [null, s.me] : [])].map((r) => (r === null ? null : row(r, s.metric)));
 ---
 <section id="ranks" aria-label="League ranks" class="mb-3">

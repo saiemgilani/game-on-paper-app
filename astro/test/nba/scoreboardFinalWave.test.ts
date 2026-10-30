@@ -20,6 +20,7 @@ const prep = vi.fn();
 vi.mock('../../src/routes/nba/scoreboard', async (orig) => ({ ...(await orig<typeof import('../../src/routes/nba/scoreboard')>()), prepareNbaScoreboard: (...a: unknown[]) => prep(...a) }));
 
 import Page from '../../src/pages/nba/scoreboard.astro';
+import { BASKETBALL } from '../../src/basketball/config';
 
 const realText = readFileSync(new URL('../fixtures/nba/scoreboard-20250115.json', import.meta.url)).toString();
 const real = JSON.parse(realText);
@@ -82,7 +83,7 @@ describe('render', () => {
     test('darkLogoCss: verified abbreviations only, ids numeric, nothing raw', async () => {
         const { darkLogoCss } = await import('../../src/nba/scoreboard');
         const css = darkLogoCss([{ id: '18', abbreviation: 'NY' }, { id: '26', abbreviation: 'UTAH' }, { id: '99', abbreviation: 'nzb' },
-            { id: '5', abbreviation: "x';}</style>" }, { id: '1;x', abbreviation: 'ATL' }]);
+            { id: '5', abbreviation: "x';}</style>" }, { id: '1;x', abbreviation: 'ATL' }], BASKETBALL.nba.darkLogo);
         expect(css).toContain('img.team-logo-18{content:url(');
         expect(css).toContain('500-dark/ny.png');
         expect(css).toContain('500-dark/utah.png');

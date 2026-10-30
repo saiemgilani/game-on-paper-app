@@ -3,6 +3,8 @@
 import { DateTime } from 'luxon';
 import type { ESPNCompetitor, ESPNScheduleEvent, ESPNStatus } from '../resources/espn';
 import { FIRST_SEASON } from './seasonRange';
+import type { DarkLogoStrategy, PeriodKind } from '../basketball/config';
+import { endOfPeriodText, finalText, periodShort } from '../basketball/periods';
 
 const LIVE = ['STATUS_IN_PROGRESS', 'STATUS_END_PERIOD', 'STATUS_HALFTIME'];
 
@@ -21,39 +23,32 @@ export function sortScoreboard(events: ESPNScheduleEvent[]): ESPNScheduleEvent[]
     return [...events].sort((a, b) => rank(a) - rank(b) || String(a.date).localeCompare(String(b.date)));
 }
 
-const ORD = ['', '1st', '2nd', '3rd', '4th'];
-/** 'Q3', 'OT', '2OT' for a period number. */
-function periodLabel(period: number): string {
-    if (period <= 4) return `Q${period}`;
-    return period === 5 ? 'OT' : `${period - 4}OT`;
-}
-
 /** The one line under the teams: tip time is rendered elsewhere, so 'scheduled' carries no text. */
-export function statusLine(status: ESPNStatus): { kind: 'scheduled' | 'live' | 'final' | 'other'; text: string } {
+export function statusLine(status: ESPNStatus, regulation = 4, kind: PeriodKind = 'quarter'): { kind: 'scheduled' | 'live' | 'final' | 'other'; text: string } {
     const name = status?.type?.name ?? '';
     const detail = status?.type?.detail ?? '';
     const period = Number(status?.period ?? 0);
     const hasPeriod = period >= 1; // !(>= 1) also catches NaN
     if (name === 'STATUS_SCHEDULED') return { kind: 'scheduled', text: '' };
-    if (name === 'STATUS_FINAL') return { kind: 'final', text: period > 4 ? `Final/${periodLabel(period).replace('Q', '')}` : 'Final' };
+    if (name === 'STATUS_FINAL') return { kind: 'final', text: finalText(period, regulation, kind) };
     if (name === 'STATUS_HALFTIME') return { kind: 'live', text: 'Halftime' };
-    if (name === 'STATUS_END_PERIOD') return { kind: 'live', text: !hasPeriod ? detail : period <= 4 ? `End of ${ORD[period]}` : `End of ${periodLabel(period)}` };
+    if (name === 'STATUS_END_PERIOD') return { kind: 'live', text: !hasPeriod ? detail : endOfPeriodText(period, regulation, kind) };
     if (LIVE.includes(name)) {
         if (!hasPeriod) return { kind: 'live', text: detail };
         const clock = String(status.displayClock ?? '').trim();
-        return { kind: 'live', text: [periodLabel(period), clock].filter(Boolean).join(' ') };
+        return { kind: 'live', text: [periodShort(period, regulation, kind), clock].filter(Boolean).join(' ') };
     }
     return { kind: 'other', text: detail };
 }
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
-/** The ?date= contract: ISO day, real, within [1997-10-01, today + 14 days]. */
-export function parseDateParam(raw: string | null, today: string): { ok: true; date: string } | { ok: false; reason: 'format' | 'calendar' | 'range' } {
+/** The ?date= contract: ISO day, real, within [firstDay, today + 14 days]. firstDay defaults to the NBA's 1997-10-01. */
+export function parseDateParam(raw: string | null, today: string, firstDay: string): { ok: true; date: string } | { ok: false; reason: 'format' | 'calendar' | 'range' } {
     if (raw == null || raw === '') return { ok: true, date: today };
     if (!ISO.test(raw)) return { ok: false, reason: 'format' };
     const d = DateTime.fromISO(raw, { zone: 'utc' });
     if (!d.isValid) return { ok: false, reason: 'calendar' };
-    const floor = DateTime.utc(FIRST_SEASON - 1, 10, 1);
+    const floor = DateTime.fromISO(firstDay, { zone: 'utc' });
     const ceil = DateTime.fromISO(today, { zone: 'utc' }).plus({ days: 14 });
     if (d < floor || d > ceil) return { ok: false, reason: 'range' };
     return { ok: true, date: raw };
@@ -79,14 +74,20 @@ export function toEspnDate(iso: string): string {
 export const NBA_DARK_LOGO_ABBRS: ReadonlySet<string> = new Set(
     'atl bos bkn cha chi cle dal den det gs hou ind lac lal mem mia mil min no ny okc orl phi phx por sac sa tor utah wsh'.split(' '));
 
-/** Dark-mode logo rules, only for numeric team ids and allowlisted abbreviations; nothing raw reaches the style block. */
-export function darkLogoCss(teams: Iterable<{ id?: unknown; abbreviation?: unknown } | undefined>): string {
+/** Dark-mode logo rules, only for numeric team ids (and, for 'abbr', allowlisted abbreviations); nothing raw reaches the style block. */
+export function darkLogoCss(
+    teams: Iterable<{ id?: unknown; abbreviation?: unknown } | undefined>,
+    strategy: DarkLogoStrategy,
+): string {
+    if (strategy.kind === 'none') return '';
     const seen = new Map<string, string>();
     for (const t of teams) {
         const id = String(t?.id ?? ''), ab = String(t?.abbreviation ?? '').toLowerCase();
-        if (/^\d+$/.test(id) && NBA_DARK_LOGO_ABBRS.has(ab)) seen.set(id, ab);
+        if (!/^\d+$/.test(id)) continue;
+        if (strategy.kind === 'id') seen.set(id, id);
+        else if (strategy.abbrs.has(ab)) seen.set(id, ab);
     }
-    return [...seen].map(([id, ab]) => `img.team-logo-${id}{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500-dark/${ab}.png&h=120&w=120')}`).join('');
+    return [...seen].map(([id, key]) => `img.team-logo-${id}{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/${strategy.logoLeague}/500-dark/${key}.png&h=120&w=120')}`).join('');
 }
 
 /** The scoreboard competitor's leaders block: points, rebounds, assists as '26 C. Anthony'. */
@@ -104,5 +105,5 @@ export function gameLeaders(comp: ESPNCompetitor): { pts?: string; reb?: string;
 /** The scoreboard day a game belongs to (its tip in America/New_York): `/nba/scoreboard?date=`, or the bare page when that day is out of range. */
 export function scoreboardBackHref(gameDate: string | null | undefined, today: string = DateTime.now().setZone('America/New_York').toISODate()!): string {
     const day = gameDate ? DateTime.fromISO(gameDate).setZone('America/New_York').toISODate() : null;
-    return day && parseDateParam(day, today).ok ? `/nba/scoreboard?date=${day}` : '/nba/scoreboard';
+    return day && parseDateParam(day, today, `${FIRST_SEASON - 1}-10-01`).ok ? `/nba/scoreboard?date=${day}` : '/nba/scoreboard';
 }

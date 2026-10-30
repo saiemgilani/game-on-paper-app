@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro';
 import { retrieveAllTeams } from '../utils/teams';
 import { AVAILABLE_SEASONS, CURRENT_YEAR, METRIC_YEAR } from '../utils/constants';
-import { LEAGUES, teamCategoriesFor } from '../utils/league';
+import { BASKETBALL_LEAGUES, LEAGUES, leaguePath, teamCategoriesFor } from '../utils/league';
 import { LEADERBOARD_CATEGORIES, PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
 import { FLAGS } from '../utils/features';
-import { TEAMS } from '../nba/data/teams';
+import { BASKETBALL } from '../basketball/config';
 import { COACH_BOARD_SLUGS } from '../utils/coaches';
 
 // Prerendered: this is built once at deploy time from local data (teams.json +
@@ -38,9 +38,8 @@ function buildEntries(): Entry[] {
     // so the NFL is advertised only once the 'nfl' flag is public; until then
     // every /nfl URL is a 404 and a sitemap must never list one.
     const nflPublic = FLAGS['nfl'] === 'on';
-    // Same rule for the NBA surface (the block below) and the head-coach boards: a gated
+    // Same rule for each basketball league (the loop below) and the head-coach boards: a gated
     // route answers 404, so no URL is listed until its flag is public.
-    const nbaPublic = FLAGS['nba'] === 'on';
     // TODO(player-pages): when FLAGS['player-pages'] flips to 'on', add the
     // player URLs here -- `/players/<espn id>` and the /nfl twin, per season.
     // They are NOT emitted while the flag is 'preview' for the same reason the
@@ -92,14 +91,16 @@ function buildEntries(): Entry[] {
         for (let w = 1; w <= nfl.postseasonWeeks; w++) out.push({ loc: `/nfl/year/${year}/type/3/week/${w}`, lastmod, changefreq: freq, priority: '0.4' });
     }
 
-    // The NBA surface is read live from the Data API and sits behind the 'nba' flag; the fixed
-    // pages and the 30 team pages are listed once it is public. Player pages are not: this file
+    // Each basketball league's fixed pages (its landing plus the Header's pages) and team pages, once its flag is
+    // public: a gated route answers 404 and a sitemap must never list one. Player pages are not listed: this file
     // makes no network calls, and the player ids are only in the API (see the player-pages note).
-    if (nbaPublic) {
-        for (const p of ['/nba', '/nba/scoreboard', '/nba/players', '/nba/teams', '/nba/scatter', '/nba/leaders']) {
-            out.push({ loc: p, lastmod: today, changefreq: p === '/nba/scoreboard' ? 'hourly' : 'daily', priority: p === '/nba' ? '0.8' : '0.6' });
+    for (const lg of BASKETBALL_LEAGUES) {
+        if (FLAGS[lg] !== 'on') continue;
+        const cfg = BASKETBALL[lg];
+        for (const p of ['/', ...cfg.headerMenu.map((m) => m.path).filter((m) => m !== '/')]) {
+            out.push({ loc: leaguePath(lg, p), lastmod: today, changefreq: p === '/scoreboard' ? 'hourly' : 'daily', priority: p === '/' ? '0.8' : '0.6' });
         }
-        for (const t of TEAMS) out.push({ loc: `/nba/team/${t.team_id}`, lastmod: today, changefreq: 'weekly', priority: '0.5' });
+        for (const t of cfg.teams.all) out.push({ loc: leaguePath(lg, `/team/${t.team_id}`), lastmod: today, changefreq: 'weekly', priority: '0.5' });
     }
 
     for (const year of AVAILABLE_SEASONS) {

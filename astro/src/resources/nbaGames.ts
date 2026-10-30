@@ -1,7 +1,8 @@
 // Data API reads for one NBA game (the ESPN-keyed `nba` schema) and the processor call.
 import { retrieveRowsFrom } from './sdv';
 import { requestProcessor, ProcessorError } from './python';
-import { NBA_GAMES_SOURCE } from '../utils/league';
+import { BASKETBALL } from '../basketball/config';
+import { LEAGUES, type BasketballLeague } from '../utils/league';
 import { isTrue, type DataApiGameRows, type NbaProcessorPayload } from './nbaGame';
 
 const YEAR = 60 * 60 * 24 * 365;
@@ -23,8 +24,8 @@ const SEL = {
 type Row = Record<string, any>;
 
 /** Ids reach a URL and a cache key: refuse anything but an ESPN-sized number before either exists. */
-function assertGameId(id: string): void {
-    if (!/^\d{6,12}$/.test(String(id))) throw new Error(`invalid NBA game id: ${JSON.stringify(id)}`);
+function assertGameId(id: string, league: BasketballLeague): void {
+    if (!/^\d{6,12}$/.test(String(id))) throw new Error(`invalid ${LEAGUES[league].shortName} game id: ${JSON.stringify(id)}`);
 }
 
 /** A finished game's schedule row never changes (a year); anything else is re-read hourly. The row says. */
@@ -32,22 +33,22 @@ const scheduleTTL = (content: any) => (isTrue(content?.data?.[0]?.status_type_co
 
 // retrieveNbaSchedule and retrieveNbaGameRows read the schedule through this one function: same query,
 // same cache key, same TTL rule, so neither can pin the other's entry at a different lifetime.
-const readSchedule = (id: string) =>
-    retrieveRowsFrom<Row>(NBA_GAMES_SOURCE, 'schedule', { id, select: SEL.schedule, limit: '1' }, scheduleTTL, true, NBA_READ_TIMEOUT_MS);
+const readSchedule = (id: string, league: BasketballLeague) =>
+    retrieveRowsFrom<Row>(BASKETBALL[league].gamesSource, 'schedule', { id, select: SEL.schedule, limit: '1' }, scheduleTTL, true, NBA_READ_TIMEOUT_MS);
 
-export async function retrieveNbaSchedule(id: string): Promise<Row | null> {
-    assertGameId(id);
-    return (await readSchedule(id))[0] ?? null;
+export async function retrieveNbaSchedule(id: string, league: BasketballLeague): Promise<Row | null> {
+    assertGameId(id, league);
+    return (await readSchedule(id, league))[0] ?? null;
 }
 
 /** All seven tables for a completed game, in parallel, strict (a failed read rejects the whole thing). */
-export async function retrieveNbaGameRows(id: string): Promise<DataApiGameRows> {
-    assertGameId(id);
+export async function retrieveNbaGameRows(id: string, league: BasketballLeague): Promise<DataApiGameRows> {
+    assertGameId(id, league);
     const q = (extra: Record<string, string> = {}) => ({ game_id: id, limit: '5000', ...extra });
     const get = (table: keyof typeof SEL, query: Record<string, string>) =>
-        retrieveRowsFrom<Row>(NBA_GAMES_SOURCE, table, query, YEAR, true, NBA_READ_TIMEOUT_MS);
+        retrieveRowsFrom<Row>(BASKETBALL[league].gamesSource, table, query, YEAR, true, NBA_READ_TIMEOUT_MS);
     const [schedule, pbp, team_box, player_box, play_wp, game_team_rates, game_player_rates] = await Promise.all([
-        readSchedule(id),
+        readSchedule(id, league),
         get('pbp', q({ select: SEL.pbp, order: 'game_play_number' })),
         get('team_box', q({ select: SEL.team_box })),
         get('player_box', q({ select: SEL.player_box })),
@@ -59,9 +60,9 @@ export async function retrieveNbaGameRows(id: string): Promise<DataApiGameRows> 
 }
 
 /** The processor's payload; a non-2xx (404 = not started / no plays, 5xx = degraded) or a timeout throws `ProcessorError`. */
-export async function retrieveNbaProcessedGame(id: string, cacheTTL: number): Promise<NbaProcessorPayload> {
-    assertGameId(id);
-    const json = JSON.parse(await requestProcessor(`nba/${id}/process`, cacheTTL, '', NBA_PROCESSOR_TIMEOUT_MS));
+export async function retrieveNbaProcessedGame(id: string, cacheTTL: number, league: BasketballLeague): Promise<NbaProcessorPayload> {
+    assertGameId(id, league);
+    const json = JSON.parse(await requestProcessor(`${league}/${id}/process`, cacheTTL, '', NBA_PROCESSOR_TIMEOUT_MS));
     if (json?.status === 'bad' || !Array.isArray(json?.plays)) throw new ProcessorError(502, `processor: ${json?.message ?? 'no plays'} for ${id}`);
     return json as NbaProcessorPayload;
 }

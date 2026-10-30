@@ -3,8 +3,9 @@ import { env } from "cloudflare:workers"
 import { safeCachePut } from "../utils/misc"
 import { extractGameState, isRegression, mergeHighWater, pickFresher, type GameState } from "../utils/gameState"
 import { wrappedFetch } from "../utils/telemetry"
-import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG, NBA_SCOREBOARD_REFRESH } from "../utils/config"
-import { LEAGUES, type League } from "../utils/league"
+import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from "../utils/config"
+import { LEAGUES, isBasketball, type League } from "../utils/league"
+import { BASKETBALL } from "../basketball/config"
 
 export interface ESPNCoreScoreboardResponse {
     content: {
@@ -563,7 +564,7 @@ export async function getScoreboardForDay(league: League, espnDate: string | nul
     const liveKey = `scoreboard-day:${league}`;
     const key = espnDate ? `${liveKey}:${espnDate}` : liveKey;
     const isoDay = (d: string) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
-    const liveTTL = (league === 'nba' ? NBA_SCOREBOARD_REFRESH : CURRENT_SEASON_CONFIG.scoreboardRefreshRate) * CACHE_TTL_MULTIPLIER;
+    const liveTTL = (isBasketball(league) ? BASKETBALL[league].scoreboardRefresh : CURRENT_SEASON_CONFIG.scoreboardRefreshRate) * CACHE_TTL_MULTIPLIER;
     const cached = await env.ESPN_API_CACHE.get(key, 'json').catch((e) => { console.warn(`ESPN API: KV read failed for ${key}: ${e}`); return null; }) as { day: string; events: ESPNScheduleEvent[] } | null;
     if (cached?.events) {
         console.info(`ESPN API cache hit: ${key}`);

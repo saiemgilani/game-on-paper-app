@@ -78,3 +78,7 @@ carries both runs.
   (NFL: train-only curve gives holdout Brier 0.1177 vs 0.1174).
 
 - `nba_summary_401585607.json.gz`: ESPN NBA summary (ORL vs TOR, 2024-03-17, 450 plays), the same capture sdv-py tests `espn_nba_pbp` on; no pickcenter line, so the prior is home-court only.
+- `nba_process_401585607.payload.json` moved with main's sportsdataverse lock f94d8cb9 (GOP #348), patched cell by cell through
+  `test_nba_process_parity._body`: sdv-py plan #1's 17 rebuilt running-score rows (`home_score` / `away_score` / `home_win_prob`,
+  `wp_delta` on them and the row after; first at sequence 128, 26-24) and 9 `start_game_seconds_remaining` values that lost a
+  Float32 tail (2213.1001 -> 2213.1, the Float64 clock dtype). No other field moved.
