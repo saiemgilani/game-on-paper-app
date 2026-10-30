@@ -9,7 +9,11 @@ import {
     type SDVRushingSummary,
 } from '../../resources/sdv';
 import { cleanAbbreviation, roundNumber } from '../../utils/misc';
+import { PLAYER_STAT_MINIMUMS, watchLeader } from '../../utils/players';
+
 import { espnLogoLeague, leaguePath } from '../../utils/league';
+
+const qualifierNote = [PLAYER_STAT_MINIMUMS.passing, PLAYER_STAT_MINIMUMS.rushing, PLAYER_STAT_MINIMUMS.receiving].join('; ');
 
 interface Props {
     homeTeam: ESPNTeam
@@ -27,25 +31,26 @@ interface WatchRow {
 
 // Our leaders, not ESPN's: the season's most VALUABLE passer, rusher and
 // receiver by total EPA, described in EPA/play. ESPN's summary.leaders block
-// ranks by raw yards, which is the one thing this site exists not to do.
+// ranks by raw yards, which is the one thing this site exists not to do. Only
+// players who clear the leaderboards' minimums count (watchLeader), or one long
+// completion by a backup outranks the starter.
 const yds = (n: number) => `${n} yd${Math.abs(n) === 1 ? "" : "s"}`;
 const named = (rows: SDVPlayerSummary[], key: string) =>
     rows.filter((r) => {
         const n = (r as any)[key];
         return n && n !== "NA";
     });
-const best = <T,>(rows: T[]): T | null =>
-    rows.length === 0 ? null : rows.toSorted((a, b) => (b as any).TEPA - (a as any).TEPA)[0];
 
 async function watchRows(teamId: string | number): Promise<WatchRow[]> {
+    // by volume, not TEPA: every qualifier is in the window, however poor his total
     const [pass, rush, rec] = await Promise.all([
-        retrievePlayerSummaries(metricYear, SummaryType.PASSING, teamId, "TEPA", false, 10, metricYear, Astro.locals.league),
-        retrievePlayerSummaries(metricYear, SummaryType.RUSHING, teamId, "TEPA", false, 20, metricYear, Astro.locals.league),
-        retrievePlayerSummaries(metricYear, SummaryType.RECEIVING, teamId, "TEPA", false, 25, metricYear, Astro.locals.league),
+        retrievePlayerSummaries(metricYear, SummaryType.PASSING, teamId, "dropbacks", false, 10, metricYear, Astro.locals.league),
+        retrievePlayerSummaries(metricYear, SummaryType.RUSHING, teamId, "plays", false, 20, metricYear, Astro.locals.league),
+        retrievePlayerSummaries(metricYear, SummaryType.RECEIVING, teamId, "targets", false, 25, metricYear, Astro.locals.league),
     ]);
-    const p = best(named(pass, "passer_player_name") as SDVPassingSummary[]);
-    const r = best(named(rush, "rusher_player_name") as SDVRushingSummary[]);
-    const c = best(named(rec, "receiver_player_name") as SDVReceivingSummary[]);
+    const p = watchLeader(named(pass, "passer_player_name") as SDVPassingSummary[], "passing");
+    const r = watchLeader(named(rush, "rusher_player_name") as SDVRushingSummary[], "rushing");
+    const c = watchLeader(named(rec, "receiver_player_name") as SDVReceivingSummary[], "receiving");
     return [
         p && {
             title: "Passing",
@@ -76,7 +81,7 @@ const [away, home] = await Promise.all([watchRows(awayTeam.id), watchRows(homeTe
         <div class="card border rounded">
             <div class="card-body py-3">
                 <h2 class="fs-5 mb-1">Players to Watch</h2>
-                <p class="small text-muted mb-3">Season leaders by total EPA, {metricYear}.</p>
+                <p class="small text-muted mb-3">Season leaders by total EPA, {metricYear}, among qualifiers ({qualifierNote}).</p>
                 <div class="row gy-3">
                     {[{ team: awayTeam, rows: away }, { team: homeTeam, rows: home }].map(({ team, rows }) => (
                     <div class="col-md-6 col-12">

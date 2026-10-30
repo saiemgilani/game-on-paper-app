@@ -41,6 +41,28 @@ export const PLAYER_STAT_MINIMUMS: Record<string, string> = {
     receiving: 'min. 1.875 targets per team-game',
 };
 
+/** The same bars as numbers: the volume column each is counted in, per team-game. */
+export const PLAYER_QUALIFIER_PER_TEAM_GAME = {
+    passing: { column: 'dropbacks', perTeamGame: 14 },
+    rushing: { column: 'plays', perTeamGame: 6.25 },
+    receiving: { column: 'targets', perTeamGame: 1.875 },
+} as const;
+
+/**
+ * A team's "player to watch" in a category: the highest total-EPA player who clears the
+ * leaderboards' bar, so a 1-dropback backup with one long completion (Kent State's
+ * Da'Realyst Clark, 2026: 1 db, +2.07 EPA) cannot outrank the starter. When nobody on the
+ * team qualifies yet (week 1, a QB committee), the player with the most volume stands in.
+ */
+export function watchLeader<T extends { TEPA: number; team_games?: number | null }>(rows: T[], category: PlayerCategory): T | null {
+    if (rows.length === 0) return null;
+    const { column, perTeamGame } = PLAYER_QUALIFIER_PER_TEAM_GAME[category];
+    const volume = (r: T) => Number((r as Record<string, unknown>)[column]) || 0;
+    const qualified = rows.filter((r) => volume(r) >= perTeamGame * (Number(r.team_games) || 0));
+    if (qualified.length > 0) return qualified.toSorted((a, b) => b.TEPA - a.TEPA)[0];
+    return rows.toSorted((a, b) => volume(b) - volume(a) || b.TEPA - a.TEPA)[0];
+}
+
 /** The column the player leaderboard sorts on, and whether that column is a rank (sorted ascending). */
 export interface PlayerBoardSort {
     sortBy: string;

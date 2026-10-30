@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import {
     formatPlayerMetric, gameStatLine, isEspnAthleteId, isGsisId, isPlayerPath,
     GAME_PERCENTILE_MIN_PLAYS, gamePercentileGroup, seasonGamePercentileGroup, percentileFromBreaks, percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
-    formatHeight, PLAYER_STAT_MINIMUMS, playerBoardSort, totalGameLog, unrankedSeasons, type SeasonRow,
+    formatHeight, PLAYER_QUALIFIER_PER_TEAM_GAME, PLAYER_STAT_MINIMUMS, playerBoardSort, totalGameLog, unrankedSeasons, watchLeader, type SeasonRow,
 } from '../src/utils/players';
 import { SDV_PLAYER_METRIC_CATEGORIES } from '../src/utils/constants';
 import { cleanField, cleanTextForTeam, isMemeTeam, joinWithAnd, numberOrNull } from '../src/utils/misc';
@@ -331,5 +331,41 @@ describe('the player board sorts from the dropdown config (one list, so they can
     });
     test('a metric the config does not know sorts by rank, as before', () => {
         expect(playerBoardSort('passing', 'nonsense')).toEqual({ sortBy: 'nonsense_rank', ranked: true });
+    });
+});
+
+describe('players to watch qualify like the leaderboards', () => {
+    // Kent State 2026 through week 9 (gameonpaper.com/year/2026/team/2309, captured 2026-10-30): the
+    // preview for 401866451 named Da'Realyst Clark (1 dropback, +2.07 EPA) over the starter, and a
+    // 7-carry back (+1.71) over the backs with the carries.
+    const passing = [
+        { passer_player_name: 'Dru DeShields', TEPA: -0.62, dropbacks: 201, team_games: 7 },
+        { passer_player_name: 'Nolan Good', TEPA: -9.9, dropbacks: 7, team_games: 7 },
+        { passer_player_name: 'Ethan Thanthanavong', TEPA: -0.76, dropbacks: 2, team_games: 7 },
+        { passer_player_name: "Da'Realyst Clark", TEPA: 2.07, dropbacks: 1, team_games: 7 },
+    ];
+    const rushing = [
+        { rusher_player_name: 'Brandon White', TEPA: -6.91, plays: 57, team_games: 7 },
+        { rusher_player_name: 'Dru DeShields', TEPA: -3.87, plays: 44, team_games: 7 },
+        { rusher_player_name: 'Mason King', TEPA: -7.95, plays: 43, team_games: 7 },
+        { rusher_player_name: 'Hunter Hopperton', TEPA: 1.71, plays: 7, team_games: 7 },
+    ];
+
+    test('a one-dropback backup does not outrank the starter', () => {
+        expect(watchLeader(passing, 'passing')?.passer_player_name).toBe('Dru DeShields');
+        // the best total EPA among the 6.25-carries-per-game qualifiers (44 >= 43.75), not the 7-carry back
+        expect(watchLeader(rushing, 'rushing')?.rusher_player_name).toBe('Dru DeShields');
+    });
+
+    test('with no qualifier yet, the volume leader stands in', () => {
+        const week1 = passing.map((r) => ({ ...r, team_games: 20 }));
+        expect(watchLeader(week1, 'passing')?.passer_player_name).toBe('Dru DeShields');
+        expect(watchLeader([], 'receiving')).toBeNull();
+    });
+
+    test('the numeric bars match the quoted minimums', () => {
+        for (const [category, { perTeamGame }] of Object.entries(PLAYER_QUALIFIER_PER_TEAM_GAME)) {
+            expect(PLAYER_STAT_MINIMUMS[category]).toContain(`min. ${perTeamGame} `);
+        }
     });
 });
