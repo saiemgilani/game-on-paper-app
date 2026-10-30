@@ -3,24 +3,28 @@
 // blazing-the-nets' app/teams/list/[season]/page.tsx on GenericPage: one Bootstrap card per team,
 // a colour bar, the tricode and name, the season's shooting line.
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import NbaConferenceTeams from '../nba/NbaConferenceTeams.astro';
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import { fmtInt, fmtPct } from '../../nba/format';
 import { teamHref, withParams } from '../../nba/links';
 import { placeholderNote } from '../../nba/data/placeholder';
 import type { NbaTeamsParams } from '../../routes/nba/teams';
 import { basketball, seasonLabelFor } from '../../basketball/config';
+import { dashboardScope, isNcaaDashboards } from '../../basketball/dashboards';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaTeamsParams; landing?: boolean }
 const { data, landing = false } = Astro.props;
-const { season, seasons, current, q, teams, lines } = data;
+const { season, seasons, current, q, teams, lines, coverage, conferences } = data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
 const lp = (p: string) => leaguePath(league, p);
+const byIdPlayers = isNcaaDashboards(league);
 const label = seasonLabelFor(league, season);
+const scope = dashboardScope(league, season);
 const title = `${name} teams, ${label} shooting | Game on Paper`;
-const subtitle = `Every team's ${label} regular-season shooting line, from ${cfg.statsSourceLabel} play-by-play, with a shot chart and roster for each.`;
+const subtitle = `Every team's ${label} ${scope.adj} shooting line, from ${scope.source}, with a shot chart and roster for each${byIdPlayers ? ' team with linked shots' : ''}.`;
 const here = lp(landing ? '/' : '/teams');
 const breadcrumbs: PageBreadcrumb[] = landing
     ? [{ title: name, active: true }]
@@ -32,20 +36,20 @@ const breadcrumbs: PageBreadcrumb[] = landing
       <div class="col-12">
         <h1 class="h3">{landing ? `${name} teams, ${label}` : `Teams, ${label}`}</h1>
         {data.unlocated && <p class="small text-muted">{placeholderNote(data.unlocated.count, data.unlocated.total, 'season')}</p>}
-        <p class="text-muted">{subtitle}</p>
+        <p class="text-muted">{subtitle}</p>{coverage && (<p class="small text-muted" id="nba-coverage">{coverage}</p>)}
         <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={here} />
         {landing && (
           <div class="d-flex flex-wrap align-items-center gap-3 mt-2">
             <a href={lp('/scoreboard')}>Scoreboard &rarr;</a>
-            <a href={withParams(lp('/players'), { season: String(season) }, { season: String(current) })}>All players &rarr;</a>
+            <a href={withParams(lp('/players'), { season: String(season) }, { season: String(current) })}>{byIdPlayers ? 'Players' : 'All players'} &rarr;</a>
             <a href={withParams(lp('/scatter'), { season: String(season) }, { season: String(current) })}>Scatter &rarr;</a>
             <a href={withParams(lp('/leaders'), { season: String(season) }, { season: String(current) })}>Leaders &rarr;</a>
           </div>
         )}
       </div>
     </div>
-    {teams.length === 0 && (<p class="text-muted">No regular-season shots in {label} yet.</p>)}
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3" id="nba-teams">
+    {teams.length === 0 && (<p class="text-muted">No {scope.adj} shots in {label} yet.</p>)}
+    {conferences ? (<NbaConferenceTeams groups={conferences} lines={lines} seasonQuery={q} />) : (<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3" id="nba-teams">
       {teams.map((t) => {
         const line = lines.get(t.team_id);
         return (
@@ -62,6 +66,6 @@ const breadcrumbs: PageBreadcrumb[] = landing
           </div>
         );
       })}
-    </div>
+    </div>)}
   </div>
 </GenericPage>
