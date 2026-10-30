@@ -1,7 +1,7 @@
 
 <script>
 import Chart from 'chart.js/auto';
-import { chartGridColor } from '../../resources/chart';
+import { chartGridLines } from '../../resources/chart';
 import { cleanAbbreviation,  getCurrentViewport, adjustTeamColorsForContrast, hexToRgb, calculateCumulativeSums, roundNumber, waitForElement } from '../../utils/misc';
 const { id, plays, homeTeam, awayTeam, colors = null } = $props();
 
@@ -123,14 +123,7 @@ async function generateChart() {
                             family: '"Chivo", "Fira Mono", serif'
                         },
                     },
-                    grid: {
-                        color: (line) => {
-                            if (line.tick.value == 0) {
-                                return (isDarkMode) ? "white" : "#ACACAC"
-                            }
-                            return chartGridColor(getComputedStyle(document.body).color, isDarkMode)
-                        }, 
-                    }
+                    grid: chartGridLines(getComputedStyle(document.body).color, isDarkMode),
                 },
                 x: {
                     border: { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" },
@@ -145,14 +138,7 @@ async function generateChart() {
                             family: '"Chivo", "Fira Mono", serif'
                         },
                     },
-                    grid: {
-                        color: (line) => {
-                            if (line.tick.value == 0) {
-                                return (isDarkMode) ? "white" : "#ACACAC"
-                            }
-                            return chartGridColor(getComputedStyle(document.body).color, isDarkMode)
-                        },
-                    }
+                    grid: chartGridLines(getComputedStyle(document.body).color, isDarkMode),
                 }
             }
         }
