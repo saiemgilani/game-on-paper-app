@@ -1,14 +1,14 @@
 ---
-// /wbb: BASKETBALL.wbb.landing is 'teams-index', which plan #11 builds. Until then the scoreboard is the landing; never cached,
-// so plan #11's page is not hidden behind a held redirect.
-import { uncacheable } from '../../routes/basketball/cache';
-import { leaguePath } from '../../utils/league';
-import { PREVIEW_PATH_PREFIX } from '../../utils/preview';
+// /wbb: BASKETBALL.wbb.landing is 'teams-index' (spec §3.4, D30): every program of the season by conference (D38) with its
+// shooting line, plus links to the scoreboard and the other shooting pages. /wbb/teams is the same list under the Header's Teams.
+import NbaTeamsRoute from '../../components/routes/NbaTeamsRoute.astro';
+import { prepareBasketballTeams } from '../../routes/basketball/teams';
+import { unavailable } from '../../routes/basketball/cache';
 
-Astro.locals.league = 'wbb';
-uncacheable(Astro);
-// a preview viewer stays on the uncacheable /preview surface: the public URL can serve a cached copy (or the gated 404)
-// without running the Worker (self-review on #343)
-const location = `${Astro.locals.preview ? PREVIEW_PATH_PREFIX : ''}${leaguePath('wbb', '/scoreboard')}`;
-return new Response(null, { status: 302, headers: { Location: location, 'Cache-Control': 'no-store' } });
+const r = await prepareBasketballTeams(Astro, 'wbb', { landing: true });
+if ('unavailable' in r) {
+    return unavailable('wbb');
+}
 ---
+
+<NbaTeamsRoute data={r} landing />

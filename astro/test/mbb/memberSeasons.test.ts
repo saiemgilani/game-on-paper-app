@@ -15,10 +15,10 @@ import { MBB_MEMBER_SEASONS, MBB_MEMBER_SEASONS_THROUGH } from '../../src/nba/da
 import { MBB_LAST_KNOWN_SEASON } from '../../src/nba/seasonRange';
 import { TEX, conferenceNames, conferences, coverage, leagueContext, scheduleTeams, seasonPlayers, texShots } from './dashboardFixtures';
 
-const state = vi.hoisted(() => ({ dropTex: false, failMembership: false, emptySeason: false }));
+const state = vi.hoisted(() => ({ dropTex: false, dropTexPlayers: false, failMembership: false, emptySeason: false }));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
-    retrieveSeasonPlayerRows: async (s: number) => (state.emptySeason ? [] : seasonPlayers(s as 2019 | 2023 | 2026)),
+    retrieveSeasonPlayerRows: async (s: number) => (state.emptySeason ? [] : seasonPlayers(s as 2019 | 2023 | 2026).filter((r) => !(state.dropTexPlayers && r.team_id === TEX))),
     retrieveLeagueContextRows: async () => leagueContext(2026),
     retrieveTeamShots: async (s: number, id: number) => (id === TEX ? texShots(s as 2019 | 2026) : []),
     retrieveCoverageRows: async () => coverage(),
@@ -36,7 +36,7 @@ const fakeAstro = (path: string, params: Record<string, string> = {}) => {
 const STMN = 2900; // St. Thomas (mbbTeams.ts): Division I from 2021-22
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
-beforeEach(() => { Object.assign(state, { dropTex: false, failMembership: false, emptySeason: false }); });
+beforeEach(() => { Object.assign(state, { dropTex: false, dropTexPlayers: false, failMembership: false, emptySeason: false }); });
 
 describe('the member-seasons table (R-P11)', () => {
     test('2019, 2021 and 2026 re-derive from the committed captures by the same rule', () => {
@@ -81,6 +81,18 @@ describe('/mbb/team/<id>: membership with or without shots', () => {
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
         const r: any = await prepareBasketballTeam(fakeAstro(`/mbb/team/${TEX}`, { id: String(TEX) }).a, 'mbb');
         expect([r.team.team_id, r.empty, r.dashboard === null, r.line.attempts]).toEqual([TEX, undefined, false, texShots(2026).length]);
+    });
+    // Self-review on #344: R-S14 (made for WBB's New Orleans) is in the shared route, so it changed MBB too. Mutation of the
+    // real fixtures: Texas 2026 keeps its real shots and conference row but loses its season-player rows (MBB has no such
+    // capture). Before R-S14 this was the empty "no shots linked" page; now the dashboard, no roster, and the index's line agrees.
+    test("R-S14 in MBB: a member with linked shots but no season-player row is the dashboard with no roster", async () => {
+        state.dropTexPlayers = true;
+        const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
+        const { prepareBasketballTeams } = await import('../../src/routes/basketball/teams');
+        const r: any = await prepareBasketballTeam(fakeAstro(`/mbb/team/${TEX}`, { id: String(TEX) }).a, 'mbb');
+        expect([r.empty, r.noPlayers, r.team.team_id, r.roster, r.dashboard === null, r.line.attempts]).toEqual([undefined, true, TEX, [], false, texShots(2026).length]);
+        const index: any = await prepareBasketballTeams(fakeAstro('/mbb/teams').a, 'mbb');
+        expect(index.lines.get(TEX)).toEqual(r.line);
     });
     test('a team with shots but no conference row that season is a 404, as the index leaves it out (the real 2026 rows less Texas\'s)', async () => {
         state.dropTex = true;

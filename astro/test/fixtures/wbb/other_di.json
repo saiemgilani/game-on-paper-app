@@ -4,7 +4,7 @@
   "ab": "BSC",
   "name": "Birmingham Southern Panthers",
   "color": "#000000",
-  "first": 2004,
+  "first": 2003,
   "last": 2006
  },
  {
@@ -13,7 +13,7 @@
   "name": "Hartford Hawks",
   "color": "#D60008",
   "first": 2003,
-  "last": 2022
+  "last": 2023
  },
  {
   "id": 88,
@@ -36,7 +36,7 @@
   "ab": "CTLA",
   "name": "Centenary (LA) Gentlemen",
   "color": "#A20B36",
-  "first": 2008,
+  "first": 2003,
   "last": 2011
  },
  {
@@ -56,6 +56,14 @@
   "last": 2019
  },
  {
+  "id": 2417,
+  "ab": "MCA",
+  "name": "Morris Brown Wolverines",
+  "color": "#000000",
+  "first": 2003,
+  "last": 2003
+ },
+ {
   "id": 2511,
   "ab": "QUC",
   "name": "Queens University Royals",
@@ -68,7 +76,7 @@
   "ab": "SAV",
   "name": "Savannah State Tigers",
   "color": "#280298",
-  "first": 2012,
+  "first": 2003,
   "last": 2019
  },
  {
@@ -86,6 +94,14 @@
   "color": "#087DC2",
   "first": 2027,
   "last": 2027
+ },
+ {
+  "id": 2736,
+  "ab": "WSSU",
+  "name": "Winston-Salem State Rams",
+  "color": "#BB0100",
+  "first": 2007,
+  "last": 2010
  },
  {
   "id": 2815,
