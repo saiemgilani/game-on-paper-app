@@ -71,7 +71,8 @@ export async function prepareBasketballScoreboard(Astro: AstroGlobal, league: Ba
         if (tri && c.team) c.team.abbreviation = tri;
     }
     // D35: the default (Top 25) board of the shown day is fresh and empty -> that day's all-D-I board, with a note. Never for an
-    // explicit ?group= (the URL says what the viewer asked for) and never for a league without groups (NBA/WNBA unchanged).
+    // explicit non-default ?group= (the URL says what the viewer asked for; ?group=top25 is the default board, so it does fall
+    // back) and never for a league without groups (NBA/WNBA unchanged).
     let events = board.events, fallbackNote: string | undefined, fallbackFailed = false;
     if (groups && grp?.key === groups.default && !board.degraded && !board.stale && events.length === 0) {
         const d = await getScoreboardForDay(league, toEspnDate(date), { ...datedOpts, group: groups.all });

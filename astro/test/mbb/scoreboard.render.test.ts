@@ -73,6 +73,18 @@ describe('/mbb/scoreboard render (real days)', () => {
         expect(html).toMatch(/<option value="top25" selected[^>]*>Top 25<\/option>/); // still the default view: the URL stays bare
         expect(html).toContain('href="/mbb/scoreboard?date=2025-04-05"');         // day links stay bare too
     });
+    test('a game-less day: the empty-day notes and no empty "Jump to games by status" nav', async () => {
+        prep.mockResolvedValueOnce({ ...day('2025-07-01', '20250222-top25', 'top25', 'Top 25'), games: [] });
+        const empty = await render('?date=2025-07-01');
+        expect(empty).toContain('No games scheduled.');
+        expect(empty).not.toContain('Jump to games by status');
+        prep.mockResolvedValueOnce({ ...day('2025-07-01', '20250222-top25', 'top25', 'Top 25'), games: [], degraded: true });
+        const degraded = await render('?date=2025-07-01');
+        expect(degraded).toContain('The scoreboard is unavailable right now.');
+        expect(degraded).not.toContain('Jump to games by status');
+        prep.mockResolvedValueOnce(day('2025-02-22', '20250222-top25', 'top25', 'Top 25'));
+        expect(await render('?date=2025-02-22')).toContain('Jump to games by status'); // a day with games keeps it
+    });
     test('a Top 25 day with games has no fallback note', async () => {
         prep.mockResolvedValueOnce(day('2025-02-22', '20250222-top25', 'top25', 'Top 25'));
         expect(await render('?date=2025-02-22')).not.toContain('No ranked teams play today');
