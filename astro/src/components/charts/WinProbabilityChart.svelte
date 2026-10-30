@@ -4,7 +4,7 @@ import { leagueFromLocation, teamLogoUrl } from '../../utils/league';
 import {LineController} from "chart.js";
 import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, hexToRgb, waitForElement } from '../../utils/misc';
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
-import { GradientFillLineController, chartGridColor } from '../../resources/chart'
+import { GradientFillLineController, chartGridLines } from '../../resources/chart'
 import { wpMarkerGate, wpMarkerTitle } from '../../basketball/periods';
 import { exportTime, wpExportFooter } from '../../utils/chartExport'
 
@@ -325,7 +325,8 @@ async function generateChart() {
                     // a missing dark variant must not cost the chart its logo: retry the light one once
                     homeImage.onerror = () => {
                         const light = teamLogoUrl(leagueFromLocation(), homeTeam.id, false, season);
-                        if (homeImage.src !== light) homeImage.src = light;
+                        // img.src reads back absolute: compare absolute, or a site-hosted (root-relative) logo that fails retries forever
+                        if (homeImage.src !== new URL(light, location.href).href) homeImage.src = light;
                     };
                     homeImage.onload = () => {                                            // when the image loads
                         chart.homeTeamImage = homeImage;                                    // save it as a property so it can be accessed from the draw method
@@ -350,7 +351,7 @@ async function generateChart() {
                     // a missing dark variant must not cost the chart its logo: retry the light one once
                     awayImage.onerror = () => {
                         const light = teamLogoUrl(leagueFromLocation(), awayTeam.id, false, season);
-                        if (awayImage.src !== light) awayImage.src = light;
+                        if (awayImage.src !== new URL(light, location.href).href) awayImage.src = light;
                     };
                     awayImage.onload = () => {                                            // when the image loads
                         chart.awayTeamImage = awayImage;                                    // save it as a property so it can be accessed from the draw method
@@ -395,14 +396,7 @@ async function generateChart() {
                             family: '"Chivo", "Fira Mono", serif'
                         },
                     },
-                    grid: {
-                        color: (line) => {
-                            if (line.tick.value == 0) {
-                                return (isDarkMode) ? "white" : "#ACACAC"
-                            }
-                            return chartGridColor(getComputedStyle(document.body).color, isDarkMode)
-                        }, 
-                    }
+                    grid: chartGridLines(getComputedStyle(document.body).color, isDarkMode),
                 },
                 x: {
                     border: { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" },
@@ -417,14 +411,7 @@ async function generateChart() {
                             family: '"Chivo", "Fira Mono", serif'
                         },
                     },
-                    grid: {
-                        color: (line) => {
-                            if (line.tick.value == 0) {
-                                return (isDarkMode) ? "white" : "#ACACAC"
-                            }
-                            return chartGridColor(getComputedStyle(document.body).color, isDarkMode)
-                        },
-                    }
+                    grid: chartGridLines(getComputedStyle(document.body).color, isDarkMode),
                 }
             },
             plugins: {
