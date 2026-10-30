@@ -1,0 +1,12 @@
+---
+// src/pages/wnba/scoreboard.astro: plan #4's basketball scoreboard for the WNBA.
+import NbaScoreboardRoute from '../../components/routes/NbaScoreboardRoute.astro';
+import { prepareBasketballScoreboard } from '../../routes/basketball/scoreboard';
+
+const r = await prepareBasketballScoreboard(Astro, 'wnba');
+if ('badDate' in r) {
+    Astro.response.status = 400;
+}
+---
+
+<NbaScoreboardRoute data={r} />

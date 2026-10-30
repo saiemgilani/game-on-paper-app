@@ -1,5 +1,6 @@
 import { AVAILABLE_SEASONS, CURRENT_YEAR } from './constants';
-import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_SEASON } from '../nba/seasonRange';
+import { wnbaLogoId } from '../nba/data/wnbaTeams';
+import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_SEASON, WNBA_FIRST_SEASON, WNBA_LAST_KNOWN_SEASON } from '../nba/seasonRange';
 
 /**
  * The site renders one league per request. The NFL and the NBA live at explicit pages
@@ -11,7 +12,7 @@ import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_S
  */
 /** The basketball leagues, in the order their prefixes are tried. Adding a league starts here: the compiler then
  *  asks for its LEAGUES and BASKETBALL (basketball/config.ts) entries, and FLAGS needs a key with its slug. */
-export const BASKETBALL_LEAGUES = ['nba'] as const;
+export const BASKETBALL_LEAGUES = ['nba', 'wnba'] as const;
 export type BasketballLeague = (typeof BASKETBALL_LEAGUES)[number];
 export type League = 'cfb' | 'nfl' | BasketballLeague;
 export type Sport = 'football' | 'basketball';
@@ -96,6 +97,19 @@ export const LEAGUES: Record<League, LeagueConfig> = {
         regularSeasonWeeks: 0, postseasonWeeks: 0,
         logoLeague: 'nba', teamCount: 30, pool: 'NBA', extraTeamCategories: [],
     },
+    wnba: {
+        slug: 'wnba', sport: 'basketball', name: 'WNBA', shortName: 'WNBA', urlPrefix: '/wnba',
+        espnPath: 'wnba', espnCoreLeague: 'wnba',
+        scoreboardQuery: '', defaultGroup: null, scoreboardCacheKey: 'scoreboard:wnba',
+        // stats.wnba.com-keyed tables (shots, player_game_logs, shot_* derived: plan #6); the ESPN-keyed wnba.* game
+        // tables are BASKETBALL.wnba.gamesSource
+        sdvApiBase: 'https://data.sportsdataverse.org/v1/wnba_stats', sdvSchema: 'wnba_stats', sdvEnabled: true,
+        scheduleTable: 'schedule',
+        // a WNBA season is its calendar year
+        get seasons() { return range(WNBA_FIRST_SEASON, WNBA_LAST_KNOWN_SEASON); },
+        regularSeasonWeeks: 0, postseasonWeeks: 0,
+        logoLeague: 'wnba', teamCount: 15, pool: 'WNBA', extraTeamCategories: [],
+    },
 };
 
 /** A league rendered by the basketball pages (routes/basketball, components/nba). */
@@ -137,14 +151,45 @@ export const NFL_LOGO_ABBR: Record<string, string> = {
     '25': 'sf', '26': 'sea', '27': 'tb', '28': 'wsh', '29': 'car', '30': 'jax', '33': 'bal', '34': 'hou',
 };
 
+// ESPN serves WNBA logos only under the abbreviation: `wnba/500-dark/<id>.png` is a 404 for all 15 teams and `wnba/500/<id>.png`
+// for Golden State (129689), Toronto (131935) and Portland (132052). ESPN team id -> abbreviation, all 15 verified 2026-10-12
+// (re-probed 2026-10-18) against both 500 and 500-dark. Of the defunct franchises, ESPN serves Charlotte (1, cha), Houston (4, hou)
+// and Sacramento (13, sac) by abbreviation (probe 2026-10-18); Cleveland (2), Miami (7) and the 2000-02 Portland Fire (12, not
+// the 2026 Fire's `por`) have no ESPN logo, so the site hosts theirs (WNBA_HOSTED_LOGOS).
+// The non-numeric keys are relocation eras (WNBA_FORMER_NAMES `logo`, via wnbaLogoId): ESPN still serves the Detroit Shock,
+// Tulsa Shock, San Antonio Silver Stars and San Antonio Stars marks under both 500 and 500-dark (probe 2026-10-18).
+export const WNBA_LOGO_ABBR: Record<string, string> = {
+    '20': 'atl', '19': 'chi', '18': 'con', '3': 'dal', '129689': 'gs', '5': 'ind', '17': 'lv', '6': 'la',
+    '8': 'min', '9': 'ny', '11': 'phx', '132052': 'por', '14': 'sea', '131935': 'tor', '16': 'wsh',
+    '1': 'cha', '4': 'hou', '13': 'sac',
+    det: 'det', tul: 'tul', sas: 'sas', sa: 'sa',
+};
+
+// WNBA logos the site serves itself, keyed by wnbaLogoId: defunct franchises' (by ESPN id) and the Utah Starzz and Orlando
+// Miracle eras ESPN has none for (by era key). WNBA.com's own 2002 files, as archived by the Wayback Machine (source, dates
+// and sha256 in public/assets/img/wnba/README.md). One file serves light and dark, so no dark rule may replace one.
+export const WNBA_HOSTED_LOGOS: Record<string, string> = {
+    '2': '/assets/img/wnba/cle.png', '7': '/assets/img/wnba/mia.png', '12': '/assets/img/wnba/por-2000.png',
+    uta: '/assets/img/wnba/uta.png', orl: '/assets/img/wnba/orl.png',
+};
+
 /**
  * ESPN logo URL for a team, light or dark. Dark NFL logos go through the abbreviation
  * path; an NFL id missing from the map falls back to the light logo rather than a 404.
+ * A WNBA team's logo is keyed by wnbaLogoId(id, season), which picks a relocated franchise's era logo: a site-hosted file
+ * ESPN has none for (a root-relative path), else ESPN's by abbreviation (WNBA_LOGO_ABBR), else ESPN's default shield.
+ * `season` only matters there.
  */
-export function teamLogoUrl(league: League | undefined, teamId: string | number, dark: boolean): string {
+export function teamLogoUrl(league: League | undefined, teamId: string | number, dark: boolean, season?: number | null): string {
     const logoLeague = espnLogoLeague(league);
     const id = String(teamId);
     const light = `https://a.espncdn.com/i/teamlogos/${logoLeague}/500/${id}.png`;
+    if (logoLeague === 'wnba') {
+        const key = wnbaLogoId(id, season);
+        return WNBA_HOSTED_LOGOS[key] ?? (WNBA_LOGO_ABBR[key]
+            ? `https://a.espncdn.com/i/teamlogos/wnba/${dark ? '500-dark' : '500'}/${WNBA_LOGO_ABBR[key]}.png`
+            : 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png'); // ESPN serves no WNBA logo by id
+    }
     if (!dark) return light;
     if (logoLeague === 'nfl') {
         const abbr = NFL_LOGO_ABBR[id];
@@ -236,5 +281,6 @@ export function leaguePath(league: League | undefined, path: string): string {
 /** Client-side (Svelte) league detection; SSR code reads Astro.locals.league instead. */
 export function leagueFromLocation(): League {
     if (typeof window === 'undefined') return DEFAULT_LEAGUE;
-    return splitLeague(window.location.pathname).league;
+    // An admin's /preview/<league>/... link is that league's page (middleware rewrites it), not a cfb path.
+    return splitLeague(window.location.pathname.replace(/^\/preview(?=\/|$)/, '') || '/').league;
 }

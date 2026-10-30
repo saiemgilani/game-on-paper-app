@@ -4,7 +4,7 @@ import { AVAILABLE_SEASONS, CURRENT_YEAR, METRIC_YEAR } from '../utils/constants
 import { BASKETBALL_LEAGUES, LEAGUES, leaguePath, teamCategoriesFor } from '../utils/league';
 import { LEADERBOARD_CATEGORIES, PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
 import { FLAGS } from '../utils/features';
-import { BASKETBALL } from '../basketball/config';
+import { BASKETBALL, hasTeamPages } from '../basketball/config';
 import { COACH_BOARD_SLUGS } from '../utils/coaches';
 
 // Prerendered: this is built once at deploy time from local data (teams.json +
@@ -100,7 +100,7 @@ function buildEntries(): Entry[] {
         for (const p of ['/', ...cfg.headerMenu.map((m) => m.path).filter((m) => m !== '/')]) {
             out.push({ loc: leaguePath(lg, p), lastmod: today, changefreq: p === '/scoreboard' ? 'hourly' : 'daily', priority: p === '/' ? '0.8' : '0.6' });
         }
-        for (const t of cfg.teams.all) out.push({ loc: leaguePath(lg, `/team/${t.team_id}`), lastmod: today, changefreq: 'weekly', priority: '0.5' });
+        if (hasTeamPages(lg)) for (const t of cfg.teams.all) out.push({ loc: leaguePath(lg, `/team/${t.team_id}`), lastmod: today, changefreq: 'weekly', priority: '0.5' });
     }
 
     for (const year of AVAILABLE_SEASONS) {

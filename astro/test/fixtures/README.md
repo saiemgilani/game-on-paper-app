@@ -402,6 +402,67 @@ D15: real fixtures only).
 **To regenerate:** do not; the snapshot pins this exact page. A new capture
 needs a new id and a new snapshot in its own PR.
 
+## `wnba/`
+
+- `wnba/sdv_db_wnba_courts.json`: `{ courts }` = sdv-db's WNBA court eras (`sdv_db.nba_shot_dashboards.WNBA_COURTS`, plan #3 Task 5, which
+  cites the WNBA restricted-area adoption season: `WNBA_RESTRICTED_FROM = 2013`, `WNBA_RESTRICTED_RADIUS = 40`), printed in GOP's `Court`
+  key names by `plans/2026-10-11-wnba-games-gop.md` Task 1 Step 0 from sdv-db `6391dda` (branch `feat/bball-derived-builds`; the court
+  definitions are identical on sdv-db `origin/main` `fd9b268`, `nba_shot_dashboards.py:144-148`), captured 2026-10-18. First era 0 is
+  written as 1997. **Used by:** `test/wnba/config.test.ts` (GOP's `BASKETBALL.wnba.courts` must equal it era for era) and plan #6's
+  `test/wnba/courts.test.ts`. **To regenerate:** the same command after a plan #3 court change; GOP's eras must follow in the same PR.
+- `wnba/team_crosswalk_2002_2026.json`: the distinct (ESPN team id, ESPN name, stats.wnba.com team id, stats tricode) rows of
+  wehoop-wnba-data `wnba/crosswalk/parquet/wnba_team_crosswalk_{2002..2026}.parquet` (commit 62b7ca5a; the table is unchanged from
+  5d64639c, built 2026-10-11 by `wehoop::wnba_team_crosswalk()`, matched on game dates), with each row's first and last season. 28 rows.
+  Captured 2026-10-18. **Used by:** `test/wnba/teams.test.ts` (the team module is this table). **To regenerate:** the polars group-by in
+  `plans/2026-10-11-wnba-games-gop.md` Task 1 Step 1 over a newer checkout; a new franchise is a new row.
+- `wnba/game_<id>_processor.json` and `wnba/game_<id>_api.json` for 401736287 (Golden State at Chicago, 2025-08-01, 73-66, four quarters),
+  401736289 (Los Angeles at Seattle, 2025-08-01, 108-106, double overtime), 250603003 (New York at Detroit, 2005-06-03, 66-68, two halves
+  and one overtime) and 401736325 (Seattle vs Atlanta at Rogers Arena, Vancouver, 2025-08-15, 80-78, neutral site). Captured 2026-10-18.
+  - `_processor.json`: the live body of `GET /wnba/<id>/process` (`python/`, sdv-py `game_page_frames(final, league="wnba")` at the
+    `python/uv.lock` commit `b4229f1c`). No pickcenter on any of the four, so the prior is `hfa`, or `neutral` (0.5) for 401736325.
+  - `_api.json`: one object per table (`schedule`, `pbp`, `team_box`, `player_box`, `play_wp`, `game_team_rates`, `game_player_rates`),
+    read with exactly `resources/nbaGames.ts`'s `SEL` columns from a LOCAL sdv-db Data API over a local warehouse loaded from the
+    wehoop-wnba-data release parquet (commit `f0856757`, which carries wehoop-wnba-data #33 `aba90e67`: the 2002-2022 schedules
+    republished with `*_records` / `*_linescores` filled from each game's final; every other input file is byte-identical to
+    `82e2d218`), `play_wp` and `game_*_rates` built by the sdv-db WNBA game-page build (`6391dda`) scoring with sdv-py `cd6f7f25`
+    (the same game-page code as the lock's `b4229f1c`). `*_linescores` / `*_records` are Python-repr strings (spec §3.5).
+  - Known, asserted differences (`test/wnba/game.test.ts`): `RELEASE_SCORE_ROWS` (rows where the published running score has not been
+    rebuilt yet; spec D7) is empty: none remained at capture, 401736325's rows 126-127 included. `RELEASE_SOURCE_FACTS` names the
+    release-vs-live source facts of 250603003, read from ESPN's raw 2005 final: its boxscore carries 19 team stats and neither
+    `fast_break_points` nor `points_in_paint` (null in the release, reported by the live box), and Erin Thorn (510) is `active: false`
+    with every stat `--` (release `points`, `rebounds`, `assists`, `steals`, `blocks`, `turnovers` null, `fg` / `fg3` / `ft` `–` and
+    `plus_minus` `--`; the live box now prints 0 / `0-0` / `0`). The Data API side is asserted absent on exactly those fields and the
+    processor present. Everything else is asserted equal: plays, scores, shot coordinates, WP, the prior, team box, rates,
+    linescores, records, and every player field except the identity strings `name`, `short_name` and `jersey`, which are not
+    compared (ESPN renamed 401736325's 3054590 Nia Coffey to Nia Brodie; the live 2005 box has no jerseys where the release does).
+  - **To regenerate:** `plans/2026-10-11-wnba-games-gop.md` Task 3 Steps 1-3.
+- `wnba/espn_page_401736287.json` and `wnba/pregame_401918306.json`: ESPN cdn game pages
+  (`https://cdn.espn.com/core/wnba/playbyplay?gameId=<id>&xhr=1&render=false&userab=18`, User-Agent: `resources/espn.ts`
+  `requestESPN`'s Safari UA; a Chrome UA gets an AWS WAF challenge, 202 with an empty body), trimmed to
+  `{ gameId, gamepackageJSON: { header } }` (the only keys the route and the pregame page read). 401736287 is the final of Task 3's
+  pair, captured 2026-10-18T23:43Z. 401918306 (WNBA Finals Game 2, Atlanta Dream at Golden State Valkyries, home GS, tip
+  2026-10-20T00:00Z) was captured 2026-10-18T22:12Z while `STATUS_SCHEDULED` and staged in ClaudeCowork
+  `plans/2026-10-11-bball-fixtures-staging/wnba_pregame_401918306.json` (commit `fcfc0971`); the plan's 401918305 went final on
+  2026-10-17 before its summary was staged, so this is the plan's own fallback. `wnba/pregame_401918306_summary.json` is
+  `{ pickcenter }` (one provider) of `https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/summary?event=401918306`, captured at
+  the same time and staged beside it (`wnba_pregame_401918306_summary.json`, same commit). **Used by:** `test/wnba/gameRoute.test.ts`,
+  `test/wnba/game.render.test.ts`. **To regenerate:** `plans/2026-10-11-wnba-games-gop.md` Task 4 Step 1 (a pregame page can only be
+  taken before tip-off; never flip a final's status, D15).
+- `wnba/scoreboard-20250801.json` and `wnba/scoreboard-20050603.json`: ESPN cdn WNBA scoreboards
+  (`https://cdn.espn.com/core/wnba/scoreboard?xhr=1&date=<YYYYMMDD>`, User-Agent: `resources/espn.ts` `requestESPN`'s Safari UA),
+  captured 2026-10-18T23:55Z, every event kept, trimmed to `{ content: { sbData: { events } } }` with competitor `statistics` and
+  `linescores` removed (as `nba/scoreboard-20250115.json`). 2025-08-01: five finals, one double overtime (401736289), Golden State's
+  new ESPN id 129689. 2005-06-03: two finals in the halves era (`format.regulation.periods` 2), one in overtime (250603003, period 3;
+  ESPN's own `status.type.detail` says "Final", GOP's `Final/OT` comes from the period and the regulation, D14); the board spells
+  WAS / TUL / NYL (ESPN ids 16 / 3 / 9, today wsh / dal / ny). A dated request carries no `sbData.day`. **Used by:**
+  `test/wnba/scoreboard.test.ts`, `test/wnba/scoreboard.render.test.ts`. **To regenerate:** `plans/2026-10-11-wnba-games-gop.md`
+  Task 5 Step 1 (with the Safari UA; a 202 with an empty body is a WAF challenge, never an empty board).
+- `wnba/scoreboard-20020615.json`: the same ESPN cdn WNBA scoreboard for 2002-06-15 (same URL, UA and trim), captured
+  2026-10-19T01:31Z: six finals with three defunct franchises ESPN serves no logo for, Cleveland (2) and Miami (7), and the
+  2000-02 Portland Fire, which ESPN files under the 2026 Fire's id 132052 (`POR`). The board also has Utah (15, `UTH`) and
+  Orlando (10, `ORL`), relocated franchises with no ESPN logo. **Used by:** `test/wnba/scoreboard.render.test.ts`.
+  **To regenerate:** the request above with `date=20020615`.
+
 ## `team-season-percentiles-cfb.json`
 The Data API's `GET https://data.sportsdataverse.org/v1/cfb/team_summaries/percentiles`
 body (no `season`: every season, oldest first), trimmed: of the 598 rows (23
