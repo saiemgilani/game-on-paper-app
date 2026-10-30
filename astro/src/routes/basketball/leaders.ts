@@ -44,6 +44,6 @@ export async function prepareBasketballLeaders(Astro: AstroGlobal, league: Baske
     if (!players || !games) return { unavailable: true };
     const placed = seasonPlayerGamesFromRows(games, players);
     if (players.length > 0) setCache(Astro, seasonCache(league)); // empty: readBasketballSeasonRows already made it uncacheable
-    // ponytail: 0 is no team, so no highlight; plan #6 makes the island's highlight optional
-    return { ...resolved, boards: placed.length ? leaderBoards(placed, ft?.statsTeamId ?? 0) : null };
+    // D31: the league-season's per-game bars (the NBA's NBA_LEADER_BARS, so its boards are unchanged)
+    return { ...resolved, boards: placed.length ? leaderBoards(placed, ft?.statsTeamId ?? null, 15, BASKETBALL[league].leaderBars(season)) : null };
 }

@@ -1,15 +1,16 @@
 ---
 // A plain <select> whose options are URLs (CoachLeaderboardPage.astro's pattern: no JS island).
+// `paramSeasons`: the seasons `params` carry to (a team's franchise seasons); every other option links by season alone.
 import { withParams } from '../../nba/links';
 import { basketball, seasonLabelFor } from '../../basketball/config';
-interface Props { seasons: number[]; season: number; current: number; basePath: string; params?: Record<string, string>; id?: string }
-const { seasons, season, current, basePath, params = {}, id = 'nba-season' } = Astro.props;
+interface Props { seasons: number[]; season: number; current: number; basePath: string; params?: Record<string, string>; paramSeasons?: readonly number[]; id?: string }
+const { seasons, season, current, basePath, params = {}, paramSeasons, id = 'nba-season' } = Astro.props;
 const league = basketball(Astro.locals.league).league;
 const options = [...seasons].sort((a, b) => b - a);
 ---
 <label class="visually-hidden" for={id}>Season</label>
 <select id={id} class="form-select form-select-md" onchange="window.location.href = this.value">
   {options.map((s) => (
-    <option value={withParams(basePath, { ...params, season: String(s) }, { season: String(current) })} selected={s === season}>{seasonLabelFor(league, s)}</option>
+    <option value={withParams(basePath, { ...(!paramSeasons || paramSeasons.includes(s) ? params : {}), season: String(s) }, { season: String(current) })} selected={s === season}>{seasonLabelFor(league, s)}</option>
   ))}
 </select>

@@ -84,6 +84,12 @@ export function teamName(teamId: number, season: number): string | undefined {
   return FORMER_NAMES.find((f) => f.team_id === teamId && season <= f.through)?.name ?? BY_ID.get(teamId)?.name;
 }
 
+/** The team as it was in a season (end year): its current entry under that season's name; undefined for an id not listed. */
+export function teamInSeason(teamId: number, season: number): Team | undefined {
+  const t = BY_ID.get(teamId);
+  return t && { ...t, name: teamName(teamId, season) ?? t.name };
+}
+
 /** The franchise a tricode of any listed season belongs to (NJN and BKN are both the Nets). */
 export function franchiseOf(tricode: string): number | undefined {
   return (TEAMS.find((t) => t.tricode === tricode) ?? FORMER_NAMES.find((f) => f.tricode === tricode))?.team_id;

@@ -3,8 +3,9 @@ import { Delaunay } from "d3-delaunay";
 import { hexbin } from "d3-hexbin";
 import { scaleSqrt, type ScalePower } from "d3-scale";
 import { pointer, select, type Selection } from "d3-selection";
+import type { Court } from "../../basketball/config";
 import { shrunkDiff, type HexVsLeague, type Split, type Zone } from "../data/aggregate";
-import { toSvg, toSvgLength, zoneAreas, type Viewport } from "../data/court";
+import { COURT, toSvg, toSvgLength, zoneAreas, type Viewport } from "../data/court";
 import { courtViewport, DEFAULT_WIDTH, drawCourt } from "./court";
 import { fmtPct, fmtPts } from "../format";
 import { chartTheme, diffColor, drawDiffLegend, drawNotes, FONT_PX, motionMs, setViewBox, SHRINK_NOTE, tooltip, TOKENS, type ChartTheme, type G } from "./theme";
@@ -21,6 +22,8 @@ export interface HexShotChartData {
   radius: number;
   /** `statsByZone` for the player and the league. */
   zones: Record<Zone, ZoneComparison>;
+  /** The court the zones were cut on and the chart draws; absent = the NBA's COURT. */
+  court?: Court;
 }
 
 export type HexMode = "raw" | "zones";
@@ -94,8 +97,8 @@ const label = (g: G, text: string, y = 0): Selection<SVGTextElement, unknown, nu
     .style("stroke-linejoin", "round")
     .style("paint-order", "stroke");
 
-function drawZones(root: G, data: HexShotChartData, v: Viewport, theme: ChartTheme, tip: ReturnType<typeof tooltip>): void {
-  const areas = zoneAreas(v);
+function drawZones(root: G, data: HexShotChartData, v: Viewport, theme: ChartTheme, tip: ReturnType<typeof tooltip>, court: Court): void {
+  const areas = zoneAreas(v, court);
   root
     .append("g")
     .selectAll("path")
@@ -119,7 +122,7 @@ function drawZones(root: G, data: HexShotChartData, v: Viewport, theme: ChartThe
       ]);
     })
     .on("pointerleave", () => tip.hide());
-  drawCourt(root, v, { zones: true });
+  drawCourt(root, v, { zones: true, court });
   const labels = root.append("g").attr("pointer-events", "none");
   for (const a of areas) {
     const { player: z, league } = data.zones[a.zone];
@@ -137,15 +140,16 @@ function drawZones(root: G, data: HexShotChartData, v: Viewport, theme: ChartThe
 
 export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, { width, mode, animate = true }: HexShotChartOptions): () => void {
   const v = courtViewport(width);
+  const court = data.court ?? COURT;
   const theme = chartTheme(svg);
   const root = select(svg).append("g");
   const shape = hexbin();
   let hexes: ReturnType<typeof root.selectAll<SVGPathElement, HexMark>> | null = null;
 
   if (mode === "zones") {
-    drawZones(root, data, v, theme, tooltip(root, v.width, v.height));
+    drawZones(root, data, v, theme, tooltip(root, v.width, v.height), court);
   } else {
-    drawCourt(root, v);
+    drawCourt(root, v, { court });
     const { marks, cap, size } = layoutHexes(data.hexes, data.radius, v, theme);
     const ms = animate ? motionMs(500) : 0;
     hexes = root
@@ -228,7 +232,9 @@ export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, {
 
 /** A text version for assistive tech: every zone's makes/attempts, FG% and the league FG%. */
 export function describeHex(data: HexShotChartData): string {
-  const zones = (Object.keys(ZONE_LABELS) as Zone[]).map((z) => {
+  // D32: no restricted area before the league drew one (restrictedRadius 0), as zoneAreas leaves it off the picture
+  const noRim = (data.court ?? COURT).restrictedRadius === 0;
+  const zones = (Object.keys(ZONE_LABELS) as Zone[]).filter((z) => !(noRim && z === "restricted_area")).map((z) => {
     const { player, league } = data.zones[z];
     return `${ZONE_LABELS[z]} ${player.makes}/${player.attempts} (${fmtPct(player.fgPct)}, league ${fmtPct(league.fgPct)})`;
   });

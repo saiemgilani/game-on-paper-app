@@ -8,7 +8,7 @@
     import type { ScatterMetric, ScatterPoint } from '../../../nba/scatterMetrics';
     import type { Draw } from '../chartFrame';
     import ChartSvg from './ChartSvg.svelte';
-    let { points, x, y, faces, filter, resetKey, title }: { points: ScatterPoint[]; x: ScatterMetric; y: ScatterMetric; faces: boolean; filter: string; resetKey: number; title: string } = $props();
+    let { points, x, y, faces, filter, resetKey, title, highlight = 'Nets', minFga = 100 }: { points: ScatterPoint[]; x: ScatterMetric; y: ScatterMetric; faces: boolean; filter: string; resetKey: number; title: string; highlight?: string | null; minFga?: number } = $props();
     let canvas: HTMLCanvasElement | null = $state(null);
     let transform: ZoomTransform = zoomIdentity;
     // svelte-ignore state_referenced_locally -- the initial key is the baseline (blazing's useRef(resetKey)); later keys are read eagerly in the derived below
@@ -26,5 +26,5 @@
 <!-- the canvas sits under the svg (its own stacking context) so names and medians stay on top of faces -->
 <div class="position-relative nba-scatter">
     <canvas bind:this={canvas} aria-hidden="true" class="position-absolute top-0 start-0 w-100 h-100 pe-none" style="z-index: -1"></canvas>
-    <ChartSvg {draw} viewBox={SCATTER_VIEWBOX} {title} desc={describeScatter(points, x, y)} />
+    <ChartSvg {draw} viewBox={SCATTER_VIEWBOX} {title} desc={describeScatter(points, x, y, highlight, minFga)} />
 </div>

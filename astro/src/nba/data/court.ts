@@ -169,6 +169,8 @@ export function zoneAreas(v: Viewport, court: Court = COURT): ZoneArea[] {
   const b = threeBreakY(court);
   const cornerAngle = Math.atan2(b, cx);
   const rim = arc(0, 0, court.restrictedRadius, 0, 2 * Math.PI, 48);
+  // D32: a league that had not adopted the restricted-area arc (restrictedRadius 0) has no such zone; the paint is whole
+  const hasArc = court.restrictedRadius > 0;
   const paint = [
     { x: -lane, y: base },
     { x: -lane, y: ft },
@@ -191,12 +193,15 @@ export function zoneAreas(v: Viewport, court: Court = COURT): ZoneArea[] {
   ];
   const at = (x: number, y: number) => toSvg({ x, y }, v);
   const cornerLabelX = (w + cx) / 2;
-  return [
+  // 20 tenths up the strip, or halfway up a strip shorter than that (a WNBA court before 2013 breaks at the rim line, y = 0)
+  const cornerLabelY = b > 20 ? 20 : (base + b) / 2;
+  const areas: ZoneArea[] = [
     { zone: "restricted_area", d: path(rim, v, true), label: at(0, 8), vertical: false },
-    { zone: "paint", d: path(paint, v, true) + path(rim, v, true), label: at(0, 95), vertical: false },
+    { zone: "paint", d: path(paint, v, true) + (hasArc ? path(rim, v, true) : ""), label: at(0, 95), vertical: false },
     { zone: "mid_range", d: path(insideThree, v, true) + path(paint, v, true), label: at(0, 185), vertical: false },
-    { zone: "corner_3_left", d: path(corner(-1), v, true), label: at(-cornerLabelX, 20), vertical: true },
-    { zone: "corner_3_right", d: path(corner(1), v, true), label: at(cornerLabelX, 20), vertical: true },
+    { zone: "corner_3_left", d: path(corner(-1), v, true), label: at(-cornerLabelX, cornerLabelY), vertical: true },
+    { zone: "corner_3_right", d: path(corner(1), v, true), label: at(cornerLabelX, cornerLabelY), vertical: true },
     { zone: "above_break_3", d: path(aboveBreak, v, true), label: at(0, 285), vertical: false },
   ];
+  return areas.filter((a) => hasArc || a.zone !== "restricted_area");
 }
