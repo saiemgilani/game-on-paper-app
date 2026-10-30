@@ -2,7 +2,7 @@
     import Chart from 'chart.js/auto';
     import { espnLogoLeague, LEAGUES, leagueFromLocation, leaguePath, teamLogoUrl } from '../../utils/league';
     import { type ChartConfiguration, type ChartItem } from 'chart.js';
-    import { chartGridColor } from '../../resources/chart';
+    import { chartGridLines } from '../../resources/chart';
     import { AVAILABLE_SEASONS, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants';
     import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, metricHasBetterSide, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite, escapeHtml } from '../../utils/misc'
     import "bootstrap-icons/font/bootstrap-icons.css";
@@ -93,7 +93,7 @@
         // read the theme at draw time: isDarkMode was captured at load and goes stale after an OS theme change
         const ink = getComputedStyle(document.body).color;
         const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const gridColor = chartGridColor(ink, isDarkMode);
+        const gridLines = chartGridLines(ink, isDarkMode);
         // the axis lines take the zero line's colour; unset, Chart.js draws them near-black, invisible in dark mode
         const axisBorder = { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" };
         const minX = Math.min(...chartedPoints.map((t: any) => t.x))
@@ -308,14 +308,7 @@
                     x: {
                         reverse: shouldFlipXAxis,
                         border: axisBorder,
-                        grid: {
-                            color: (line) => {
-                                if (line.tick.value == 0) {
-                                    return (isDarkMode) ? "#8D8D8D" : "#AAAAAA"
-                                }
-                                return gridColor
-                            },
-                        },
+                        grid: gridLines,
                         title: {
                         display: true,
                             text: generateTeamMetricTitle(selectedMetricX),
@@ -334,14 +327,7 @@
                     y: {
                         reverse: shouldFlipYAxis,
                         border: axisBorder,
-                        grid: {
-                            color: (line) => {
-                                if (line.tick.value == 0) {
-                                    return (isDarkMode) ? "#8D8D8D" : "#AAAAAA"
-                                }
-                                return gridColor
-                            },
-                        },
+                        grid: gridLines,
                         title: {
                         display: true,
                             text: generateTeamMetricTitle(selectedMetricY),

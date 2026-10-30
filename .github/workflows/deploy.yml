@@ -39,18 +39,20 @@ jobs:
       # it from the image). A deploy that changes neither keeps every cached processed
       # game. To re-key them all (ESPN corrected finished games), bump
       # python/CACHE_GENERATION: it is in the tree.
+      # an artifact, not a job output: GitHub blanks a job output that contains a secret's value, and a
+      # secret here is "1", so nearly every sha was dropped on the way to this job
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdv-py-sha
       - name: Processor version
-        id: procver
-        env:
-          SDV_SHA: ${{ needs.deploy-api.outputs.sdv_sha }}
         run: |
+          SDV_SHA="$(cat sdv_py_sha.txt)"
           [[ "$SDV_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::deploy-api reported no sportsdataverse-py sha: '$SDV_SHA'"; exit 1; }
           v="$(git rev-parse --short=12 HEAD:python)-${SDV_SHA:0:12}"
-          echo "v=$v" >> "$GITHUB_OUTPUT"
+          echo "PROCESSOR_VERSION=$v" >> "$GITHUB_ENV"  # env, not a step output: no secret redaction
           echo "processor version $v"
       - uses: cloudflare/wrangler-action@v4
         env:
-          PROCESSOR_VERSION: ${{ steps.procver.outputs.v }}
           PYTHON_HTTP_TOKEN: ${{ secrets.PYTHON_HTTP_TOKEN }}
           SDV_AUTH_TOKEN: ${{ secrets.SDV_AUTH_TOKEN }}
           ADMIN_USER: ${{ secrets.ADMIN_USER }}
@@ -90,8 +92,6 @@ jobs:
 
   deploy-api:
     runs-on: ubuntu-latest
-    outputs:
-      sdv_sha: ${{ steps.installed.outputs.sha }}
     # Two merges minutes apart ran this job twice in parallel on 2026-08-31: run A
     # pulled its image, run B overwrote docker-compose.yml on the host, run A's
     # down+up then pulled B's image into a full disk and the API stayed down.
@@ -136,12 +136,16 @@ jobs:
       # above): deploy-web keys the API-layer cache on it. Before the host deploy, so a
       # failure here leaves the running API alone. The tag is docker-compose.do.yml's image.
       - name: sportsdataverse-py the image installed
-        id: installed
         run: |
           sha="$(docker run --rm --entrypoint cat "ghcr.io/saiemgilani/saiemgilani/game-on-paper-python-api:${GITHUB_SHA}" /code/sdv_py_sha.txt)"
           [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::the image reports no sportsdataverse-py sha: '$sha'"; exit 1; }
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          printf '%s' "$sha" > sdv_py_sha.txt
           echo "image installed sportsdataverse-py @ $sha"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdv-py-sha
+          path: sdv_py_sha.txt
+          retention-days: 30  # GitHub's re-run window: a re-run deploy-web still finds it
       - name: Update SHA for docker compose
         run: |
           DOCKER_COMPOSE_CONTENT="$(cat ./docker-compose.do.yml)"

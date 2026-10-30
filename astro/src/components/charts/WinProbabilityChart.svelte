@@ -4,7 +4,7 @@ import { leagueFromLocation, teamLogoUrl } from '../../utils/league';
 import {LineController} from "chart.js";
 import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, hexToRgb, waitForElement } from '../../utils/misc';
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
-import { GradientFillLineController, chartGridColor } from '../../resources/chart'
+import { GradientFillLineController, chartGridLines } from '../../resources/chart'
 import { exportTime, wpExportFooter } from '../../utils/chartExport'
 
 const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null, showOdds = true, allPeriodMarkers = false, exportMeta = null } = $props()
@@ -394,14 +394,7 @@ async function generateChart() {
                             family: '"Chivo", "Fira Mono", serif'
                         },
                     },
-                    grid: {
-                        color: (line) => {
-                            if (line.tick.value == 0) {
-                                return (isDarkMode) ? "white" : "#ACACAC"
-                            }
-                            return chartGridColor(getComputedStyle(document.body).color, isDarkMode)
-                        }, 
-                    }
+                    grid: chartGridLines(getComputedStyle(document.body).color, isDarkMode),
                 },
                 x: {
                     border: { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" },
@@ -416,14 +409,7 @@ async function generateChart() {
                             family: '"Chivo", "Fira Mono", serif'
                         },
                     },
-                    grid: {
-                        color: (line) => {
-                            if (line.tick.value == 0) {
-                                return (isDarkMode) ? "white" : "#ACACAC"
-                            }
-                            return chartGridColor(getComputedStyle(document.body).color, isDarkMode)
-                        },
-                    }
+                    grid: chartGridLines(getComputedStyle(document.body).color, isDarkMode),
                 }
             },
             plugins: {
