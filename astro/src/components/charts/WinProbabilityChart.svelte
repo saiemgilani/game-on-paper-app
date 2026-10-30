@@ -325,7 +325,8 @@ async function generateChart() {
                     // a missing dark variant must not cost the chart its logo: retry the light one once
                     homeImage.onerror = () => {
                         const light = teamLogoUrl(leagueFromLocation(), homeTeam.id, false, season);
-                        if (homeImage.src !== light) homeImage.src = light;
+                        // img.src reads back absolute: compare absolute, or a site-hosted (root-relative) logo that fails retries forever
+                        if (homeImage.src !== new URL(light, location.href).href) homeImage.src = light;
                     };
                     homeImage.onload = () => {                                            // when the image loads
                         chart.homeTeamImage = homeImage;                                    // save it as a property so it can be accessed from the draw method
@@ -350,7 +351,7 @@ async function generateChart() {
                     // a missing dark variant must not cost the chart its logo: retry the light one once
                     awayImage.onerror = () => {
                         const light = teamLogoUrl(leagueFromLocation(), awayTeam.id, false, season);
-                        if (awayImage.src !== light) awayImage.src = light;
+                        if (awayImage.src !== new URL(light, location.href).href) awayImage.src = light;
                     };
                     awayImage.onload = () => {                                            // when the image loads
                         chart.awayTeamImage = awayImage;                                    // save it as a property so it can be accessed from the draw method
