@@ -41,19 +41,16 @@ export const PLAYER_STAT_MINIMUMS: Record<string, string> = {
     receiving: 'min. 1.875 targets per team-game',
 };
 
-/** The volume column a team's "player to watch" is chosen by: dropbacks, carries, targets. */
-export const WATCH_VOLUME_COLUMN = { passing: 'dropbacks', rushing: 'plays', receiving: 'targets' } as const;
-
 /**
- * A team's "player to watch" in a category: the player with the most volume (most dropbacks,
- * carries or targets), ties broken by total EPA. Ranking by total EPA named a 1-dropback backup
- * with one long completion (Kent State's Da'Realyst Clark, 2026: 1 db, +2.07 EPA) over the starter.
+ * A team's "player to watch" in a category. The passer is the one with the most dropbacks (ties to
+ * total EPA): by total EPA alone a 1-dropback backup with one long completion outranked the starter
+ * (Kent State's Da'Realyst Clark, 2026: 1 db, +2.07 EPA). The rusher and receiver are the season's
+ * most valuable by total EPA.
  */
 export function watchLeader<T extends { TEPA: number }>(rows: T[], category: PlayerCategory): T | null {
     if (rows.length === 0) return null;
-    const column = WATCH_VOLUME_COLUMN[category];
-    const volume = (r: T) => Number((r as Record<string, unknown>)[column]) || 0;
-    return rows.toSorted((a, b) => volume(b) - volume(a) || b.TEPA - a.TEPA)[0];
+    const dropbacks = (r: T) => Number((r as Record<string, unknown>).dropbacks) || 0;
+    return rows.toSorted((a, b) => (category === 'passing' ? dropbacks(b) - dropbacks(a) : 0) || b.TEPA - a.TEPA)[0];
 }
 
 /** The column the player leaderboard sorts on, and whether that column is a rank (sorted ascending). */

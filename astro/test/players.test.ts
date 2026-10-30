@@ -334,7 +334,7 @@ describe('the player board sorts from the dropdown config (one list, so they can
     });
 });
 
-describe("players to watch are each team's volume leaders", () => {
+describe('players to watch', () => {
     // Kent State 2026 through week 9 (gameonpaper.com/year/2026/team/2309, captured 2026-10-30): the
     // preview for 401866451 named Da'Realyst Clark (1 dropback, +2.07 EPA) over the starter, and a
     // 7-carry back (+1.71) over the backs with the carries.
@@ -352,15 +352,12 @@ describe("players to watch are each team's volume leaders", () => {
 
     test('the passer is the one with the most dropbacks, not the best total EPA', () => {
         expect(watchLeader(passing, 'passing')?.passer_player_name).toBe('Dru DeShields');
-        expect(watchLeader(rushing, 'rushing')?.rusher_player_name).toBe('Brandon White');
+        const tied = passing.map((r) => ({ ...r, dropbacks: 10 }));
+        expect(watchLeader(tied, 'passing')?.passer_player_name).toBe("Da'Realyst Clark");
     });
 
-    test('a volume tie goes to total EPA; no rows is no leader', () => {
-        const tied = [
-            { receiver_player_name: 'A', TEPA: 1, targets: 30 },
-            { receiver_player_name: 'B', TEPA: 4, targets: 30 },
-        ];
-        expect(watchLeader(tied, 'receiving')?.receiver_player_name).toBe('B');
+    test('the rusher and receiver stay the most valuable by total EPA', () => {
+        expect(watchLeader(rushing, 'rushing')?.rusher_player_name).toBe('Hunter Hopperton');
         expect(watchLeader([], 'receiving')).toBeNull();
     });
 });

@@ -28,9 +28,10 @@ interface WatchRow {
     subtitle: string
 }
 
-// Each team's main passer, rusher and receiver -- most dropbacks, carries and
-// targets (watchLeader) -- described in EPA/play. Ranking by total EPA named a
-// 1-dropback backup with one long completion over the starter.
+// Our leaders, not ESPN's: the passer with the most dropbacks, and the season's
+// most VALUABLE rusher and receiver by total EPA (watchLeader), each described
+// in EPA/play. ESPN's summary.leaders block ranks by raw yards, which is the one
+// thing this site exists not to do.
 const yds = (n: number) => `${n} yd${Math.abs(n) === 1 ? "" : "s"}`;
 const named = (rows: SDVPlayerSummary[], key: string) =>
     rows.filter((r) => {
@@ -39,11 +40,11 @@ const named = (rows: SDVPlayerSummary[], key: string) =>
     });
 
 async function watchRows(teamId: string | number): Promise<WatchRow[]> {
-    // ordered by volume, so the leader is always in the window
+    // passers ordered by dropbacks, so the starter is always in the window
     const [pass, rush, rec] = await Promise.all([
         retrievePlayerSummaries(metricYear, SummaryType.PASSING, teamId, "dropbacks", false, 10, metricYear, Astro.locals.league),
-        retrievePlayerSummaries(metricYear, SummaryType.RUSHING, teamId, "plays", false, 20, metricYear, Astro.locals.league),
-        retrievePlayerSummaries(metricYear, SummaryType.RECEIVING, teamId, "targets", false, 25, metricYear, Astro.locals.league),
+        retrievePlayerSummaries(metricYear, SummaryType.RUSHING, teamId, "TEPA", false, 20, metricYear, Astro.locals.league),
+        retrievePlayerSummaries(metricYear, SummaryType.RECEIVING, teamId, "TEPA", false, 25, metricYear, Astro.locals.league),
     ]);
     const p = watchLeader(named(pass, "passer_player_name") as SDVPassingSummary[], "passing");
     const r = watchLeader(named(rush, "rusher_player_name") as SDVRushingSummary[], "rushing");
@@ -78,7 +79,7 @@ const [away, home] = await Promise.all([watchRows(awayTeam.id), watchRows(homeTe
         <div class="card border rounded">
             <div class="card-body py-3">
                 <h2 class="fs-5 mb-1">Players to Watch</h2>
-                <p class="small text-muted mb-3">Each team's leader in dropbacks, carries and targets, {metricYear}.</p>
+                <p class="small text-muted mb-3">The passer with the most dropbacks and the rusher and receiver with the most total EPA, {metricYear}.</p>
                 <div class="row gy-3">
                     {[{ team: awayTeam, rows: away }, { team: homeTeam, rows: home }].map(({ team, rows }) => (
                     <div class="col-md-6 col-12">
