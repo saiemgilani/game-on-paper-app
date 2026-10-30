@@ -19,7 +19,8 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
 // The route accepts days up to the server's UTC date + 14; the picker's max is the same bound.
 // a college competitor ESPN has no logo for (team.logo absent) draws TeamRow's default shield, so it gets no dark rule
 const darkCss = 'badDate' in data ? '' : darkLogoCss(data.games.flatMap((g) => g.competitions[0].competitors.filter((c) => hasEspnLogo(c, league)).map((c) => ({ id: c.id, abbreviation: c.team?.abbreviation, season: g.season?.year }))), cfg.darkLogo);
-const sections = cfg.scoreboardGrouping === 'status' && !('badDate' in data) ? statusSections(data.games) : null;
+// a game-less day gets no status sections: an empty "Jump to games by status" nav would be an empty landmark
+const sections = cfg.scoreboardGrouping === 'status' && !('badDate' in data) && data.games.length > 0 ? statusSections(data.games) : null;
 const groups = cfg.scoreboardGroups;
 const grp = 'badDate' in data ? null : (data.group ?? null);
 // the default group is never written into a URL: it is what the bare page shows
