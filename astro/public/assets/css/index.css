@@ -184,7 +184,8 @@ h1, h2, h3, h4, h5, h6 {
    Bootstrap utilities carry what they can; this block holds the grid (a
    fixed score|status|score middle keeps every row's numbers dead-center),
    the viewport-clamped type that keeps a double-ranked 4-char matchup from
-   clipping at 320, the logo-corner possession badge, and the Chivo opt-in
+   clipping at 320, the possession dot beside the logo on the row's interior,
+   and the Chivo opt-in
    (the list is not a .row, which is where the site applies the stack). */
 .game-compact-list {
     font-family: "Chivo", "Fira Mono", serif;
@@ -214,7 +215,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 .game-banner .gb-side-home { justify-content: flex-end; }
 .game-banner .gb-logo {
-    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
     flex: none;
     line-height: 0;
 }
@@ -222,14 +225,13 @@ h1, h2, h3, h4, h5, h6 {
     width: clamp(22px, 7vw, 28px);
     height: auto;
 }
+/* beside the logo, on the row's interior: the away dot follows its logo, the
+   home dot precedes it (GameCompactRow), so both face the score */
 .game-banner .gb-ball {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    width: 0.55rem;
-    height: 0.55rem;
+    flex: none;
+    width: 0.45rem;
+    height: 0.45rem;
     border-radius: 50%;
-    border: 2px solid var(--bs-body-bg, #fff);
     background: var(--bs-primary);
 }
 .game-banner .gb-ball-rz { background: var(--bs-danger); }

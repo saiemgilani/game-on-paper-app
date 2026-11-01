@@ -1,6 +1,7 @@
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
+import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, test } from 'vitest';
 
 // The compact scoreboard rows ('scoreboard-compact' flag) must render for a
@@ -47,7 +48,7 @@ function championshipEvent(id: string) {
     };
 }
 
-function gameEvent(id: string, opts: { completed: boolean; live?: boolean }) {
+function gameEvent(id: string, opts: { completed: boolean; live?: boolean; ballTeamId?: string }) {
     const status = opts.live
         ? {
             period: 3,
@@ -77,7 +78,7 @@ function gameEvent(id: string, opts: { completed: boolean; live?: boolean }) {
             // ids chosen off the MEME_LIST (61 = UGA renders lowercased on purpose)
             competitors: [competitor('333', 'ALA', '24', 5), competitor('2', 'AUB', '17')],
             // the live game: ALA has the ball in the red zone
-            ...(opts.live ? { situation: { lastPlay: { end: { team: { id: '333' } } }, isRedZone: true } } : {}),
+            ...(opts.live ? { situation: { lastPlay: { end: { team: { id: opts.ballTeamId ?? '333' } } }, isRedZone: opts.ballTeamId == null } } : {}),
         }],
     };
 }
@@ -168,5 +169,50 @@ describe('the compact scoreboard rows are preview-gated', () => {
         expect(html).not.toContain('game-compact');
         expect(html).not.toContain('game-banner');
         expect(html).not.toContain('d-none d-md-flex');
+    });
+});
+
+// Launch condition for 'scoreboard-compact' (Akshay, sign-off ledger): the
+// possession marker sits beside the logo on the row's interior -- right of the
+// away logo, left of the home logo -- not as a badge on the logo's corner.
+describe('the compact row possession marker', () => {
+    async function row(ballTeamId: string) {
+        const { default: GameCompactRow } = await import('../src/components/schedule/GameCompactRow.astro');
+        return container.renderToString(GameCompactRow, {
+            props: { game: gameEvent('403', { completed: false, live: true, ballTeamId }) },
+            request: new Request('https://gameonpaper.com/'),
+            locals: { preview: true },
+        });
+    }
+    // competitors[0] is home (ALA, 333), competitors[1] away (AUB, 2); the dot
+    // span carries a visually-hidden name, so match the dot's opening tag only
+    const DOT = String.raw`<span class="gb-ball[^"]*"><span class="visually-hidden">has the ball</span></span>`;
+
+    test('away team with the ball: the dot follows the away logo', async () => {
+        const html = await row('2');
+        expect([...html.matchAll(/class="gb-ball/g)]).toHaveLength(1);
+        expect(html).toMatch(new RegExp(String.raw`team-logo-2"[^>]*>\s*` + DOT));
+        // outside the red zone the dot is the primary (not danger) variant
+        expect(html).not.toContain('gb-ball-rz');
+    });
+
+    test('home team with the ball: the dot precedes the home logo', async () => {
+        const html = await row('333');
+        expect([...html.matchAll(/class="gb-ball/g)]).toHaveLength(1);
+        expect(html).toMatch(new RegExp(DOT + String.raw`\s*<img[^>]*team-logo-333"`));
+        // the dot is never after the home logo (its outer edge)
+        expect(html).not.toMatch(new RegExp(String.raw`team-logo-333"[^>]*>\s*<span class="gb-ball`));
+    });
+
+    test('the dot takes inline width beside the logo instead of overlaying its corner', () => {
+        const css = readFileSync(new URL('../public/assets/css/index.css', import.meta.url), 'utf8');
+        const rule = (sel: string) => {
+            const at = css.indexOf(sel + ' {');
+            return at < 0 ? '' : css.slice(at, css.indexOf('}', at));
+        };
+        const ball = rule('.game-banner .gb-ball');
+        expect(ball).not.toBe('');
+        expect(ball).not.toMatch(/position:\s*absolute/);
+        expect(rule('.game-banner .gb-logo')).toMatch(/display:\s*flex/);
     });
 });
