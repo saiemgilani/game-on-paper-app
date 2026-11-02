@@ -12,10 +12,11 @@ import type { AstroGlobal } from 'astro';
 import { GAME_PAGE_MANIFEST, evaluateManifest } from '../utils/manifest';
 import { ESPN_INVALID_GAME_STATUS_NAMES, retrieveGamePageGuarded, type ESPNPlayByPlayResponse } from '../resources/espn';
 import { gopStorage } from '../utils/telemetry';
-import { retrieveProcessedGame, type ProcessedGame } from '../resources/python';
+import { ProcessorError, retrieveProcessedGame, type ProcessedGame } from '../resources/python';
 import { getGameCacheConfig } from '../utils/config';
 import { isFeatureEnabled } from '../utils/features';
 import { SOURCE_PARAM } from '../utils/adminView';
+import { gameSource } from '../utils/sourceOverride';
 import { LEAGUES, leaguePath, type League } from '../utils/league';
 import { warmShareCards } from './shareCard';
 
@@ -51,11 +52,24 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
     // its cache key are byte-for-byte what they are today.
     const sourceSwitch = isFeatureEnabled('source-switch', Astro.locals);
     // `?source=` is an ADMIN tool (utils/adminView.ts), so it needs BOTH the
-    // flag path and an authenticated admin session. A viewer holding only a
-    // preview cookie sends the same request they send today.
-    const source = (sourceSwitch && Astro.locals.adminAuthed === true)
-        ? Astro.url.searchParams.get(SOURCE_PARAM) ?? undefined
-        : undefined;
+    // flag path and an authenticated admin session. Without one, the game's
+    // pinned override (utils/sourceOverride.ts, KV) decides; with neither, the
+    // request is the one it is today.
+    const explicitSource = (sourceSwitch && Astro.locals.adminAuthed === true)
+        ? Astro.url.searchParams.get(SOURCE_PARAM)
+        : null;
+    const source = await gameSource(league, id, sourceSwitch, explicitSource);
+    const processed = async (ttl: number): Promise<ProcessedGame> => {
+        try {
+            return await retrieveProcessedGame(id, ttl, league, source);
+        } catch (e) {
+            // A pin this deploy no longer serves (the contract pin dropped the
+            // adapter: 400 unknown source) must not take the page down with it.
+            if (!source || explicitSource || !(e instanceof ProcessorError) || e.status !== 400) throw e;
+            console.warn(`source override ${source} rejected for ${league} ${id}; processing from ESPN: ${e.message}`);
+            return retrieveProcessedGame(id, ttl, league);
+        }
+    };
     let espnGame: ESPNPlayByPlayResponse | null = null;
     let game: ProcessedGame | null = null;
     let headerFallback = false;
@@ -69,7 +83,7 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
             // resources/espn.ts on the 403s), and its payload carries the same
             // `header` the page reads. Render from that instead of 500ing into
             // "Game Not Found".
-            game = await retrieveProcessedGame(id, 30, league, source);
+            game = await processed(30);
             espnGame = { gameId: Number(id), gamepackageJSON: { header: game.header } };
             headerFallback = true;
         }
@@ -93,7 +107,7 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
 
         const config = getGameCacheConfig(espnGame.gamepackageJSON.header.competitions[0].date, espnGame.gamepackageJSON.header.competitions[0].status)
         if (!game && !ESPN_INVALID_GAME_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name)) {
-            game = await retrieveProcessedGame(id, config.maxAge || 30, league, source);
+            game = await processed(config.maxAge || 30);
         }
 
         if (guarded.regressed || headerFallback) {

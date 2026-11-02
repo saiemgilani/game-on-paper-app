@@ -25,6 +25,7 @@
  */
 import { getCurrentScoreboard, type ESPNScheduleEvent } from '../resources/espn';
 import { retrieveProcessedGame, type ProcessedGame } from '../resources/python';
+import { gameSource } from './sourceOverride';
 import { CURRENT_SEASON_CONFIG } from './config';
 import { CURRENT_YEAR } from './constants';
 import type { League } from './league';
@@ -151,6 +152,8 @@ export interface LivePlayerGames {
 export async function livePlayerGames(
     games: PlayerGameRow[], espnGameIds: Record<string, string>, teamIds: (string | number)[],
     season: number, league: League, withQa: boolean = false,
+    /** 'source-switch' is on for this request: read each game's pinned source (utils/sourceOverride.ts) */
+    sourceOverrides: boolean = false,
 ): Promise<LivePlayerGames> {
     const none: LivePlayerGames = { live: {}, games };
     if (season !== CURRENT_YEAR) return none;
@@ -189,7 +192,8 @@ export async function livePlayerGames(
         try {
             // the game page's live-game maxAge; the cache KEY is TTL-independent
             // (`.../process?v=<PROCESSOR_VERSION>`), so this shares its entry.
-            out[id].qa = qaBadge(await retrieveProcessedGame(id, CURRENT_SEASON_CONFIG.liveGameRefreshRate, league));
+            out[id].qa = qaBadge(await retrieveProcessedGame(id, CURRENT_SEASON_CONFIG.liveGameRefreshRate, league,
+                await gameSource(league, id, sourceOverrides)));
         } catch (e) {
             console.warn(`live badge: no processed payload for ${league} ${id}: ${e}`);
         }

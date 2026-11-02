@@ -1336,9 +1336,9 @@ export function cardPage(game: ProcessedGame): CardPage {
  * costs the API drawing only: the play-by-play pipeline runs once per page cache window, for the
  * page, and never again for a card. `state` is the state that payload was processed in.
  */
-export async function retrieveCardPage(gameId: string | number, league: League, cacheTTL: number): Promise<CardPage | null> {
+export async function retrieveCardPage(gameId: string | number, league: League, cacheTTL: number, source?: string): Promise<CardPage | null> {
     try {
-        return cardPage(JSON.parse(await requestProcessor(`${league}/${gameId}/process`, cacheTTL)));
+        return cardPage(JSON.parse(await requestProcessor(`${league}/${gameId}/process`, cacheTTL, sourceQuery(source))));
     } catch (e) {
         console.error(`ERROR while fetching the processed game for a share card, ${league} ${gameId}: ${e}`);
         return null;
@@ -1443,12 +1443,15 @@ export async function requestProcessor(path: string, cacheTTL: number, query = '
     return text;
 }
 
+/** `/process`'s query for a source: the page and its card must build the same one to share a cache entry. */
+const sourceQuery = (source?: string) => source ? `source=${encodeURIComponent(source)}` : '';
+
 async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string): Promise<ProcessedGame> {
     // `source` only ever arrives from the 'source-switch' preview path. It has
     // to reach the cache key as well as the URL: two sources' payloads for one
     // game are different responses, and a shared key would pin whichever
     // landed first for the whole TTL (a year on a completed game).
-    const content = await requestProcessor(`${league}/${gameId}/process`, cacheTTL, source ? `source=${encodeURIComponent(source)}` : '');
+    const content = await requestProcessor(`${league}/${gameId}/process`, cacheTTL, sourceQuery(source));
 
     try {
         const resp: ProcessedGame = JSON.parse(content);

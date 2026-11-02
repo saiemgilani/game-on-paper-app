@@ -47,6 +47,7 @@ import { formatHeight, playerPath, splitPercentileCaption, totalGameLog } from '
 import { SPLIT_PERCENTILE_MIN_PLAYS } from '../../resources/sdv';
 import { cfbTeamIdByName } from '../../utils/teams';
 import { livePlayerGames } from '../../utils/liveQa';
+import { isFeatureEnabled } from '../../utils/features';
 
 interface Props {
     player: SDVPlayer
@@ -98,7 +99,7 @@ const { live, games: gameLog } = season === null
     ? { live: {} as Record<string, any>, games }
     : await livePlayerGames(
         games, espnGameIds, [...teamIds, player.team_id].filter(Boolean) as (string | number)[],
-        season, league, Astro.locals.adminAuthed === true);
+        season, league, Astro.locals.adminAuthed === true, isFeatureEnabled('source-switch', Astro.locals));
 const realTeamName = String(headerRows[0]?.pos_team ?? identityTeam?.team ?? '');
 // the team beside the jersey number is a team NAME, so the meme list applies to it
 // exactly as it does to his own (review on #267)

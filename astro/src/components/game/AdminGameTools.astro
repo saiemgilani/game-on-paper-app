@@ -11,6 +11,8 @@
  *   View    which flag state renders this request (utils/adminView.ts)
  *   Flags   one preview flag flipped on top of that base
  *   Source  which feed the API processed the game from (routes/game.ts)
+ *   Pin     keep the game on that feed for every viewer until it is removed
+ *           (utils/sourceOverride.ts, pages/admin/api/source-override.ts)
  */
 import FlagOverrideDropdown from '../dropdowns/FlagOverrideDropdown.svelte';
 import { isFeatureEnabled, PREVIEW_FLAG_NAMES } from '../../utils/features';
@@ -20,6 +22,7 @@ import { retrieveGameSources, retrieveProcessedGame, type ProcessedGame } from '
 import { getGameCacheConfig } from '../../utils/config';
 import { cleanAbbreviation, generateMarginalString, roundNumber } from '../../utils/misc';
 import { espnLogoLeague, type League } from '../../utils/league';
+import { readSourceOverride } from '../../utils/sourceOverride';
 
 interface Props {
     game?: ProcessedGame
@@ -43,7 +46,11 @@ const flagOptions = !admin ? [] : PREVIEW_FLAG_NAMES.map((name) => {
 const sourceSwitch = admin && isFeatureEnabled('source-switch', Astro.locals);
 const registry = sourceSwitch && id ? await retrieveGameSources(id, league) : null;
 const sources = registry?.sources ?? ['espn'];
-const selectedSource = (sourceSwitch && Astro.url.searchParams.get(SOURCE_PARAM)) || 'espn';
+// The game's pin is the page's default source: the option for it clears
+// `?source=`, and choosing ESPN on a pinned game asks for ESPN explicitly.
+const pinned = sourceSwitch && id ? await readSourceOverride(league, id) : null;
+const defaultSource = pinned?.source ?? 'espn';
+const selectedSource = (sourceSwitch && Astro.url.searchParams.get(SOURCE_PARAM)) || defaultSource;
 const provenance = game?.provenance;
 
 // ESPN comes from the ordinary processed-game path, on the no-source cache
@@ -89,10 +96,52 @@ const cell = (value: number | null, fixed: number, percent?: boolean) =>
             <select class="form-select form-select-sm w-auto" aria-label="Choose the processing source"
                     onchange="window.location.href = this.value">
                 {sources.map((name) => (
-                    <option value={adminToolsHref(Astro.url, { source: name === 'espn' ? null : name })}
+                    <option value={adminToolsHref(Astro.url, { source: name === defaultSource ? null : name })}
                             selected={selectedSource === name}>Source: {name}</option>
                 ))}
             </select>
+        )}
+        {sourceSwitch && id && (pinned || selectedSource !== 'espn') && (
+            <span class="d-inline-flex align-items-center gap-2" data-admin-source-pin
+                  data-league={league} data-id={id} data-home={adminToolsHref(Astro.url, { source: null })}>
+                {pinned && (
+                    <span class="text-small text-muted" title={`set by ${pinned.actor}, ${pinned.set_at}`}>
+                        Pinned: {pinned.source}
+                    </span>
+                )}
+                {selectedSource !== defaultSource && selectedSource !== 'espn' && (
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-pin={selectedSource}>Pin {selectedSource}</button>
+                )}
+                {pinned && (
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-pin="">Unpin</button>
+                )}
+                {/* is:inline, inside this admin-only branch: a public render carries no script for it */}
+                <script is:inline>
+                    // Pin / Unpin, then land on the page without `?source=`: it renders from the
+                    // pin, or from ESPN once it is gone. The endpoint sits behind the /admin gate.
+                    document.querySelectorAll('[data-admin-source-pin] [data-pin]').forEach((button) => {
+                        if (button.dataset.bound) return;
+                        button.dataset.bound = '1';
+                        const box = button.closest('[data-admin-source-pin]');
+                        button.addEventListener('click', async () => {
+                            button.disabled = true;
+                            try {
+                                const res = await fetch('/admin/api/source-override', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ league: box.dataset.league, id: box.dataset.id, source: button.dataset.pin || null }),
+                                });
+                                const body = await res.json().catch(() => ({}));
+                                if (!res.ok || body.ok !== true) throw new Error(body.error || String(res.status));
+                                window.location.href = box.dataset.home;
+                            } catch (e) {
+                                button.textContent = ('Failed: ' + e.message).slice(0, 80);
+                                button.disabled = false;
+                            }
+                        });
+                    });
+                </script>
+            </span>
         )}
         {provenance && (
             <span class="text-small text-muted" data-admin-provenance>
