@@ -1,6 +1,8 @@
 // astro/test/nba/byteIdentity.render.test.ts
-// PR 0 (basketball generalization) gate: the rendered HTML of every /nba route state, snapshotted on 81dbaf1e before
-// any code moved. A diff is a regression in the refactor; never regenerate these files in that PR.
+// PR 0 (basketball generalization) gate: the rendered HTML of every /nba route state. A diff is a regression in the
+// refactor, so these files are never regenerated from the branch. When main itself changes the NBA render (a header
+// island, a dependency bump), re-capture them ON MAIN: a detached worktree of main, with only this harness and its
+// fixtures copied in, then copy the snapshots back. First captured on 81dbaf1e; last re-captured on main 7e71f2d6.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';

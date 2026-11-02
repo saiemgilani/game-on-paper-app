@@ -198,6 +198,15 @@ export function teamLogoUrl(league: League | undefined, teamId: string | number,
     return `https://a.espncdn.com/i/teamlogos/${logoLeague}/500-dark/${id}.png`;
 }
 
+/**
+ * A logo `<img>` whose dark variant failed: try the light one, once. `img.src` reads back
+ * absolute, so the comparison is absolute too; comparing against a site-hosted (root-relative)
+ * light logo would never match, and a failing one would re-request itself forever.
+ */
+export function retryLightLogoOnce(img: { src: string }, light: string, base: string): void {
+    if (img.src !== new URL(light, base).href) img.src = light;
+}
+
 // `nfl.espn_schedule` carries nflverse week numbering, where the postseason
 // CONTINUES the regular-season count instead of restarting at 1 -- so a game in
 // week 22 is the Super Bowl, and "Week 22" would mean nothing to a reader.
