@@ -216,3 +216,76 @@ describe('the compact row possession marker', () => {
         expect(rule('.game-banner .gb-logo')).toMatch(/display:\s*flex/);
     });
 });
+
+// G12 ('spice-cues'): the spice border gets words. With the flag on, a card
+// whose level draws a coloured border carries the label as text and as the
+// bordered element's name, the compact row (no border) carries the text, and
+// the legend reads the same SPICE_LABEL words in border order. Flag off, none
+// of it renders and the legend keeps its old wording.
+describe('spice cues', () => {
+    // ALA (#5, home) v unranked AUB, 4th quarter, 3:00 left, 24-17: the ranked
+    // upset check (3rd/4th, <= 7:30, one score) fires
+    function spicedEvent(id: string) {
+        const e: any = gameEvent(id, { completed: false, live: true, ballTeamId: '2' });
+        e.status = { period: 4, clock: 180, type: { id: '2', name: 'STATUS_IN_PROGRESS', completed: false, detail: '3:00 - 4th', shortDetail: '3:00 - 4th' } };
+        e.competitions[0].status = e.status;
+        return e;
+    }
+    async function page(locals: Record<string, unknown>) {
+        const { default: SchedulePage } = await import('../src/components/schedule/SchedulePage.astro');
+        return container.renderToString(SchedulePage, {
+            props: { season: 2026, week: 2, isScoreboard: true, games: [spicedEvent('405'), gameEvent('401', { completed: true })] },
+            request: new Request('https://gameonpaper.com/'),
+            locals,
+        });
+    }
+    const legend = (html: string) => [...html.slice(html.indexOf('Game border color guide')).matchAll(/<li><strong>(\w+)<\/strong> - ([^<]+)<\/li>/g)].map((m) => `${m[1]} - ${m[2]}`);
+
+    test('flag on: the spiced card names its border, the plain card does not', async () => {
+        const html = await page({ preview: true });
+        const grid = html.slice(html.indexOf('class="row mb-3'));
+        expect(grid).toMatch(/class="row border rounded m-2 mb-4 spice-level-ranked-upset" role="group" aria-label="Ranked upset"/);
+        expect(grid).toContain('<span class="text-small text-muted">Ranked upset</span>');
+        // the final game draws the gray border and carries neither cue
+        expect(grid).toMatch(/class="row border rounded m-2 mb-4 spice-level-none">/);
+        expect([...grid.matchAll(/role="group" aria-label="/g)]).toHaveLength(1);
+        expect([...grid.matchAll(/text-small text-muted">Ranked upset/g)]).toHaveLength(1);
+    });
+
+    test('flag on: the compact row carries the words on its note line, and only the spiced row', async () => {
+        const html = await page({ preview: true });
+        const rows = html.slice(html.indexOf('game-compact-list'), html.indexOf('class="row mb-3'));
+        const spiced = rows.slice(rows.indexOf('/game/405'));
+        expect(spiced.slice(0, spiced.indexOf('</a>'))).toContain('<span class="gb-note small text-center text-muted">Ranked upset</span>');
+        const plain = rows.slice(rows.indexOf('/game/401'));
+        expect(plain.slice(0, plain.indexOf('</a>'))).not.toContain('gb-note');
+        // a row is a link whose name is its text; an aria-label would replace it
+        expect(rows).not.toContain('aria-label');
+    });
+
+    test('flag on: the legend reads SPICE_LABEL, in border order', async () => {
+        const { SPICE_LABEL } = await import('../src/utils/misc');
+        expect(legend(await page({ preview: true }))).toEqual([
+            'Gray - normal',
+            `Green - ${SPICE_LABEL['close-late']}`,
+            `Yellow - ${SPICE_LABEL['ranked-upset']}`,
+            `Orange - ${SPICE_LABEL['ranked-close-late']}`,
+            `Red - ${SPICE_LABEL['fcs-upset']}`,
+        ]);
+    });
+
+    test('flag off: no cue anywhere and the legend keeps its wording', async () => {
+        for (const html of [await page({}), await page({ preview: true, flagOverrides: { 'spice-cues': false } })]) {
+            expect(html).toContain('spice-level-ranked-upset'); // the border itself is public
+            expect(html).not.toContain('aria-label="Ranked upset"');
+            expect(html).not.toContain('>Ranked upset</span>');
+            expect(legend(html)).toEqual([
+                'Gray - normal',
+                'Green - Close game late',
+                'Yellow - Ranked Upset',
+                'Orange - Ranked Opponents + close game late',
+                'Red - FCS Upset',
+            ]);
+        }
+    });
+});

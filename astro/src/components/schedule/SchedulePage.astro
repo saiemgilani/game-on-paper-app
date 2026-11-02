@@ -5,6 +5,7 @@ import Footer from "../Footer.astro";
 import GameCompactRow from "./GameCompactRow.astro";
 import GameThumb from "./GameThumb.astro";
 import { isFeatureEnabled } from "../../utils/features";
+import { SPICE_LABEL, SpiceLevel } from "../../utils/misc";
 import ScheduleDropdown from "./ScheduleDropdown.svelte";
 import Header from "../Header.astro"
 import Scripts from "../Scripts.astro"
@@ -91,6 +92,12 @@ const allTeamIds = games.map(g => {
 // cards are ~40% of a phone viewport each); the card grid stays the >=768px
 // rendering either way.
 const compactRows = isFeatureEnabled('scoreboard-compact', Astro.locals);
+// G12: with 'spice-cues' the legend names each colour with the same words the
+// cards carry (SPICE_LABEL), in border order
+const spiceCues = isFeatureEnabled('spice-cues', Astro.locals);
+const SPICE_LEGEND: [string, SpiceLevel][] = [
+    ['Green', SpiceLevel.SERRANO], ['Yellow', SpiceLevel.CAYENNE], ['Orange', SpiceLevel.GHOST], ['Red', SpiceLevel.REAPER],
+];
 const etFmt = (d: string, opts: Intl.DateTimeFormatOptions) => {
     try {
         return new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', ...opts }).format(new Date(d));
@@ -217,6 +224,12 @@ if (compactRows) {
             <div class="row text-muted small">
                 <div class="col-12">
                     <caption>Game border color guide:
+                        {spiceCues ? (
+                            <ul>
+                                <li><strong>Gray</strong> - normal</li>
+                                {SPICE_LEGEND.map(([colour, level]) => <li><strong>{colour}</strong> - {SPICE_LABEL[level]}</li>)}
+                            </ul>
+                        ) : (
                         <ul>
                             <li><strong>Gray</strong> - normal</li>
                             <li><strong>Green</strong> - Close game late</li>
@@ -224,6 +237,7 @@ if (compactRows) {
                             <li><strong>Orange</strong> - Ranked Opponents + close game late</li>
                             <li><strong>Red</strong> - FCS Upset</li>
                         </ul>
+                        )}
                     </caption>
                 </div>
             </div>

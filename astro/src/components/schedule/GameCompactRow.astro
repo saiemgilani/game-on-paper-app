@@ -18,7 +18,8 @@
 import type { ESPNScheduleEvent } from "../../resources/espn";
 import { espnLogoLeague } from '../../utils/league';
 import { leaguePath } from "../../utils/league";
-import { cleanAbbreviation, cleanScore, isChampionshipEvent } from "../../utils/misc";
+import { calculateSpiceLevel, cleanAbbreviation, cleanScore, isChampionshipEvent, SPICE_LABEL } from "../../utils/misc";
+import { isFeatureEnabled } from "../../utils/features";
 
 interface Props {
   game: ESPNScheduleEvent;
@@ -62,6 +63,9 @@ const side = (c: any, score: number, other: number) => ({
   lost: completed && score < other,
   hasBall: live && ballTeamId == c.id,
 });
+// G12 ('spice-cues'): the row has no spice border, so the card's text cue is
+// the only place a phone reader gets it; it rides the note line
+const spiceLabel = isFeatureEnabled('spice-cues', Astro.locals) ? SPICE_LABEL[calculateSpiceLevel(game)] : null;
 const away = side(awayComp, awayScore, homeScore);
 const home = side(homeComp, homeScore, awayScore);
 ---
@@ -84,4 +88,5 @@ const home = side(homeComp, homeScore, awayScore);
     </span>
   </span>
   {gameNote && <span class:list={["gb-note small text-center text-truncate", isChamp ? "text-championship" : "text-muted"]}>{gameNote}</span>}
+  {spiceLabel && <span class="gb-note small text-center text-muted">{spiceLabel}</span>}
 </a>
