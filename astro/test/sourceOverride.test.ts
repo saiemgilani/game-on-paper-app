@@ -352,12 +352,12 @@ describe('the pin controls in the admin tools', () => {
     beforeAll(async () => {
         container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
     });
-    const render = async (locals: Record<string, unknown>, search = '') => {
+    const render = async (locals: Record<string, unknown>, search = '', game: any = processedPayload()) => {
         // no render may reach the API: the registry falls back to ESPN alone and the compare panel to empty
         respond = (url) => { throw new Error(`unexpected fetch in test: ${url}`); };
         const { default: AdminGameTools } = await import('../src/components/game/AdminGameTools.astro');
         return container.renderToString(AdminGameTools, {
-            props: { game: processedPayload() as any },
+            props: { game },
             request: new Request(`https://gameonpaper.com/nfl/game/401772944${search}`),
             locals: { league: 'nfl', ...locals } as any,
         });
@@ -376,6 +376,21 @@ describe('the pin controls in the admin tools', () => {
         expect(html).toContain('Pinned: shield');
         expect(html).toContain('data-pin=""');
         expect(html).not.toContain('Pin shield');
+    });
+
+    test('a pin the processor refused (ESPN fallback, no provenance) says so and draws no ESPN-vs-ESPN compare', async () => {
+        pin();
+        const html = await render({ preview: true, adminAuthed: true });
+        expect(html).toContain('pin not served, showing ESPN');
+        expect(html).not.toContain('data-admin-source-compare');
+    });
+
+    test('a pin the processor served (provenance says so) keeps its compare panel and no notice', async () => {
+        pin();
+        const served = { ...processedPayload(), provenance: { source: 'shield', requested: 'shield', fallback_used: false, contract_version: null, contract_sha: null } };
+        const html = await render({ preview: true, adminAuthed: true }, '', served);
+        expect(html).toContain('data-admin-source-compare');
+        expect(html).not.toContain('pin not served');
     });
 
     test('viewing an unpinned alternate source offers to pin it', async () => {

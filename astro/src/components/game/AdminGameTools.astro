@@ -54,6 +54,10 @@ const pinned = sourceSwitch && id ? await readSourceOverride(league, id) : null;
 const defaultSource = pinned?.source ?? 'espn';
 const selectedSource = (sourceSwitch && Astro.url.searchParams.get(SOURCE_PARAM)) || defaultSource;
 const provenance = game?.provenance;
+// A pin the processor refused (400) is processed from ESPN without `?source=`
+// (resources/python.ts requestProcess), so the payload carries no provenance.
+// Comparing it would set ESPN against ESPN under the pin's label: say so instead.
+const pinNotServed = !!pinned && !!game && !provenance && selectedSource === pinned.source;
 
 // ESPN comes from the ordinary processed-game path, on the no-source cache
 // key -- the SAME entry the page itself fills, so a warm key costs nothing. A
@@ -68,7 +72,7 @@ const provenance = game?.provenance;
 // run of the visual matrix showed.
 const COMPARE_TIMEOUT_MS = 30_000;
 let comparison: SourceComparison | null = null;
-if (sourceSwitch && game && id && selectedSource !== 'espn') {
+if (sourceSwitch && game && id && selectedSource !== 'espn' && !pinNotServed) {
     try {
         const config = getGameCacheConfig(game.header.competitions[0].date, game.header.competitions[0].status);
         comparison = compareSources(game, await Promise.race([
@@ -110,6 +114,9 @@ const cell = (value: number | null, fixed: number, percent?: boolean) =>
                     <span class="text-small text-muted" title={`set by ${pinned.actor}, ${pinned.set_at}`}>
                         Pinned: {pinned.source}
                     </span>
+                )}
+                {pinNotServed && (
+                    <span class="text-small text-muted" data-admin-pin-not-served>(pin not served, showing ESPN)</span>
                 )}
                 {selectedSource !== defaultSource && selectedSource !== 'espn' && (
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-pin={selectedSource}>Pin {selectedSource}</button>
