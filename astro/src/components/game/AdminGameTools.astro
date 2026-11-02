@@ -133,6 +133,11 @@ const cell = (value: number | null, fixed: number, percent?: boolean) =>
                                 });
                                 const body = await res.json().catch(() => ({}));
                                 if (!res.ok || body.ok !== true) throw new Error(body.error || String(res.status));
+                                if (body.purged === false) {
+                                    // the pin is written, but the cached page/card were not dropped
+                                    button.textContent = 'Saved; purge failed: use Purge on /admin';
+                                    return;
+                                }
                                 window.location.href = box.dataset.home;
                             } catch (e) {
                                 button.textContent = ('Failed: ' + e.message).slice(0, 80);

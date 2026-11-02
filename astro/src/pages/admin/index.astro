@@ -352,7 +352,8 @@ const subtitle = "Operational dashboards for Game on Paper";
     const [d, guards, pins] = await Promise.all([
       api('games'),
       fetch('/admin/api/guards').then((r) => r.json()).catch(() => ({ marks: [] })),
-      fetch('/admin/api/source-override').then((r) => r.json()).catch(() => ({ overrides: [] })),
+      // an unreadable list is an error row, never an empty table: no pins and a KV outage must not look alike
+      fetch('/admin/api/source-override').then((r) => r.json()).catch(() => ({ ok: false, error: 'request failed' })),
     ]);
     const markBy = Object.fromEntries((guards.marks ?? []).map((m) => [String(m.game_id), m]));
     table('t-watchlist', ['Game', 'Score', 'Status', 'Req 30m', 'Render', 'Cache intent', 'ESPN fetch', 'DQ lints', 'Guard'],
@@ -384,12 +385,14 @@ const subtitle = "Operational dashboards for Game on Paper";
           b.textContent = 'Reset ✓';
         } catch { b.textContent = 'Failed'; b.disabled = false; }
       }));
+    const pinNote = pins.ok !== true ? `list unavailable: ${esc(pins.error ?? 'unknown error')}`
+      : pins.truncated ? 'list truncated at the first 2000 pins' : '';
     table('t-overrides', ['Game', 'League', 'Source', 'Set by', 'Set at', ''],
-      (pins.overrides ?? []).map((o) => ({ cells: [
+      (pinNote ? [{ cells: [`<span class="pill crit">${pinNote}</span>`, '', '', '', '', ''] }] : []).concat((pins.overrides ?? []).map((o) => ({ cells: [
         `<a href="${o.league === 'nfl' ? '/nfl' : ''}/game/${esc(o.game_id)}" target="_blank"><span class="mono">${esc(o.game_id)}</span></a>`,
         esc(o.league), `<span class="mono">${esc(o.source ?? '?')}</span>`, esc(o.actor ?? '—'),
         o.set_at ? esc(new Date(o.set_at).toLocaleString()) : '—',
-        `<button class="btn btn-sm btn-outline-danger" data-override-league="${esc(o.league)}" data-override-id="${esc(o.game_id)}" title="Remove the pin and purge the page">Remove</button>`] })));
+        `<button class="btn btn-sm btn-outline-danger" data-override-league="${esc(o.league)}" data-override-id="${esc(o.game_id)}" title="Remove the pin and purge the page">Remove</button>`] }))));
     document.querySelectorAll('#t-overrides [data-override-id]').forEach((b) =>
       b.addEventListener('click', async () => {
         b.disabled = true;
@@ -398,7 +401,7 @@ const subtitle = "Operational dashboards for Game on Paper";
             body: JSON.stringify({ league: b.dataset.overrideLeague, id: b.dataset.overrideId, source: null }) });
           const j = await r.json().catch(() => ({}));
           if (!r.ok || j.ok !== true) throw new Error(j.error ?? r.status);
-          b.textContent = 'Removed ✓';
+          b.textContent = j.purged === false ? 'Removed; purge failed' : 'Removed ✓';
         } catch { b.textContent = 'Failed'; b.disabled = false; }
       }));
     const fetchBy = Object.fromEntries(d.lastFetch.map((f) => [f.game_id, f]));

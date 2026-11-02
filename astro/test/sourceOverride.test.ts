@@ -148,29 +148,83 @@ describe('the game page honours the pin', () => {
         expect(processCalls()[0].url).toMatch(/\/nfl\/401772944\/process\?source=shield$/);
         expect(processCalls()[0].init.cf.cacheKey).toContain('&source=shield');
     });
+
+    test('a retired pin (400) falls back to ESPN for the share card and the QA badge too', async () => {
+        respond = (url) => url.includes('source=') ? new Response('unknown source', { status: 400 }) : ok();
+        const { retrieveCardPage, retrieveProcessedGame } = await import('../src/resources/python');
+        expect(await retrieveCardPage('401772944', 'nfl', 30, 'shield')).not.toBeNull();
+        // liveQa reads through retrieveProcessedGame
+        expect((await retrieveProcessedGame('401772944', 30, 'nfl', 'shield')).plays).toHaveLength(1);
+        expect(processCalls().map((c) => c.url.split('/process')[1])).toEqual(['?source=shield', '', '?source=shield', '']);
+    });
+
+    test('any other processor failure on a pinned source is not papered over', async () => {
+        respond = (url) => url.includes('source=') ? new Response('boom', { status: 500 }) : ok();
+        const { retrieveProcessedGame } = await import('../src/resources/python');
+        await expect(retrieveProcessedGame('401772944', 30, 'nfl', 'shield')).rejects.toThrow();
+        expect(processCalls()).toHaveLength(1);
+    });
+
+    test('a kept share card is keyed per source, the ESPN key unchanged', async () => {
+        const { cardKey } = await import('../src/routes/shareCard');
+        const espn = cardKey('nfl', 1, 'final', 'full');
+        expect(cardKey('nfl', 1, 'final', 'full', undefined)).toBe(espn);
+        expect(cardKey('nfl', 1, 'final', 'full', 'shield')).toBe(`${espn}:shield`);
+    });
+
+    test('the registry lookup is timeboxed, so a stalled processor cannot hang a pin', async () => {
+        respond = () => new Response(JSON.stringify({ sources: ['espn'] }), { status: 200 });
+        const { retrieveGameSources } = await import('../src/resources/python');
+        await retrieveGameSources('401772944', 'nfl');
+        expect(calls[0].init.signal).toBeInstanceOf(AbortSignal);
+    });
 });
 
 describe('POST /admin/api/source-override', () => {
     const registry = () => new Response(JSON.stringify({ game_id: '401772944', sources: ['espn', 'shield', 'cbs'] }), { status: 200 });
-    async function post(body: unknown) {
+    async function post(body: unknown, contentType = 'application/json', invalidate?: (o: unknown) => Promise<void>) {
         const { POST } = await import('../src/pages/admin/api/source-override');
         const { gopStorage, createCollector } = await import('../src/utils/telemetry');
         const invalidated: unknown[] = [];
         const collector = createCollector();
         const res = await gopStorage.run(collector, () => (POST as any)({
-            request: new Request('https://gameonpaper.com/admin/api/source-override', { method: 'POST', body: JSON.stringify(body) }),
+            request: new Request('https://gameonpaper.com/admin/api/source-override',
+                { method: 'POST', body: JSON.stringify(body), headers: { 'content-type': contentType } }),
             locals: { adminAuthed: true, adminActor: 'saiem' },
-            cache: { invalidate: async (o: unknown) => { invalidated.push(o); }, set: () => {} },
+            cache: { invalidate: invalidate ?? (async (o: unknown) => { invalidated.push(o); }), set: () => {} },
         }));
         return { res: res as Response, json: await (res as Response).json(), invalidated, audit: collector.events.filter((e) => e.table === 'admin_audit') };
     }
 
-    test('rejects anything that is not a known league, a game id and a source', async () => {
+    test('rejects anything that is not a known league, a game id and a source, and audits each refusal', async () => {
         for (const body of [{ league: 'nba', id: '401772944', source: 'shield' }, { league: 'nfl', id: '12', source: 'shield' },
             { league: 'nfl', id: '401772944', source: 5 }, { league: 'nfl', id: '401772944', source: 'espn' }]) {
-            expect((await post(body)).res.status).toBe(400);
+            const { res, audit } = await post(body);
+            expect(res.status).toBe(400);
+            expect(audit).toHaveLength(1);
+            expect(audit[0].row).toMatchObject({ action: 'source-override', ok: false, actor: 'saiem' });
         }
         expect(kv.size).toBe(0);
+    });
+
+    test('takes application/json only: a form-type body, which a cross-site page can send without a preflight, is refused', async () => {
+        respond = registry;
+        for (const type of ['text/plain', 'application/x-www-form-urlencoded', 'multipart/form-data', '']) {
+            const { res, audit } = await post({ league: 'nfl', id: '401772944', source: 'shield' }, type);
+            expect(res.status).toBe(415);
+            expect(audit[0].row).toMatchObject({ ok: false });
+        }
+        expect(kv.size).toBe(0);
+        expect(calls).toHaveLength(0);   // refused before the registry is even asked
+    });
+
+    test('a failed purge is reported and audited as not ok; the pin itself stands', async () => {
+        respond = registry;
+        const { json, audit } = await post({ league: 'nfl', id: '401772944', source: 'shield' }, 'application/json',
+            async () => { throw new Error('no cache provider'); });
+        expect(json).toMatchObject({ ok: true, purged: false });
+        expect(kv.has('source-override:nfl:401772944')).toBe(true);
+        expect(audit[0].row).toMatchObject({ ok: false, detail: 'nfl:401772944 shield (page purge failed)' });
     });
 
     test("rejects a source outside the game's registry, and audits the attempt", async () => {
@@ -183,7 +237,6 @@ describe('POST /admin/api/source-override', () => {
 
     test('pins durably, purges the page and its card, and audits who did it', async () => {
         respond = registry;
-        kv.set('card:nfl:401772944:final:full:' + (await import('../src/resources/python')).APP_VERSION, { value: 'png' });
         const { res, json, invalidated, audit } = await post({ league: 'nfl', id: '401772944', source: 'shield' });
         expect(res.status).toBe(200);
         expect(json.ok).toBe(true);
@@ -191,7 +244,7 @@ describe('POST /admin/api/source-override', () => {
         // no expirationTtl: it lasts until removed
         expect(vi.mocked(env.ESPN_API_CACHE.put).mock.calls[0][2]).not.toHaveProperty('expirationTtl');
         expect(invalidated).toEqual([{ path: '/nfl/game/401772944' }, { path: '/nfl/game/401772944/card.png' }]);
-        expect([...kv.keys()]).toEqual(['source-override:nfl:401772944']);
+        expect(json.purged).toBe(true);
         expect(audit[0].row).toMatchObject({ action: 'source-override', detail: 'nfl:401772944 shield', ok: true, actor: 'saiem' });
     });
 
@@ -211,6 +264,25 @@ describe('POST /admin/api/source-override', () => {
         expect(json.ok).toBe(true);
         expect(kv.size).toBe(0);
         expect(audit[0].row).toMatchObject({ detail: 'nfl:401772944 removed', ok: true });
+    });
+
+    test('a list cut at the cap says so instead of passing as complete', async () => {
+        env.ESPN_API_CACHE.list = async () => ({
+            keys: Array.from({ length: 1000 }, (_, i) => ({ name: `source-override:cfb:40000${i}`, metadata: PIN })),
+            list_complete: false, cursor: 'next',
+        });
+        const { GET } = await import('../src/pages/admin/api/source-override');
+        const listed = await (await (GET as any)({})).json();
+        expect(listed.overrides).toHaveLength(2000);
+        expect(listed.truncated).toBe(true);
+    });
+
+    test('a KV failure on the list is a 500 with ok:false, not an empty list', async () => {
+        env.ESPN_API_CACHE.list = async () => { throw new Error('kv down'); };
+        const { GET } = await import('../src/pages/admin/api/source-override');
+        const res = await (GET as any)({});
+        expect(res.status).toBe(500);
+        expect((await res.json()).ok).toBe(false);
     });
 });
 
