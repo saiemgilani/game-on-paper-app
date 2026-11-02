@@ -14,6 +14,8 @@ describe('METHOD_NOTES', () => {
         expect(seasonNote('cfb')).toContain('FBS vs FBS');
         expect(seasonNote(undefined)).toBe(seasonNote('cfb'));
         expect(seasonNote('nfl')).toContain('regular season');
+        // no NBA note is written: it must not borrow the NFL one
+        expect(seasonNote('nba')).toBeUndefined();
     });
 
     test('the game note says garbage time is included; the adjusted note has no typo', () => {

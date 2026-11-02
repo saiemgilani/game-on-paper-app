@@ -11,7 +11,9 @@ export const METHOD_NOTES = {
     game: 'Every play, garbage time included. Not adjusted for opponent.',
 } as const;
 
-/** The season tables' note for a league; a page without a league is the college site. */
-export function seasonNote(league: League | undefined): string {
-    return (league ?? 'cfb') === 'cfb' ? METHOD_NOTES.cfbSeason : METHOD_NOTES.nflSeason;
+/** The season tables' note for a football league (a page without a league is the college site); undefined for a
+ *  league with no note written, so a caller keeps its own copy rather than borrowing another league's. */
+export function seasonNote(league: League | undefined): string | undefined {
+    const lg = league ?? 'cfb';
+    return lg === 'cfb' ? METHOD_NOTES.cfbSeason : lg === 'nfl' ? METHOD_NOTES.nflSeason : undefined;
 }
