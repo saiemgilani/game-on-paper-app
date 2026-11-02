@@ -37,7 +37,7 @@ const cards = entries.map((e) => {
     const lines = cardLines(e.rows, shown);
     const head = Object.values(lines).toSorted((a, b) => Number(b.plays ?? 0) - Number(a.plays ?? 0))[0];
     // the team that season, else (no rows that season) his current one, as on his page
-    const teamId = head?.team_id ?? (season === null ? e.player.team_id : null);
+    const teamId = (head?.team_id ?? (season === null ? e.player.team_id : null)) as string | number | null;
     const realTeam = String(head?.pos_team ?? (season === null ? e.player.team ?? '' : ''));
     return {
         id: e.id,
@@ -182,6 +182,9 @@ const addTemplate = compareHref(league, [...ids, '__ID__'], season);
 
     // The add box: the header search's /api/search, player hits only, each a link to this
     // comparison with that player added. Hits already on the page are left out.
+    // what /api/search answers (utils/search.ts SearchHit; not imported, so its imports stay off the page)
+    type Hit = { type: string; id: string; label: string; sublabel?: string };
+
     const form = document.getElementById('player-compare-add') as HTMLFormElement | null;
     if (form) {
         const input = form.querySelector('input') as HTMLInputElement;
@@ -192,14 +195,14 @@ const addTemplate = compareHref(league, [...ids, '__ID__'], season);
         let ctrl: AbortController | undefined;
         let first: string | null = null;
 
-        const show = (hits: { id: string; label: string; sublabel?: string }[]) => {
+        const show = (hits: Hit[]) => {
             list.replaceChildren();
             first = null;
             if (!hits.length) {
                 const none = document.createElement('span');
                 none.className = 'dropdown-item-text text-muted';
                 none.textContent = 'No players';
-                list.append(none);
+                list.appendChild(none);
             }
             for (const h of hits) {
                 const a = document.createElement('a');
@@ -210,10 +213,10 @@ const addTemplate = compareHref(league, [...ids, '__ID__'], season);
                     const sub = document.createElement('span');
                     sub.className = 'd-block small text-muted';
                     sub.textContent = h.sublabel;
-                    a.append(sub);
+                    a.appendChild(sub);
                 }
                 first ??= a.href;
-                list.append(a);
+                list.appendChild(a);
             }
             list.classList.add('show');
         };
@@ -234,8 +237,8 @@ const addTemplate = compareHref(league, [...ids, '__ID__'], season);
                     // type=player: players only, before the cap, so team hits cannot crowd them out
                     const url = carryAdminParams(`/api/search?${new URLSearchParams({ q: term, league: form.dataset.league ?? 'cfb', type: 'player' })}`, page);
                     const res = await fetch(url, { signal: ctrl.signal });
-                    const hits = res.ok ? await res.json() : [];
-                    show(hits.filter((h: { type: string; id: string }) => h.type === 'player' && !have.has(String(h.id))));
+                    const hits: Hit[] = res.ok ? await res.json() as Hit[] : [];
+                    show(hits.filter((h) => h.type === 'player' && !have.has(String(h.id))));
                 } catch (e) {
                     if ((e as Error).name !== 'AbortError') show([]);
                 }
