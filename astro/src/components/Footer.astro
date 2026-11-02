@@ -1,6 +1,7 @@
 ---
 import { getSecret } from "astro:env/server"
 import { LEAGUES } from "../utils/league"
+import { isFeatureEnabled } from "../utils/features"
 
 const APP_VERSION = getSecret("APP_VERSION");
 const preview = Astro.locals.preview === true;
@@ -29,7 +30,7 @@ const preview = Astro.locals.preview === true;
     <div class="col-12 text-muted small">
       <p>Built by <a href="https://github.com/akeaswaran/">Akshay Easwaran</a>, <a href="https://github.com/saiemgilani">Saiem Gilani</a>, and others. Data from <a href={`https://espn.com/${LEAGUES[Astro.locals.league ?? 'cfb'].espnPath}`}>ESPN.com</a>, <a href="https://www.sportsdataverse.org">Sportsdataverse.org</a>, and <a href="https://collegefootballdata.com">collegefootballdata.com</a>.</p>
 
-      <p>Please note: some box score values may be estimated due to data availability. Learn more about the stats used in our <a href="/glossary">Glossary</a>.</p>
+      <p>Please note: some box score values may be estimated due to data availability. Learn more about the stats used in our <a href="/glossary">Glossary</a>.{isFeatureEnabled('about-page', Astro.locals) && <> Meet the team on our <a href="/about">About</a> page.</>}</p>
       {(Astro.locals.league ?? 'cfb') === 'cfb'
         ? (<p>See the current <a href="/rankings">Top 25 rankings</a> and <a href="/standings">conference standings</a>.</p>)
         : (<p>See the current <a href="/nfl/standings">division standings</a>.</p>)}
