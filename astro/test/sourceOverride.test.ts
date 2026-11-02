@@ -142,6 +142,14 @@ describe('the game page honours the pin', () => {
         expect(processCalls().map((c) => c.url.split('/process')[1])).toEqual(['?source=shield', '']);
     });
 
+    test("an admin's explicit ?source= that the processor refuses (400) is an error, never ESPN under that source's label", async () => {
+        respond = (url) => url.includes('source=') ? new Response('unknown source', { status: 400 }) : ok();
+        const { loadGameRoute } = await import('../src/routes/game');
+        const r: any = await loadGameRoute(fakeAstro('https://gameonpaper.com/nfl/game/401772944?source=cbs', { preview: true, adminAuthed: true }), 'nfl');
+        expect(r.game).toBeNull();
+        expect(processCalls().map((c) => c.url.split('/process')[1])).toEqual(['?source=cbs']);
+    });
+
     test('the share card asks for the same request, so it shares the page entry', async () => {
         const { retrieveCardPage } = await import('../src/resources/python');
         await retrieveCardPage('401772944', 'nfl', 30, 'shield');
@@ -152,16 +160,25 @@ describe('the game page honours the pin', () => {
     test('a retired pin (400) falls back to ESPN for the share card and the QA badge too', async () => {
         respond = (url) => url.includes('source=') ? new Response('unknown source', { status: 400 }) : ok();
         const { retrieveCardPage, retrieveProcessedGame } = await import('../src/resources/python');
-        expect(await retrieveCardPage('401772944', 'nfl', 30, 'shield')).not.toBeNull();
+        expect(await retrieveCardPage('401772944', 'nfl', 30, 'shield', true)).not.toBeNull();
         // liveQa reads through retrieveProcessedGame
-        expect((await retrieveProcessedGame('401772944', 30, 'nfl', 'shield')).plays).toHaveLength(1);
+        expect((await retrieveProcessedGame('401772944', 30, 'nfl', 'shield', true)).plays).toHaveLength(1);
         expect(processCalls().map((c) => c.url.split('/process')[1])).toEqual(['?source=shield', '', '?source=shield', '']);
+    });
+
+    test('without the pin flag a refused source throws: the fallback is for pins only', async () => {
+        respond = (url) => url.includes('source=') ? new Response('unknown source', { status: 400 }) : ok();
+        const { retrieveCardPage, retrieveProcessedGame } = await import('../src/resources/python');
+        await expect(retrieveProcessedGame('401772944', 30, 'nfl', 'shield')).rejects.toThrow();
+        // retrieveCardPage fails open to null rather than drawing ESPN's game as this source's
+        expect(await retrieveCardPage('401772944', 'nfl', 30, 'shield')).toBeNull();
+        expect(processCalls().map((c) => c.url.split('/process')[1])).toEqual(['?source=shield', '?source=shield']);
     });
 
     test('any other processor failure on a pinned source is not papered over', async () => {
         respond = (url) => url.includes('source=') ? new Response('boom', { status: 500 }) : ok();
         const { retrieveProcessedGame } = await import('../src/resources/python');
-        await expect(retrieveProcessedGame('401772944', 30, 'nfl', 'shield')).rejects.toThrow();
+        await expect(retrieveProcessedGame('401772944', 30, 'nfl', 'shield', true)).rejects.toThrow();
         expect(processCalls()).toHaveLength(1);
     });
 
@@ -283,6 +300,35 @@ describe('POST /admin/api/source-override', () => {
         const res = await (GET as any)({});
         expect(res.status).toBe(500);
         expect((await res.json()).ok).toBe(false);
+    });
+});
+
+describe('purge-game, the re-purge the pin docs send admins to', () => {
+    async function purge(query: string) {
+        const { POST } = await import('../src/pages/admin/api/purge-game');
+        const invalidated: unknown[] = [];
+        const res = await (POST as any)({
+            url: new URL(`https://gameonpaper.com/admin/api/purge-game?${query}`),
+            request: new Request(`https://gameonpaper.com/admin/api/purge-game?${query}`, { method: 'POST' }),
+            locals: { adminAuthed: true, adminActor: 'saiem' },
+            cache: { invalidate: async (o: unknown) => { invalidated.push(o); }, set: () => {} },
+        });
+        return { res: res as Response, invalidated };
+    }
+
+    test("an id purges both leagues' share cards along with the pages", async () => {
+        const { res, invalidated } = await purge('ids=401772944');
+        expect(res.status).toBe(200);
+        expect(invalidated).toEqual(expect.arrayContaining([
+            { path: '/game/401772944' }, { path: '/nfl/game/401772944' },
+            { path: '/game/401772944/card.png' }, { path: '/nfl/game/401772944/card.png' },
+        ]));
+    });
+
+    test("the share-card tag is purgeable (the route caches every card under it)", async () => {
+        const { res, invalidated } = await purge('tags=share-card');
+        expect(res.status).toBe(200);
+        expect(invalidated).toEqual([{ tags: ['share-card'] }]);
     });
 });
 

@@ -1198,8 +1198,9 @@ function cleanUpBoxScores(baseData: any[], pbp: ProcessedGame): any[] {
     return baseData
 }
 
-export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string): Promise<ProcessedGame> {
-    const processed: ProcessedGame = await processPlays(gameId, cacheTTL, league, source);
+/** `fallbackOnRetired`: `source` is a pin (utils/sourceOverride.ts), so a 400 falls back to ESPN; see requestProcess. */
+export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string, fallbackOnRetired = false): Promise<ProcessedGame> {
+    const processed: ProcessedGame = await processPlays(gameId, cacheTTL, league, source, fallbackOnRetired);
 
     const pbp: ProcessedGame = {
         ...processed,
@@ -1341,9 +1342,9 @@ export function cardPage(game: ProcessedGame): CardPage {
  * costs the API drawing only: the play-by-play pipeline runs once per page cache window, for the
  * page, and never again for a card. `state` is the state that payload was processed in.
  */
-export async function retrieveCardPage(gameId: string | number, league: League, cacheTTL: number, source?: string): Promise<CardPage | null> {
+export async function retrieveCardPage(gameId: string | number, league: League, cacheTTL: number, source?: string, fallbackOnRetired = false): Promise<CardPage | null> {
     try {
-        return cardPage(JSON.parse(await requestProcess(gameId, cacheTTL, league, source)));
+        return cardPage(JSON.parse(await requestProcess(gameId, cacheTTL, league, source, fallbackOnRetired)));
     } catch (e) {
         console.error(`ERROR while fetching the processed game for a share card, ${league} ${gameId}: ${e}`);
         return null;
@@ -1450,27 +1451,30 @@ export async function requestProcessor(path: string, cacheTTL: number, query = '
 
 /**
  * `/process` for one game and source. The page and its card both come through here, so they
- * build the same query and share a cache entry. A source this deploy no longer serves (the
- * contract pin dropped the adapter: 400 unknown source, e.g. a stale pin in
- * utils/sourceOverride.ts) falls back to ESPN rather than losing the game.
+ * build the same query and share a cache entry. With `fallbackOnRetired` -- the source is a PIN
+ * (utils/sourceOverride.ts), not an admin's `?source=` -- a source this deploy no longer serves
+ * (the contract pin dropped the adapter: 400 unknown source) falls back to ESPN rather than
+ * losing the game for every viewer. An admin's explicit `?source=` never falls back: ESPN's game
+ * rendered under that source's label (and compared with ESPN as if it were that source) would
+ * be a wrong answer, where the error is a true one.
  */
-async function requestProcess(gameId: string | number, cacheTTL: number, league: League, source?: string): Promise<string> {
+async function requestProcess(gameId: string | number, cacheTTL: number, league: League, source?: string, fallbackOnRetired = false): Promise<string> {
     const path = `${league}/${gameId}/process`;
     try {
         return await requestProcessor(path, cacheTTL, source ? `source=${encodeURIComponent(source)}` : '');
     } catch (e) {
-        if (!source || !(e instanceof ProcessorError) || e.status !== 400) throw e;
+        if (!source || !fallbackOnRetired || !(e instanceof ProcessorError) || e.status !== 400) throw e;
         console.warn(`source ${source} rejected for ${league} ${gameId}; processing from ESPN: ${e.message}`);
         return requestProcessor(path, cacheTTL);
     }
 }
 
-async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string): Promise<ProcessedGame> {
+async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string, fallbackOnRetired = false): Promise<ProcessedGame> {
     // `source` only ever arrives from the 'source-switch' preview path. It has
     // to reach the cache key as well as the URL: two sources' payloads for one
     // game are different responses, and a shared key would pin whichever
     // landed first for the whole TTL (a year on a completed game).
-    const content = await requestProcess(gameId, cacheTTL, league, source);
+    const content = await requestProcess(gameId, cacheTTL, league, source, fallbackOnRetired);
 
     try {
         const resp: ProcessedGame = JSON.parse(content);

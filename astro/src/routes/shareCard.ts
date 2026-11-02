@@ -128,7 +128,8 @@ export function shareCardRoute(league: League): APIRoute {
         // same cache entry, same TTL as the page), so it costs the API drawing, not a second
         // play-by-play run.
         const comp = header.competitions[0];
-        const page = state === 'pre' ? null : await retrieveCardPage(id, league, getGameCacheConfig(comp.date, comp.status).maxAge || 30, source);
+        // `true`: the card route reads no `?source=`, so any source here is a pin
+        const page = state === 'pre' ? null : await retrieveCardPage(id, league, getGameCacheConfig(comp.date, comp.status).maxAge || 30, source, true);
         const png = await retrieveShareCard(id, league, state, variant, state === 'pre' ? await projection(header, league) : undefined, logos, page);
         if (!png) return new Response('Card unavailable', { status: 502, headers: NO_STORE });
 

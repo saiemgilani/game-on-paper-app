@@ -193,7 +193,7 @@ export async function livePlayerGames(
             // the game page's live-game maxAge; the cache KEY is TTL-independent
             // (`.../process?v=<PROCESSOR_VERSION>`), so this shares its entry.
             out[id].qa = qaBadge(await retrieveProcessedGame(id, CURRENT_SEASON_CONFIG.liveGameRefreshRate, league,
-                await gameSource(league, id, sourceOverrides)));
+                await gameSource(league, id, sourceOverrides), true));   // a pin, never a ?source=
         } catch (e) {
             console.warn(`live badge: no processed payload for ${league} ${id}: ${e}`);
         }

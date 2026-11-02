@@ -42,7 +42,9 @@ const flagOptions = !admin ? [] : PREVIEW_FLAG_NAMES.map((name) => {
 
 // The pill row lists the contract's registry in failover order, from the API.
 // Availability is never probed: that would be one upstream fetch per source
-// per render. A source the pin does not carry answers 400 when selected.
+// per render. A source the deploy's contract pin does not carry answers 400
+// when selected, and the page errors rather than falling back: only a game's
+// stored pin (utils/sourceOverride.ts) falls back to ESPN on a 400.
 const sourceSwitch = admin && isFeatureEnabled('source-switch', Astro.locals);
 const registry = sourceSwitch && id ? await retrieveGameSources(id, league) : null;
 const sources = registry?.sources ?? ['espn'];

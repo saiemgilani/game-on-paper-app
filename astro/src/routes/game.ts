@@ -59,6 +59,8 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
         ? Astro.url.searchParams.get(SOURCE_PARAM)
         : null;
     const source = await gameSource(league, id, sourceSwitch, explicitSource);
+    // only a pin falls back to ESPN when the processor refuses it; an admin's ?source= errors
+    const pinned = !explicitSource;
     let espnGame: ESPNPlayByPlayResponse | null = null;
     let game: ProcessedGame | null = null;
     let headerFallback = false;
@@ -72,7 +74,7 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
             // resources/espn.ts on the 403s), and its payload carries the same
             // `header` the page reads. Render from that instead of 500ing into
             // "Game Not Found".
-            game = await retrieveProcessedGame(id, 30, league, source);
+            game = await retrieveProcessedGame(id, 30, league, source, pinned);
             espnGame = { gameId: Number(id), gamepackageJSON: { header: game.header } };
             headerFallback = true;
         }
@@ -96,7 +98,7 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
 
         const config = getGameCacheConfig(espnGame.gamepackageJSON.header.competitions[0].date, espnGame.gamepackageJSON.header.competitions[0].status)
         if (!game && !ESPN_INVALID_GAME_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name)) {
-            game = await retrieveProcessedGame(id, config.maxAge || 30, league, source);
+            game = await retrieveProcessedGame(id, config.maxAge || 30, league, source, pinned);
         }
 
         if (guarded.regressed || headerFallback) {
