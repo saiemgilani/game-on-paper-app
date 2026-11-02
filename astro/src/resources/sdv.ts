@@ -1231,9 +1231,10 @@ export async function retrieveMatchupHistory(team1Id: string | number, team2Id: 
  * this final, either way round (home/away swapped is a second read; a tie needs one). CFB is
  * FBS vs FBS only. Both reads must succeed inside the timeout or the answer is `[]`: a
  * half-answered lookup could miss an earlier game, and the chip must fail closed, never
- * stall or break the header.
+ * stall or break the header. A failure is `null`, not `[]`: the caller must not cache a
+ * chipless render of a game that may be first (`[]` is a real "no match").
  */
-export async function retrieveFirstFinal(league: League, homePoints: number, awayPoints: number, timeoutMs = 3000): Promise<FinalScoreRow[]> {
+export async function retrieveFirstFinal(league: League, homePoints: number, awayPoints: number, timeoutMs = 3000): Promise<FinalScoreRow[] | null> {
     if (!LEAGUES[league]?.sdvEnabled || !FIRST_FINAL_SPAN[league]) return [];
     const pairs = homePoints === awayPoints ? [[homePoints, awayPoints]] : [[homePoints, awayPoints], [awayPoints, homePoints]];
     try {
@@ -1246,7 +1247,7 @@ export async function retrieveFirstFinal(league: League, homePoints: number, awa
         return earliestFinals((await Promise.all(reads)).flat());
     } catch (e) {
         console.warn(`first-final lookup failed, no chip: ${e}`);
-        return [];
+        return null;
     }
 }
 

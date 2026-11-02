@@ -11,12 +11,18 @@ import { earliestFinals, finalScore, finalScoreFirst, firstFinalLabel } from '..
 import { loadGzJson } from './helpers/tables';
 
 // rows() returning a number answers that HTTP status; returning 'hang' never answers (until aborted)
-const net = vi.hoisted(() => ({ urls: [] as string[], rows: (_u: URL): any[] | number | 'hang' => [] }));
+const net = vi.hoisted(() => ({ urls: [] as string[], rows: (_u: URL): any[] | number | 'hang' => [], process: null as any }));
+const espn = vi.hoisted(() => ({ page: null as any }));
+vi.mock('../src/resources/espn', async (orig) => ({
+    ...(await orig<typeof import('../src/resources/espn')>()),
+    retrieveGamePageGuarded: async () => ({ page: espn.page, regressed: false, reason: null }),
+}));
 vi.mock('../src/utils/telemetry', async (orig) => ({
     ...(await orig<typeof import('../src/utils/telemetry')>()),
     wrappedFetch: async (url: string, init?: RequestInit) => {
         const u = new URL(String(url));
         net.urls.push(u.toString());
+        if (u.pathname.endsWith('/process')) return new Response(JSON.stringify(net.process), { status: 200, headers: { 'content-type': 'application/json' } });
         const r = u.pathname.endsWith('/meta') ? [] : net.rows(u);
         if (r === 'hang') return new Promise<Response>((_, reject) => init?.signal?.addEventListener('abort', () => reject(init.signal!.reason)));
         if (typeof r === 'number') return new Response('{"detail":"boom"}', { status: r });
@@ -88,14 +94,14 @@ describe('retrieveFirstFinal', () => {
         // this game is the earliest 52-6 (the 52-6 read), but the 6-52 read fails: it may hold an earlier game
         net.rows = (u) => u.searchParams.get('home_points') === '52' ? [{ game_id: 9, start_date: '2020-09-01T00:00:00.000Z' }] : 500;
         const { retrieveFirstFinal } = await import('../src/resources/sdv');
-        expect(await retrieveFirstFinal('cfb', 52, 6)).toEqual([]);
+        expect(await retrieveFirstFinal('cfb', 52, 6)).toBeNull();
     });
 
     test('a stalled read times out to no answer', async () => {
         net.rows = (u) => (u.searchParams.get('home_points') === '53' ? 'hang' : []);
         const { retrieveFirstFinal } = await import('../src/resources/sdv');
         const t0 = Date.now();
-        expect(await retrieveFirstFinal('cfb', 53, 6, 50)).toEqual([]);
+        expect(await retrieveFirstFinal('cfb', 53, 6, 50)).toBeNull();
         expect(Date.now() - t0).toBeLessThan(2000);
     });
 
@@ -104,48 +110,71 @@ describe('retrieveFirstFinal', () => {
         const spy = vi.spyOn(env.SDV_API_CACHE, 'get').mockRejectedValue(new Error('KV down'));
         try {
             const { retrieveFirstFinal } = await import('../src/resources/sdv');
-            expect(await retrieveFirstFinal('cfb', 54, 6)).toEqual([]);
+            expect(await retrieveFirstFinal('cfb', 54, 6)).toBeNull();
         } finally {
             spy.mockRestore();
         }
     });
 });
 
-describe('GameHeader chip', () => {
+describe('game route + GameHeader chip', () => {
     // Real, offline /process payloads: CMU 30 at OKST 27 (2016), JAX 34 at CLE 10 (2026), both final.
     const FIXTURES = { cfb: 'usage-cfb-400869270.json.gz', nfl: 'usage-nfl-401872922.json.gz' } as const;
     let container: AstroContainer;
     beforeAll(async () => {
         container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
     });
-    const render = async (league: 'cfb' | 'nfl', on: boolean, earliestId: string | null) => {
+    /**
+     * loadGameRoute (ESPN page + processor answered from the fixture), then GameHeader rendered
+     * with the locals the route left behind, as the page does. `schedule` answers the chip's
+     * Data API reads.
+     */
+    const run = async (league: 'cfb' | 'nfl', on: boolean, schedule: () => any[] | number) => {
         const game = loadGzJson(FIXTURES[league]);
+        espn.page = { gameId: Number(game.header.id), gamepackageJSON: { header: game.header } };
         net.urls = [];
-        net.rows = () => (earliestId ? [{ game_id: earliestId, start_date: '2001-09-01T00:00:00.000Z' }] : []);
+        net.process = game;
+        net.rows = () => schedule();
+        const headers = new Headers();
+        const cacheCalls: unknown[] = [];
+        const locals: any = { league, flagOverrides: { 'final-score-first': on } };
+        const astro: any = { params: { id: String(game.header.id) }, locals, url: new URL('https://gameonpaper.com/'), response: { headers },
+            cache: { set: (v: unknown) => cacheCalls.push(v) }, redirect: (l: string) => l };
+        const { loadGameRoute } = await import('../src/routes/game');
+        const r: any = await loadGameRoute(astro, league);
+        expect(r.game, 'the fixture loaded').toBeTruthy();
         const { default: GameHeader } = await import('../src/components/game/GameHeader.astro');
-        const html = await container.renderToString(GameHeader, {
-            props: { game },
-            locals: { league, flagOverrides: { 'final-score-first': on } } as any,
-        });
-        return { html, game, reads: net.urls.filter((s) => s.includes('schedule')).length };
+        const html = await container.renderToString(GameHeader, { props: { game: r.game }, locals });
+        return { html, game, locals, cached: cacheCalls.at(-1) !== false && headers.get('Cache-Control') !== 'no-store',
+            reads: net.urls.filter((u) => u.includes('schedule?')).length };
     };
     const chips = (html: string) => [...html.matchAll(/<span class="badge bg-secondary">([^<]+)<\/span>/g)].map((m) => m[1]);
+    // Astro islands carry a random uid per render; nothing else may differ
+    const strip = (h: string) => h.replace(/uid="[^"]*"/g, '').replace(/astro-island uid=\S+/g, '');
 
     for (const league of ['cfb', 'nfl'] as const) {
-        test(`[${league}] the game that is first gets the chip in both headers`, async () => {
+        test(`[${league}] the game that is first gets the chip in both headers, and the render caches`, async () => {
             const game = loadGzJson(FIXTURES[league]);
             const [a, b] = game.header.competitions[0].competitors.map((c: any) => Number(c.score));
-            const { html } = await render(league, true, String(game.header.id));
-            expect(chips(html)).toEqual(Array(2).fill(firstFinalLabel(league, a, b)));
+            const r = await run(league, true, () => [{ game_id: game.header.id, start_date: '2001-09-01T00:00:00.000Z' }]);
+            expect(chips(r.html)).toEqual(Array(2).fill(firstFinalLabel(league, a, b)));
+            expect(r.cached).toBe(true);
         });
-        test(`[${league}] an earlier game with the score: no chip, same HTML as flag off`, async () => {
-            const on = await render(league, true, '1');
-            const off = await render(league, false, null);
+        test(`[${league}] an earlier game with the score: no chip, cacheable, same header as flag off`, async () => {
+            const on = await run(league, true, () => [{ game_id: 1, start_date: '2001-09-01T00:00:00.000Z' }]);
+            const off = await run(league, false, () => [{ game_id: 1, start_date: '2001-09-01T00:00:00.000Z' }]);
             expect(chips(on.html)).toEqual([]);
+            expect(on.cached).toBe(true);
             expect(off.reads, 'flag off reads nothing').toBe(0);
-            // Astro islands carry a random uid per render; nothing else may differ
-            const strip = (h: string) => h.replace(/uid="[^"]*"/g, '').replace(/astro-island uid=\S+/g, '');
+            expect(off.locals.firstFinal).toBeUndefined();
+            expect(off.cached).toBe(true);
             expect(strip(on.html)).toBe(strip(off.html));
+        });
+        test(`[${league}] a failed lookup: no chip, and the render is NOT cached`, async () => {
+            // a game that may really be first must not be cached chipless for the final-game TTL
+            const r = await run(league, true, () => 500);
+            expect(chips(r.html)).toEqual([]);
+            expect(r.cached).toBe(false);
         });
     }
 });

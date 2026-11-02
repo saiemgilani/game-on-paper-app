@@ -10,8 +10,6 @@ import AdminGameTools from './AdminGameTools.astro';
 import GameTitle from './GameTitle.astro';
 import ShareButton from './ShareButton.svelte';
 import { isFeatureEnabled } from '../../utils/features';
-import { retrieveFirstFinal } from '../../resources/sdv';
-import { finalScoreFirst, firstFinalLabel } from '../../utils/finalScore';
 
 interface Props {
    espnGame?: ESPNPlayByPlayResponse
@@ -52,13 +50,9 @@ const backLabel = backToWeek ? `Back to Week ${espnHeader.week}` : 'Back to Scor
 const share = isFeatureEnabled('share-card', Astro.locals);
 const shareUrl = new URL(leaguePath(league, `/game/${espnHeader?.id ?? espnComp.id}`), "https://gameonpaper.com").href;
 const shareProps = { url: shareUrl, spoilerFreeUrl: `${shareUrl}?spoilers=off` };
-// 'final-score-first' (preview): on a final, a chip when no earlier game in our data ended
-// with this score. Off (or not final): no read, nothing rendered.
-const homePts = Number(homeComp.score), awayPts = Number(awayComp.score);
-const firstFinal = isFeatureEnabled('final-score-first', Astro.locals) && gameStatus.type.completed == true
-    && homeComp.score != null && awayComp.score != null && Number.isInteger(homePts) && Number.isInteger(awayPts)
-    && finalScoreFirst(await retrieveFirstFinal(league, homePts, awayPts), espnHeader?.id ?? espnComp.id)
-    ? firstFinalLabel(league, homePts, awayPts) : null;
+// 'final-score-first' (preview): the chip's label, looked up by the game route (routes/game.ts)
+// before it picks the cache policy. Unset (flag off, not final, pregame): nothing rendered.
+const firstFinal = Astro.locals.firstFinal ?? null;
 
 ---
 
