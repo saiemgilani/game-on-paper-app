@@ -3,7 +3,7 @@ import type { PlayoffRound, PlayoffSeed } from "../resources/playoff";
 export interface BracketSlot {
     seed: number
     teamId: string
-    /** this team's chance, from today, of winning the game it is drawn in here */
+    /** this team's chance of winning the game it is drawn in here, if the projected field holds */
     pct: number
 }
 
@@ -18,9 +18,10 @@ const FIRST_ROUND: [number, number][] = [[8, 9], [5, 12], [7, 10], [6, 11]];
 const BYES = [1, 4, 2, 3];
 
 /**
- * The projected bracket: in each later round a slot holds the team likeliest to reach it from the
- * games that feed it, so the page reads like a filled-in bracket while every number on it stays an
- * unconditional chance from today.
+ * The projected bracket, filled in: each later slot holds the likelier winner of the game drawn
+ * before it, so every team shown came out of the game that feeds it. Each number is that team's
+ * chance, from today, of winning its game here, given this field (python/playoff_projection.py
+ * _bracket_probs); the chance of making the field at all is the seeds table's.
  */
 export function buildBracket(field: PlayoffSeed[]): { rounds: BracketRound[], champion: BracketSlot } {
     const bySeed = new Map(field.map((s) => [s.seed, s]));
@@ -28,19 +29,21 @@ export function buildBracket(field: PlayoffSeed[]): { rounds: BracketRound[], ch
         const s = bySeed.get(seed)!;
         return { seed, teamId: s.team_id, pct: s.reach[next] };
     };
-    const likeliest = (pool: number[], round: PlayoffRound) =>
-        pool.reduce((best, s) => (bySeed.get(s)!.reach[round] > bySeed.get(best)!.reach[round] ? s : best));
+    // a game's winner is the slot with the larger number: its chance of winning that game
+    const winner = ([a, b]: [BracketSlot, BracketSlot]) => (b.pct > a.pct ? b.seed : a.seed);
+    const pairs = <T>(xs: T[]): [T, T][] => xs.filter((_, i) => i % 2 === 0).map((x, i) => [x, xs[2 * i + 1]]);
 
-    const qfPools = BYES.map((bye, i) => [bye, ...FIRST_ROUND[i]]);
-    const sfPools = [qfPools[0].concat(qfPools[1]), qfPools[2].concat(qfPools[3])];
+    const first = FIRST_ROUND.map(([hi, lo]): [BracketSlot, BracketSlot] => [slot(hi, 'quarterfinal'), slot(lo, 'quarterfinal')]);
+    const quarters = BYES.map((bye, i): [BracketSlot, BracketSlot] => [slot(bye, 'semifinal'), slot(winner(first[i]), 'semifinal')]);
+    const semis = pairs(quarters).map(([a, b]): [BracketSlot, BracketSlot] => [slot(winner(a), 'final'), slot(winner(b), 'final')]);
+    const final = pairs(semis).map(([a, b]): [BracketSlot, BracketSlot] => [slot(winner(a), 'champion'), slot(winner(b), 'champion')]);
     const rounds: BracketRound[] = [
-        { name: 'First Round', games: FIRST_ROUND.map(([hi, lo]) => [slot(hi, 'quarterfinal'), slot(lo, 'quarterfinal')]) },
-        { name: 'Quarterfinals', games: BYES.map((bye, i) => [slot(bye, 'semifinal'), slot(likeliest(FIRST_ROUND[i], 'quarterfinal'), 'semifinal')]) },
-        { name: 'Semifinals', games: [[0, 1], [2, 3]].map(([a, b]) => [slot(likeliest(qfPools[a], 'semifinal'), 'final'), slot(likeliest(qfPools[b], 'semifinal'), 'final')]) },
-        { name: 'National Championship', games: [[slot(likeliest(sfPools[0], 'final'), 'champion'), slot(likeliest(sfPools[1], 'final'), 'champion')]] },
+        { name: 'First Round', games: first },
+        { name: 'Quarterfinals', games: quarters },
+        { name: 'Semifinals', games: semis },
+        { name: 'National Championship', games: final },
     ];
-    const all = field.map((s) => s.seed);
-    return { rounds, champion: slot(likeliest(all, 'champion'), 'champion') };
+    return { rounds, champion: slot(winner(final[0]), 'champion') };
 }
 
 /** A probability as the page prints it: whole percents, with the tails kept honest. */

@@ -91,12 +91,8 @@ def _compute_results(ratings, model):
             )
         )
         draw = g["_m"].to_numpy() + rng.normal(0.0, model.sd, g.height)
-        # no ties: a drawn 0 goes to the favourite
-        draw = np.where(
-            np.round(draw) == 0,
-            np.sign(g["_m"].to_numpy()) + (g["_m"].to_numpy() == 0),
-            np.round(draw),
-        )
+        # no ties: a margin that rounds to 0 goes by its sign, so P(home win) = win_prob
+        draw = np.where(np.round(draw) == 0, np.where(draw >= 0, 1.0, -1.0), np.round(draw))
         g = g.with_columns(
             pl.when((pl.col("week") == week_num) & pl.col("result").is_null())
             .then(pl.Series("_s", draw, dtype=pl.Float64))
@@ -242,7 +238,9 @@ def project(payload):
     model = Model(**payload["model"])
     sims = max(100, min(int(payload.get("sims") or SIMS), SIMS_MAX))
     games, teams, ratings, fbs = _inputs(payload)
-    rng = np.random.default_rng(int(payload.get("seed", 0)))
+    # the bracket's own stream: cfb_simulations seeds default_rng(seed) itself, and sharing it
+    # would replay the season's first draws in the bracket
+    rng = np.random.default_rng(np.random.SeedSequence(int(payload.get("seed", 0))).spawn(1)[0])
     out = cfb_simulations(
         games,
         teams,

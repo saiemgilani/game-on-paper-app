@@ -230,3 +230,26 @@ def test_seed_1_meets_seed_4_in_the_semifinal_and_seed_2_only_in_the_final():
     assert rigged[1]["semifinal"] == pytest.approx(base[1]["semifinal"])
     assert rigged[1]["final"] < 0.01
     assert rigged[2]["final"] == pytest.approx(base[2]["final"])
+
+
+def test_a_simulated_game_is_won_at_the_model_s_odds():
+    # a near-even game, where a margin that rounds to 0 matters: it must go by its sign,
+    # not to the favourite, or the favourite wins more often than win_prob says
+    import polars as pl
+
+    ratings = {"a": 0.005, "b": 0.0}
+    n = 100_000  # ~0.16 pt SE; the favourite bias this guards is ~1.2 pt
+    games = pl.DataFrame(
+        {
+            "week": [1] * n,
+            "home_team": ["a"] * n,
+            "away_team": ["b"] * n,
+            "result": [None] * n,
+            "neutral": [1] * n,
+        },
+        schema={"week": pl.Int64, "home_team": pl.Utf8, "away_team": pl.Utf8, "result": pl.Float64, "neutral": pl.Int64},
+    )
+    out = pp._compute_results(ratings, MODEL)(None, games, 1, rng=np.random.default_rng(7))
+    res = out["games"]["result"]
+    assert (res == 0).sum() == 0
+    assert abs((res > 0).mean() - MODEL.win_prob(0.005, 0.0, True)) < 0.006

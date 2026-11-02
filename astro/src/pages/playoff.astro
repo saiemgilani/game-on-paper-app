@@ -7,6 +7,7 @@ import { buildBracket, pct } from '../utils/playoff';
 import { isFeatureEnabled } from '../utils/features';
 import { teamLogoUrl } from '../utils/league';
 import { CURRENT_YEAR } from '../utils/constants';
+import { roundNumber } from '../utils/misc';
 
 if (!isFeatureEnabled('playoff-projection', Astro.locals)) {
     return Astro.rewrite("/404");
@@ -116,7 +117,7 @@ const subtitle = "The projected 12-team bracket, with each team's chances to win
                                     <td><a href={`/team/${t.team_id}`}><img class={`team-logo-${t.team_id} me-1`} width="18" height="18" src={teamLogoUrl('cfb', t.team_id, false)} alt="" />{t.name}</a></td>
                                     <td class="text-muted small">{t.conference}</td>
                                     <td class="text-center">{record(t.record)}</td>
-                                    <td class="text-center text-muted">{t.wins.toFixed(1)}-{t.losses.toFixed(1)}</td>
+                                    <td class="text-center text-muted">{roundNumber(t.wins, 1, 1)}-{roundNumber(t.losses, 1, 1)}</td>
                                     <td class="text-end">{pct(t.win_out)}</td>
                                     <td class="text-end">{t.conference === 'FBS Independents' ? '' : pct(t.conf_title)}</td>
                                     <td class="text-end fw-bold">{pct(t.playoff)}</td>
@@ -133,9 +134,10 @@ const subtitle = "The projected 12-team bracket, with each team's chances to win
                     each game priced by the same Adj EPA/Play model as the game page's pregame projection. Each conference's title-game teams come from
                     its official tiebreakers (sportsdataverse-py's port of cfbseedR). Each simulated season then fills the field by the 2026 rules: the
                     ACC, Big Ten, Big 12 and SEC champions, the highest-ranked champion from the other six conferences, Notre Dame if it ranks in the top 12,
-                    and seven at-large teams, seeded straight by rank with any automatic qualifier outside the top 12 taking the lowest seeds. The committee's
-                    ranking is stood in for by Adj EPA/Play minus {projection.loss_penalty.toFixed(2)} per loss. The bracket above applies the same rules to the
-                    average season (each conference's likeliest champion), and each team's number is its chance, from today, of winning that game.
+                    and at-large teams for the rest (seven, or six when Notre Dame is in), seeded straight by rank with any automatic qualifier outside the top 12 taking the lowest seeds. The committee's
+                    ranking is stood in for by Adj EPA/Play minus {roundNumber(projection.loss_penalty, 2, 2)} per loss. The bracket above applies the same rules to the
+                    average season (each conference's likeliest champion); each number on it is the team's chance of winning that game if that
+                    field holds. The Playoff, Bye and Title columns count every simulated season, so they also price the chance of missing the field.
                     Win Out counts regular-season games only.
                 </p>
             </>

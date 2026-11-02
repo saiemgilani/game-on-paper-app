@@ -66,11 +66,13 @@ export interface PlayoffProjection {
 export async function retrievePlayoffProjection(season: number): Promise<PlayoffProjection | null> {
     const model = SDV_RATINGS_PREDICTION_CONFIG.cfb;
     if (!PYTHON_HTTP_TOKEN || !model) return null;
-    const [scheduleStamp, summaryStamp] = await Promise.all([sdvIngestStamp('cfb', 'schedule'), sdvIngestStamp('cfb', 'team_summaries')]);
-    const key = `playoff-projection:${season}:${scheduleStamp ?? '-'}:${summaryStamp ?? '-'}:${PROCESSOR_VERSION}`;
-    const cached = await env.SDV_API_CACHE.get<PlayoffProjection>(key, 'json');
-    if (cached) return cached;
+    const constants = { scale: model.net_points_scale, hfa: model.hfa_points, sd: model.margin_sd };
     try {
+        const [scheduleStamp, summaryStamp] = await Promise.all([sdvIngestStamp('cfb', 'schedule'), sdvIngestStamp('cfb', 'team_summaries')]);
+        // a refit model is a new projection too
+        const key = `playoff-projection:${season}:${scheduleStamp ?? '-'}:${summaryStamp ?? '-'}:${PROCESSOR_VERSION}:${Object.values(constants).join(',')}`;
+        const cached = await env.SDV_API_CACHE.get<PlayoffProjection>(key, 'json');
+        if (cached) return cached;
         const [games, teams] = await Promise.all([
             retrieveRows<Record<string, unknown>>('cfb', 'schedule', { season: String(season), fbs_participant: 'true', limit: String(SCHEDULE_LIMIT), select: SCHEDULE_COLUMNS.join(',') }, INPUT_TTL, true),
             retrieveRows<Record<string, unknown>>('cfb', 'team_summaries', { season: String(season), limit: '500', select: TEAM_COLUMNS.join(',') }, INPUT_TTL, true),
@@ -85,7 +87,7 @@ export async function retrievePlayoffProjection(season: number): Promise<Playoff
                 season,
                 games,
                 teams,
-                model: { scale: model.net_points_scale, hfa: model.hfa_points, sd: model.margin_sd },
+                model: constants,
             }),
             signal: AbortSignal.timeout(PROJECTION_TIMEOUT_MS),
         });

@@ -27,11 +27,25 @@ describe('buildBracket', () => {
         expect([1, 8, 9, 4, 5, 12]).toContain(semis[0][0]);
         expect([1, 8, 9, 4, 5, 12]).toContain(semis[0][1]);
         expect([2, 7, 10, 3, 6, 11]).toContain(semis[1][0]);
-        // the champion is the title favourite, and every number is that game's unconditional odds
-        const best = [...f.values()].reduce((a, b) => (b.reach.champion > a.reach.champion ? b : a));
-        expect(champion.seed).toBe(best.seed);
+        // the champion is the likelier winner of the title game shown, and every number is that round's reach
+        const [x, y] = rounds[3].games[0];
+        expect(champion.seed).toBe(y.pct > x.pct ? y.seed : x.seed);
         expect(rounds[0].games[0][0].pct).toBe(f.get(8)!.reach.quarterfinal);
         expect(rounds[1].games[0][0].pct).toBe(f.get(1)!.reach.semifinal);
+    });
+
+    test('every later slot is a team from the game drawn before it, even when another team in the pool is likelier', () => {
+        // the 9 seed loses its first-round game on the page (42% to the 8 seed's 58%), but is made the
+        // likeliest semifinalist of the 1/8/9 pool: it must not appear in a round it was never drawn into
+        const field = fixture().field.map((s) => (s.seed === 9 ? { ...s, reach: { ...s.reach, semifinal: 0.9, final: 0.8, champion: 0.7 } } : s));
+        const { rounds, champion } = buildBracket(field);
+        for (let r = 1; r < rounds.length; r++) {
+            const before = rounds[r - 1].games.flat().map((s) => s.seed);
+            const firstRoundOnly = r === 1 ? [1, 2, 3, 4] : [];
+            for (const s of rounds[r].games.flat()) expect([...before, ...firstRoundOnly]).toContain(s.seed);
+        }
+        expect(rounds[1].games.flat().map((s) => s.seed)).not.toContain(9);
+        expect(champion.seed).not.toBe(9);
     });
 
     test('pct keeps the tails honest', () => {
