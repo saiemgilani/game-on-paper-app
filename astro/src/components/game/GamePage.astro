@@ -5,6 +5,7 @@ import { GAME_PAGE_MANIFEST, evaluateManifest, salvageGame } from '../../utils/m
 import { gopStorage } from '../../utils/telemetry';
 import { cleanLocation, isChampionshipEvent, deduplicateByKey, pickGameColors } from '../../utils/misc';
 import { isFeatureEnabled } from '../../utils/features';
+import { METHOD_NOTES } from '../../utils/methodNotes';
 import Panel from '../../layouts/panel/GenericPanel.astro';
 import Scripts from '../Scripts.astro';
 import PlaysTable from './plays/PlaysTable.astro';
@@ -295,7 +296,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             }
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
-                    <Panel id="team-stats" title="Team Stats" show={true}>
+                    <Panel id="team-stats" title="Team Stats" show={true} hint={isFeatureEnabled('method-notes', Astro.locals) ? METHOD_NOTES.game : undefined}>
                         <SituationalSection client:load slot="panel-body" season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles} teamIds={[game.teamInfo.away.id, game.teamInfo.home.id]}>
                         </SituationalSection>
                     </Panel>

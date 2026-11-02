@@ -1,6 +1,8 @@
 ---
 import GenericPanel from "../../../layouts/panel/GenericPanel.astro";
 import { LEAGUES } from "../../../utils/league";
+import { isFeatureEnabled } from "../../../utils/features";
+import { seasonNote } from "../../../utils/methodNotes";
 
 interface Props {
     id: string
@@ -15,7 +17,8 @@ interface Props {
 }
 
 const { id, title, show, population = true, note, caption } = Astro.props;
-const poolSentence = (Astro.locals.league ?? 'cfb') === 'cfb' ? `Data shown is from ${LEAGUES.cfb.pool} vs ${LEAGUES.cfb.pool} games only.` : 'Data shown is from regular season games only.';
+const poolSentence = isFeatureEnabled('method-notes', Astro.locals) ? seasonNote(Astro.locals.league)
+    : (Astro.locals.league ?? 'cfb') === 'cfb' ? `Data shown is from ${LEAGUES.cfb.pool} vs ${LEAGUES.cfb.pool} games only.` : 'Data shown is from regular season games only.';
 ---
 
 <GenericPanel id={id} title={title} show={show}>
