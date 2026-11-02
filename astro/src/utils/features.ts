@@ -51,6 +51,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
     // isCoachBoardPath). Promote to 'on' once the coach attribution is trusted.
     'coaches': 'on',
+    // The CFP projection page (/playoff): sportsdataverse-py's season sims + cfbseedR tiebreakers
+    // through the API (python/playoff_projection.py), the 2026 selection rules and the fixed
+    // bracket. Nothing links to it yet; promote to 'on' to publish the URL.
+    'playoff-projection': 'preview',
     // The play processor's source switch (football-sources Stage 4): the game
     // page may ask the API to process a game from an alternate feed
     // (?source=shield|cbs|yahoo|fox|ncaa, the sportsdataverse-py contract's

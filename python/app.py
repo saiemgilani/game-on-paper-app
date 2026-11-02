@@ -24,6 +24,7 @@ import share_card
 from sportsdataverse.cfb import cfb_drive_summary as drive_summary
 from sportsdataverse.cfb import cfb_situational_stats as situational_stats
 import span_box
+import playoff_projection
 
 # Source switch (football-sources Stage 4). The allowed values ARE the
 # contract's registry -- nothing here enumerates sources, so `shield` (and the
@@ -942,6 +943,18 @@ def card(game_id: int):
 @require_auth_token
 def card_nfl(game_id: int):
     return _card("nfl", game_id)
+
+
+@app.route("/cfb/playoff/projection", methods=["POST"])
+@require_auth_token
+def playoff_projection_route():
+    # the site posts the season's Data API schedule + team summaries and the pregame
+    # model constants it prices games with; the answer is cached on its side
+    try:
+        return jsonify(playoff_projection.project(request.get_json(force=True)))
+    except (KeyError, TypeError, ValueError) as e:
+        logging.getLogger("root").error(f"playoff projection: bad payload: {e!r}")
+        return jsonify({"status": "bad", "message": "bad payload"}), 400
 
 
 def _sdv_identity():
