@@ -17,16 +17,19 @@ const otherRows = cfb.seasons.data.filter((r: any) => r.season === 2024 && r.cat
     // shade says which one the cell read
     .map((r: any) => ({ ...r, player_id: '5000001', EPAplay_pct: null, EPAplay_pos_pct: null, success_pos_pct: 95, success_pct: 5 }));
 
+// every nullable identity field null but the team name, and no season rows
+const bare = { ...cfb.identity, espn_id: '5000002', player_id: '5000002', name: 'Bare Player', position: null, jersey: null, team_id: null, team: 'Syracuse', headshot_url: null, seasons: [] };
+
 const feed = { throws: new Set<string>() };
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     retrievePlayer: async (id: string, league = 'cfb') => {
         if (feed.throws.has(id)) throw new Error('Data API 503');
         if (league === 'nfl') return id === '16800' ? nfl.identity : null;
-        return id === '4433971' ? cfb.identity : id === '5000001' ? other : null;
+        return id === '4433971' ? cfb.identity : id === '5000001' ? other : id === '5000002' ? bare : null;
     },
     retrievePlayerSeasons: async (id: string, league = 'cfb') =>
-        (league === 'nfl' ? nfl.seasons.data : id === '5000001' ? otherRows : cfb.seasons.data),
+        (league === 'nfl' ? nfl.seasons.data : id === '5000001' ? otherRows : id === '5000002' ? [] : cfb.seasons.data),
 }));
 
 let container: AstroContainer;
@@ -99,8 +102,15 @@ describe('CFB compare page', () => {
         expect(metricCells(b, 'passing')[sr][0]).toContain(generateColorRampValue(95, 100)!);
         expect(metricCells(b, 'passing')[sr][0]).not.toContain(generateColorRampValue(5, 100)!);
         // a phone gets the team abbreviation, md and up the name
-        expect(a).toMatch(/<span class="d-md-none"[^>]*>SYR<\/span>/);
-        expect(a).toMatch(/<span class="d-none d-md-inline"[^>]*>Syracuse<\/span>/);
+        expect(a).toMatch(/<span class="d-md-none"[^>]*>QB \/ #6 \/ SYR<\/span>/);
+        expect(a).toMatch(/<span class="d-none d-md-inline"[^>]*>QB \/ #6 \/ Syracuse<\/span>/);
+    });
+    test('no position, jersey or team id: no stray separators, and a phone falls back to the team name', async () => {
+        const c = card(await html('cfb', '?ids=5000002'), '5000002');
+        expect(c).toMatch(/<span class="d-md-none"[^>]*>Syracuse<\/span>/);
+        expect(c).toMatch(/<span class="d-none d-md-inline"[^>]*>Syracuse<\/span>/);
+        // the old markup put the separator outside the spans, before them
+        expect(c).not.toMatch(/>\s*\/\s*<span class="d-md-none"/);
     });
     test('a season the player never played links his name to his career page', async () => {
         const page = await html('cfb', '?ids=4433971,5000001&season=2023');

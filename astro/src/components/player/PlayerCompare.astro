@@ -46,9 +46,17 @@ const cards = entries.map((e) => {
         lines,
         teamId: teamId as string | number | null,
         realTeam,
-        team: cleanTextForTeam(realTeam, teamId),
-        // a phone gets the abbreviation, as PlayerSeasonTable's Team cell does
-        abbr: teamId ? cleanTextForTeam(teamAbbr(league, teamId, realTeam), teamId) : '',
+        // position / jersey / team, each part only when present: the full name from md up, and on
+        // a phone the abbreviation as PlayerSeasonTable's Team cell does (the name when there is none)
+        ...((): { line: string; lineSm: string } => {
+            const team = cleanTextForTeam(realTeam, teamId);
+            const abbr = teamId ? cleanTextForTeam(teamAbbr(league, teamId, realTeam), teamId) : '';
+            const head = [e.player.position, e.player.jersey ? `#${e.player.jersey}` : null];
+            return {
+                line: [...head, team].filter(Boolean).join(' / '),
+                lineSm: [...head, abbr || team].filter(Boolean).join(' / '),
+            };
+        })(),
         // his page 404s a season he has no rows for, so the name links to his career then
         href: playerPath(league, e.id, shown !== null && e.player.seasons.includes(shown) ? shown : null),
         name: cleanTextForTeam(e.player.name ?? `Player ${e.id}`, teamId),
@@ -125,9 +133,8 @@ const addTemplate = compareHref(league, [...ids, '__ID__'], season);
                                 {c.teamId && <img class={`img-fluid team-logo-${c.teamId}`} width="20px"
                                     src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${c.teamId}.png`}
                                     alt={`${c.realTeam} logo`} />}
-                                <span>{[c.player.position, c.player.jersey ? `#${c.player.jersey}` : null].filter(Boolean).join(' / ')}{c.team && ' / '}
-                                    {c.team && <span class="d-md-none">{c.abbr}</span>}
-                                    {c.team && <span class="d-none d-md-inline">{c.team}</span>}</span>
+                                <span class="d-md-none">{c.lineSm}</span>
+                                <span class="d-none d-md-inline">{c.line}</span>
                             </p>
                             <p class="mb-2 text-muted text-small">{c.shown ?? 'No seasons'}</p>
                             <a class="btn btn-sm btn-outline-secondary" href={c.remove} data-compare-remove>Remove</a>
