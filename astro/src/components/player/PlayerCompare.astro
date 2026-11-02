@@ -105,7 +105,7 @@ const addTemplate = compareHref(league, [...ids, '__ID__'], season);
             {cards.map((c) => (
             <div class="col-6 col-lg-3 mb-3" data-compare-card={c.id}>
                 <div class="card border rounded h-100">
-                    <div class="card-body">
+                    <div class="card-body p-2 p-md-3">
                         {'unavailable' in c ? (
                             <Fragment>
                                 <p class="text-muted text-small">This player is unavailable right now.</p>
