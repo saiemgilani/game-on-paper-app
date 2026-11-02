@@ -128,6 +128,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // The Team Stats panel on the season team page (/year/N/team/<id> and the /nfl twin): the team's
+    // EPA/Play, Success Rate and points over a subset of its games (?games=conf|nofcs|home|away|wins|
+    // losses|last4), ranked against the same subset of every FBS (NFL) team's games, or the conference's
+    // for conference games. Only this path makes the season-wide team_opponent_splits read; off, the
+    // page and its requests are unchanged and ?games= is never read.
+    'game-set-filter': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
