@@ -245,11 +245,11 @@ describe('spice cues', () => {
         const html = await page({ preview: true });
         const grid = html.slice(html.indexOf('class="row mb-3'));
         expect(grid).toMatch(/class="row border rounded m-2 mb-4 spice-level-ranked-upset" role="group" aria-label="Ranked upset"/);
-        expect(grid).toContain('<span class="text-small text-muted">Ranked upset</span>');
+        expect(grid).toContain('<span class="text-small text-muted text-nowrap ms-auto ps-2">Ranked upset</span>');
         // the final game draws the gray border and carries neither cue
         expect(grid).toMatch(/class="row border rounded m-2 mb-4 spice-level-none">/);
         expect([...grid.matchAll(/role="group" aria-label="/g)]).toHaveLength(1);
-        expect([...grid.matchAll(/text-small text-muted">Ranked upset/g)]).toHaveLength(1);
+        expect([...grid.matchAll(/text-muted text-nowrap ms-auto ps-2">Ranked upset/g)]).toHaveLength(1);
     });
 
     test('flag on: the compact row carries the words on its note line, and only the spiced row', async () => {

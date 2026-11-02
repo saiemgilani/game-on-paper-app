@@ -77,7 +77,7 @@ const canLoadStatsTheme = canLoadStats ? `` : `disabled`
 <div class="col-xl-3 col-lg-6">
     <div class={cx("row border rounded m-2 mb-4", outlineClass, borderClass)} role={spiceLabel ? "group" : undefined} aria-label={spiceLabel ?? undefined}>
         <div class="col p-3">
-            <div class="d-flex justify-content-between">
+            <div class={cx("d-flex justify-content-between", spiceLabel && "flex-wrap")}>
                 <strong class={cx("d-inline-block mb-2", textClass, "text-small")}>
                     {
                         (gameStatus.type.completed == true) && <LocalDate client:idle divClass={"m-0"} prefix={gameStatus.type.detail} date={espnGame.date} format={DateTime.DATETIME_SHORT} />
@@ -91,7 +91,7 @@ const canLoadStatsTheme = canLoadStats ? `` : `disabled`
                         (gameStatus.type.completed != true) && (!gameStatus.type.name.includes("STATUS_SCHEDULED")) && <Fragment>{gameStatus.type.detail}</Fragment>
                     }
                 </strong>
-                {spiceLabel && <span class="text-small text-muted">{spiceLabel}</span>}
+                {spiceLabel && <span class="text-small text-muted text-nowrap ms-auto ps-2">{spiceLabel}</span>}
             </div>
             <TeamRow espnComp={awayComp} espnStatus={gameStatus} winner={awayScore > homeScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == awayComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="" />
             <TeamRow espnComp={homeComp} espnStatus={gameStatus} winner={awayScore < homeScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == homeComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="mb-3" />
