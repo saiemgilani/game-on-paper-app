@@ -1,0 +1,244 @@
+---
+/**
+ * Player compare, both leagues, behind 'player-compare': up to four player cards side by
+ * side, the players and the season in the URL (`utils/compare.ts`). Built from the player
+ * page's parts: the card is `team/TeamPlayerCard.astro`'s (centred headshot in
+ * `img-circle-bg`, name, subtitle), the season picker is the player page's `<select>` of
+ * URLs, and each metric cell is `PlayerSeasonTable.astro`'s: the leaderboards' columns and
+ * formatting, shaded by his position percentile with the rank faded beside it.
+ *
+ * Remove is a link to the same URL without that id. Add is the header search's
+ * `/api/search` with its player hits turned into links to the URL with that id added.
+ */
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import DarkModeLogos from '../DarkModeLogos.astro';
+import type { CompareEntry } from '../../routes/compare';
+import { LEAGUES, espnLogoLeague, leaguePath } from '../../utils/league';
+import { cleanTextForTeam, formatRank, generateColorRampValue, numberOrNull, ordinal } from '../../utils/misc';
+import { categoryColumns, formatPlayerMetric, percentileOf, playerPath, type SeasonRow } from '../../utils/players';
+import { cardLines, cardSeason, compareCategories, compareHref, MAX_COMPARE } from '../../utils/compare';
+import { CURRENT_YEAR } from '../../utils/constants';
+
+interface Props {
+    entries: CompareEntry[]
+    /** the season `?season=` asks for, or null for each player's latest */
+    season: number | null
+}
+const { entries, season } = Astro.props;
+const league = Astro.locals.league ?? 'cfb';
+const cfg = LEAGUES[league];
+const ids = entries.map((e) => e.id);
+
+const TITLES: Record<string, string> = { passing: 'Passing', rushing: 'Rushing', receiving: 'Receiving' };
+const cards = entries.map((e) => {
+    if ('unavailable' in e) return { id: e.id, unavailable: true as const };
+    const shown = cardSeason(e.rows, season);
+    const lines = cardLines(e.rows, shown);
+    const head = Object.values(lines).toSorted((a, b) => Number(b.plays ?? 0) - Number(a.plays ?? 0))[0];
+    // the team that season, else (no rows that season) his current one, as on his page
+    const teamId = head?.team_id ?? (season === null ? e.player.team_id : null);
+    const realTeam = String(head?.pos_team ?? (season === null ? e.player.team ?? '' : ''));
+    return {
+        id: e.id,
+        player: e.player,
+        shown,
+        lines,
+        teamId: teamId as string | number | null,
+        realTeam,
+        team: cleanTextForTeam(realTeam, teamId),
+        name: cleanTextForTeam(e.player.name ?? `Player ${e.id}`, teamId),
+        headshot: e.player.headshot_url
+            ?? `https://a.espncdn.com/combiner/i?img=/i/headshots/${cfg.espnPath}/players/full/${e.id}.png&w=150`,
+        remove: compareHref(league, ids.filter((x) => x !== e.id), season),
+    };
+});
+const loaded = cards.filter((c) => !('unavailable' in c)) as Exclude<(typeof cards)[number], { unavailable: true }>[];
+const categories = compareCategories(loaded.map((c) => c.lines));
+const seasons = [...new Set(loaded.flatMap((c) => c.player.seasons))].toSorted((a, b) => b - a);
+const teamIds = [...new Set(loaded.map((c) => c.teamId).filter(Boolean))] as (string | number)[];
+
+const posPctTitle = (row: SeasonRow, k: string): string | undefined => {
+    const pos = numberOrNull(row[`${k}_pos_pct`]);
+    return pos === null ? undefined : `${ordinal(Math.round(Math.min(Math.max(pos, 0), 100)))} percentile among ${row.position_group ? `${row.position_group}s` : 'his position'}`;
+};
+const rankOf = (row: SeasonRow, k: string): number | null => numberOrNull(row[`${k}_rank`]);
+
+const pageUrl = compareHref(league, ids, season);
+const names = loaded.map((c) => c.player.name).filter(Boolean).join(' vs. ');
+const title = names ? `${names}: player comparison` : 'Player comparison';
+const playersIndex = league === 'nfl' ? 'players/passing' : 'players';
+const breadcrumbs: PageBreadcrumb[] = [
+    { title: 'Players', url: leaguePath(league, `/year/${season ?? CURRENT_YEAR}/${playersIndex}`), active: false },
+    { title: 'Compare', url: pageUrl, active: true },
+];
+// the add box's link for a hit: this list plus that id (the script fills in the placeholder)
+const addTemplate = compareHref(league, [...ids, '__ID__'], season);
+---
+
+<GenericPage title={title} subtitle="Player comparison" description={`Compare ${cfg.shortName} players side by side: EPA per play, success rate and percentile ranks.`} slug={pageUrl} canonicalPath={pageUrl} breadcrumbs={breadcrumbs} heading={title}>
+    <div class="container">
+        <DarkModeLogos teamIds={teamIds} />
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2 mb-3" id="player-compare-controls">
+            {ids.length < MAX_COMPARE ? (
+            <form role="search" class="position-relative" id="player-compare-add" data-league={league} data-ids={ids.join(',')} data-template={addTemplate} autocomplete="off">
+                <label class="visually-hidden" for="player-compare-input">Add a player</label>
+                <input type="search" id="player-compare-input" class="form-control" placeholder="Add a player" autocapitalize="off" spellcheck="false" enterkeyhint="search" />
+                <div class="dropdown-menu w-100" id="player-compare-results" data-bs-popper="none"></div>
+            </form>
+            ) : (
+            <p class="m-0 text-muted text-small">Remove a player to add another (four at most).</p>
+            )}
+            {seasons.length > 0 && (
+            <div class="d-flex align-items-center gap-2 ms-md-auto">
+                <label class="form-label text-muted text-small mb-0" for="player-compare-season">Season</label>
+                <select id="player-compare-season" class="form-select form-select-md w-auto" onchange="window.location.href = this.value">
+                    <option value={compareHref(league, ids)} selected={season === null}>Latest</option>
+                    {seasons.map((y) => <option value={compareHref(league, ids, y)} selected={y === season}>{y}</option>)}
+                </select>
+            </div>
+            )}
+        </div>
+
+        {cards.length === 0 && <p class="text-muted" id="player-compare-empty">Search for a player to start a comparison.</p>}
+
+        <div class="row" id="player-compare-cards">
+            {cards.map((c) => (
+            <div class="col-6 col-lg-3 mb-3" data-compare-card={c.id}>
+                <div class="card border rounded h-100">
+                    <div class="card-body">
+                        {'unavailable' in c ? (
+                            <Fragment>
+                                <p class="text-muted text-small">This player is unavailable right now.</p>
+                                <a class="btn btn-sm btn-outline-secondary" href={compareHref(league, ids.filter((x) => x !== c.id), season)}>Remove</a>
+                            </Fragment>
+                        ) : (
+                        <Fragment>
+                        <div class="text-center">
+                            <img class="img img-fluid img-circle-bg mb-2" width="96px" src={c.headshot} alt={c.name} />
+                            <h2 class="h5 mb-1"><a href={playerPath(league, c.id, c.shown)}>{c.name}</a></h2>
+                            <p class="mb-0 text-muted d-flex align-items-center justify-content-center flex-wrap gap-1">
+                                {c.teamId && <img class={`img-fluid team-logo-${c.teamId}`} width="20px"
+                                    src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${c.teamId}.png`}
+                                    alt={`${c.realTeam} logo`} />}
+                                <span>{[c.player.position, c.player.jersey ? `#${c.player.jersey}` : null, c.team || null].filter(Boolean).join(' / ')}</span>
+                            </p>
+                            <p class="mb-2 text-muted text-small">{c.shown ?? 'No seasons'}</p>
+                            <a class="btn btn-sm btn-outline-secondary" href={c.remove} data-compare-remove>Remove</a>
+                        </div>
+                        {categories.map((cat) => (
+                            <div class="table-responsive mt-3" data-compare-category={cat}>
+                                <h3 class="h6">{TITLES[cat]}</h3>
+                                <table class="table table-sm mb-0">
+                                    <tbody>
+                                        {categoryColumns(cat).map(([k, label]) => {
+                                            const row = c.lines[cat];
+                                            return (
+                                            <tr>
+                                                <td class="text-left" colspan="1">{label}</td>
+                                                <td class:list={["text-center", "numeral", row ? generateColorRampValue(percentileOf(row, k, true), 100) : null]} colspan="1" title={row ? posPctTitle(row, k) : undefined}>
+                                                    {formatPlayerMetric(cat, k, row?.[k])}
+                                                    {row && rankOf(row, k) !== null && (
+                                                        <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(rankOf(row, k))}</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ))}
+                        </Fragment>
+                        )}
+                    </div>
+                </div>
+            </div>
+            ))}
+        </div>
+
+        <p class="text-muted text-small" id="player-compare-provenance">
+            Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>. Shading is each player's percentile among his position group.
+        </p>
+    </div>
+</GenericPage>
+
+<script>
+    import { carryAdminParams } from '../../utils/adminView';
+    import { keepPreviewSurface } from '../../utils/preview';
+
+    // The add box: the header search's /api/search, player hits only, each a link to this
+    // comparison with that player added. Hits already on the page are left out.
+    const form = document.getElementById('player-compare-add') as HTMLFormElement | null;
+    if (form) {
+        const input = form.querySelector('input') as HTMLInputElement;
+        const list = form.querySelector('#player-compare-results') as HTMLDivElement;
+        const have = new Set((form.dataset.ids ?? '').split(',').filter(Boolean));
+        const page = window.location.search;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let ctrl: AbortController | undefined;
+        let first: string | null = null;
+
+        const show = (hits: { id: string; label: string; sublabel?: string }[]) => {
+            list.replaceChildren();
+            first = null;
+            if (!hits.length) {
+                const none = document.createElement('span');
+                none.className = 'dropdown-item-text text-muted';
+                none.textContent = 'No players';
+                list.append(none);
+            }
+            for (const h of hits) {
+                const a = document.createElement('a');
+                a.className = 'dropdown-item text-wrap';
+                a.href = keepPreviewSurface(carryAdminParams((form.dataset.template ?? '').replace('__ID__', h.id), page), window.location.pathname);
+                a.textContent = h.label;
+                if (h.sublabel) {
+                    const sub = document.createElement('span');
+                    sub.className = 'd-block small text-muted';
+                    sub.textContent = h.sublabel;
+                    a.append(sub);
+                }
+                first ??= a.href;
+                list.append(a);
+            }
+            list.classList.add('show');
+        };
+
+        input.addEventListener('input', () => {
+            clearTimeout(timer);
+            const term = input.value.trim();
+            if (term.length < 2) { ctrl?.abort(); list.classList.remove('show'); first = null; return; }
+            timer = setTimeout(async () => {
+                ctrl?.abort();
+                ctrl = new AbortController();
+                try {
+                    const url = carryAdminParams(`/api/search?${new URLSearchParams({ q: term, league: form.dataset.league ?? 'cfb' })}`, page);
+                    const res = await fetch(url, { signal: ctrl.signal });
+                    const hits = res.ok ? await res.json() : [];
+                    show(hits.filter((h: { type: string; id: string }) => h.type === 'player' && !have.has(String(h.id))));
+                } catch (e) {
+                    if ((e as Error).name !== 'AbortError') show([]);
+                }
+            }, 150);
+        });
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (first) window.location.href = first;
+        });
+        input.addEventListener('keydown', (e) => { if (e.key === 'Escape') list.classList.remove('show'); });
+    }
+</script>
+
+<style>
+.img-circle-bg {
+    background: rgba(0, 0, 0, 0.1);
+    -webkit-clip-path: circle(closest-side);
+    clip-path: circle(closest-side);
+}
+
+@media (prefers-color-scheme: dark) {
+    .img-circle-bg {
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+}
+</style>

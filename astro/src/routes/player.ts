@@ -69,14 +69,14 @@ export type PlayerPrep =
  * path, the season in `?season=`. Tagged so `/admin/api/purge-game?tags=player`
  * can clear every one after a producer republish.
  */
-const PLAYER_CACHE = { maxAge: 60 * 60, swr: 60 * 60 * 6, tags: ['player'] };
+export const PLAYER_CACHE = { maxAge: 60 * 60, swr: 60 * 60 * 6, tags: ['player'] };
 
 /**
  * Hand the policy to Workers Caching. Optional-chained and wrapped the way
  * `middleware.ts` does it: the cache provider is a Cloudflare runtime thing and
  * is absent in dev and under the Container API.
  */
-function setCache(Astro: AstroGlobal, config: typeof PLAYER_CACHE | false): void {
+export function setCache(Astro: AstroGlobal, config: typeof PLAYER_CACHE | false): void {
     try { (Astro as any).cache?.set(config); } catch { /* cache provider absent in dev */ }
 }
 
@@ -86,7 +86,7 @@ function setCache(Astro: AstroGlobal, config: typeof PLAYER_CACHE | false): void
  * from one bad upstream minute would freeze a real player's page as a 404 with
  * no way to purge it. Opting out has to be explicit, exactly as `game.ts` says.
  */
-function uncacheable(Astro: AstroGlobal): void {
+export function uncacheable(Astro: AstroGlobal): void {
     setCache(Astro, false);
     try { Astro.response?.headers?.set('Cache-Control', 'no-store'); } catch { /* as above */ }
 }
