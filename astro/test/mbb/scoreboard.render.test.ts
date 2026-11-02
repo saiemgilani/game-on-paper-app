@@ -85,6 +85,17 @@ describe('/mbb/scoreboard render (real days)', () => {
         prep.mockResolvedValueOnce(day('2025-02-22', '20250222-top25', 'top25', 'Top 25'));
         expect(await render('?date=2025-02-22')).toContain('Jump to games by status'); // a day with games keeps it
     });
+    test('bare URL, fresh live read, failed D-I fallback: still "Tonight" with day links (the day is known)', async () => {
+        prep.mockResolvedValueOnce({ ...day('2025-02-22', '20250222-top25', 'top25', 'Top 25'), isLive: true, undated: true, games: [], degraded: true });
+        const html = await render('');
+        expect(html).toContain('The scoreboard is unavailable right now.');
+        expect(html).toMatch(/<h1[^>]*>Tonight<\/h1>/);
+        expect(html).toContain('href="/mbb/scoreboard?date=2025-02-21"');
+        expect(html).toContain('value="2025-02-22"');
+        // a failed LIVE read (not live, undated) still can't name the day
+        prep.mockResolvedValueOnce({ ...day('2025-02-22', '20250222-top25', 'top25', 'Top 25'), isLive: false, undated: true, games: [], degraded: true });
+        expect(await render('')).toMatch(/<h1[^>]*>Scoreboard<\/h1>/);
+    });
     test('a Top 25 day with games has no fallback note', async () => {
         prep.mockResolvedValueOnce(day('2025-02-22', '20250222-top25', 'top25', 'Top 25'));
         expect(await render('?date=2025-02-22')).not.toContain('No ranked teams play today');
