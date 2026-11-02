@@ -19,7 +19,8 @@ export type ComparePrep = { notFound: true } | { entries: CompareEntry[]; season
 export async function prepareCompare(Astro: AstroGlobal, league: League): Promise<ComparePrep> {
     Astro.locals.league = league;
     const seasonParam = Astro.url.searchParams.get('season');
-    if (!isFeatureEnabled('player-compare', Astro.locals) || (seasonParam !== null && !/^\d{4}$/.test(seasonParam))) {
+    // no leading zero: `0000` would parse to 0, which every link then drops as "no season"
+    if (!isFeatureEnabled('player-compare', Astro.locals) || (seasonParam !== null && !/^[1-9]\d{3}$/.test(seasonParam))) {
         uncacheable(Astro);
         return { notFound: true };
     }
@@ -39,6 +40,10 @@ export async function prepareCompare(Astro: AstroGlobal, league: League): Promis
             entries.push({ id, unavailable: true });
         } else if (player.value) {
             entries.push({ id, player: player.value, rows: rows.value as SeasonRow[] });
+        } else {
+            // dropped, and not cached: the player page never caches a 404 either, so a
+            // transient miss cannot freeze a comparison without him
+            degraded = true;
         }
     });
     if (degraded) uncacheable(Astro);

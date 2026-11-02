@@ -13,7 +13,9 @@ const cfb = JSON.parse(readFileSync(new URL('./fixtures/player-cfb-4433971-2024.
 const nfl = JSON.parse(readFileSync(new URL('./fixtures/player-nfl-16800-2024.json', import.meta.url)).toString());
 const other = { ...cfb.identity, espn_id: '5000001', player_id: '5000001', name: 'Second Passer', seasons: [2024] };
 const otherRows = cfb.seasons.data.filter((r: any) => r.season === 2024 && r.category === 'passing')
-    .map((r: any) => ({ ...r, player_id: '5000001', EPAplay_pct: null, EPAplay_pos_pct: null }));
+    // EPA/DB has no percentile at all; Pass SR% is 95th among QBs but 5th overall, so the
+    // shade says which one the cell read
+    .map((r: any) => ({ ...r, player_id: '5000001', EPAplay_pct: null, EPAplay_pos_pct: null, success_pos_pct: 95, success_pct: 5 }));
 
 const feed = { throws: new Set<string>() };
 vi.mock('../src/resources/sdv', async (orig) => ({
@@ -57,11 +59,14 @@ describe('the player-compare flag', () => {
         const page = await container.renderToString(Player, { params: { id: '4433971' }, request: new Request('https://gameonpaper.com/players/4433971?season=2024'), locals: {} });
         expect(page).toContain('Kyle McCord');
         expect(page).not.toContain('player-compare-link');
+        expect(page).not.toContain('nav-player-compare');
     });
     test('on, the player page links to a comparison seeded with him', async () => {
         const { default: Player } = await import('../src/pages/players/[id].astro');
         const page = await container.renderToString(Player, { params: { id: '4433971' }, request: new Request('https://gameonpaper.com/players/4433971?season=2024'), locals: { preview: true } });
         expect(page).toMatch(/id="player-compare-link"\s+href="\/players\/compare\?ids=4433971&amp;season=2024"/);
+        // and the header's Tools menu lists the page
+        expect(page).toMatch(/href="\/players\/compare" class="dropdown-item" id="nav-player-compare"/);
     });
 });
 
@@ -89,6 +94,23 @@ describe('CFB compare page', () => {
         // a null percentile is an unshaded cell
         const epa = categoryColumns('passing').findIndex(([k]) => k === 'EPAplay');
         expect(metricCells(b, 'passing')[epa][0]).not.toMatch(/hulk-bg-level/);
+        // the shade is his position percentile, not the overall one
+        const sr = categoryColumns('passing').findIndex(([k]) => k === 'success');
+        expect(metricCells(b, 'passing')[sr][0]).toContain(generateColorRampValue(95, 100)!);
+        expect(metricCells(b, 'passing')[sr][0]).not.toContain(generateColorRampValue(5, 100)!);
+        // a phone gets the team abbreviation, md and up the name
+        expect(a).toMatch(/<span class="d-md-none"[^>]*>SYR<\/span>/);
+        expect(a).toMatch(/<span class="d-none d-md-inline"[^>]*>Syracuse<\/span>/);
+    });
+    test('a season the player never played links his name to his career page', async () => {
+        const page = await html('cfb', '?ids=4433971,5000001&season=2023');
+        expect(card(page, '4433971')).toContain('href="/players/4433971?season=2023"');
+        expect(card(page, '5000001')).toContain('href="/players/5000001"');
+    });
+    test('an id the API has no player for is dropped, and the page is not cached', async () => {
+        const res = await render('cfb', '?ids=4433971,9999');
+        expect((await res.text()).match(/data-compare-card="/g)).toHaveLength(1);
+        expect(res.headers.get('Cache-Control')).toBe('no-store');
     });
     test('remove links drop one id; the add box carries the rest and the season', async () => {
         const page = await html('cfb', '?ids=4433971,5000001&season=2024');
@@ -124,6 +146,9 @@ describe('CFB compare page', () => {
     });
     test('a malformed season is a 404', async () => {
         expect(await prep('/players/compare?ids=4433971&season=24')).toEqual({ notFound: true });
+        // zero-padded: would parse to 0 or 202 and every link would drop or mangle it
+        expect(await prep('/players/compare?ids=4433971&season=0000')).toEqual({ notFound: true });
+        expect(await prep('/players/compare?ids=4433971&season=0202')).toEqual({ notFound: true });
     });
 });
 

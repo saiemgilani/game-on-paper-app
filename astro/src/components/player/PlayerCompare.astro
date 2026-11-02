@@ -18,6 +18,7 @@ import { cleanTextForTeam, formatRank, generateColorRampValue, numberOrNull, ord
 import { categoryColumns, formatPlayerMetric, percentileOf, playerPath, type SeasonRow } from '../../utils/players';
 import { cardLines, cardSeason, compareCategories, compareHref, MAX_COMPARE } from '../../utils/compare';
 import { CURRENT_YEAR } from '../../utils/constants';
+import { teamAbbr } from '../../utils/teams';
 
 interface Props {
     entries: CompareEntry[]
@@ -46,6 +47,10 @@ const cards = entries.map((e) => {
         teamId: teamId as string | number | null,
         realTeam,
         team: cleanTextForTeam(realTeam, teamId),
+        // a phone gets the abbreviation, as PlayerSeasonTable's Team cell does
+        abbr: teamId ? cleanTextForTeam(teamAbbr(league, teamId, realTeam), teamId) : '',
+        // his page 404s a season he has no rows for, so the name links to his career then
+        href: playerPath(league, e.id, shown !== null && e.player.seasons.includes(shown) ? shown : null),
         name: cleanTextForTeam(e.player.name ?? `Player ${e.id}`, teamId),
         headshot: e.player.headshot_url
             ?? `https://a.espncdn.com/combiner/i?img=/i/headshots/${cfg.espnPath}/players/full/${e.id}.png&w=150`,
@@ -115,12 +120,14 @@ const addTemplate = compareHref(league, [...ids, '__ID__'], season);
                         <Fragment>
                         <div class="text-center">
                             <img class="img img-fluid img-circle-bg mb-2" width="96px" src={c.headshot} alt={c.name} />
-                            <h2 class="h5 mb-1"><a href={playerPath(league, c.id, c.shown)}>{c.name}</a></h2>
+                            <h2 class="h5 mb-1"><a href={c.href}>{c.name}</a></h2>
                             <p class="mb-0 text-muted d-flex align-items-center justify-content-center flex-wrap gap-1">
                                 {c.teamId && <img class={`img-fluid team-logo-${c.teamId}`} width="20px"
                                     src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${c.teamId}.png`}
                                     alt={`${c.realTeam} logo`} />}
-                                <span>{[c.player.position, c.player.jersey ? `#${c.player.jersey}` : null, c.team || null].filter(Boolean).join(' / ')}</span>
+                                <span>{[c.player.position, c.player.jersey ? `#${c.player.jersey}` : null].filter(Boolean).join(' / ')}{c.team && ' / '}
+                                    {c.team && <span class="d-md-none">{c.abbr}</span>}
+                                    {c.team && <span class="d-none d-md-inline">{c.team}</span>}</span>
                             </p>
                             <p class="mb-2 text-muted text-small">{c.shown ?? 'No seasons'}</p>
                             <a class="btn btn-sm btn-outline-secondary" href={c.remove} data-compare-remove>Remove</a>
@@ -205,14 +212,20 @@ const addTemplate = compareHref(league, [...ids, '__ID__'], season);
         };
 
         input.addEventListener('input', () => {
+            // an edit retires the old answer at once: its request, its links and the Enter target,
+            // so nothing from the previous query can add a player
             clearTimeout(timer);
+            ctrl?.abort();
+            list.classList.remove('show');
+            list.replaceChildren();
+            first = null;
             const term = input.value.trim();
-            if (term.length < 2) { ctrl?.abort(); list.classList.remove('show'); first = null; return; }
+            if (term.length < 2) return;
             timer = setTimeout(async () => {
-                ctrl?.abort();
                 ctrl = new AbortController();
                 try {
-                    const url = carryAdminParams(`/api/search?${new URLSearchParams({ q: term, league: form.dataset.league ?? 'cfb' })}`, page);
+                    // type=player: players only, before the cap, so team hits cannot crowd them out
+                    const url = carryAdminParams(`/api/search?${new URLSearchParams({ q: term, league: form.dataset.league ?? 'cfb', type: 'player' })}`, page);
                     const res = await fetch(url, { signal: ctrl.signal });
                     const hits = res.ok ? await res.json() : [];
                     show(hits.filter((h: { type: string; id: string }) => h.type === 'player' && !have.has(String(h.id))));

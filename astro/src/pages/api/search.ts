@@ -28,7 +28,9 @@ export const GET: APIRoute = async ({ url, locals }) => {
     const nfl = isFeatureEnabled('nfl', locals);
     if (!q || (league !== 'cfb' && league !== 'nfl') || (league === 'nfl' && !nfl)) return jsonResponse([], NO_STORE);
     const rows = await upstream(q, league);
-    return jsonResponse(rankHits(rows, { players: isFeatureEnabled('player-pages', locals), nfl }), NO_STORE);
+    // ?type= narrows the hits to one type before the cap
+    const only = url.searchParams.get('type') ?? undefined;
+    return jsonResponse(rankHits(rows, { players: isFeatureEnabled('player-pages', locals), nfl, only }), NO_STORE);
 };
 
 async function upstream(q: string, league: string): Promise<SearchRow[]> {
