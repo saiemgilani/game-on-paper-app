@@ -8,7 +8,7 @@ import { wrappedFetch } from "../utils/telemetry"
 import { LEAGUES, type League, type SdvSource, leagueSource, teamCategoriesFor } from '../utils/league';
 import { coachMetricColumns, type CoachRow } from '../utils/coaches';
 import { formatRecord } from '../utils/resume';
-import { latestIngest } from '../utils/pagePurge';
+import { type IngestStamps, purgeTarget } from '../utils/pagePurge';
 import { PLAYER_SPLITS } from '../utils/players';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
@@ -617,9 +617,10 @@ export async function sdvIngestStamp(league: League, table: string, fresh = fals
     return ingestStamp(LEAGUES[league].sdvSchema, table, fresh);
 }
 
-/** The newest ingest across every league's tables, read past the cached copies (the page purge cron). */
-export async function sdvLatestIngest(): Promise<string | undefined> {
-    return latestIngest(await fetchSDVDatasets(true), Object.values(LEAGUES).map((l) => l.sdvSchema));
+/** The page purge cron's next target across every league's tables (utils/pagePurge.ts),
+ *  from /v1/meta read past the cached copies. */
+export async function sdvPurgeTarget(purgedFor: IngestStamps, now: number): Promise<IngestStamps | undefined> {
+    return purgeTarget(await fetchSDVDatasets(true), Object.values(LEAGUES).map((l) => l.sdvSchema), purgedFor, now);
 }
 
 /** When `<schema>.<table>` last ingested, per /v1/meta; see sdvIngestStamp. */
