@@ -1,65 +1,136 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-// retrievePlayerSitemapIds: the seasoned id source behind the player sitemaps.
-// The Data API pages with limit/offset and answers `next: null` even when more
-// rows exist, so a full page must be followed by another read; NFL rows key on
-// gsis and must map through nfl.players to the ESPN id the pages use.
-const seen: URL[] = [];
-let rowsFor: (u: URL) => unknown[] | Response;
+// retrievePlayerSitemapIds: the seasoned id source behind the player sitemaps, and
+// what it costs in subrequests. The Worker's plan is not on record, so no request
+// may go past the free plan's 50 external fetches. The KV stub always misses, so
+// every count here is the cold, worst case. The fake Data API below honours
+// `season__gte`/`season__lte`, `select` and the real 50,000-row cap.
+vi.mock('../src/utils/features', async (orig) => {
+    const real = await orig<typeof import('../src/utils/features')>();
+    return { ...real, FLAGS: { ...real.FLAGS, nfl: 'on', 'player-pages': 'on' } };
+});
+
+const CAP = 50_000;
+const seen: { url: URL; signal: boolean }[] = [];
+/** rows per season per table, by league; the NFL crosswalk size */
+let perSeason: Record<string, Record<string, number>>;
+let crosswalkRows: number;
+let failTable: string | null;
 
 vi.mock('../src/utils/telemetry', async (orig) => ({
     ...(await orig<typeof import('../src/utils/telemetry')>()),
-    wrappedFetch: async (url: string) => {
+    wrappedFetch: async (url: string, init?: RequestInit) => {
         const u = new URL(String(url));
+        seen.push({ url: u, signal: !!init?.signal });
         if (u.pathname.endsWith('/meta')) return new Response('{}', { status: 500 });
-        seen.push(u);
-        const r = rowsFor(u);
-        return r instanceof Response ? r : new Response(JSON.stringify({ count: r.length, data: r, next: null }), { status: 200 });
+        const [, , league, table] = u.pathname.split('/');
+        if (table === failTable) return new Response('down', { status: 502 });
+        const limit = Math.min(Number(u.searchParams.get('limit')), CAP);
+        let data: object[];
+        if (table === 'players') {
+            data = Array.from({ length: Math.min(limit, crosswalkRows) }, (_, i) =>
+                ({ gsis_id: `00-${String(i).padStart(7, '0')}`, espn_id: i % 3 === 2 ? null : String(10_000 + i) }));
+        } else {
+            const from = Number(u.searchParams.get('season__gte')), to = Number(u.searchParams.get('season__lte'));
+            data = [];
+            for (let s = from; s <= to && data.length < limit; s++) {
+                for (let i = 0; i < (perSeason[league]?.[table] ?? 0) && data.length < limit; i++) {
+                    data.push({ player_id: league === 'nfl' ? `00-${String(i).padStart(7, '0')}` : 4_000_000 + i, season: s });
+                }
+            }
+        }
+        return new Response(JSON.stringify({ count: data.length, data, next: null }), { status: 200 });
     },
 }));
 
-const { retrievePlayerSitemapIds } = await import('../src/resources/sdv');
-const table = (u: URL) => u.pathname.split('/').at(-1);
-/** `n` rows of `make(i)`, served `limit`/`offset` at a time like the API */
-const paged = (u: URL, n: number, make: (i: number) => object) => {
-    const limit = Number(u.searchParams.get('limit')), offset = Number(u.searchParams.get('offset'));
-    return Array.from({ length: Math.max(0, Math.min(limit, n - offset)) }, (_, i) => make(offset + i));
+// today's volumes (2026-11-01, all seasons): cfb 11,638 / 33,428 / 45,271 rows; nfl 2,589 / 7,926 / 12,066 + 24,863
+const TODAY = {
+    cfb: { passing: 506, rushing: 1454, receiving: 1969 },
+    nfl: { passing: 100, rushing: 305, receiving: 465 },
 };
+const fresh = async () => { vi.resetModules(); return import('../src/resources/sdv'); };
+const dataReads = () => seen.filter((s) => !s.url.pathname.endsWith('/meta'));
 
-beforeEach(() => { seen.length = 0; });
+beforeEach(() => {
+    seen.length = 0;
+    perSeason = structuredClone(TODAY);
+    crosswalkRows = 24_863;
+    failTable = null;
+});
 
 describe('retrievePlayerSitemapIds', () => {
-    test('reads past a full page, dedupes the three tables, and sorts ids numerically', async () => {
-        rowsFor = (u) => table(u) === 'receiving'
-            ? paged(u, 10_001, (i) => ({ player_id: 1_000_000 + i }))
-            : [{ player_id: 1_000_000 }, { player_id: 99 }, { player_id: null }];
-        const ids = (await retrievePlayerSitemapIds('cfb', [2019])).get(2019)!;
-        expect(ids).toHaveLength(10_002);
-        expect(ids.slice(0, 2)).toEqual(['99', '1000000']);
-        const receiving = seen.filter((u) => table(u) === 'receiving');
-        expect(receiving.map((u) => u.searchParams.get('offset'))).toEqual(['0', '10000']);
-        for (const u of seen) {
-            expect(u.pathname).toMatch(/^\/v1\/cfb\/(passing|rushing|receiving)$/);
-            expect(Object.fromEntries(u.searchParams)).toMatchObject({ season: '2019', select: 'player_id', order: 'player_id', limit: '10000' });
+    test('one whole-range read per table, ids unique per season and sorted numerically', async () => {
+        const { retrievePlayerSitemapIds } = await fresh();
+        const ids = await retrievePlayerSitemapIds('cfb');
+        expect(dataReads()).toHaveLength(3);
+        for (const { url, signal } of dataReads()) {
+            expect(Object.fromEntries(url.searchParams)).toEqual({ select: 'player_id,season', season__gte: '2004', season__lte: String(Math.max(...ids.keys())), limit: '50000' });
+            expect(signal).toBe(true); // bounded: a stalled read cannot hang the request
         }
+        expect(ids.get(2025)).toHaveLength(1969);
+        expect(ids.get(2025)!.slice(0, 2)).toEqual(['4000000', '4000001']);
     });
 
-    test('NFL maps gsis to ESPN ids and drops a player the crosswalk has no ESPN id for', async () => {
-        rowsFor = (u) => table(u) === 'players'
-            ? [{ gsis_id: '00-0031381', espn_id: '16800' }, { gsis_id: '00-0000001', espn_id: null }]
-            : [{ player_id: '00-0031381' }, { player_id: '00-0000001' }, { player_id: '00-9999999' }];
-        const ids = await retrievePlayerSitemapIds('nfl', [2018]);
-        expect(ids.get(2018)).toEqual(['16800']);
-        const xwalk = seen.filter((u) => table(u) === 'players');
-        expect(xwalk).toHaveLength(1);
-        expect(xwalk[0].pathname).toBe('/v1/nfl/players');
-        expect(xwalk[0].searchParams.get('select')).toBe('gsis_id,espn_id');
+    test('a range that fills the cap is halved, not truncated', async () => {
+        perSeason.cfb.receiving = 4000; // 23 seasons x 4,000 = 92,000 rows
+        const { retrievePlayerSitemapIds } = await fresh();
+        const ids = await retrievePlayerSitemapIds('cfb');
+        const receiving = dataReads().filter((s) => s.url.pathname.endsWith('/receiving'));
+        expect(receiving.length).toBeGreaterThan(1);
+        expect(ids.get(2004)).toHaveLength(4000);
+        expect(ids.get(Math.max(...ids.keys()))).toHaveLength(4000);
     });
 
-    test('a season with no rows is left out; a failed read throws instead of truncating', async () => {
-        rowsFor = () => [];
-        expect([...(await retrievePlayerSitemapIds('cfb', [2005])).keys()]).toEqual([]);
-        rowsFor = (u) => table(u) === 'rushing' ? new Response('down', { status: 502 }) : [{ player_id: 1 }];
-        await expect(retrievePlayerSitemapIds('cfb', [2006])).rejects.toThrow();
+    test('NFL maps gsis to ESPN ids and drops players the crosswalk has no ESPN id for', async () => {
+        const { retrievePlayerSitemapIds } = await fresh();
+        const ids = await retrievePlayerSitemapIds('nfl');
+        expect(dataReads().filter((s) => s.url.pathname === '/v1/nfl/players')).toHaveLength(1);
+        // receiving rows are gsis 0..464; every third has no espn id
+        expect(ids.get(2024)).toHaveLength(465 - Math.floor(465 / 3));
+        expect(ids.get(2024)![0]).toBe('10000');
+    });
+
+    test('a failed read throws, a season over the cap throws, and concurrent callers share one read', async () => {
+        failTable = 'rushing';
+        let m = await fresh();
+        await expect(m.retrievePlayerSitemapIds('cfb')).rejects.toThrow();
+        failTable = null;
+        perSeason.cfb.receiving = CAP;
+        m = await fresh();
+        await expect(m.retrievePlayerSitemapIds('cfb')).rejects.toThrow(/fills the 50000-row limit|more than/);
+        perSeason = structuredClone(TODAY);
+        m = await fresh();
+        seen.length = 0;
+        await Promise.all([m.retrievePlayerSitemapIds('cfb'), m.retrievePlayerSitemapIds('cfb')]);
+        expect(dataReads()).toHaveLength(3);
+    });
+});
+
+describe('subrequests per request stay under the free plan cap (50)', () => {
+    const count = async (run: (m: any) => Promise<Response>) => {
+        await fresh();
+        const idx = await import('../src/pages/sitemap-index.xml');
+        const pl = await import('../src/pages/sitemap-players-[key].xml');
+        seen.length = 0;
+        const res = await run({ idx: idx.GET, pl: pl.GET });
+        expect(res.status).toBe(200);
+        return seen.length;
+    };
+
+    test('today: a cold index with both leagues makes 8 fetches, a cold file 4 or 5', async () => {
+        expect(await count((m) => m.idx({}))).toBe(1 + 3 + 4); // meta + cfb + nfl
+        expect(await count((m) => m.pl({ params: { key: 'cfb-career-1' } }))).toBe(4);
+        expect(await count((m) => m.pl({ params: { key: 'nfl-2024-1' } }))).toBe(5);
+    });
+
+    test('with every table at 4x today, the index is still far under 50', async () => {
+        for (const lg of ['cfb', 'nfl'] as const) {
+            for (const t of Object.keys(perSeason[lg])) perSeason[lg][t] *= 4;
+        }
+        const n = await count((m) => m.idx({}));
+        expect(n).toBeLessThan(50);
+        const { SITEMAP_FETCH_BUDGET } = await import('../src/resources/sdv');
+        // the reader's own cap keeps the worst case under 50 however the data grows
+        expect(1 + 2 * SITEMAP_FETCH_BUDGET).toBeLessThan(50);
     });
 });

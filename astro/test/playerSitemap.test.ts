@@ -11,14 +11,13 @@ vi.mock('../src/utils/features', async (orig) => {
 
 let ids: Record<string, Map<number, string[]>> = {};
 let fail = false;
-const calls: { league: string; seasons: number[] }[] = [];
+const calls: string[] = [];
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
-    retrievePlayerSitemapIds: async (league: string, seasons: number[]) => {
-        calls.push({ league, seasons });
+    retrievePlayerSitemapIds: async (league: string) => {
+        calls.push(league);
         if (fail) throw new Error('upstream down');
-        const all = ids[league] ?? new Map();
-        return new Map([...all].filter(([s]) => seasons.includes(s)));
+        return ids[league] ?? new Map();
     },
 }));
 
@@ -33,13 +32,17 @@ import {
 const range = (from: number, n: number) => Array.from({ length: n }, (_, i) => String(from + i));
 const BIG = PLAYER_SITEMAP_PAGE_SIZE + 1;
 
-const index = async () => (await (indexGET as any)({}) as Response);
-const players = async (key: string) => (await (playersGET as any)({ params: { key } }) as Response);
+// a stand-in Workers Caching provider, so a test sees what each response asked of it
+let cacheSets: unknown[] = [];
+const cache = { set: (c: unknown) => { cacheSets.push(c); } };
+const index = async () => (await (indexGET as any)({ cache }) as Response);
+const players = async (key: string) => (await (playersGET as any)({ params: { key }, cache }) as Response);
 const locs = (xml: string) => [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
 
 beforeEach(() => {
     fail = false;
     calls.length = 0;
+    cacheSets = [];
     ids = {
         // 2025 is one player over a page, so it pages; 4361214 played both seasons
         cfb: new Map([[2025, range(4_000_000, BIG)], [2024, ['4361214', '550577']]]),
@@ -144,6 +147,7 @@ describe('/sitemap-index.xml', () => {
         const res = await index();
         expect(res.status).toBe(503);
         expect(res.headers.get('Cache-Control')).toBe('no-store');
+        expect(cacheSets).toEqual([false]);
     });
 });
 
@@ -155,7 +159,8 @@ describe('/sitemap-players-<key>.xml', () => {
             'https://gameonpaper.com/players/4361214?season=2024',
             'https://gameonpaper.com/players/550577?season=2024',
         ]);
-        expect(calls).toEqual([{ league: 'cfb', seasons: [2024] }]);
+        expect(calls).toEqual(['cfb']);
+        expect(cacheSets).toEqual([expect.objectContaining({ maxAge: 86400, tags: ['sitemap'] })]);
     });
 
     test('the second page holds the overflow; past the last page is an uncached 404', async () => {
@@ -163,6 +168,7 @@ describe('/sitemap-players-<key>.xml', () => {
         const past = await players('cfb-2025-3');
         expect(past.status).toBe(404);
         expect(past.headers.get('Cache-Control')).toBe('no-store');
+        expect(cacheSets.at(-1)).toBe(false);
     });
 
     test('the /nfl twin and its career page', async () => {
@@ -179,7 +185,9 @@ describe('/sitemap-players-<key>.xml', () => {
     test('a key it never writes is a 404 without a Data API read; a failed read is a 503', async () => {
         expect((await players('cfb-2025-01')).status).toBe(404);
         expect(calls).toEqual([]);
+        expect(cacheSets).toEqual([false]);
         fail = true;
         expect((await players('cfb-2024-1')).status).toBe(503);
+        expect(cacheSets).toEqual([false, false]);
     });
 });

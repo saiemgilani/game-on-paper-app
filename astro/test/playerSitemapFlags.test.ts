@@ -5,8 +5,7 @@ import { readFileSync } from 'node:fs';
 // so the index carries cfb player files only and every /nfl player file is a 404.
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
-    retrievePlayerSitemapIds: async (_league: string, seasons: number[]) =>
-        new Map(seasons.includes(2024) ? [[2024, ['4361214']]] : []),
+    retrievePlayerSitemapIds: async () => new Map([[2024, ['4361214']]]),
 }));
 
 import { GET as indexGET } from '../src/pages/sitemap-index.xml';

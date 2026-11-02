@@ -583,6 +583,8 @@ async function generateSDVCacheKey(fullKey: string): Promise<string> {
 const SDV_META_URL = new URL('meta', LEAGUES.cfb.sdvApiBase).toString();
 const SDV_META_KEY = 'sdv-meta:datasets';
 const SDV_META_TTL = 60 * 5;
+// a stalled meta read must not hold up the page: it falls back to the unversioned key
+const SDV_META_TIMEOUT_MS = 5_000;
 // Single-flight: the in-flight read is shared, so a burst on a fresh isolate makes one
 // meta call, not one per request. Sharing a promise across requests is safe under
 // `handle_cross_request_promise_resolution` (default since compatibility_date
@@ -595,7 +597,7 @@ async function fetchSDVDatasets(fresh = false): Promise<Record<string, string> |
     try {
         const cached = fresh ? null : await env.SDV_API_CACHE.get(SDV_META_KEY, "json");
         if (cached) return cached as Record<string, string>;
-        const req = await wrappedFetch(SDV_META_URL, { headers: { "Authorization": `Bearer ${SDV_AUTH_TOKEN}` } });
+        const req = await wrappedFetch(SDV_META_URL, { headers: { "Authorization": `Bearer ${SDV_AUTH_TOKEN}` }, signal: AbortSignal.timeout(SDV_META_TIMEOUT_MS) });
         if (!req.ok) throw new Error(`status ${req.status}`);
         const datasets = (await req.json() as any)?.datasets;
         if (!datasets || typeof datasets !== 'object') throw new Error('no datasets in the response');
@@ -1618,60 +1620,91 @@ export async function retrieveNflEspnGameIds(season: number): Promise<Record<str
 
 // --------------------------------------------------------------- sitemap reads
 //
-// The player sitemaps need every player id a season has, which the Data API has
+// The player sitemaps need every player id each season has, which the Data API has
 // no player-list route for -- but the season leaderboard tables are exactly that:
 // one row per player-team-season in passing/rushing/receiving, the same tables
 // `/players/{id}` builds `seasons` from (sdv-db `player_routes._seasons`), so
 // every id read here is a player whose `?season=` page renders.
+//
+// Workers on the free plan may make 50 external subrequests per request, and which
+// plan this Worker runs on is not recorded anywhere in the repo. So a league's ids
+// are read in a handful of whole-table reads -- every season at once, one SQL
+// statement each, no offset paging -- and the reader refuses to go past a fixed
+// budget rather than let the platform kill the request part way.
 
-/** Rows per read. The API caps `limit` at 50,000 and answers `next: null` either
- *  way, so a full page is the only sign there is another; stay well under the cap. */
-const SITEMAP_ROWS_PAGE = 10_000;
+/** The Data API's `MAX_LIMIT` (sdv-db `api/query.py`): a larger `limit` is capped to it. */
+const SITEMAP_ROW_LIMIT = 50_000;
+/** Data API reads one league's ids may take: two leagues plus the meta read stay under 50.
+ *  Today CFB takes 3 and NFL 4 (3 tables + the crosswalk); at 4x today's rows, CFB takes 15. */
+export const SITEMAP_FETCH_BUDGET = 24;
+/** A stalled Data API read becomes an error (and an uncached 503), never a hung request. */
+const SITEMAP_READ_TIMEOUT_MS = 15_000;
 const SITEMAP_SEASON_TABLES = ['passing', 'rushing', 'receiving'] as const;
 
-/**
- * Every row a filtered table has, read `limit`/`offset` page by page with a stable
- * `order`. Strict: a failed page throws rather than truncating the list, so a
- * sitemap is never written from half a season. Each page is its own KV entry
- * under the table's ingest stamp, like every other `requestSDV` read.
- */
-async function retrieveAllRows<T>(league: League, table: string, query: Record<string, string>, cacheTTL: number): Promise<T[]> {
-    const out: T[] = [];
-    for (let offset = 0; ; offset += SITEMAP_ROWS_PAGE) {
-        const rows = await retrieveRowsFrom<T>(leagueSource(league), table,
-            { ...query, limit: String(SITEMAP_ROWS_PAGE), offset: String(offset) }, cacheTTL, true);
-        out.push(...rows);
-        if (rows.length < SITEMAP_ROWS_PAGE) return out;
-    }
-}
+type SitemapRow = { player_id: string | number | null; season: number };
 
 /**
- * The ESPN athlete ids with a player page, per season: `[season, ids]` with ids as
- * strings, unique, ascending. CFB's season tables key on the ESPN id itself; NFL's
- * key on gsis, so they map through the nflverse crosswalk (`nfl.players`), and a
- * player it has no ESPN id for is left out -- his gsis URL would only redirect.
+ * Every row a season table has for seasons `from`..`to`, as one read when it fits under
+ * the row limit. A full answer may be truncated, so the range is halved and each half
+ * read instead; a single season that alone fills the limit throws. Each read is one
+ * statement, so it sees one snapshot: an ingest between two reads can only touch
+ * different seasons, never shift rows between pages the way offset paging would.
  */
-export async function retrievePlayerSitemapIds(league: League, seasons: number[]): Promise<Map<number, string[]>> {
+async function readSeasonRange(league: League, table: string, from: number, to: number, budget: { left: number }): Promise<SitemapRow[]> {
+    if (--budget.left < 0) throw new Error(`player sitemap: ${league} ids need more than ${SITEMAP_FETCH_BUDGET} Data API reads`);
+    const rows = await retrieveRowsFrom<SitemapRow>(leagueSource(league), table, {
+        select: 'player_id,season', season__gte: String(from), season__lte: String(to), limit: String(SITEMAP_ROW_LIMIT),
+    }, 60 * 60 * 24, true, SITEMAP_READ_TIMEOUT_MS);
+    if (rows.length < SITEMAP_ROW_LIMIT) return rows;
+    if (from === to) throw new Error(`player sitemap: ${league}.${table} ${from} fills the ${SITEMAP_ROW_LIMIT}-row limit`);
+    const mid = Math.floor((from + to) / 2);
+    return [...await readSeasonRange(league, table, from, mid, budget), ...await readSeasonRange(league, table, mid + 1, to, budget)];
+}
+
+async function readPlayerSitemapIds(league: League): Promise<Map<number, string[]>> {
     if (!LEAGUES[league].sdvEnabled) return new Map();
-    const day = 60 * 60 * 24;
+    const seasons = LEAGUES[league].seasons;
+    const budget = { left: SITEMAP_FETCH_BUDGET };
     let espnByGsis: Map<string, string> | null = null;
     if (league === 'nfl') {
-        const xwalk = await retrieveAllRows<{ gsis_id: string | null; espn_id: string | number | null }>(
-            'nfl', 'players', { select: 'gsis_id,espn_id', order: 'gsis_id' }, day * 7);
+        // NFL rows key on gsis; nfl.players is one row per player (~25k), one read
+        budget.left--;
+        const xwalk = await retrieveRowsFrom<{ gsis_id: string | null; espn_id: string | number | null }>(leagueSource('nfl'), 'players',
+            { select: 'gsis_id,espn_id', limit: String(SITEMAP_ROW_LIMIT) }, 60 * 60 * 24 * 7, true, SITEMAP_READ_TIMEOUT_MS);
+        if (xwalk.length >= SITEMAP_ROW_LIMIT) throw new Error(`player sitemap: nfl.players fills the ${SITEMAP_ROW_LIMIT}-row limit`);
         espnByGsis = new Map(xwalk.filter((r) => r.gsis_id && r.espn_id != null).map((r) => [String(r.gsis_id), String(r.espn_id)]));
     }
-    const perSeason = await Promise.all(seasons.map(async (season) => {
-        // a finished season cannot change; the ingest stamp in the key still moves it on a republish
-        const ttl = season < CURRENT_YEAR ? day * 7 : day;
-        const tables = await Promise.all(SITEMAP_SEASON_TABLES.map((t) => retrieveAllRows<{ player_id: string | number | null }>(
-            league, t, { season: String(season), select: 'player_id', order: 'player_id' }, ttl)));
-        const ids = new Set<string>();
-        for (const r of tables.flat()) {
-            if (r.player_id === null || r.player_id === undefined) continue;
-            const id = espnByGsis ? espnByGsis.get(String(r.player_id)) : String(r.player_id);
-            if (id && isEspnAthleteId(id)) ids.add(id);
-        }
-        return [...ids].sort((a, b) => Number(a) - Number(b));
-    }));
-    return new Map(seasons.map((s, i) => [s, perSeason[i]] as [number, string[]]).filter(([, ids]) => ids.length > 0));
+    const tables = await Promise.all(SITEMAP_SEASON_TABLES.map((t) =>
+        readSeasonRange(league, t, Math.min(...seasons), Math.max(...seasons), budget)));
+    const bySeason = new Map<number, Set<string>>();
+    for (const r of tables.flat()) {
+        if (r.player_id === null || r.player_id === undefined || !seasons.includes(Number(r.season))) continue;
+        const id = espnByGsis ? espnByGsis.get(String(r.player_id)) : String(r.player_id);
+        if (!id || !isEspnAthleteId(id)) continue;
+        const season = Number(r.season);
+        if (!bySeason.has(season)) bySeason.set(season, new Set());
+        bySeason.get(season)!.add(id);
+    }
+    return new Map([...bySeason].sort(([a], [b]) => a - b)
+        .map(([s, ids]) => [s, [...ids].sort((a, b) => Number(a) - Number(b))] as [number, string[]]));
+}
+
+// One read per league per isolate at a time: concurrent crawler hits on a cold
+// index and its files share it (safe across requests; see `sdvMeta` above).
+const sitemapIdsInFlight = new Map<League, Promise<Map<number, string[]>>>();
+
+/**
+ * The ESPN athlete ids with a player page, per season (seasons with none are left
+ * out): ids as strings, unique, ascending. CFB's season tables key on the ESPN id
+ * itself; NFL's key on gsis and map through the nflverse crosswalk (`nfl.players`),
+ * and a player it has no ESPN id for is left out -- his gsis URL would only redirect.
+ * Strict: a failed, stalled or over-budget read throws.
+ */
+export function retrievePlayerSitemapIds(league: League): Promise<Map<number, string[]>> {
+    let p = sitemapIdsInFlight.get(league);
+    if (!p) {
+        p = readPlayerSitemapIds(league).finally(() => sitemapIdsInFlight.delete(league));
+        sitemapIdsInFlight.set(league, p);
+    }
+    return p;
 }

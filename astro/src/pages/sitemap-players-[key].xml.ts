@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
 import { retrievePlayerSitemapIds } from '../resources/sdv';
-import { LEAGUES } from '../utils/league';
 import {
     careerPlayerEntries, pageSlice, parsePlayerSitemapKey, seasonPlayerEntries, urlsetXml,
 } from '../utils/sitemap';
@@ -12,8 +11,8 @@ import {
  * list `/players/...`.
  *
  * A season file lists `/players/<id>?season=<year>`; the career files list each
- * player's bare `/players/<id>` once, which needs every season's ids -- the same
- * KV-cached reads the index makes. Same cache rules as the index: a day in
+ * player's bare `/players/<id>` once. Every file reads the league's ids whole --
+ * the same few KV-cached reads the index makes, so a file costs no more than it. Same cache rules as the index: a day in
  * Workers Caching, and a failed read is an uncached 503.
  */
 export const prerender = false;
@@ -33,7 +32,7 @@ export const GET: APIRoute = async (context) => {
 
     let ids: Map<number, string[]>;
     try {
-        ids = await retrievePlayerSitemapIds(key.league, key.season === 'career' ? LEAGUES[key.league].seasons : [key.season]);
+        ids = await retrievePlayerSitemapIds(key.league);
     } catch (e) {
         console.error(`player sitemap ${context.params.key}: player ids unavailable: ${e}`);
         noCache();
