@@ -131,7 +131,7 @@ describe('the compact scoreboard rows are preview-gated', () => {
         expect(html).toMatch(/data-gb-utc="2026-09-06T23:30Z"[^>]*>7:30 PM EDT</);
         expect(html).toMatch(/gb-slot[^>]*data-gb-utc=/);
         expect([...html.matchAll(/data-gb-utc="/g)].length).toBe(2); // header + 1 scheduled game (live/final carry none)
-        // live game: possession badge on the logo of the team with the ball,
+        // live game: possession dot beside the logo of the team with the ball,
         // red variant in the red zone
         const liveCard = html.slice(html.indexOf('/game/403'));
         expect(liveCard.slice(0, liveCard.indexOf('</a>'))).toContain('gb-ball gb-ball-rz');
@@ -186,12 +186,13 @@ describe('the compact row possession marker', () => {
     }
     // competitors[0] is home (ALA, 333), competitors[1] away (AUB, 2); the dot
     // span carries a visually-hidden name, so match the dot's opening tag only
-    const DOT = String.raw`<span class="gb-ball[^"]*"><span class="visually-hidden">has the ball</span></span>`;
+    // the hidden text names the team, so a screen reader hears who has it
+    const dot = (abbr: string) => String.raw`<span class="gb-ball[^"]*"><span class="visually-hidden">${abbr} has the ball</span></span>`;
 
     test('away team with the ball: the dot follows the away logo', async () => {
         const html = await row('2');
         expect([...html.matchAll(/class="gb-ball/g)]).toHaveLength(1);
-        expect(html).toMatch(new RegExp(String.raw`team-logo-2"[^>]*>\s*` + DOT));
+        expect(html).toMatch(new RegExp(String.raw`team-logo-2"[^>]*>\s*` + dot('AUB')));
         // outside the red zone the dot is the primary (not danger) variant
         expect(html).not.toContain('gb-ball-rz');
     });
@@ -199,7 +200,7 @@ describe('the compact row possession marker', () => {
     test('home team with the ball: the dot precedes the home logo', async () => {
         const html = await row('333');
         expect([...html.matchAll(/class="gb-ball/g)]).toHaveLength(1);
-        expect(html).toMatch(new RegExp(DOT + String.raw`\s*<img[^>]*team-logo-333"`));
+        expect(html).toMatch(new RegExp(dot('ALA') + String.raw`\s*<img[^>]*team-logo-333"`));
         // the dot is never after the home logo (its outer edge)
         expect(html).not.toMatch(new RegExp(String.raw`team-logo-333"[^>]*>\s*<span class="gb-ball`));
     });
@@ -214,6 +215,9 @@ describe('the compact row possession marker', () => {
         expect(ball).not.toBe('');
         expect(ball).not.toMatch(/position:\s*absolute/);
         expect(rule('.game-banner .gb-logo')).toMatch(/display:\s*flex/);
+        // spacing is a Bootstrap utility on the markup, not a bespoke CSS value
+        // (docs/design-conventions.md: "Spacing is Bootstrap utilities only")
+        expect(rule('.game-banner .gb-logo')).not.toMatch(/gap:/);
     });
 });
 
