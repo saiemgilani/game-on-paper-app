@@ -31,7 +31,7 @@ beforeAll(async () => {
     container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
 });
 
-async function renderBoard(league: 'cfb' | 'nfl', board: string, opts: { season?: number; metric?: string } = {}) {
+async function renderBoard(league: 'cfb' | 'nfl', board: string, opts: { season?: number; metric?: string; preview?: boolean } = {}) {
     const { default: Page } = await import('../src/components/leaderboards/CoachLeaderboardPage.astro');
     const prefix = league === 'nfl' ? '/nfl' : '';
     const path = opts.season === undefined ? `${prefix}/coaches/${board}` : `${prefix}/year/${opts.season}/coaches/${board}`;
@@ -40,9 +40,87 @@ async function renderBoard(league: 'cfb' | 'nfl', board: string, opts: { season?
         request: new Request(`https://gameonpaper.com${path}`),
         // the boards are behind the 'coaches' flag, so the only viewer who reaches
         // one holds the preview cookie -- render as that viewer (header entry included)
-        locals: { league, preview: true },
+        locals: { league, preview: opts.preview ?? true },
     });
 }
+
+// live game-context rows (fixtures/coach-situations.json)
+const sx = JSON.parse(readFileSync(new URL('./fixtures/coach-situations.json', import.meta.url)).toString()) as Record<string, CoachRow[]>;
+
+describe('situations board (coach-situations)', () => {
+    const headers = (html: string) => [...html.matchAll(/<abbr title="([^"]+)">([^<]+)<\/abbr><\/a>/g)].map((m) => [m[2], m[1]]);
+
+    test('both flags on: CFB careers render the columns in declaration order with hovers, sorted by one-score win %', async () => {
+        const saved = feed.careers;
+        feed.careers = sx.cfb_coach_careers;
+        feed.calls = [];
+        try {
+            const html = await renderBoard('cfb', 'situations');
+            const { COACH_BOARDS } = await import('../src/utils/coaches');
+            expect(headers(html).map((h) => h[0])).toEqual(COACH_BOARDS.situations.columns.map((c) => c.label));
+            expect(headers(html)[0][1]).toMatch(/12 days after/);
+            expect(html).toContain('data-sort="win_rate_one_score_game"');
+            expect(html).toMatch(/<option value="\/coaches\/situations" selected[^>]*>Situations<\/option>/);
+            expect(html).toContain('Win % vs Ranked');
+            expect(html).toContain('fewer than 5 games in the situation the board is sorted by');
+            expect(feed.calls[0][1].columns).toEqual(expect.arrayContaining(['games_vs_ranked', 'win_rate_one_score_game']));
+            // rank 1 is the best one-score record among coaches with 5+ one-score games and the plays floor
+            const eligible = sx.cfb_coach_careers.filter((r) => (numericValue(r, 'plays') ?? 0) >= 1500 && (numericValue(r, 'games_one_score_game') ?? 0) >= 5);
+            const top = byTop(eligible, 'win_rate_one_score_game');
+            const rows = html.split('<tr').slice(2);
+            expect(rows[0]).toContain(`<strong>${top.coach}</strong>`);
+            expect(rows[0]).toContain(`${((numericValue(top, 'win_rate_one_score_game') as number) * 100).toFixed(1)}%`);
+        } finally {
+            feed.careers = saved;
+        }
+    }, 60_000);
+
+    test('the /nfl twin has no vs-ranked header and never selects a vs-ranked column; 0 openers is a dash under the divider', async () => {
+        const saved = feed.careers;
+        feed.careers = sx.nfl_coach_careers;
+        feed.calls = [];
+        try {
+            const html = await renderBoard('nfl', 'situations', { metric: 'win_rate_opener' });
+            expect(html).not.toMatch(/vs Ranked/);
+            expect(feed.calls[0][1].columns.some((c: string) => c.includes('vs_ranked'))).toBe(false);
+            expect(html).toContain('data-sort="win_rate_opener"');
+            expect(html).toContain('or fewer than 5 openers: shown, not ranked');
+            const callahan = html.split('<tr').find((r) => r.includes('<strong>Bill Callahan</strong>'))!;
+            expect(callahan).toContain('class="coach-partial"');
+            // his Openers cell reads 0 and his opener win rate a dash, never 0.0%
+            expect(callahan).toMatch(/>0<\/td>\s*<td[^>]*>—<\/td>/);
+        } finally {
+            feed.careers = saved;
+        }
+    }, 60_000);
+
+    test('a CFB season ranks only coaches with at least one game in the sorted situation', async () => {
+        const saved = feed.season;
+        // every 2025 FBS coach had a one-score game; give the first row none, as the producer writes it
+        const [first, ...rest] = sx.cfb_coach_tendencies_2025;
+        feed.season = [{ ...first, games_one_score_game: 0, wins_one_score_game: 0, win_rate_one_score_game: null }, ...rest];
+        try {
+            const html = await renderBoard('cfb', 'situations', { season: 2025 });
+            expect(html).toContain('or no one-score games: shown, not ranked');
+            expect(html).toContain('So are coaches with no game in the situation the board is sorted by.');
+            expect(html).toContain('data-sort="win_rate_one_score_game"');
+            const row = html.split('<tr').find((r) => r.includes(`<strong>${first.coach}</strong>`))!;
+            expect(row).toContain('class="coach-partial"');
+            expect(row).toMatch(/>0<\/td>\s*<td[^>]*>—<\/td>/);
+        } finally {
+            feed.season = saved;
+        }
+    }, 60_000);
+
+    test('coach-situations off: the board select does not list it, other boards unchanged', async () => {
+        const html = await renderBoard('nfl', 'tendencies', { season: 2024, preview: false });
+        expect(html).not.toContain('Situations');
+        expect(html).not.toContain('/coaches/situations');
+        expect(html).toContain('value="/nfl/year/2024/coaches/defense"');
+        const on = await renderBoard('nfl', 'tendencies', { season: 2024 });
+        expect(on).toContain('value="/nfl/year/2024/coaches/situations"');
+    }, 60_000);
+});
 
 const byTop = (rows: CoachRow[], key: string, lowerIsBetter = false) =>
     [...rows].sort((a, b) => ((numericValue(a, key) as number) - (numericValue(b, key) as number)) * (lowerIsBetter ? 1 : -1))[0];

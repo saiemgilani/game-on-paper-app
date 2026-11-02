@@ -14,6 +14,9 @@
  * change that moves a column between the conventions fails loudly.
  */
 
+import { isFeatureEnabled } from './features';
+import type { League } from './league';
+
 export type CoachColumnFormat = 'pct' | 'num1' | 'num2' | 'int' | 'pct_format';
 
 export interface CoachBoardColumn {
@@ -26,6 +29,10 @@ export interface CoachBoardColumn {
     lowerIsBetter?: boolean;
     /** a style, not a quality (pace, pass rate, go rate): ranked, never shaded good/bad */
     neutral?: boolean;
+    /** the leagues whose tables carry the column; absent means both (the NFL has no poll, so no vs-ranked) */
+    leagues?: League[];
+    /** the games count a situational rate is over: a board with `minGames` qualifies on it when sorted by this column */
+    games?: string;
 }
 
 export interface CoachBoard {
@@ -34,6 +41,10 @@ export interface CoachBoard {
     /** column key the board opens sorted by */
     defaultSort: string;
     columns: CoachBoardColumn[];
+    /** a preview flag the board sits behind, on top of 'coaches': off, it is not listed and its routes 404 */
+    flag?: string;
+    /** besides the plays floor, the sorted column's `games` count must reach this for a rank */
+    minGames?: { season: number; careers: number };
 }
 
 export type CoachRow = Record<string, string | number | null | undefined>;
@@ -140,9 +151,45 @@ export const COACH_BOARDS: Record<string, CoachBoard> = {
             num('def_pts_per_drive', 'Pts/Drive Allowed', 'Points allowed per opponent drive; lower is better', 'num2', true),
         ],
     },
+    situations: {
+        slug: 'situations',
+        title: 'Situations',
+        defaultSort: 'win_rate_one_score_game',
+        flag: 'coach-situations',
+        // one opener a season, so a season needs one game in the situation; a career needs five
+        minGames: { season: 1, careers: 5 },
+        columns: [
+            ...situation('after_bye', 'Games After Bye', 'Win % After Bye', 'regular-season games played at least 12 days after the team\'s previous game'),
+            ...situation('opener', 'Openers', 'Opener Win %', 'season openers (the team\'s first regular-season game)'),
+            ...situation('one_score_game', 'One-Score Games', 'One-Score Win %', 'games decided by 8 points or fewer'),
+            ...situation('vs_ranked', 'Games vs Ranked', 'Win % vs Ranked', 'games against an opponent ranked at kickoff', ['cfb']),
+            { ...num('epa_per_play_vs_ranked', 'EPA/Play vs Ranked', 'Offensive EPA per play against opponents ranked at kickoff', 'num2'), games: 'games_vs_ranked', leagues: ['cfb'] },
+            { ...num('def_epa_per_play_vs_ranked', 'EPA/Play Allowed vs Ranked', 'EPA per play allowed to opponents ranked at kickoff; lower is better', 'num2', true), games: 'games_vs_ranked', leagues: ['cfb'] },
+        ],
+    },
 };
 
-export const COACH_BOARD_SLUGS = Object.keys(COACH_BOARDS);
+/** A game-context split's two columns: its games (a count, unshaded) and the share of them won. */
+function situation(ctx: string, gamesLabel: string, winLabel: string, what: string, leagues?: League[]): CoachBoardColumn[] {
+    const games = `games_${ctx}`;
+    return [
+        { key: games, label: gamesLabel, hover: `Number of ${what}`, format: 'int', neutral: true, games, leagues },
+        { key: `win_rate_${ctx}`, label: winLabel, hover: `Share of ${what} won; blank with no such game`, format: 'pct', games, leagues },
+    ];
+}
+
+/** The board's columns the league's tables carry (the vs-ranked columns are college only). */
+export function coachBoardColumns(board: CoachBoard, league: League): CoachBoardColumn[] {
+    return board.columns.filter((c) => !c.leagues || c.leagues.includes(league));
+}
+
+/** The boards this viewer can open: a board behind its own flag is listed only when the flag is on for them. */
+export function coachBoardSlugs(locals?: Parameters<typeof isFeatureEnabled>[1]): string[] {
+    return Object.values(COACH_BOARDS).filter((b) => !b.flag || isFeatureEnabled(b.flag, locals)).map((b) => b.slug);
+}
+
+/** The public boards (the sitemap's): a flagged board joins once its flag is 'on'. */
+export const COACH_BOARD_SLUGS = coachBoardSlugs();
 export const DEFAULT_COACH_BOARD = 'pace';
 
 /**
@@ -187,8 +234,8 @@ export function withDerivedColumns<T extends CoachRow>(rows: T[]): T[] {
 }
 
 /** Every table column any board reads, once -- the `select` for the API calls. */
-export function coachMetricColumns(): string[] {
-    return [...new Set(Object.values(COACH_BOARDS).flatMap((b) => b.columns.flatMap((c) => coachSourceColumns(c.key))))];
+export function coachMetricColumns(league: League = 'cfb'): string[] {
+    return [...new Set(Object.values(COACH_BOARDS).flatMap((b) => coachBoardColumns(b, league).flatMap((c) => coachSourceColumns(c.key))))];
 }
 
 /**
@@ -213,11 +260,11 @@ export function coachBoardColumn(board: string, key: string): CoachBoardColumn |
     return coachBoard(board)?.columns.find((c) => c.key === key);
 }
 
-/** The column to sort by: the `?sort=` value when the board has it, else the board's default. */
-export function resolveCoachSort(board: string, sort: string | null | undefined): string {
+/** The column to sort by: the `?sort=` value when the board has it in this league, else the board's default. */
+export function resolveCoachSort(board: string, sort: string | null | undefined, league: League = 'cfb'): string {
     const b = coachBoard(board);
     if (!b) return '';
-    return sort && b.columns.some((c) => c.key === sort) ? sort : b.defaultSort;
+    return sort && coachBoardColumns(b, league).some((c) => c.key === sort) ? sort : b.defaultSort;
 }
 
 export function numericValue(row: CoachRow, key: string): number | null {
@@ -272,11 +319,15 @@ export function rankCoachRows<T extends CoachRow>(sorted: T[], key: string): (nu
     return ranks;
 }
 
-/** Split rows at the plays floor; the partial rows keep their sort order but are never ranked. */
-export function splitByMinPlays<T extends CoachRow>(rows: T[], minPlays: number): { qualified: T[]; partial: T[] } {
+/**
+ * Split rows at the plays floor (and, for a situational board, a floor on the
+ * sorted column's games count); the partial rows keep their sort order but are never ranked.
+ */
+export function splitByMinPlays<T extends CoachRow>(rows: T[], minPlays: number, minGames?: { key: string; min: number }): { qualified: T[]; partial: T[] } {
     const qualified: T[] = [];
     const partial: T[] = [];
-    for (const r of rows) ((numericValue(r, 'plays') ?? 0) >= minPlays ? qualified : partial).push(r);
+    const ok = (r: T) => (numericValue(r, 'plays') ?? 0) >= minPlays && (!minGames || (numericValue(r, minGames.key) ?? 0) >= minGames.min);
+    for (const r of rows) (ok(r) ? qualified : partial).push(r);
     return { qualified, partial };
 }
 
