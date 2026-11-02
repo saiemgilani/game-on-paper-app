@@ -61,10 +61,10 @@ beforeEach(() => {
         kv.set(k, { value, metadata: opts?.metadata });
     }) as any);
     vi.spyOn(env.ESPN_API_CACHE, 'delete').mockImplementation((async (k: string) => { kv.delete(k); }) as any);
-    env.ESPN_API_CACHE.list = async ({ prefix }: { prefix: string }) => ({
+    env.ESPN_API_CACHE.list = (async ({ prefix }: { prefix: string }) => ({
         keys: [...kv.entries()].filter(([k]) => k.startsWith(prefix)).map(([name, v]) => ({ name, metadata: v.metadata })),
         list_complete: true,
-    });
+    })) as typeof env.ESPN_API_CACHE.list;
 });
 afterEach(() => { vi.restoreAllMocks(); });
 const pin = (league = 'nfl', id = '401772944') => kv.set(`source-override:${league}:${id}`, { value: JSON.stringify(PIN), metadata: PIN });
@@ -210,7 +210,7 @@ describe('POST /admin/api/source-override', () => {
             locals: { adminAuthed: true, adminActor: 'saiem' },
             cache: { invalidate: invalidate ?? (async (o: unknown) => { invalidated.push(o); }), set: () => {} },
         }));
-        return { res: res as Response, json: await (res as Response).json(), invalidated, audit: collector.events.filter((e) => e.table === 'admin_audit') };
+        return { res: res as Response, json: await (res as Response).json() as Record<string, any>, invalidated, audit: collector.events.filter((e) => e.table === 'admin_audit') };
     }
 
     test('rejects anything that is not a known league, a game id and a source, and audits each refusal', async () => {
@@ -284,10 +284,10 @@ describe('POST /admin/api/source-override', () => {
     });
 
     test('a list cut at the cap says so instead of passing as complete', async () => {
-        env.ESPN_API_CACHE.list = async () => ({
+        env.ESPN_API_CACHE.list = (async () => ({
             keys: Array.from({ length: 1000 }, (_, i) => ({ name: `source-override:cfb:40000${i}`, metadata: PIN })),
             list_complete: false, cursor: 'next',
-        });
+        })) as typeof env.ESPN_API_CACHE.list;
         const { GET } = await import('../src/pages/admin/api/source-override');
         const listed = await (await (GET as any)({})).json();
         expect(listed.overrides).toHaveLength(2000);
@@ -323,6 +323,21 @@ describe('purge-game, the re-purge the pin docs send admins to', () => {
             { path: '/game/401772944' }, { path: '/nfl/game/401772944' },
             { path: '/game/401772944/card.png' }, { path: '/nfl/game/401772944/card.png' },
         ]));
+    });
+
+    test('a path purge of card.png reaches its ?state= / ?variant= copies (the adapter tags by pathname)', async () => {
+        // @astrojs/cloudflare tags every cached response with its URL's PATHNAME, query dropped, and
+        // invalidate({ path }) purges that tag: one purge covers every query copy. Pinned here so an
+        // adapter upgrade that starts keying on the query fails this rather than leaving stale cards.
+        const { default: factory } = await import('@astrojs/cloudflare/cache/provider');
+        const { collectInvalidationTags } = await import('astro/cache/provider-utils');
+        const provider = (factory as any)();
+        const purgeTag = collectInvalidationTags({ path: '/nfl/game/401772944/card.png' })[0];
+        for (const q of ['', '?state=final', '?state=live&variant=spoilerfree']) {
+            const headers: Headers = provider.setHeaders({ maxAge: 60, tags: ['share-card'] },
+                new Request(`https://gameonpaper.com/nfl/game/401772944/card.png${q}`));
+            expect(headers.get('Cache-Tag')!.split(',')).toEqual(expect.arrayContaining(['share-card', purgeTag]));
+        }
     });
 
     test("the share-card tag is purgeable (the route caches every card under it)", async () => {

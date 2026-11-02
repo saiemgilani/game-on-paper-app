@@ -348,12 +348,16 @@ const subtitle = "Operational dashboards for Game on Paper";
     document.getElementById('asof').textContent = new Date().toLocaleTimeString() + ' · refresh 45s';
   }
 
+  type OverrideList = { ok?: boolean; error?: string; truncated?: boolean;
+    overrides?: { league: string; game_id: string; source?: string; actor?: string; set_at?: string }[] };
+  type OverrideWrite = { ok?: boolean; error?: string; purged?: boolean };
   async function refreshGames() {
     const [d, guards, pins] = await Promise.all([
       api('games'),
       fetch('/admin/api/guards').then((r) => r.json()).catch(() => ({ marks: [] })),
       // an unreadable list is an error row, never an empty table: no pins and a KV outage must not look alike
-      fetch('/admin/api/source-override').then((r) => r.json()).catch(() => ({ ok: false, error: 'request failed' })),
+      fetch('/admin/api/source-override').then((r) => r.json() as Promise<OverrideList>)
+        .catch((): OverrideList => ({ ok: false, error: 'request failed' })),
     ]);
     const markBy = Object.fromEntries((guards.marks ?? []).map((m) => [String(m.game_id), m]));
     table('t-watchlist', ['Game', 'Score', 'Status', 'Req 30m', 'Render', 'Cache intent', 'ESPN fetch', 'DQ lints', 'Guard'],
@@ -393,14 +397,14 @@ const subtitle = "Operational dashboards for Game on Paper";
         esc(o.league), `<span class="mono">${esc(o.source ?? '?')}</span>`, esc(o.actor ?? '—'),
         o.set_at ? esc(new Date(o.set_at).toLocaleString()) : '—',
         `<button class="btn btn-sm btn-outline-danger" data-override-league="${esc(o.league)}" data-override-id="${esc(o.game_id)}" title="Remove the pin and purge the page">Remove</button>`] }))));
-    document.querySelectorAll('#t-overrides [data-override-id]').forEach((b) =>
+    document.querySelectorAll<HTMLButtonElement>('#t-overrides [data-override-id]').forEach((b) =>
       b.addEventListener('click', async () => {
         b.disabled = true;
         try {
           const r = await fetch('/admin/api/source-override', { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ league: b.dataset.overrideLeague, id: b.dataset.overrideId, source: null }) });
-          const j = await r.json().catch(() => ({}));
-          if (!r.ok || j.ok !== true) throw new Error(j.error ?? r.status);
+          const j: OverrideWrite = await (r.json() as Promise<OverrideWrite>).catch(() => ({}));
+          if (!r.ok || j.ok !== true) throw new Error(j.error ?? String(r.status));
           b.textContent = j.purged === false ? 'Removed; purge failed' : 'Removed ✓';
         } catch { b.textContent = 'Failed'; b.disabled = false; }
       }));
