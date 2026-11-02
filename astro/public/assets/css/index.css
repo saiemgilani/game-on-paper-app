@@ -217,7 +217,6 @@ h1, h2, h3, h4, h5, h6 {
 .game-banner .gb-logo {
     display: flex;
     align-items: center;
-    gap: 0.15rem;
     flex: none;
     line-height: 0;
 }
