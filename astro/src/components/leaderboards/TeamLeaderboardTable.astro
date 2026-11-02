@@ -17,7 +17,8 @@ interface Props {
 
 const { season, category, metric, rows } = Astro.props;
 const columns = SDV_TEAM_METRIC_CATEGORIES[category];
-const help = isFeatureEnabled('metric-help', Astro.locals);
+// the glossary is the college one (FBS-only copy, links to the cfb boards), so the NFL twin gets no help yet
+const help = isFeatureEnabled('metric-help', Astro.locals) && Astro.locals.league !== 'nfl';
 const arrowDirection = (shouldInvertSortForMetric(category, metric)) ? "up" : "down"
 
 let content: SDVTeamSummary[] = rows ?? await retrieveTeamSummaries({ season, category, maxLookback: season, league: Astro.locals.league });

@@ -38,7 +38,8 @@ content = content.toSorted((a, b) => {
 })
 
 const columns = SDV_PLAYER_METRIC_CATEGORIES[category];
-const help = isFeatureEnabled('metric-help', Astro.locals);
+// the glossary is the college one (FBS-only copy, links to the cfb boards), so the NFL twin gets no help yet
+const help = isFeatureEnabled('metric-help', Astro.locals) && Astro.locals.league !== 'nfl';
 
 function generateMetricCell(player: any, c: string, m: string): string {
     const [multiplier, power10, fixed] = SDV_PLAYER_METRIC_FORMATTING_VALUES[c][m] || [1, 2, 2];

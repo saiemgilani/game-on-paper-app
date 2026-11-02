@@ -6,7 +6,8 @@ import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { modifyMetricForCategory } from '../src/utils/misc';
 import { metricHelp } from '../src/utils/metricHelp';
 
-// N6 metric help on the season leaderboards, with the nfl-data 2025 rows (as nflLeaderboards.render.test.ts).
+// N6 metric help on the season leaderboards. The rows are the nfl-data 2025 fixture (as nflLeaderboards.render.test.ts)
+// served as mock data; the help itself renders on the college boards only, since the glossary copy is the college one.
 const fx = JSON.parse(readFileSync(new URL('./fixtures/nfl-summaries-2025.json', import.meta.url)).toString());
 
 vi.mock('../src/resources/sdv', async (orig) => ({
@@ -21,21 +22,21 @@ beforeAll(async () => {
     container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
 });
 
-async function renderTeams(locals: Record<string, unknown>) {
+async function renderTeams(locals: Record<string, unknown>, league = 'cfb') {
     const { default: Page } = await import('../src/components/leaderboards/TeamLeaderboardPage.astro');
     return container.renderToString(Page, {
         props: { season: 2025, category: 'offensive', metric: modifyMetricForCategory('offensive', 'net_adj_epa') },
-        request: new Request('https://gameonpaper.com/nfl/year/2025/teams/offensive'),
-        locals: { league: 'nfl', ...locals },
+        request: new Request('https://gameonpaper.com/year/2025/teams/offensive'),
+        locals: { league, ...locals },
     });
 }
 
-async function renderPassing(locals: Record<string, unknown>) {
+async function renderPassing(locals: Record<string, unknown>, league = 'cfb') {
     const { default: Page } = await import('../src/components/leaderboards/PlayerLeaderboardPage.astro');
     return container.renderToString(Page, {
         props: { season: 2025, category: 'passing', metric: 'EPAplay' },
-        request: new Request('https://gameonpaper.com/nfl/year/2025/players/passing'),
-        locals: { league: 'nfl', ...locals },
+        request: new Request('https://gameonpaper.com/year/2025/players/passing'),
+        locals: { league, ...locals },
     });
 }
 
@@ -56,13 +57,18 @@ describe('metric help on the team leaderboard', () => {
         // Yards/Play has no glossary entry, so no button
         expect(html.match(/<th[^>]*>Yards\/Play[^]*?<\/th>/)![0]).not.toContain('popovertarget');
         // the hover stays alongside the button
-        expect(html).toContain('<abbr title="Adjusted for opponent strength, fit with a home-field term on non-garbage-time plays.">Adj EPA/Play</abbr> <button');
+        expect(html).toContain('<abbr title="Adjusted for opponent strength, fit with a home-field term on non-garbage-time plays in FBS vs FBS games.">Adj EPA/Play</abbr> <button');
+    }, 60_000);
+
+    test('the NFL twin gets no help: the glossary copy is FBS-only', async () => {
+        expect(await renderTeams({ preview: true }, 'nfl')).not.toContain('popover');
+        expect(await renderPassing({ preview: true }, 'nfl')).not.toContain('popover');
     }, 60_000);
 
     test('public: no popover, the abbr hover unchanged', async () => {
         const html = await renderTeams({});
         expect(html).not.toContain('popover');
-        expect(html).toContain('<abbr title="Adjusted for opponent strength, fit with a home-field term on non-garbage-time plays.">Adj EPA/Play</abbr> <i');
+        expect(html).toContain('<abbr title="Adjusted for opponent strength, fit with a home-field term on non-garbage-time plays in FBS vs FBS games.">Adj EPA/Play</abbr> <i');
     }, 60_000);
 });
 

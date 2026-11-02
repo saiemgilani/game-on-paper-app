@@ -29,6 +29,9 @@ export function metricHelpButton(key: string): string {
     return ` <button type="button" class="btn btn-link p-0 align-baseline" popovertarget="help-${h.slug}" aria-label="${attr(`What is ${h.term}?`)}"><i class="bi bi-question-circle" aria-hidden="true"></i></button>`;
 }
 
+// the glossary copy links to its own sections as href='#glossary-section-X'; off the glossary page they need the path
+const offPage = (html: string) => html.replace(/href=(['"])#/g, 'href=$1/glossary/#');
+
 /** One popover per distinct glossary term among `keys` (three SR% columns share one). */
 export function metricHelpPopovers(keys: string[]): string {
     const seen = new Map<string, MetricHelp>();
@@ -37,6 +40,6 @@ export function metricHelpPopovers(keys: string[]): string {
         if (h && !seen.has(h.slug)) seen.set(h.slug, h);
     }
     return [...seen.values()].map((h) =>
-        `<div id="help-${h.slug}" popover class="metric-help border rounded p-2 small bg-body text-body"><a href="${h.href}"><strong>${h.term}</strong></a><div>${h.definition}</div></div>`,
+        `<div id="help-${h.slug}" popover class="metric-help border rounded p-2 small bg-body text-body"><a href="${h.href}"><strong>${h.term}</strong></a><div>${offPage(h.definition)}</div></div>`,
     ).join('');
 }

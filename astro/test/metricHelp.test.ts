@@ -33,4 +33,10 @@ describe('metricHelp', () => {
         const html = metricHelpPopovers(['success_off', 'success_off_pass', 'success_off_rush', 'yardsplay_off']);
         expect(html.match(/ popover /g)).toHaveLength(1);
     });
+
+    test('the glossary in-page section links point back into the glossary', () => {
+        const html = metricHelpPopovers(['adj_off_epa']);
+        expect(html).toContain("href='/glossary/#glossary-section-");
+        expect(html).not.toMatch(/href=['"]#/);
+    });
 });
