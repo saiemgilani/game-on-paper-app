@@ -5,6 +5,8 @@ import { retrievePlayerSummaries, type SDVPlayerSummary, SummaryType }  from '..
 import { playerBoardSort } from '../../utils/players';
 import { SDV_PLAYER_METRIC_CATEGORIES, SDV_PLAYER_METRIC_FORMATTING_VALUES, SDV_PLAYER_PERCENT_COLUMNS, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
 import DarkModeLogos from '../DarkModeLogos.astro';
+import { isFeatureEnabled } from '../../utils/features';
+import { metricHelpButton, metricHelpPopovers } from '../../utils/metricHelp';
 import PlayerLink from '../player/PlayerLink.astro';
 import { percentileOf } from '../../utils/players';
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -36,6 +38,7 @@ content = content.toSorted((a, b) => {
 })
 
 const columns = SDV_PLAYER_METRIC_CATEGORIES[category];
+const help = isFeatureEnabled('metric-help', Astro.locals);
 
 function generateMetricCell(player: any, c: string, m: string): string {
     const [multiplier, power10, fixed] = SDV_PLAYER_METRIC_FORMATTING_VALUES[c][m] || [1, 2, 2];
@@ -85,7 +88,7 @@ if (category == "passing") {
                         <th class="text-center" colspan="1">Games</th>
                         {
                             Object.entries(columns).map(([k, v]) => (
-                                <th class="text-center" colspan="1">{v.title} <i class="bi bi-arrow-down" hidden={metric != k}></i></th>
+                                <th class="text-center" colspan="1">{v.title}{help && <Fragment set:html={metricHelpButton(k)} />} <i class="bi bi-arrow-down" hidden={metric != k}></i></th>
                             ))
                         }
                     </thead>
@@ -104,6 +107,7 @@ if (category == "passing") {
                     </tbody>
                 </table>
             </div>
+            {help && <Fragment set:html={metricHelpPopovers(Object.keys(columns))} />}
         </div>
     </div>
 </div>

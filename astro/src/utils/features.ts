@@ -128,6 +128,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // Metric help on tap (N6): a "?" button beside a leaderboard column header opens that metric's glossary
+    // definition in a native popover (utils/metricHelp.ts), linked to its /glossary/ anchor. Works on touch,
+    // where the <abbr title> hover never shows. Off: the headers are exactly today's. Promote once reviewed.
+    'metric-help': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

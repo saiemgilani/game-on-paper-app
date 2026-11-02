@@ -247,3 +247,7 @@ tr:has(+ .stat-line-row) > td { border-bottom-width: 0; }
   line-height: inherit;
   margin: 0;
 }
+
+/* Metric help (flag 'metric-help'): the native popover centres itself in the viewport; this keeps a
+   glossary definition to a readable measure on desktop and inside the screen on a phone. */
+.metric-help { max-width: min(32rem, calc(100vw - 2rem)); }
