@@ -259,12 +259,27 @@ describe('spice cues', () => {
     test('flag on: the compact row carries the words on its note line, and only the spiced row', async () => {
         const html = await page({ preview: true });
         const rows = html.slice(html.indexOf('game-compact-list'), html.indexOf('class="row mb-3'));
+        // both rows must be there, or slicing at a missing one (-1) would
+        // "find" no cue and pass vacuously
+        expect(rows).toContain('/game/405');
+        expect(rows).toContain('/game/401');
         const spiced = rows.slice(rows.indexOf('/game/405'));
-        expect(spiced.slice(0, spiced.indexOf('</a>'))).toContain('<span class="gb-note small text-center text-muted">Ranked upset</span>');
+        expect(spiced.slice(0, spiced.indexOf('</a>'))).toContain('<span class="gb-note small text-center text-truncate text-muted"><span class="text-muted">Ranked upset</span></span>');
         const plain = rows.slice(rows.indexOf('/game/401'));
         expect(plain.slice(0, plain.indexOf('</a>'))).not.toContain('gb-note');
         // a row is a link whose name is its text; an aria-label would replace it
         expect(rows).not.toContain('aria-label');
+    });
+
+    test('flag on: a row with an ESPN note and a cue keeps ONE note line', async () => {
+        const { default: GameCompactRow } = await import('../src/components/schedule/GameCompactRow.astro');
+        const e = spicedEvent('406');
+        e.competitions[0].notes = [{ type: 'event', headline: 'Iron Bowl' }];
+        const html = await container.renderToString(GameCompactRow, {
+            props: { game: e }, request: new Request('https://gameonpaper.com/'), locals: { preview: true },
+        });
+        expect([...html.matchAll(/class="gb-note/g)]).toHaveLength(1);
+        expect(html).toContain('Iron Bowl · <span class="text-muted">Ranked upset</span></span>');
     });
 
     test('flag on: the legend reads SPICE_LABEL, in border order', async () => {
