@@ -11,13 +11,14 @@ vi.mock('../src/utils/features', async (orig) => {
 
 let ids: Record<string, Map<number, string[]>> = {};
 let fail = false;
-const calls: string[] = [];
+const calls: [string, number | undefined][] = [];
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
-    retrievePlayerSitemapIds: async (league: string) => {
-        calls.push(league);
+    retrievePlayerSitemapIds: async (league: string, season?: number) => {
+        calls.push([league, season]);
         if (fail) throw new Error('upstream down');
-        return ids[league] ?? new Map();
+        const all = ids[league] ?? new Map();
+        return season === undefined ? all : new Map([...all].filter(([s]) => s === season));
     },
 }));
 
@@ -159,7 +160,8 @@ describe('/sitemap-players-<key>.xml', () => {
             'https://gameonpaper.com/players/4361214?season=2024',
             'https://gameonpaper.com/players/550577?season=2024',
         ]);
-        expect(calls).toEqual(['cfb']);
+        // a season file asks for its season only
+        expect(calls).toEqual([['cfb', 2024]]);
         expect(cacheSets).toEqual([expect.objectContaining({ maxAge: 86400, tags: ['sitemap'] })]);
     });
 

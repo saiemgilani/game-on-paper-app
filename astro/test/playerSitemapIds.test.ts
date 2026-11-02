@@ -71,6 +71,17 @@ describe('retrievePlayerSitemapIds', () => {
         expect(ids.get(2025)!.slice(0, 2)).toEqual(['4000000', '4000001']);
     });
 
+    test('one season: every read carries that season as both bounds', async () => {
+        const { retrievePlayerSitemapIds } = await fresh();
+        const ids = await retrievePlayerSitemapIds('cfb', 2024);
+        expect([...ids.keys()]).toEqual([2024]);
+        expect(dataReads()).toHaveLength(3);
+        for (const { url } of dataReads()) {
+            expect(url.searchParams.get('season__gte')).toBe('2024');
+            expect(url.searchParams.get('season__lte')).toBe('2024');
+        }
+    });
+
     test('a range that fills the cap is halved, not truncated', async () => {
         perSeason.cfb.receiving = 4000; // 23 seasons x 4,000 = 92,000 rows
         const { retrievePlayerSitemapIds } = await fresh();
@@ -117,20 +128,25 @@ describe('subrequests per request stay under the free plan cap (50)', () => {
         return seen.length;
     };
 
+    // these count the handler's own fetches; the middleware adds one telemetry POST per request
     test('today: a cold index with both leagues makes 8 fetches, a cold file 4 or 5', async () => {
         expect(await count((m) => m.idx({}))).toBe(1 + 3 + 4); // meta + cfb + nfl
         expect(await count((m) => m.pl({ params: { key: 'cfb-career-1' } }))).toBe(4);
+        expect(await count((m) => m.pl({ params: { key: 'cfb-2024-1' } }))).toBe(4);
         expect(await count((m) => m.pl({ params: { key: 'nfl-2024-1' } }))).toBe(5);
+        // a season file's reads are bounded to its season
+        expect(seen.filter((s) => s.url.searchParams.has('season__gte')).every((s) =>
+            s.url.searchParams.get('season__gte') === '2024' && s.url.searchParams.get('season__lte') === '2024')).toBe(true);
     });
 
     test('with every table at 4x today, the index is still far under 50', async () => {
         for (const lg of ['cfb', 'nfl'] as const) {
             for (const t of Object.keys(perSeason[lg])) perSeason[lg][t] *= 4;
         }
+        const { SITEMAP_FETCH_BUDGET, SITEMAP_OTHER_SUBREQUESTS } = await import('../src/resources/sdv');
         const n = await count((m) => m.idx({}));
-        expect(n).toBeLessThan(50);
-        const { SITEMAP_FETCH_BUDGET } = await import('../src/resources/sdv');
-        // the reader's own cap keeps the worst case under 50 however the data grows
-        expect(1 + 2 * SITEMAP_FETCH_BUDGET).toBeLessThan(50);
+        expect(n + 1).toBeLessThan(50); // + the middleware's telemetry POST
+        // the reader's own cap keeps the worst case (meta + telemetry + two leagues) under 50
+        expect(SITEMAP_OTHER_SUBREQUESTS + 2 * SITEMAP_FETCH_BUDGET).toBeLessThan(50);
     });
 });

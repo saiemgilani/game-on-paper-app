@@ -11,8 +11,8 @@ import {
  * list `/players/...`.
  *
  * A season file lists `/players/<id>?season=<year>`; the career files list each
- * player's bare `/players/<id>` once. Every file reads the league's ids whole --
- * the same few KV-cached reads the index makes, so a file costs no more than it. Same cache rules as the index: a day in
+ * player's bare `/players/<id>` once. A season file reads that season only; the
+ * career files read the league whole, the same few KV-cached reads the index makes. Same cache rules as the index: a day in
  * Workers Caching, and a failed read is an uncached 503.
  */
 export const prerender = false;
@@ -32,7 +32,7 @@ export const GET: APIRoute = async (context) => {
 
     let ids: Map<number, string[]>;
     try {
-        ids = await retrievePlayerSitemapIds(key.league);
+        ids = await retrievePlayerSitemapIds(key.league, key.season === 'career' ? undefined : key.season);
     } catch (e) {
         console.error(`player sitemap ${context.params.key}: player ids unavailable: ${e}`);
         noCache();
