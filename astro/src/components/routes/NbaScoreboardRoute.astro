@@ -28,7 +28,9 @@ const gq = grp && groups && grp !== groups.default ? `group=${encodeURIComponent
 const dayHref = (d: string) => `${lp('/scoreboard')}?date=${d}${gq ? `&${gq}` : ''}`;
 const tonightHref = `${lp('/scoreboard')}${gq ? `?${gq}` : ''}`;
 // A degraded read with no ?date= has no trustworthy day (the route only has the server clock).
-const noDay = !('badDate' in data) && data.degraded && !!data.undated;
+// "which day is it" is unknown only when the live read failed; a fresh live read fixed the day even if the
+// D-I fallback behind it then failed (that failure only makes the board say unavailable)
+const noDay = !('badDate' in data) && data.degraded && !!data.undated && !data.isLive;
 const maxDay = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
 ---
 {'badDate' in data ? (data.badDate === 'group' ? (

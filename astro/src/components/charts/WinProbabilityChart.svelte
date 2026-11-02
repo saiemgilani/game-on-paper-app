@@ -1,6 +1,6 @@
 <script>
 import Chart from 'chart.js/auto';
-import { leagueFromLocation, teamLogoUrl } from '../../utils/league';
+import { leagueFromLocation, retryLightLogoOnce, teamLogoUrl } from '../../utils/league';
 import {LineController} from "chart.js";
 import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, hexToRgb, waitForElement } from '../../utils/misc';
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
@@ -323,11 +323,7 @@ async function generateChart() {
                     }
 
                     // a missing dark variant must not cost the chart its logo: retry the light one once
-                    homeImage.onerror = () => {
-                        const light = teamLogoUrl(leagueFromLocation(), homeTeam.id, false, season);
-                        // img.src reads back absolute: compare absolute, or a site-hosted (root-relative) logo that fails retries forever
-                        if (homeImage.src !== new URL(light, location.href).href) homeImage.src = light;
-                    };
+                    homeImage.onerror = () => retryLightLogoOnce(homeImage, teamLogoUrl(leagueFromLocation(), homeTeam.id, false, season), location.href);
                     homeImage.onload = () => {                                            // when the image loads
                         chart.homeTeamImage = homeImage;                                    // save it as a property so it can be accessed from the draw method
                         chart.render();                                                 // and force re-render to include it
@@ -349,10 +345,7 @@ async function generateChart() {
                     }
 
                     // a missing dark variant must not cost the chart its logo: retry the light one once
-                    awayImage.onerror = () => {
-                        const light = teamLogoUrl(leagueFromLocation(), awayTeam.id, false, season);
-                        if (awayImage.src !== new URL(light, location.href).href) awayImage.src = light;
-                    };
+                    awayImage.onerror = () => retryLightLogoOnce(awayImage, teamLogoUrl(leagueFromLocation(), awayTeam.id, false, season), location.href);
                     awayImage.onload = () => {                                            // when the image loads
                         chart.awayTeamImage = awayImage;                                    // save it as a property so it can be accessed from the draw method
                         chart.render();                                                 // and force re-render to include it
