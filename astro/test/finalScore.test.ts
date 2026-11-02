@@ -67,7 +67,10 @@ describe('retrieveFirstFinal', () => {
             ? [{ game_id: 2, start_date: '2012-09-01T00:00:00.000Z' }]
             : [{ game_id: 1, start_date: '2005-09-01T00:00:00.000Z' }];
         const { retrieveFirstFinal } = await import('../src/resources/sdv');
-        expect((await retrieveFirstFinal('cfb', 41, 9)).map((r) => r.game_id)).toEqual([1]);
+        const rows = await retrieveFirstFinal('cfb', 41, 9);
+        expect(rows, 'both reads succeeded').not.toBeNull();
+        if (rows === null) return;
+        expect(rows.map((r) => r.game_id)).toEqual([1]);
         const reads = scheduleReads();
         expect(reads.map((u) => `${u.searchParams.get('home_points')}-${u.searchParams.get('away_points')}`).sort()).toEqual(['41-9', '9-41']);
         for (const u of reads) {
