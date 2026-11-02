@@ -1,0 +1,11 @@
+---
+import AllTimePage from "../../../components/leaderboards/AllTimePage.astro";
+import { prepareAllTime } from "../../../routes/allTime";
+
+const r = prepareAllTime(Astro, 'cfb');
+if ('notFound' in r) {
+    return Astro.rewrite("/404");
+}
+---
+
+<AllTimePage category={r.category} metric={r.metric} />
