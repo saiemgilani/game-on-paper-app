@@ -95,10 +95,12 @@ describe('player sections: quarter filter', () => {
             const pick = q1.find((r: any) => full.find((f: any) => f.rusher_player_name === r.rusher_player_name)?.Car !== r.Car);
             expect(pick, 'the fixture has a rusher whose Q1 differs').toBeTruthy();
             const total = full.find((f: any) => f.rusher_player_name === pick.rusher_player_name);
-            const carries = (w: string) => w.match(new RegExp(`${pick.rusher_player_name}</a>[\\s\\S]*?class="text-muted">(\\d+) car`))?.[1]
-                ?? w.match(new RegExp(`${pick.rusher_player_name}</td>[\\s\\S]*?class="text-muted">(\\d+) car`))?.[1];
-            expect(carries(win('q1'))).toBe(String(pick.Car));
-            expect(carries(win('all'))).toBe(String(total.Car));
+            // every rushing row of his in the window: the name row, then its "N car" stat line
+            const carries = (w: string) => [...w.matchAll(new RegExp(
+                `${pick.rusher_player_name}(?:</a>)?</td>(?:<td class="numeral"[^>]*>[^<]*</td>){5}</tr><tr class="stat-line-row"><td colspan="6" class="text-muted">(\\d+) car`, 'g'))].map((m) => m[1]);
+            // exactly one row each: the quarter's line, and no game-total row beside it
+            expect(carries(win('q1'))).toEqual([String(pick.Car)]);
+            expect(carries(win('all'))).toEqual([String(total.Car)]);
         }, 60_000);
 
         test(`[${league}] flag off: no select, one unmarked section per team`, async () => {
