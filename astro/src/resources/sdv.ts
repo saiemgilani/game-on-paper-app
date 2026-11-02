@@ -1481,10 +1481,14 @@ export interface SDVPlayerSplit {
     success_rate: number | null
 }
 
-/** A 404 is "no such player"; anything else is a real failure and is rethrown. */
+//: Player and compare pages await these reads; a stalled Data API used to hold the
+//: render open until the Worker was killed. A timeout is an SDVRequestError 504.
+export const PLAYER_READ_TIMEOUT_MS = 10_000;
+
+/** A 404 is "no such player"; anything else (a timeout included) is a real failure and is rethrown. */
 async function requestPlayer(league: League, path: string, query: Record<string, string>, ttl: number): Promise<any | null> {
     try {
-        return await requestSDV(path, new URLSearchParams(query), undefined, ttl, true, leagueSource(league), true);
+        return await requestSDV(path, new URLSearchParams(query), undefined, ttl, true, leagueSource(league), true, PLAYER_READ_TIMEOUT_MS);
     } catch (e) {
         if (e instanceof SDVRequestError && e.status === 404) return null;
         throw e;
