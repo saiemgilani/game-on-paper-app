@@ -1,6 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { generateGlossaryItems } from '../src/resources/glossary';
-import { metricHelp, metricHelpPopovers } from '../src/utils/metricHelp';
+import { metricHelp, metricHelpButton, metricHelpPopovers } from '../src/utils/metricHelp';
 
 const entry = (term: string) => [...generateGlossaryItems().values()].flat().find((t) => t.term === term)!;
 
@@ -38,5 +39,33 @@ describe('metricHelp', () => {
         const html = metricHelpPopovers(['adj_off_epa']);
         expect(html).toContain("href='/glossary/#glossary-section-");
         expect(html).not.toMatch(/href=['"]#/);
+    });
+});
+
+describe('the phone tap target', () => {
+    // design-conventions §4: tap-target CSS that applied at every width was walked back twice, so the
+    // widened hit area must exist (the class is on the button) and must live only in the xs media block
+    const css = readFileSync(new URL('../public/assets/css/base.css', import.meta.url), 'utf8').replace(/\/\*[^]*?\*\//g, '');
+    const XS = '@media (max-width: 575.98px) {';
+    const block = (at: number) => {
+        let depth = 0;
+        for (let i = css.indexOf('{', at); i < css.length; i++) {
+            if (css[i] === '{') depth++;
+            else if (css[i] === '}' && --depth === 0) return [at, i + 1] as const;
+        }
+        return [at, css.length] as const;
+    };
+    const xsBlocks = [...css.matchAll(/@media \(max-width: 575\.98px\) \{/g)].map((m) => block(m.index!));
+
+    test('the button carries the class the rule targets', () => {
+        expect(metricHelpButton('success_off')).toMatch(/class="[^"]*\bmetric-help-btn\b/);
+    });
+
+    test('the widened ::after exists only inside the xs media block', () => {
+        expect(css).toContain(XS);
+        const inXs = xsBlocks.map(([a, b]) => css.slice(a, b)).join('\n');
+        expect(inXs).toMatch(/\.metric-help-btn::after\s*\{[^}]*inset:/);
+        const outside = xsBlocks.reduceRight((rest, [a, b]) => rest.slice(0, a) + rest.slice(b), css);
+        expect(outside).not.toContain('.metric-help-btn');
     });
 });
