@@ -8,7 +8,7 @@ import { wrappedFetch } from "../utils/telemetry"
 import { LEAGUES, type League, type SdvSource, leagueSource, teamCategoriesFor } from '../utils/league';
 import { coachMetricColumns, type CoachRow } from '../utils/coaches';
 import { formatRecord } from '../utils/resume';
-import { PLAYER_SPLITS } from '../utils/players';
+import { PLAYER_SPLITS, isEspnAthleteId } from '../utils/players';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -1614,4 +1614,64 @@ export async function retrieveNflEspnGameIds(season: number): Promise<Record<str
         if (r?.game_id && r?.espn) out[String(r.game_id)] = String(r.espn);
     }
     return out;
+}
+
+// --------------------------------------------------------------- sitemap reads
+//
+// The player sitemaps need every player id a season has, which the Data API has
+// no player-list route for -- but the season leaderboard tables are exactly that:
+// one row per player-team-season in passing/rushing/receiving, the same tables
+// `/players/{id}` builds `seasons` from (sdv-db `player_routes._seasons`), so
+// every id read here is a player whose `?season=` page renders.
+
+/** Rows per read. The API caps `limit` at 50,000 and answers `next: null` either
+ *  way, so a full page is the only sign there is another; stay well under the cap. */
+const SITEMAP_ROWS_PAGE = 10_000;
+const SITEMAP_SEASON_TABLES = ['passing', 'rushing', 'receiving'] as const;
+
+/**
+ * Every row a filtered table has, read `limit`/`offset` page by page with a stable
+ * `order`. Strict: a failed page throws rather than truncating the list, so a
+ * sitemap is never written from half a season. Each page is its own KV entry
+ * under the table's ingest stamp, like every other `requestSDV` read.
+ */
+async function retrieveAllRows<T>(league: League, table: string, query: Record<string, string>, cacheTTL: number): Promise<T[]> {
+    const out: T[] = [];
+    for (let offset = 0; ; offset += SITEMAP_ROWS_PAGE) {
+        const rows = await retrieveRowsFrom<T>(leagueSource(league), table,
+            { ...query, limit: String(SITEMAP_ROWS_PAGE), offset: String(offset) }, cacheTTL, true);
+        out.push(...rows);
+        if (rows.length < SITEMAP_ROWS_PAGE) return out;
+    }
+}
+
+/**
+ * The ESPN athlete ids with a player page, per season: `[season, ids]` with ids as
+ * strings, unique, ascending. CFB's season tables key on the ESPN id itself; NFL's
+ * key on gsis, so they map through the nflverse crosswalk (`nfl.players`), and a
+ * player it has no ESPN id for is left out -- his gsis URL would only redirect.
+ */
+export async function retrievePlayerSitemapIds(league: League, seasons: number[]): Promise<Map<number, string[]>> {
+    if (!LEAGUES[league].sdvEnabled) return new Map();
+    const day = 60 * 60 * 24;
+    let espnByGsis: Map<string, string> | null = null;
+    if (league === 'nfl') {
+        const xwalk = await retrieveAllRows<{ gsis_id: string | null; espn_id: string | number | null }>(
+            'nfl', 'players', { select: 'gsis_id,espn_id', order: 'gsis_id' }, day * 7);
+        espnByGsis = new Map(xwalk.filter((r) => r.gsis_id && r.espn_id != null).map((r) => [String(r.gsis_id), String(r.espn_id)]));
+    }
+    const perSeason = await Promise.all(seasons.map(async (season) => {
+        // a finished season cannot change; the ingest stamp in the key still moves it on a republish
+        const ttl = season < CURRENT_YEAR ? day * 7 : day;
+        const tables = await Promise.all(SITEMAP_SEASON_TABLES.map((t) => retrieveAllRows<{ player_id: string | number | null }>(
+            league, t, { season: String(season), select: 'player_id', order: 'player_id' }, ttl)));
+        const ids = new Set<string>();
+        for (const r of tables.flat()) {
+            if (r.player_id === null || r.player_id === undefined) continue;
+            const id = espnByGsis ? espnByGsis.get(String(r.player_id)) : String(r.player_id);
+            if (id && isEspnAthleteId(id)) ids.add(id);
+        }
+        return [...ids].sort((a, b) => Number(a) - Number(b));
+    }));
+    return new Map(seasons.map((s, i) => [s, perSeason[i]] as [number, string[]]).filter(([, ids]) => ids.length > 0));
 }
