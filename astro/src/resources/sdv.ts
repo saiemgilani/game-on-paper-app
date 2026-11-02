@@ -9,6 +9,7 @@ import { LEAGUES, type League, type SdvSource, leagueSource, teamCategoriesFor }
 import { coachMetricColumns, type CoachRow } from '../utils/coaches';
 import { formatRecord } from '../utils/resume';
 import { PLAYER_SPLITS } from '../utils/players';
+import { earliestFinal, FIRST_FINAL_SPAN, type FinalScoreRow } from '../utils/finalScore';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -1224,6 +1225,22 @@ export async function retrieveMatchupHistory(team1Id: string | number, team2Id: 
     return events.filter(wasPlayed).sort((a, b) => a.start_date.localeCompare(b.start_date)).slice(-limit);
 }
 
+
+/**
+ * IF-6: the earliest completed game in the league's schedule table that ended with this
+ * final, either way round (home/away swapped is a second read; a tie needs one). CFB is
+ * FBS vs FBS only. A failed read is `[]`, so the chip fails closed.
+ */
+export async function retrieveFirstFinal(league: League, homePoints: number, awayPoints: number): Promise<FinalScoreRow | null> {
+    if (!LEAGUES[league]?.sdvEnabled || !FIRST_FINAL_SPAN[league]) return null;
+    const pairs = homePoints === awayPoints ? [[homePoints, awayPoints]] : [[homePoints, awayPoints], [awayPoints, homePoints]];
+    const reads = pairs.map(([h, a]) => retrieveRows<FinalScoreRow>(league, LEAGUES[league].scheduleTable, {
+        home_points: String(h), away_points: String(a), completed: 'true',
+        ...(league === 'cfb' ? { fbs_game: 'true' } : {}),
+        order: 'start_date', limit: '1', select: 'game_id,start_date',
+    }, 60 * 60 * 24));
+    return earliestFinal((await Promise.all(reads)).flat());
+}
 
 export async function retrieveTeamSchedule(season: string | number, teamId: string | number, league: League = 'cfb'): Promise<SDVGame[]> {
     const schedulePromises: Promise<SDVGame[]>[] = [];
