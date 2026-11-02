@@ -26,7 +26,7 @@ const attr = (s: string) => s.replaceAll('&', '&amp;').replaceAll('"', '&quot;')
 export function metricHelpButton(key: string): string {
     const h = metricHelp(key);
     if (!h) return '';
-    return ` <button type="button" class="btn btn-link p-0 align-baseline" popovertarget="help-${h.slug}" aria-label="${attr(`What is ${h.term}?`)}"><i class="bi bi-question-circle" aria-hidden="true"></i></button>`;
+    return ` <button type="button" class="btn btn-link p-0 align-baseline metric-help-btn" popovertarget="help-${h.slug}" aria-label="${attr(`What is ${h.term}?`)}"><i class="bi bi-question-circle" aria-hidden="true"></i></button>`;
 }
 
 // the glossary copy links to its own sections as href='#glossary-section-X'; off the glossary page they need the path

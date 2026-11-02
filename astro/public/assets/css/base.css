@@ -251,3 +251,10 @@ tr:has(+ .stat-line-row) > td { border-bottom-width: 0; }
 /* Metric help (flag 'metric-help'): the native popover centres itself in the viewport; this keeps a
    glossary definition to a readable measure on desktop and inside the screen on a phone. */
 .metric-help { max-width: min(32rem, calc(100vw - 2rem)); }
+/* The "?" keeps its icon-sized box (p-0, so the header does not grow), but on xs screens an invisible
+   pseudo-element widens what a finger can hit. Scoped to xs: tap-target CSS that applied at every width
+   was walked back twice (design-conventions §4). */
+@media (max-width: 575.98px) {
+  .metric-help-btn { position: relative; }
+  .metric-help-btn::after { content: ""; position: absolute; inset: -0.75rem; }
+}
