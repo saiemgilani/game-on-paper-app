@@ -5,6 +5,7 @@ import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/containe
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { modifyMetricForCategory } from '../src/utils/misc';
 import { metricHelp } from '../src/utils/metricHelp';
+import type { League } from '../src/utils/league';
 
 // N6 metric help on the season leaderboards. The rows are the nfl-data 2025 fixture (as nflLeaderboards.render.test.ts)
 // served as mock data; the help itself renders on the college boards only, since the glossary copy is the college one.
@@ -22,21 +23,21 @@ beforeAll(async () => {
     container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
 });
 
-async function renderTeams(locals: Record<string, unknown>, league = 'cfb') {
+async function renderTeams(locals: Record<string, unknown>, league: League = 'cfb') {
     const { default: Page } = await import('../src/components/leaderboards/TeamLeaderboardPage.astro');
     return container.renderToString(Page, {
         props: { season: 2025, category: 'offensive', metric: modifyMetricForCategory('offensive', 'net_adj_epa') },
         request: new Request('https://gameonpaper.com/year/2025/teams/offensive'),
-        locals: { league, ...locals },
+        locals: { league, ...locals } as any, // the container needs only these; Locals' cfContext is a Workers runtime field
     });
 }
 
-async function renderPassing(locals: Record<string, unknown>, league = 'cfb') {
+async function renderPassing(locals: Record<string, unknown>, league: League = 'cfb') {
     const { default: Page } = await import('../src/components/leaderboards/PlayerLeaderboardPage.astro');
     return container.renderToString(Page, {
         props: { season: 2025, category: 'passing', metric: 'EPAplay' },
         request: new Request('https://gameonpaper.com/year/2025/players/passing'),
-        locals: { league, ...locals },
+        locals: { league, ...locals } as any, // the container needs only these; Locals' cfContext is a Workers runtime field
     });
 }
 
