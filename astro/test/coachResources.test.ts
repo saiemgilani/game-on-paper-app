@@ -134,10 +134,14 @@ describe('coach tendency reads', () => {
         const sdv = await import('../src/resources/sdv');
         const page = (n: number) => () => new Response(JSON.stringify({ data: Array.from({ length: n }, (_, i) => ({ coach: `c${i}` })), next: null }), { status: 200 });
         respond = page(2000);
-        expect(await sdv.retrieveCoachCareers({ columns: ['go_rate'] })).toEqual([]);
-        // 447 cfb careers (the field 400 cut short) all come back
+        expect(await sdv.retrieveCoachCareers({ league: 'nfl', columns: ['go_rate'] })).toEqual([]);
+        // 447 cfb careers (the field 400 cut short) all come back, through the default cfb request
+        seen.length = 0;
         respond = page(447);
-        expect(await sdv.retrieveCoachCareers({ league: 'nfl', columns: ['go_rate'] })).toHaveLength(447);
+        expect(await sdv.retrieveCoachCareers({ columns: ['go_rate'] })).toHaveLength(447);
+        const u = only();
+        expect(u.origin + u.pathname).toBe('https://data.sportsdataverse.org/v1/cfb/coach_careers');
+        expect(u.searchParams.get('limit')).toBe('2000');
     });
 });
 
