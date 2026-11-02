@@ -1406,7 +1406,7 @@ const TEAM_TENDENCY_KEYS = ['season', 'pos_team_id', 'pos_team', 'games', 'plays
 const COACH_TENDENCY_KEYS = [...TEAM_TENDENCY_KEYS, 'coach', 'role'];
 const COACH_CAREER_KEYS = ['coach', 'role', 'teams', 'seasons', 'first_season', 'last_season', 'games', 'plays', 'drives'];
 
-async function requestTendencyTable<T>(table: string, keys: string[], filters: Record<string, string>, columns: string[] | undefined, league: League): Promise<T[]> {
+async function requestTendencyTable<T>(table: string, keys: string[], filters: Record<string, string>, columns: string[] | undefined, league: League, timeoutMs?: number): Promise<T[]> {
     if (!LEAGUES[league].sdvEnabled) return [];
     const metrics = columns && columns.length > 0 ? columns : coachMetricColumns();
     const payload: Record<string, string> = {
@@ -1415,7 +1415,7 @@ async function requestTendencyTable<T>(table: string, keys: string[], filters: R
         limit: String(COACH_ROW_LIMIT),
     };
     try {
-        const content: SDVAPIResponse<T> = await requestSDV(table, new URLSearchParams(payload), undefined, COACH_TENDENCIES_TTL, true, leagueSource(league));
+        const content: SDVAPIResponse<T> = await requestSDV(table, new URLSearchParams(payload), undefined, COACH_TENDENCIES_TTL, true, leagueSource(league), false, timeoutMs);
         return Array.isArray(content?.data) ? content.data : [];
     } catch (err) {
         console.error(`ERROR while loading ${table} from SDV (${JSON.stringify(filters)}): ${err}`);
@@ -1432,6 +1432,15 @@ export async function retrieveTeamTendencies({ season, league = 'cfb', columns }
 /** Head coaches only (`role=HC`); a coordinator row, if the builder ever emits one, never lands on the HC board. */
 export async function retrieveCoachTendencies({ season, league = 'cfb', columns }: SDVSeasonTendencyRequest): Promise<SDVCoachTendency[]> {
     return requestTendencyTable<SDVCoachTendency>('coach_tendencies', COACH_TENDENCY_KEYS, { season: String(season), role: 'HC' }, columns, league);
+}
+
+/** The team profile waits on this read; past the deadline the page renders without its Head Coaches table. */
+export const TEAM_COACH_READ_TIMEOUT_MS = 8000;
+
+/** One team's head-coach seasons, every season (the team profile's Head Coaches table); keys only, no metrics. */
+export async function retrieveTeamCoachSeasons({ team_id, league = 'cfb' }: { team_id: string | number; league?: League }): Promise<SDVCoachTendency[]> {
+    // ponytail: `games` stands in for "no metric columns" -- it is already a key, so the select is the keys alone
+    return requestTendencyTable<SDVCoachTendency>('coach_tendencies', COACH_TENDENCY_KEYS, { pos_team_id: String(team_id), role: 'HC' }, ['games'], league, TEAM_COACH_READ_TIMEOUT_MS);
 }
 
 export async function retrieveCoachCareers({ league = 'cfb', columns }: { league?: League; columns?: string[] } = {}): Promise<SDVCoachCareer[]> {
