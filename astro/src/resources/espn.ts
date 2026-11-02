@@ -378,7 +378,7 @@ async function requestESPN(url: string, init?: RequestInit): Promise<Response> {
         resp = await wrappedFetch(url, options());
     }
     if (resp.status === 403) {
-        const relayed = await relayESPN(url);
+        const relayed = await relayESPN(url, init?.signal);
         if (relayed) return relayed;
     }
     return resp;
@@ -389,7 +389,7 @@ async function requestESPN(url: string, init?: RequestInit): Promise<Response> {
 //: while the same URL from the API host succeeds every time. On a 403 the fetch
 //: is retried through the API host (python/espn_proxy.py). Null = relay
 //: unavailable; the caller keeps the original 403.
-async function relayESPN(url: string): Promise<Response | null> {
+async function relayESPN(url: string, signal?: AbortSignal | null): Promise<Response | null> {
     const base = getSecret("PYTHON_HTTP_URL");
     const token = getSecret("PYTHON_HTTP_TOKEN");
     if (!base || !token) return null;
@@ -408,7 +408,7 @@ async function relayESPN(url: string): Promise<Response | null> {
     try {
         const resp = await wrappedFetch(`${base.replace(/\/$/, "")}/espn/proxy?url=${encodeURIComponent(url)}`, {
             headers: { "Authorization": `Bearer ${btoa(token)}` },
-            signal: AbortSignal.timeout(ESPN_TIMEOUT_MS),
+            signal: signal ?? AbortSignal.timeout(ESPN_TIMEOUT_MS), // the caller's own budget covers the relay too
             // never follow a redirect carrying the bearer token to a host we
             // did not validate above. Workers fetch implements only "follow"
             // and "manual" ("error" throws a TypeError at the edge), so take

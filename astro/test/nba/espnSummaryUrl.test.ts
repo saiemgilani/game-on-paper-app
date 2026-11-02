@@ -21,10 +21,15 @@ test('a caller-supplied signal reaches the fetch; with none, the default ESPN ti
     const sig = AbortSignal.timeout(3000);
     await retrieveGameSummary(7, 'nba', sig);
     expect((f.mock.calls[0][1] as RequestInit).signal).toBe(sig);
+    const realTimeout = AbortSignal.timeout.bind(AbortSignal);
+    const made: { ms: number; signal: AbortSignal }[] = [];
+    const spy = vi.spyOn(AbortSignal, 'timeout').mockImplementation((ms: number) => { const s = realTimeout(ms); made.push({ ms, signal: s }); return s; });
     await retrieveGameSummary(7, 'nfl');
-    const dflt = (f.mock.calls[1][1] as RequestInit).signal;
-    expect(dflt).toBeInstanceOf(AbortSignal);
-    expect(dflt).not.toBe(sig);
+    spy.mockRestore();
+    // the default is exactly a 10 s timeout signal, not merely some AbortSignal
+    expect(made).toHaveLength(1);
+    expect(made[0].ms).toBe(10_000);
+    expect((f.mock.calls[1][1] as RequestInit).signal).toBe(made[0].signal);
 });
 test('an aborted summary read resolves to null instead of throwing', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new DOMException('timed out', 'TimeoutError'); }));
