@@ -11,10 +11,10 @@ interface Props {
 const { rounds, champion, names } = Astro.props;
 ---
 <div class="playoff-bracket" role="group" aria-label="Projected College Football Playoff bracket">
-    {rounds.map((round) => (
+    {rounds.map((round, r) => (
         <div class="bracket-round">
             <h2 class="bracket-round-name">{round.name}</h2>
-            <div class="bracket-games">
+            <div class={`bracket-games${r === rounds.length - 1 ? ' bracket-final' : ''}`}>
                 {round.games.map((game) => (
                     <div class="bracket-game">
                         {game.map((s) => (
@@ -27,29 +27,29 @@ const { rounds, champion, names } = Astro.props;
                         ))}
                     </div>
                 ))}
+                {r === rounds.length - 1 && (
+                    <div>
+                        <h2 class="bracket-round-name">Champion</h2>
+                        <div class="bracket-game bracket-champion">
+                            <a class="bracket-slot" href={`/team/${champion.teamId}`}>
+                                <span class="bracket-seed">{champion.seed}</span>
+                                <img class={`team-logo-${champion.teamId}`} width="20" height="20" src={teamLogoUrl('cfb', champion.teamId, false)} alt="" />
+                                <span class="bracket-team">{names[champion.teamId] ?? champion.teamId}</span>
+                                <span class="bracket-pct" title="Chance to win the title, from today">{pct(champion.pct)}</span>
+                            </a>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     ))}
-    <div class="bracket-round">
-        <h2 class="bracket-round-name">Champion</h2>
-        <div class="bracket-games">
-            <div class="bracket-game bracket-champion">
-                <a class="bracket-slot" href={`/team/${champion.teamId}`}>
-                    <span class="bracket-seed">{champion.seed}</span>
-                    <img class={`team-logo-${champion.teamId}`} width="20" height="20" src={teamLogoUrl('cfb', champion.teamId, false)} alt="" />
-                    <span class="bracket-team">{names[champion.teamId] ?? champion.teamId}</span>
-                    <span class="bracket-pct" title="Chance to win the title, from today">{pct(champion.pct)}</span>
-                </a>
-            </div>
-        </div>
-    </div>
 </div>
 
 <style>
     /* each column spaces its games evenly, so a later game sits between the two that feed it */
     .playoff-bracket {
         display: grid;
-        grid-template-columns: repeat(5, minmax(9.5rem, 1fr));
+        grid-template-columns: repeat(4, minmax(11rem, 1fr));
         gap: 0.75rem;
         overflow-x: auto;
         padding-bottom: 0.5rem;
@@ -72,6 +72,10 @@ const { rounds, champion, names } = Astro.props;
         flex-direction: column;
         justify-content: space-around;
         gap: 0.75rem;
+    }
+    /* the title game sits level with the gap between the semifinals, the champion under it */
+    .bracket-final {
+        justify-content: center;
     }
     .bracket-game {
         border: 1px solid var(--bs-border-color);

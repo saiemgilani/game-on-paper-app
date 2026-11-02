@@ -26,8 +26,8 @@ const byId = new Map((projection?.teams ?? []).map((t) => [t.team_id, t]));
 const names = Object.fromEntries((projection?.teams ?? []).map((t) => [t.team_id, t.name]));
 const bracket = projection ? buildBracket(projection.field) : null;
 const lastOut = (projection?.last_out ?? []).map((id) => byId.get(id)).filter((t) => t != null);
-// every team with a real shot at something; the rest of FBS rounds to 0% everywhere
-const contenders = (projection?.teams ?? []).filter((t) => t.playoff >= 0.005 || t.conf_title >= 0.005);
+// a real playoff shot, or a real shot at a conference title; the rest of FBS rounds to ~0%
+const contenders = (projection?.teams ?? []).filter((t) => t.playoff >= 0.005 || t.conf_title >= 0.1);
 const teamIds = (projection?.teams ?? []).map((t) => t.team_id);
 const record = (r: [number, number]) => `${r[0]}-${r[1]}`;
 
@@ -70,7 +70,7 @@ const subtitle = "The projected 12-team bracket, with each team's chances to win
                                             <td class="fw-bold">{s.seed}</td>
                                             <td>
                                                 <a href={`/team/${t.team_id}`}><img class={`team-logo-${t.team_id} me-1`} width="18" height="18" src={teamLogoUrl('cfb', t.team_id, false)} alt="" />{t.name}</a>
-                                                {s.auto && <span class="badge text-bg-secondary ms-1" title="Automatic bid">AQ</span>}
+                                                {s.auto && <span class="small text-body-secondary fw-bold ms-1" title="Automatic bid">AQ</span>}
                                             </td>
                                             <td class="text-center text-muted">{record(t.record)}</td>
                                             <td class="text-end">{pct(t.playoff)}</td>
