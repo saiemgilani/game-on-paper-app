@@ -270,22 +270,45 @@ describe('spice cues', () => {
         expect(rows).toContain('/game/405');
         expect(rows).toContain('/game/401');
         const spiced = rows.slice(rows.indexOf('/game/405'));
-        expect(spiced.slice(0, spiced.indexOf('</a>'))).toContain('<span class="gb-note small text-center text-truncate text-muted"><span class="text-muted">Ranked upset</span></span>');
+        expect(spiced.slice(0, spiced.indexOf('</a>'))).toMatch(/<span class="gb-note small d-flex justify-content-center overflow-hidden text-muted">\s*<span class="text-nowrap flex-shrink-0 text-muted">Ranked upset<\/span>\s*<\/span>/);
         const plain = rows.slice(rows.indexOf('/game/401'));
         expect(plain.slice(0, plain.indexOf('</a>'))).not.toContain('gb-note');
         // a row is a link whose name is its text; an aria-label would replace it
         expect(rows).not.toContain('aria-label');
     });
 
-    test('flag on: a row with an ESPN note and a cue keeps ONE note line', async () => {
+    async function notedRow(headline: string, locals: Record<string, unknown> = { preview: true }) {
         const { default: GameCompactRow } = await import('../src/components/schedule/GameCompactRow.astro');
         const e = spicedEvent('406');
-        e.competitions[0].notes = [{ type: 'event', headline: 'Iron Bowl' }];
-        const html = await container.renderToString(GameCompactRow, {
-            props: { game: e }, request: new Request('https://gameonpaper.com/'), locals: { preview: true },
+        e.competitions[0].notes = [{ type: 'event', headline }];
+        return container.renderToString(GameCompactRow, {
+            props: { game: e }, request: new Request('https://gameonpaper.com/'), locals,
         });
+    }
+
+    test('flag on: a row with an ESPN note and a cue keeps ONE note line', async () => {
+        const html = await notedRow('Iron Bowl');
         expect([...html.matchAll(/class="gb-note/g)]).toHaveLength(1);
-        expect(html).toContain('Iron Bowl · <span class="text-muted">Ranked upset</span></span>');
+        expect(html).toMatch(/<span class="text-truncate">Iron Bowl<\/span>\s*<span class="flex-shrink-0 px-1">·<\/span>\s*<span class="text-nowrap flex-shrink-0 text-muted">Ranked upset<\/span>/);
+    });
+
+    // Self-review on #360: bowl games carry the longest notes, and a single
+    // text-truncate line cut the cue off at 320-375px. Only the note may
+    // shrink: it is the one truncating item; the separator and cue never shrink.
+    test('flag on: a long bowl note truncates, the cue does not', async () => {
+        const html = await notedRow('CFP Semifinal at the Allstate Sugar Bowl');
+        const note = html.slice(html.indexOf('class="gb-note'), html.indexOf('</a>'));
+        expect(note).toMatch(/^class="gb-note small d-flex justify-content-center overflow-hidden /);
+        expect(note).toContain('<span class="text-truncate">CFP Semifinal at the Allstate Sugar Bowl</span>');
+        expect(note).toContain('<span class="text-nowrap flex-shrink-0 text-muted">Ranked upset</span>');
+        // nothing but the note itself truncates
+        expect([...note.matchAll(/text-truncate/g)]).toHaveLength(1);
+    });
+
+    test('flag off: the note line is the original single truncating span', async () => {
+        const html = await notedRow('CFP Semifinal at the Allstate Sugar Bowl', { preview: true, flagOverrides: { 'spice-cues': false } });
+        expect(html).toContain('<span class="gb-note small text-center text-truncate text-championship">CFP Semifinal at the Allstate Sugar Bowl</span>');
+        expect(html).not.toContain('Ranked upset');
     });
 
     test('flag on: the legend reads SPICE_LABEL, in border order', async () => {

@@ -64,7 +64,8 @@ const side = (c: any, score: number, other: number) => ({
   hasBall: live && ballTeamId == c.id,
 });
 // G12 ('spice-cues'): the row has no spice border, so the card's text cue is
-// the only place a phone reader gets it; it shares the one note line
+// the only place a phone reader gets it; it shares the one note line, where
+// only a long ESPN note truncates (bowl notes) and the cue never shrinks
 const spiceLabel = isFeatureEnabled('spice-cues', Astro.locals) ? SPICE_LABEL[calculateSpiceLevel(game)] : null;
 const away = side(awayComp, awayScore, homeScore);
 const home = side(homeComp, homeScore, awayScore);
@@ -87,5 +88,11 @@ const home = side(homeComp, homeScore, awayScore);
       <img width="28" height="28" loading="lazy" decoding="async" alt="" class={`team-logo-${home.id}`} src={home.logo} />
     </span>
   </span>
-  {(gameNote || spiceLabel) && <span class:list={["gb-note small text-center text-truncate", isChamp ? "text-championship" : "text-muted"]}>{gameNote}{gameNote && spiceLabel && " · "}{spiceLabel && <span class="text-muted">{spiceLabel}</span>}</span>}
+  {spiceLabel ? (
+    <span class:list={["gb-note small d-flex justify-content-center overflow-hidden", isChamp ? "text-championship" : "text-muted"]}>
+      {gameNote && <span class="text-truncate">{gameNote}</span>}
+      {gameNote && <span class="flex-shrink-0 px-1">·</span>}
+      <span class="text-nowrap flex-shrink-0 text-muted">{spiceLabel}</span>
+    </span>
+  ) : gameNote && <span class:list={["gb-note small text-center text-truncate", isChamp ? "text-championship" : "text-muted"]}>{gameNote}</span>}
 </a>
