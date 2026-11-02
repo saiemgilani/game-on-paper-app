@@ -1,13 +1,17 @@
 /**
  * Page-side step of the all-time player leaderboards (`/all-time/players/[category]`
- * and the /nfl twin, S17): the category check and the sort. Both leagues' pages call
- * this and render `components/leaderboards/AllTimePage.astro`, which reuses the
- * season board's table.
+ * and the /nfl twin, S17): the category check, the sort, the read and the cache
+ * policy. Both leagues' pages call `loadAllTime` and render
+ * `components/leaderboards/AllTimePage.astro`, which reuses the season board's table.
+ * The namespace gate (`isAllTimePath`) lives in utils/players.ts, beside isPlayerPath,
+ * so the middleware never imports the Data API client.
  */
 import type { AstroGlobal } from 'astro';
 import type { League } from '../utils/league';
 import { PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
 import { SDV_PLAYER_METRIC_CATEGORIES } from '../utils/constants';
+import { retrieveAllTimePlayerSeasons, sdvIngestStamp, sdvPin, type SDVPlayerSummary, type SummaryType } from '../resources/sdv';
+import { freshnessStamp } from '../utils/freshness';
 
 /**
  * The first season each league's player tables hold a qualified row for. Checked
@@ -23,12 +27,6 @@ export const ALL_TIME_SPAN: Record<'cfb' | 'nfl', Record<string, number>> = {
 
 export const ALL_TIME_DEFAULT_METRIC = 'TEPA';
 
-/** The all-time boards' URLs, both leagues: the namespace the 'all-time-leaderboards' flag gates. */
-export function isAllTimePath(pathname: string): boolean {
-    const p = pathname === '/nfl' || pathname.startsWith('/nfl/') ? pathname.slice(4) || '/' : pathname;
-    return /^\/all-time(\/|$)/.test(p);
-}
-
 export type AllTimePrep = { notFound: true } | { category: string; metric: string };
 
 // An unknown category is a 404 (as on the season boards); a `?sort=` the category does
@@ -42,4 +40,34 @@ export function prepareAllTime(Astro: AstroGlobal, league: League): AllTimePrep 
     const sort = Astro.url.searchParams.get('sort');
     const metric = sort && Object.hasOwn(SDV_PLAYER_METRIC_CATEGORIES[category], sort) ? sort : ALL_TIME_DEFAULT_METRIC;
     return { category, metric };
+}
+
+/** The season boards' policy (astro.config.mjs routeRules "/year/[...slug]"): the board moves when a season does. */
+export const ALL_TIME_CACHE = { maxAge: 60 * 60 * 24 * 3, tags: ['season'] };
+
+export type AllTimeLoad = { notFound: true } | {
+    category: string;
+    metric: string;
+    /** null: the read failed, and the page says the board is unavailable */
+    rows: SDVPlayerSummary[] | null;
+    stamp: ReturnType<typeof freshnessStamp> | null;
+};
+
+/**
+ * The route check, the read and the cache policy, run in the page frontmatter while the
+ * response headers are still open. A failed read is never cached: `cache.set(false)`
+ * emits no header, and Workers Caching holds a header-less 200 for ~2 hours
+ * (routes/game.ts), so one Data API timeout would serve "unavailable" to everyone.
+ * Opting out is explicit, as routes/player.ts `uncacheable` does it.
+ */
+export async function loadAllTime(Astro: AstroGlobal, league: 'cfb' | 'nfl'): Promise<AllTimeLoad> {
+    const r = prepareAllTime(Astro, league);
+    if ('notFound' in r) return r;
+    const pin = sdvPin(await sdvIngestStamp(league, r.category));
+    const rows = await retrieveAllTimePlayerSeasons({ category: r.category as SummaryType, metric: r.metric, league, pin });
+    try { (Astro as any).cache?.set(rows === null ? false : ALL_TIME_CACHE); } catch { /* cache provider absent in dev */ }
+    if (rows === null) {
+        try { Astro.response?.headers?.set('Cache-Control', 'no-store'); } catch { /* as above */ }
+    }
+    return { ...r, rows, stamp: pin?.held ? freshnessStamp(pin.version) : null };
 }

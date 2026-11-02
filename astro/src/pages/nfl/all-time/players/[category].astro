@@ -1,11 +1,12 @@
 ---
 import AllTimePage from "../../../../components/leaderboards/AllTimePage.astro";
-import { prepareAllTime } from "../../../../routes/allTime";
+import { loadAllTime } from "../../../../routes/allTime";
 
-const r = prepareAllTime(Astro, 'nfl');
+// the read and the cache policy run here, while the response headers are open
+const r = await loadAllTime(Astro, 'nfl');
 if ('notFound' in r) {
     return Astro.rewrite("/404");
 }
 ---
 
-<AllTimePage category={r.category} metric={r.metric} />
+<AllTimePage category={r.category} metric={r.metric} rows={r.rows} stamp={r.stamp} />

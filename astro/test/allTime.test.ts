@@ -25,7 +25,8 @@ vi.mock('astro:middleware', () => ({ defineMiddleware: (fn: unknown) => fn }));
 import { onRequest } from '../src/middleware';
 import { mintPreviewCookie, PREVIEW_COOKIE } from '../src/utils/preview';
 import { FLAGS } from '../src/utils/features';
-import { ALL_TIME_SPAN, isAllTimePath, prepareAllTime } from '../src/routes/allTime';
+import { ALL_TIME_CACHE, ALL_TIME_SPAN, loadAllTime, prepareAllTime } from '../src/routes/allTime';
+import { isAllTimePath } from '../src/utils/players';
 import { allTimePlayerQuery, retrieveAllTimePlayerSeasons, SummaryType } from '../src/resources/sdv';
 import { GET as sitemap } from '../src/pages/sitemap.xml';
 import Header from '../src/components/Header.astro';
@@ -93,6 +94,43 @@ describe('the all-time route', () => {
         expect(prepareAllTime(astro('rushing', 'yardsplay'), 'nfl')).toEqual({ category: 'rushing', metric: 'yardsplay' });
         expect(prepareAllTime(astro('rushing', 'dropbacks'), 'cfb')).toEqual({ category: 'rushing', metric: 'TEPA' });
         expect(prepareAllTime(astro('passing', 'constructor'), 'cfb')).toEqual({ category: 'passing', metric: 'TEPA' });
+    });
+
+    // A header-less 200 is held ~2 h by Workers Caching: "unavailable" must say no-store, and
+    // a good board takes the season boards' policy.
+    const page = (category: string) => {
+        const cacheSets: unknown[] = [];
+        const headers = new Headers();
+        const a = {
+            params: { category }, locals: {} as App.Locals, url: new URL(`https://gameonpaper.com/all-time/players/${category}`),
+            cache: { set: (c: unknown) => { cacheSets.push(c); } }, response: { headers },
+        } as any;
+        return { a, cacheSets, headers };
+    };
+
+    test('a failed read is never cached', async () => {
+        respond = () => new Response('boom', { status: 500 });
+        const { a, cacheSets, headers } = page('passing');
+        const r = await loadAllTime(a, 'cfb');
+        expect('rows' in r && r.rows).toBeNull();
+        expect(cacheSets).toEqual([false]);
+        expect(headers.get('Cache-Control')).toBe('no-store');
+    });
+
+    test('a good board is cached like the season boards', async () => {
+        const { a, cacheSets, headers } = page('rushing');
+        const r = await loadAllTime(a, 'nfl');
+        expect('rows' in r && r.rows).toEqual([{ season: 2018 }]);
+        expect(cacheSets).toEqual([ALL_TIME_CACHE]);
+        expect(ALL_TIME_CACHE).toEqual({ maxAge: 60 * 60 * 24 * 3, tags: ['season'] });
+        expect(headers.get('Cache-Control')).toBeNull();
+    });
+
+    test('an unknown category reads nothing and sets nothing', async () => {
+        const { a, cacheSets } = page('defense');
+        expect(await loadAllTime(a, 'cfb')).toEqual({ notFound: true });
+        expect(seen).toHaveLength(0);
+        expect(cacheSets).toHaveLength(0);
     });
 
     test('isAllTimePath matches both leagues, segment-exact', () => {

@@ -5,8 +5,8 @@
  * board states is ALL_TIME_SPAN's first season to METRIC_YEAR.
  */
 import FreshnessStamp from "../FreshnessStamp.astro";
-import { retrieveAllTimePlayerSeasons, sdvIngestStamp, sdvPin, type SummaryType } from "../../resources/sdv";
-import { freshnessStamp } from "../../utils/freshness";
+import type { SDVPlayerSummary } from "../../resources/sdv";
+import type { freshnessStamp } from "../../utils/freshness";
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
 import { leaguePath } from "../../utils/league";
 import PlayerLeaderboardTable from "./PlayerLeaderboardTable.astro";
@@ -20,14 +20,14 @@ import { ALL_TIME_SPAN } from "../../routes/allTime";
 interface Props {
     category: string
     metric: string
+    /** read by the page (routes/allTime.ts loadAllTime), which also sets the cache policy; null = unavailable */
+    rows: SDVPlayerSummary[] | null
+    stamp: ReturnType<typeof freshnessStamp> | null
 }
 
-const { category, metric } = Astro.props;
+const { category, metric, rows, stamp } = Astro.props;
 const league = Astro.locals.league === 'nfl' ? 'nfl' : 'cfb';
 const first = ALL_TIME_SPAN[league][category];
-const pin = sdvPin(await sdvIngestStamp(league, category));
-const rows = await retrieveAllTimePlayerSeasons({ category: category as SummaryType, metric, league, pin });
-const stamp = pin?.held ? freshnessStamp(pin.version) : null;
 
 const categoryTitle = toTitleCase(category);
 const metricTitle = SDV_PLAYER_METRIC_CATEGORIES[category][metric]?.title ?? metric;

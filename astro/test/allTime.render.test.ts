@@ -10,23 +10,22 @@ import { METRIC_YEAR } from '../src/utils/constants';
 // The SDV client is mocked; this pins the RENDER contract: the stated span, the season
 // board's table with a Season column, and links into each row's own season.
 const fx = JSON.parse(readFileSync(new URL('./fixtures/all-time-passing.json', import.meta.url)).toString());
-let league = 'cfb';
 let failed = false;
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     sdvIngestStamp: async () => undefined,
-    retrieveAllTimePlayerSeasons: async () => (failed ? null : league === 'nfl' ? fx.nfl_passing : fx.cfb_passing),
     retrievePlayerSummaries: async () => fx.cfb_passing,
+    // the page files read through routes/allTime.ts loadAllTime
+    retrieveAllTimePlayerSeasons: async ({ league }: { league: string }) => (failed ? null : league === 'nfl' ? fx.nfl_passing : fx.cfb_passing),
 }));
 
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 
 async function render(lg: 'cfb' | 'nfl', metric = 'TEPA') {
-    league = lg;
     const { default: Page } = await import('../src/components/leaderboards/AllTimePage.astro');
     return container.renderToString(Page, {
-        props: { category: 'passing', metric },
+        props: { category: 'passing', metric, rows: failed ? null : lg === 'nfl' ? fx.nfl_passing : fx.cfb_passing, stamp: null },
         request: new Request(`https://gameonpaper.com${lg === 'nfl' ? '/nfl' : ''}/all-time/players/passing`),
         locals: { league: lg, preview: true },
     });
@@ -72,6 +71,23 @@ describe('a failed read', () => {
             expect(bodyRows(html)).toHaveLength(0);
             expect(html).not.toContain('>Season</th>');
         } finally { failed = false; }
+    }, 60_000);
+});
+
+describe('the page files', () => {
+    test('read through the loader, in both leagues, and render its rows or the unavailable note', async () => {
+        for (const [lg, file, path, link] of [
+            ['cfb', '../src/pages/all-time/players/[category].astro', '/all-time/players/passing', 'href="/players/3917315?season=2018"'],
+            ['nfl', '../src/pages/nfl/all-time/players/[category].astro', '/nfl/all-time/players/passing', 'href="/nfl/players/00-0010346?season=2013"'],
+        ] as const) {
+            const { default: Page } = await import(/* @vite-ignore */ file);
+            const at = () => container.renderToString(Page, {
+                params: { category: 'passing' }, request: new Request(`https://gameonpaper.com${path}`), locals: { preview: true } as any,
+            });
+            expect(await at(), lg).toContain(link);
+            failed = true;
+            try { expect(await at(), lg).toContain('id="all-time-unavailable"'); } finally { failed = false; }
+        }
     }, 60_000);
 });
 

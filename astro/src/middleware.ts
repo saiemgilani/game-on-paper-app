@@ -13,8 +13,7 @@ import { applyAdminView } from './utils/adminView';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
 import { FLAGS, isFeatureEnabled } from './utils/features';
 import { isCoachBoardPath } from './utils/coaches';
-import { isPlayerPath } from './utils/players';
-import { isAllTimePath } from './routes/allTime';
+import { isAllTimePath, isPlayerPath } from './utils/players';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
 
