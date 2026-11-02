@@ -1,0 +1,9 @@
+---
+import SeasonSearchPage from "../../../components/search/SeasonSearchPage.astro";
+import { loadStatSearch } from "../../../routes/statSearch";
+
+// the read and the cache policy run here, while the response headers are open
+const r = await loadStatSearch(Astro, 'nfl');
+---
+
+<SeasonSearchPage filters={r.filters} rows={r.rows} />

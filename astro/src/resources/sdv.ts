@@ -9,6 +9,7 @@ import { LEAGUES, type League, type SdvSource, leagueSource, teamCategoriesFor }
 import { coachMetricColumns, type CoachRow } from '../utils/coaches';
 import { formatRecord } from '../utils/resume';
 import { PLAYER_SPLITS } from '../utils/players';
+import { statSearchQuery } from '../utils/statSearch';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -1038,6 +1039,34 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
         } else {
             return await retrievePlayerSummaries((season - 1), category, team_id, sortBy, ascending, limit, maxLookback, league, pin);
         }
+    }
+}
+
+/** A row of sdv-db F11 `{league}.player_seasons_wide`: box-score season totals (CFB all games, NFL regular season). */
+export interface SDVPlayerSeasonWide {
+    season: number
+    player_id: string | number
+    espn_id: string | null
+    player_name: string
+    team_id: number | null
+    team_abbr: string | null
+    games: number | null
+    [stat: string]: string | number | null
+}
+
+/** The read answers in well under a second (2026-11-02); past this the page says the search is unavailable. */
+export const STAT_SEARCH_TIMEOUT_MS = 10_000;
+
+/**
+ * Player-seasons meeting every threshold (S15). `null` when the read failed or timed out,
+ * so the page can say so instead of showing "no seasons" as the truth.
+ */
+export async function retrievePlayerSeasonsWide({ filters, league = 'cfb' }: { filters: Record<string, number>; league?: League }): Promise<SDVPlayerSeasonWide[] | null> {
+    try {
+        return await retrieveRowsFrom<SDVPlayerSeasonWide>(leagueSource(league), 'player_seasons_wide', statSearchQuery(filters), 60 * 60 * 24, true, STAT_SEARCH_TIMEOUT_MS);
+    } catch (err) {
+        console.error(`ERROR while searching ${league} player_seasons_wide: ${err}`);
+        return null;
     }
 }
 

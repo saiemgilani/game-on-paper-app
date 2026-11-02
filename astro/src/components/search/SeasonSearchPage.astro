@@ -1,0 +1,104 @@
+---
+/**
+ * Stat-threshold search (S15): a plain GET form (no island) over F11's player-season box
+ * totals, and the seasons meeting every threshold. Read by routes/statSearch.ts.
+ */
+import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
+import DarkModeLogos from "../DarkModeLogos.astro";
+import PlayerLink from "../player/PlayerLink.astro";
+import type { SDVPlayerSeasonWide } from "../../resources/sdv";
+import { espnLogoLeague, leaguePath } from "../../utils/league";
+import { roundNumber } from "../../utils/misc";
+import { STAT_FILTERS, STAT_SEARCH_LIMIT } from "../../utils/statSearch";
+import "bootstrap-icons/font/bootstrap-icons.css";
+
+interface Props {
+    filters: Record<string, number>
+    /** undefined: no filters yet; null: the read failed */
+    rows: SDVPlayerSeasonWide[] | null | undefined
+}
+
+const { filters, rows } = Astro.props;
+const league = Astro.locals.league === 'nfl' ? 'nfl' : 'cfb';
+const pageUrl = leaguePath(league, "/search/seasons");
+const sortKey = Object.keys(filters)[0];
+const scope = league === 'nfl' ? "Regular season games only." : "All games, postseason included.";
+const breadcrumbs: PageBreadcrumb[] = [
+    { title: "Tools", active: false },
+    { title: "Season Search", url: pageUrl, active: true },
+];
+const cell = (v: unknown) => (v === null || v === undefined ? "-" : roundNumber(v as number, 0, 0));
+---
+
+<GenericPage title="Season Search" subtitle="Player-seasons meeting every stat threshold" slug={pageUrl} breadcrumbs={breadcrumbs}>
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-12">
+                <h1 class="h3">Season Search</h1>
+                <p class="m-0 mb-2 text-muted text-small">Player-seasons at or above every threshold you set, from box score totals. {scope} Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>.</p>
+            </div>
+        </div>
+        <form class="row" method="get" action={pageUrl} id="season-search">
+            {Object.entries(STAT_FILTERS).map(([key, label]) => (
+                <div class="col-6 col-md-3 col-lg-auto mb-3">
+                    <label class="form-label text-muted text-small mb-0" for={`ss-${key}`}>{label} &ge;</label>
+                    <input type="number" class="form-control form-control-md" id={`ss-${key}`} name={key} min="0" step="1" inputmode="numeric" value={filters[key] ?? ""} />
+                </div>
+            ))}
+            <div class="col-12 col-lg-auto mb-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-md btn-primary">Search</button>
+            </div>
+        </form>
+    </div>
+    {rows === null && (
+        <div class="container"><p class="m-0 mb-3 text-muted text-small" id="season-search-unavailable">Search is unavailable right now. Try again in a few minutes.</p></div>
+    )}
+    {rows && (
+        <Fragment>
+            <DarkModeLogos teamIds={rows.map((r) => r.team_id).filter((t) => t !== null)} />
+            <div class="container">
+                <p class="m-0 mb-2 text-muted text-small" id="season-search-count">
+                    {rows.length === 0 ? "No player-seasons meet every threshold."
+                        : rows.length >= STAT_SEARCH_LIMIT ? `The top ${STAT_SEARCH_LIMIT} by ${STAT_FILTERS[sortKey]}. Raise a threshold to narrow the list.`
+                        : `${rows.length} player-season${rows.length === 1 ? "" : "s"}, sorted by ${STAT_FILTERS[sortKey]}.`}
+                </p>
+                {rows.length > 0 && (
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-responsive">
+                                    <thead>
+                                        <th class="text-right" colspan="1">Rk</th>
+                                        <th class="text-left" colspan="1">Player</th>
+                                        <th class="text-center" colspan="1">Season</th>
+                                        <th class="text-left" colspan="1">Team</th>
+                                        <th class="text-center" colspan="1">Games</th>
+                                        {Object.entries(STAT_FILTERS).map(([k, label]) => (
+                                            <th class="text-center" colspan="1">{label} {k === sortKey && <i class="bi bi-arrow-down"></i>}</th>
+                                        ))}
+                                    </thead>
+                                    <tbody>
+                                        {rows.map((r, i) => (
+                                            <tr>
+                                                <td class="text-right numeral" colspan="1">{i + 1}</td>
+                                                <td class="text-left text-nowrap" colspan="1"><PlayerLink id={r.espn_id ?? r.player_id} season={r.season}><strong>{r.player_name}</strong></PlayerLink></td>
+                                                <td class="text-center numeral" colspan="1">{r.season}</td>
+                                                <td class="text-left text-nowrap" colspan="1">{r.team_id === null ? r.team_abbr : (
+                                                    <a href={leaguePath(league, `/year/${r.season}/team/${r.team_id}`)}><img class={`img-fluid team-logo-${r.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${r.team_id}.png`} alt={`ESPN team id ${r.team_id} ${r.team_abbr ?? ""}`} title={r.team_abbr ?? undefined} /><span>{r.team_abbr}</span></a>
+                                                )}</td>
+                                                <td class="text-center numeral" colspan="1">{cell(r.games)}</td>
+                                                {Object.keys(STAT_FILTERS).map((k) => (
+                                                    <td class="text-center numeral" colspan="1">{cell(r[k])}</td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </Fragment>
+    )}
+</GenericPage>

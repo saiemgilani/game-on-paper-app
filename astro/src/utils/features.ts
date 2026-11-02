@@ -128,6 +128,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // Stat-threshold search (S15): /search/seasons and the /nfl twin, player-seasons at or above every
+    // threshold from sdv-db's player_seasons_wide. Gated in middleware (utils/statSearch.ts isStatSearchPath);
+    // the header's Tools entry reads the same flag. Not in the sitemap.
+    'stat-search': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
