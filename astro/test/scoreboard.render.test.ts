@@ -193,6 +193,10 @@ describe('the compact row possession marker', () => {
         const html = await row('2');
         expect([...html.matchAll(/class="gb-ball/g)]).toHaveLength(1);
         expect(html).toMatch(new RegExp(String.raw`team-logo-2"[^>]*>\s*` + dot('AUB')));
+        // the logo/dot spacing is the gap-1 utility on BOTH logo wrappers, and
+        // the dot sits inside the away wrapper, right after its logo
+        expect([...html.matchAll(/class="gb-logo gap-1"/g)]).toHaveLength(2);
+        expect(html).toMatch(new RegExp(String.raw`<span class="gb-logo gap-1"><img[^>]*team-logo-2"[^>]*>\s*` + dot('AUB')));
         // outside the red zone the dot is the primary (not danger) variant
         expect(html).not.toContain('gb-ball-rz');
     });
@@ -201,6 +205,8 @@ describe('the compact row possession marker', () => {
         const html = await row('333');
         expect([...html.matchAll(/class="gb-ball/g)]).toHaveLength(1);
         expect(html).toMatch(new RegExp(dot('ALA') + String.raw`\s*<img[^>]*team-logo-333"`));
+        expect([...html.matchAll(/class="gb-logo gap-1"/g)]).toHaveLength(2);
+        expect(html).toMatch(new RegExp(String.raw`<span class="gb-logo gap-1">` + dot('ALA') + String.raw`\s*<img[^>]*team-logo-333"`));
         // the dot is never after the home logo (its outer edge)
         expect(html).not.toMatch(new RegExp(String.raw`team-logo-333"[^>]*>\s*<span class="gb-ball`));
     });
