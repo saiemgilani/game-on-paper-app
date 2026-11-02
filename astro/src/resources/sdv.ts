@@ -589,13 +589,16 @@ const SDV_META_TTL = 60 * 5;
 // 2024-10-14; ours is later). fetchSDVDatasets never rejects: a failure resolves to
 // null, which holds for the window, then retries -- no per-request retry storm on a down API.
 let sdvMeta: { at: number, datasets: Promise<Record<string, string> | null> } | undefined;
+export const SDV_META_TIMEOUT_MS = 5_000;
 
 // `fresh` skips the shared KV copy (a pinned read's post-fetch check; see requestSDV).
 async function fetchSDVDatasets(fresh = false): Promise<Record<string, string> | null> {
     try {
         const cached = fresh ? null : await env.SDV_API_CACHE.get(SDV_META_KEY, "json");
         if (cached) return cached as Record<string, string>;
-        const req = await wrappedFetch(SDV_META_URL, { headers: { "Authorization": `Bearer ${SDV_AUTH_TOKEN}` } });
+        // every Data API read awaits this first (and the isolate memoises the promise), so a
+        // stalled /v1/meta must give up rather than hold every read behind it
+        const req = await wrappedFetch(SDV_META_URL, { headers: { "Authorization": `Bearer ${SDV_AUTH_TOKEN}` }, signal: AbortSignal.timeout(SDV_META_TIMEOUT_MS) });
         if (!req.ok) throw new Error(`status ${req.status}`);
         const datasets = (await req.json() as any)?.datasets;
         if (!datasets || typeof datasets !== 'object') throw new Error('no datasets in the response');
