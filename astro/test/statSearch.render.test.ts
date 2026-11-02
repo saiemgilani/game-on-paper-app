@@ -102,3 +102,15 @@ describe('result notes', () => {
         } finally { fx.cfb = saved; }
     }, 60_000);
 });
+
+describe('a row without a team id', () => {
+    test('shows the abbreviation unlinked rather than a broken team link', async () => {
+        const saved = fx.nfl; fx.nfl = [{ ...saved[0], team_id: null, team_abbr: 'BAL' }];
+        try {
+            const html = await render('nfl', EXAMPLE);
+            expect(html).not.toContain('/nfl/year/2019/team/');
+            expect(bodyRows(html)[0]).toContain('BAL');
+            expect(html).toContain('href="/nfl/players/3916387?season=2019"');
+        } finally { fx.nfl = saved; }
+    }, 60_000);
+});
