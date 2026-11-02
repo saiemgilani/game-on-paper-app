@@ -9,7 +9,7 @@ import { LEAGUES, type League, type SdvSource, leagueSource, teamCategoriesFor }
 import { coachMetricColumns, type CoachRow } from '../utils/coaches';
 import { formatRecord } from '../utils/resume';
 import { PLAYER_SPLITS } from '../utils/players';
-import { earliestFinal, FIRST_FINAL_SPAN, type FinalScoreRow } from '../utils/finalScore';
+import { earliestFinals, FIRST_FINAL_SPAN, type FinalScoreRow } from '../utils/finalScore';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -1227,19 +1227,27 @@ export async function retrieveMatchupHistory(team1Id: string | number, team2Id: 
 
 
 /**
- * IF-6: the earliest completed game in the league's schedule table that ended with this
- * final, either way round (home/away swapped is a second read; a tie needs one). CFB is
- * FBS vs FBS only. A failed read is `[]`, so the chip fails closed.
+ * IF-6: every completed game in the league's schedule table tied for the earliest kickoff with
+ * this final, either way round (home/away swapped is a second read; a tie needs one). CFB is
+ * FBS vs FBS only. Both reads must succeed inside the timeout or the answer is `[]`: a
+ * half-answered lookup could miss an earlier game, and the chip must fail closed, never
+ * stall or break the header.
  */
-export async function retrieveFirstFinal(league: League, homePoints: number, awayPoints: number): Promise<FinalScoreRow | null> {
-    if (!LEAGUES[league]?.sdvEnabled || !FIRST_FINAL_SPAN[league]) return null;
+export async function retrieveFirstFinal(league: League, homePoints: number, awayPoints: number, timeoutMs = 3000): Promise<FinalScoreRow[]> {
+    if (!LEAGUES[league]?.sdvEnabled || !FIRST_FINAL_SPAN[league]) return [];
     const pairs = homePoints === awayPoints ? [[homePoints, awayPoints]] : [[homePoints, awayPoints], [awayPoints, homePoints]];
-    const reads = pairs.map(([h, a]) => retrieveRows<FinalScoreRow>(league, LEAGUES[league].scheduleTable, {
-        home_points: String(h), away_points: String(a), completed: 'true',
-        ...(league === 'cfb' ? { fbs_game: 'true' } : {}),
-        order: 'start_date', limit: '1', select: 'game_id,start_date',
-    }, 60 * 60 * 24));
-    return earliestFinal((await Promise.all(reads)).flat());
+    try {
+        const reads = pairs.map(([h, a]) => retrieveRowsFrom<FinalScoreRow>(leagueSource(league), LEAGUES[league].scheduleTable, {
+            home_points: String(h), away_points: String(a), completed: 'true',
+            ...(league === 'cfb' ? { fbs_game: 'true' } : {}),
+            // ponytail: 5 rows covers games sharing the earliest kickoff; more than 5 simultaneous firsts is not a thing
+            order: 'start_date', limit: '5', select: 'game_id,start_date',
+        }, 60 * 60 * 24, true, timeoutMs));
+        return earliestFinals((await Promise.all(reads)).flat());
+    } catch (e) {
+        console.warn(`first-final lookup failed, no chip: ${e}`);
+        return [];
+    }
 }
 
 export async function retrieveTeamSchedule(season: string | number, teamId: string | number, league: League = 'cfb'): Promise<SDVGame[]> {

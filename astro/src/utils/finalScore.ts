@@ -26,18 +26,19 @@ export function finalScore(a: number, b: number): [number, number] {
     return a >= b ? [a, b] : [b, a];
 }
 
-/** The earliest row of the per-orientation lookups (home/away swapped), or null. */
-export function earliestFinal(rows: FinalScoreRow[]): FinalScoreRow | null {
-    return rows.reduce<FinalScoreRow | null>((best, r) => (!best || r.start_date < best.start_date ? r : best), null);
+/** Every row tied for the earliest kickoff (one game, unless two kicked off together). */
+export function earliestFinals(rows: FinalScoreRow[]): FinalScoreRow[] {
+    const first = rows.reduce<string | null>((m, r) => (m == null || r.start_date < m ? r.start_date : m), null);
+    return rows.filter((r) => r.start_date === first);
 }
 
 /**
- * True only when this game IS the earliest completed game in the population with this
+ * True only when this game is AN earliest completed game in the population with this
  * final. Game ids compare as strings: the table's are numbers, ESPN's header id a string.
  * A game not yet in the table (or not in the population, e.g. FBS vs FCS) is never first.
  */
-export function finalScoreFirst(earliest: FinalScoreRow | null, gameId: string | number): boolean {
-    return earliest != null && String(earliest.game_id) === String(gameId);
+export function finalScoreFirst(earliest: FinalScoreRow[], gameId: string | number): boolean {
+    return earliest.some((r) => String(r.game_id) === String(gameId));
 }
 
 /** "First 56-22 final (FBS vs FBS games since 2001)" */
