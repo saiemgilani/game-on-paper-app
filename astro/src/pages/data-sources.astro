@@ -1,8 +1,27 @@
 ---
 import GenericPage from '../layouts/GenericPage.astro';
+import DataStatusTable from '../components/DataStatusTable.astro';
+import { sdvIngestStamp } from '../resources/sdv';
+import { isFeatureEnabled } from '../utils/features';
+import { freshnessStamp, STATUS_SURFACES } from '../utils/freshness';
 import { faqPageJsonLd, type FaqEntry } from '../utils/seo';
 
-export const prerender = true;
+// SSR, not prerendered, so the 'data-status' flag resolves per request. Off, the page reads
+// nothing and its HTML is what the prerendered page served.
+const showStatus = isFeatureEnabled('data-status', Astro.locals);
+// sdvIngestStamp never rejects and shares one /v1/meta read per isolate; a missing key stays "Unknown"
+const status = showStatus
+    ? await Promise.all(STATUS_SURFACES.map(async ({ label, table }) => ({
+        label, live: table === null, stamp: table ? freshnessStamp(await sdvIngestStamp('cfb', table)) : null,
+    })))
+    : [];
+// A meta outage (no stamp at all) must not hold an all-"Unknown" table in the edge cache.
+if (showStatus && status.every((s) => s.live || !s.stamp)) {
+    Astro.cache?.set(false);
+    Astro.response.headers.set('Cache-Control', 'no-store');
+} else {
+    Astro.cache?.set({ maxAge: 60 * 5, tags: ['data-sources'] });
+}
 
 const canonicalUrl = new URL('/data-sources', 'https://gameonpaper.com').href;
 ---
@@ -41,6 +60,7 @@ const canonicalUrl = new URL('/data-sources', 'https://gameonpaper.com').href;
                     <li><strong>Completed games</strong>: cached after the game goes final. We will occasionally update these pages if ESPN cleans the play-by-play data upstream or if we have new metrics to display.</li>
                     <li><strong>Season metrics and percentiles</strong>: updated as the underlying SportsDataverse datasets refresh, typically within a day of games completing.</li>
                 </ul>
+                {showStatus && <DataStatusTable rows={status} />}
 
                 <h2 class="fs-4 mt-4">Known limitations</h2>
                 <ul>
