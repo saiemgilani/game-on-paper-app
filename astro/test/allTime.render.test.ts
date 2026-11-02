@@ -11,10 +11,11 @@ import { METRIC_YEAR } from '../src/utils/constants';
 // board's table with a Season column, and links into each row's own season.
 const fx = JSON.parse(readFileSync(new URL('./fixtures/all-time-passing.json', import.meta.url)).toString());
 let league = 'cfb';
+let failed = false;
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     sdvIngestStamp: async () => undefined,
-    retrieveAllTimePlayerSeasons: async () => (league === 'nfl' ? fx.nfl_passing : fx.cfb_passing),
+    retrieveAllTimePlayerSeasons: async () => (failed ? null : league === 'nfl' ? fx.nfl_passing : fx.cfb_passing),
     retrievePlayerSummaries: async () => fx.cfb_passing,
 }));
 
@@ -49,9 +50,9 @@ describe('all-time passing, cfb', () => {
         expect(html).toContain('href="/players/3915511?season=2019"'); // Joe Burrow
         expect(html).toContain('href="/year/2018/team/201"');
         expect(html).toContain('>Season</th>');
-        expect(rows[0]).toContain('>2018</td>');
+        expect(rows[0]).toContain('<td class="text-center numeral" colspan="1">2018</td>');
         // Rk is the position on this board, not the row's rank within its own season (every row is 1st there)
-        expect(rows.map((r) => r.match(/<td class="text-right" colspan="1">(\d+)<\/td>/)?.[1])).toEqual(['1', '2', '3', '4', '5']);
+        expect(rows.map((r) => r.match(/<td class="text-right numeral" colspan="1">(\d+)<\/td>/)?.[1])).toEqual(['1', '2', '3', '4', '5']);
         // the season board's shading: each row's percentile within its own season
         expect(rows[0]).toContain('hulk-bg-level');
     }, 60_000);
@@ -59,6 +60,18 @@ describe('all-time passing, cfb', () => {
     test('the dropdown offers All-time, selected', async () => {
         const html = await render('cfb');
         expect(html).toMatch(/<option value="all-time" selected[^>]*>All-time<\/option>/);
+    }, 60_000);
+});
+
+describe('a failed read', () => {
+    test('says the board is unavailable instead of rendering an empty table', async () => {
+        failed = true;
+        try {
+            const html = await render('cfb');
+            expect(html).toContain('id="all-time-unavailable"');
+            expect(bodyRows(html)).toHaveLength(0);
+            expect(html).not.toContain('>Season</th>');
+        } finally { failed = false; }
     }, 60_000);
 });
 

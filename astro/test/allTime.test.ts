@@ -7,12 +7,16 @@ import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/containe
 // qualified in its own season, top 100 by the metric), the route checks, and the
 // 'all-time-leaderboards' flag -- off: 404, no header entry, no sitemap entry.
 const seen: string[] = [];
+const signals: (AbortSignal | undefined)[] = [];
+const ok = () => new Response(JSON.stringify({ data: [{ season: 2018 }] }), { status: 200 });
+let respond: () => Response = ok;
 vi.mock('../src/utils/telemetry', async (orig) => ({
     ...(await orig<typeof import('../src/utils/telemetry')>()),
-    wrappedFetch: async (url: string) => {
+    wrappedFetch: async (url: string, init?: RequestInit) => {
         if (String(url).endsWith('/v1/meta')) return new Response('{}', { status: 200 });
         seen.push(String(url));
-        return new Response(JSON.stringify({ data: [{ season: 2018 }] }), { status: 200 });
+        signals.push(init?.signal ?? undefined);
+        return respond();
     },
 }));
 vi.mock('astro:env/server', () => ({ getSecret: (k: string) => (k === 'ADMIN_PASS' ? 'test-secret' : 'test') }));
@@ -26,7 +30,7 @@ import { allTimePlayerQuery, retrieveAllTimePlayerSeasons, SummaryType } from '.
 import { GET as sitemap } from '../src/pages/sitemap.xml';
 import Header from '../src/components/Header.astro';
 
-beforeEach(() => { seen.length = 0; });
+beforeEach(() => { seen.length = 0; signals.length = 0; respond = ok; });
 
 describe('the all-time read', () => {
     test('no season, qualified in its own season, order by the metric, top 100', () => {
@@ -52,6 +56,19 @@ describe('the all-time read', () => {
         expect(u.origin + u.pathname).toBe('https://data.sportsdataverse.org/v1/nfl/rushing');
         expect(u.searchParams.has('season')).toBe(false);
         expect(u.searchParams.get('TEPA_rank__gte')).toBe('1');
+    });
+
+    test('the read carries a deadline, so a stalled API cannot hang the render', async () => {
+        await retrieveAllTimePlayerSeasons({ category: SummaryType.PASSING, metric: 'EPAplay', league: 'cfb' });
+        expect(signals).toHaveLength(1);
+        expect(signals[0]).toBeInstanceOf(AbortSignal);
+    });
+
+    test('a failed read is null (unavailable), not an empty board', async () => {
+        respond = () => new Response('boom', { status: 500 });
+        expect(await retrieveAllTimePlayerSeasons({ category: SummaryType.PASSING, metric: 'TEPA', league: 'cfb' })).toBeNull();
+        respond = () => new Response(JSON.stringify({ detail: 'unknown column' }), { status: 200 });
+        expect(await retrieveAllTimePlayerSeasons({ category: SummaryType.RECEIVING, metric: 'TEPA', league: 'nfl' })).toBeNull();
     });
 
     test('every category in both leagues has a recorded span', () => {

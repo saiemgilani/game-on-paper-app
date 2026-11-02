@@ -1053,17 +1053,24 @@ export function allTimePlayerQuery(category: string, metric: string): URLSearchP
     return new URLSearchParams({ order: `-${metric}`, [`${qualifier}_rank__gte`]: '1', limit: '100' });
 }
 
-/** The top qualified player-seasons across every season (S17). A failed read is an empty board. */
+/** A cold all-time read sorts the whole table; past this the page says the board is unavailable instead of hanging. */
+export const ALL_TIME_TIMEOUT_MS = 20_000;
+
+/**
+ * The top qualified player-seasons across every season (S17). `null` when the read
+ * failed, timed out or answered without a `data` array, so the page can say the board
+ * is unavailable rather than show an empty table as the truth.
+ */
 export async function retrieveAllTimePlayerSeasons({ category, metric, league = 'cfb', pin }:
-    { category: SummaryType; metric: string; league?: League; pin?: SdvPin }): Promise<SDVPlayerSummary[]> {
+    { category: SummaryType; metric: string; league?: League; pin?: SdvPin }): Promise<SDVPlayerSummary[] | null> {
     if (!LEAGUES[league].sdvEnabled) return [];
     try {
         // cached 3 days like the season boards: the read sorts the whole table
-        const content = await requestSDV(category, allTimePlayerQuery(category, metric), undefined, 60 * 60 * 24 * 3, true, leagueSource(league), false, undefined, pin);
-        return Array.isArray(content?.data) ? content.data : [];
+        const content = await requestSDV(category, allTimePlayerQuery(category, metric), undefined, 60 * 60 * 24 * 3, true, leagueSource(league), true, ALL_TIME_TIMEOUT_MS, pin);
+        return Array.isArray(content?.data) ? content.data : null;
     } catch (err) {
         console.error(`ERROR while loading all-time ${league} ${category} by ${metric} from SDV: ${err}`);
-        return [];
+        return null;
     }
 }
 
