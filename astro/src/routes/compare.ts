@@ -24,7 +24,8 @@ export async function prepareCompare(Astro: AstroGlobal, league: League): Promis
         return { notFound: true };
     }
     const season = seasonParam === null ? null : parseInt(seasonParam);
-    const ids = parseCompareIds(Astro.url.searchParams.get('ids'));
+    // repeated ?ids= work too (the PR evidence routes allow no commas)
+    const ids = parseCompareIds(Astro.url.searchParams.getAll('ids').join(','));
     const reads = await Promise.all(ids.map((id) => Promise.allSettled([
         retrievePlayer(id, league), retrievePlayerSeasons(id, league),
     ])));

@@ -101,6 +101,10 @@ describe('CFB compare page', () => {
         expect(page.match(/data-compare-card="/g)).toHaveLength(1);
         expect(page).not.toContain('data-compare-card="9999"');
     });
+    test('repeated ?ids= params are one list', async () => {
+        const page = await html('cfb', '?ids=4433971&ids=5000001&season=2024');
+        expect(page.match(/data-compare-card="/g)).toHaveLength(2);
+    });
     test('no ids is the empty page with the add box', async () => {
         const page = await html('cfb', '');
         expect(page).toContain('id="player-compare-empty"');
