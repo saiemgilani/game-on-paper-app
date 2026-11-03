@@ -239,7 +239,8 @@ export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, {
     // Legend rows: colour key first, then the size key.
     const legend = root.append("g").attr("transform", `translate(12,${v.height + 12})`);
     const used = drawDiffLegend(legend, 0, 0, width - 24, theme, [SHRINK_NOTE]);
-    const steps = [MIN_DRAWN_ATTEMPTS, Math.max(MIN_DRAWN_ATTEMPTS + 1, Math.round(cap / 2)), cap];
+    // a sparse chart (cap 2 or 3) gets one or two keys, never a middle step past the cap
+    const steps = [...new Set([MIN_DRAWN_ATTEMPTS, Math.min(cap, Math.max(MIN_DRAWN_ATTEMPTS + 1, Math.round(cap / 2))), cap])];
     const key = legend.append("g").attr("transform", `translate(0,${used + 8})`);
     steps.forEach((n, i) => {
       const x = 12 + i * 34;
@@ -306,5 +307,6 @@ export function describeHex(data: HexShotChartData): string {
     return `${ZONE_LABELS[z]} ${player.makes}/${player.attempts} (${fmtPct(player.fgPct)}, league ${fmtPct(league.fgPct)})`;
   });
   const attempts = data.squares.reduce((a, h) => a + h.attempts, 0);
-  return `${attempts} attempts in ${data.squares.length} ${data.side / 10} ft squares. By zone: ${zones.join("; ")}.`;
+  const drawn = data.squares.filter((h) => h.attempts >= MIN_DRAWN_ATTEMPTS).length;
+  return `${attempts} attempts; ${drawn} ${fmtDec(data.side / 10)} ft squares with ${MIN_DRAWN_ATTEMPTS} or more. By zone: ${zones.join("; ")}.`;
 }
