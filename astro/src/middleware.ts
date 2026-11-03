@@ -245,6 +245,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   const collector = createCollector();
   collector.game_id = (url.pathname.match(GAME_ID_RE) || [])[1] ?? null;
+  collector.client = {
+    ip: clientIp(context.request.headers, safeClientAddress(context)),
+    ua: context.request.headers.get('user-agent') ?? '',
+    page: url.pathname,
+  };
   const t0 = Date.now();
   let response: Response;
   try {

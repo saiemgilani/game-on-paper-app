@@ -108,6 +108,8 @@ def require_auth_token(func):
                 "provided token value did not match expected token"
             )
 
+            # the Worker's forwarded X-GOP-Client-* headers are trusted only past this check
+            g.gop_authed = True
             # Otherwise just send them where they wanted to go
             return func(*args, **kwargs)
         except Exception as e:

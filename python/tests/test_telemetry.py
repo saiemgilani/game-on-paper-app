@@ -227,3 +227,32 @@ def test_a_probe_that_fails_falls_back_to_the_declared_columns():
     assert tel.flush()["written"] == 1
     assert "qa" not in log[0][0]  # upstream_log has no qa columns either way
     assert log[0][0].count(",") == len(_TABLES["upstream_log"]) * 2 - 2
+
+
+# --- caller attribution: the visitor the Worker forwards on /process ---------------------------
+class _Req:
+    def __init__(self, headers, remote_addr="172.18.0.1"):
+        self.headers, self.remote_addr = headers, remote_addr
+
+
+def test_caller_uses_forwarded_visitor_only_when_authed():
+    from telemetry import caller
+
+    fwd = {"X-GOP-Client-IP": "67.183.195.118", "X-GOP-Client-UA": "crawler/1", "X-GOP-Page": "/game/401", "User-Agent": "worker"}
+    assert caller(_Req(fwd), True) == ("67.183.195.118", "crawler/1", "/game/401")
+    # unauthenticated: a forged header must not override the real peer
+    assert caller(_Req(fwd), False) == ("172.18.0.1", "worker", None)
+
+
+def test_caller_rejects_a_bad_ip_and_keeps_the_peer():
+    from telemetry import caller
+
+    fwd = {"X-GOP-Client-IP": "not-an-ip", "X-GOP-Client-UA": "x", "X-GOP-Page": "/p"}
+    assert caller(_Req(fwd), True)[0] == "172.18.0.1"
+    assert caller(_Req({"X-GOP-Client-IP": " 2a06:98c0::1 ", "X-GOP-Client-UA": ""}), True)[0] == "2a06:98c0::1"
+
+
+def test_caller_without_forwarded_headers_is_the_direct_peer():
+    from telemetry import caller
+
+    assert caller(_Req({"User-Agent": "curl", "Referer": "gameonpaper.com"}), True) == ("172.18.0.1", "curl", "gameonpaper.com")

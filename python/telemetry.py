@@ -5,6 +5,7 @@ events and everything the Astro frontend ships to POST /gop/ingest.
 FAIL-OPEN: nothing here may raise into a request path or crash the worker.
 """
 
+import ipaddress
 import json
 import logging
 import os
@@ -456,6 +457,32 @@ def stage(timings, name):
         timings[name + "_ms"] = (time.perf_counter() - t0) * 1000.0
 
 
+def _valid_ip(v):
+    """``v`` if it parses as an IP address, else None (``ip`` is cast ``::inet``, and one
+    bad value fails the whole batch insert)."""
+    try:
+        return str(ipaddress.ip_address((v or "").strip()))
+    except ValueError:
+        return None
+
+
+def caller(request, authed):
+    """(ip, ua, referrer) for a request_log row: the visitor the Worker forwarded when the
+    request passed the bearer check, else the direct peer (the Worker or nginx)."""
+    h = request.headers
+    if authed and h.get("X-GOP-Client-UA") is not None:
+        return (
+            _valid_ip(h.get("X-GOP-Client-IP")) or request.remote_addr,
+            (h.get("X-GOP-Client-UA") or "")[:400],
+            (h.get("X-GOP-Page") or "")[:400] or None,
+        )
+    return (
+        request.remote_addr,
+        (h.get("User-Agent") or "")[:400],
+        (h.get("Referer") or "")[:400] or None,
+    )
+
+
 def init_flask(app, tel):
     """Register request hooks. Imported lazily so unit tests don't need flask."""
     from flask import g, request
@@ -471,6 +498,7 @@ def init_flask(app, tel):
             if request.path.startswith("/gop/"):
                 return response  # don't log telemetry's own traffic
             meta = getattr(g, "gop_meta", {}) or {}
+            ip, ua, referrer = caller(request, getattr(g, "gop_authed", False))
             tel.push(
                 "request_log",
                 {
@@ -485,9 +513,9 @@ def init_flask(app, tel):
                         time.perf_counter() - getattr(g, "gop_t0", time.perf_counter())
                     )
                     * 1000.0,
-                    "ip": request.remote_addr,
-                    "ua": (request.headers.get("User-Agent") or "")[:400],
-                    "referrer": (request.headers.get("Referer") or "")[:400] or None,
+                    "ip": ip,
+                    "ua": ua,
+                    "referrer": referrer,
                     "game_id": meta.get("game_id"),
                     "bytes_out": response.content_length,
                     "cache_status": meta.get("cache_status"),
