@@ -7,7 +7,7 @@ import { shrunkDiff, type HexVsLeague, type Split, type Zone } from "../data/agg
 import { COURT, toSvg, toSvgLength, zoneAreas, type Viewport } from "../data/court";
 import { courtViewport, DEFAULT_WIDTH, drawCourt } from "./court";
 import { emitDistance, onDistance } from "./link";
-import { fmtPct, fmtPts } from "../format";
+import { fmtDec, fmtPct, fmtPts } from "../format";
 import { chartTheme, diffColor, drawDiffLegend, drawNotes, FONT_PX, motionMs, setViewBox, SHRINK_NOTE, tooltip, TOKENS, uniqueId, type ChartTheme, type G } from "./theme";
 
 export interface ZoneComparison {
@@ -67,6 +67,9 @@ const DIM = 0.2;
  */
 export const MIN_DRAWN_ATTEMPTS = 2;
 export const SQUARE_FILL = 0.88;
+
+/** The pinned cell per chart, by its lattice centre, so a resize or theme redraw keeps it. */
+const pins = new WeakMap<SVGSVGElement, { x: number; y: number }>();
 
 export interface HexMark {
   hex: HexVsLeague;
@@ -144,7 +147,7 @@ function drawZones(root: G, data: HexShotChartData, v: Viewport, theme: ChartThe
     const { player: z, league } = data.zones[a.zone];
     const g = labels.append("g").attr("transform", `translate(${a.label.x},${a.label.y})${a.vertical ? " rotate(-90)" : ""}`);
     if (a.vertical) {
-      label(g, `${fmtPct(z.fgPct, 0)} · ${z.makes}/${z.attempts}`, -2);
+      label(g, `${fmtPct(z.fgPct, 0)}, ${z.makes}/${z.attempts}`, -2);
       label(g, `lg ${fmtPct(league.fgPct, 0)}`, FONT_PX);
     } else {
       label(g, fmtPct(z.fgPct, 0)).style("font-weight", "600");
@@ -164,6 +167,8 @@ export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, {
 
   if (mode === "zones") {
     drawZones(root, data, v, theme, tooltip(root, v.width, v.height), court);
+    // Zones have no cells to pin: a pin from the squares view lets go.
+    if (pins.delete(svg)) emitDistance(svg, { ft: null }, { pin: false });
   } else {
     drawCourt(root, v, { court });
     const { marks, cap, size } = layoutHexes(data.squares.filter((c) => c.attempts >= MIN_DRAWN_ATTEMPTS), data.side * SQUARE_FILL, v, theme);
@@ -190,12 +195,14 @@ export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, {
       const m = marks.length ? marks[delaunay.find(px, py)] : undefined;
       return m && Math.hypot(m.cx - px, m.cy - py) <= 18 ? m : undefined;
     };
-    let pinned: HexMark | undefined;
+    const pin = pins.get(svg);
+    let pinned = pin && marks.find((m) => m.hex.x === pin.x && m.hex.y === pin.y);
     const show = (m: HexMark | undefined) => {
+      const held = { pin: m !== undefined && m === pinned };
       if (!m) {
         focus.style("display", "none");
         tip.hide();
-        emitDistance(svg, { ft: null });
+        emitDistance(svg, { ft: null }, held);
         return;
       }
       const h = m.hex;
@@ -205,9 +212,9 @@ export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, {
         `${h.makes}/${h.attempts} FG, ${fmtPct(h.fgPct)}`,
         `League ${fmtPct(h.leagueFgPct)}` +
           (h.fgPct !== null && h.leagueFgPct !== null ? ` (${fmtPts(h.fgPct - h.leagueFgPct)})` : ""),
-        `${h.meanDistance.toFixed(1)} ft` + (m === pinned ? " · click to unpin" : ""),
+        `${fmtDec(h.meanDistance)} ft` + (m === pinned ? " (click to unpin)" : ""),
       ]);
-      emitDistance(svg, { ft: h.meanDistance, band: 1 });
+      emitDistance(svg, { ft: h.meanDistance, band: 1 }, held);
     };
     root
       .append("rect")
@@ -224,6 +231,8 @@ export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, {
       .on("click", (event: PointerEvent) => {
         const m = nearest(event);
         pinned = m && m !== pinned ? m : undefined;
+        if (pinned) pins.set(svg, { x: pinned.hex.x, y: pinned.hex.y });
+        else pins.delete(svg);
         show(pinned ?? m);
       });
 
@@ -246,6 +255,12 @@ export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, {
     });
     const notes = drawNotes(key, 118, 4, width - 24 - 118, ["square size: attempts (single attempts not drawn)", "hover or click a cell to mark its distance on the other charts"]);
     setViewBox(svg, width, v.height + 12 + used + 8 + Math.max(42, notes + 8));
+    if (pinned) show(pinned);
+    else if (pin) {
+      // The pinned cell is gone (new data): release the pin.
+      pins.delete(svg);
+      emitDistance(svg, { ft: null }, { pin: false });
+    }
   }
 
   if (mode === "zones") {

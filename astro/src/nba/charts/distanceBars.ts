@@ -3,18 +3,11 @@ import { scaleBand, scaleLinear } from "d3-scale";
 import { select } from "d3-selection";
 import type { DistanceBin } from "../data/aggregate";
 import { DEFAULT_WIDTH } from "./court";
-import { emitDistance, onDistance } from "./link";
+import { binCursor, emitDistance, inBin, onDistance } from "./link";
 import { fmtPct } from "../format";
 import { CHAR_PX, FONT_PX, motionMs, setViewBox, tooltip, TOKENS } from "./theme";
 
 export type BarMetric = "share" | "fgPct";
-
-/**
- * A bin of rounded feet [d, d + binFt) holds true distances [d - 0.5, d + binFt - 0.5): the cursor it sends, and whether a
- * distance another chart sent falls in it.
- */
-export const binCursor = (d: number, binFt: number) => ({ ft: d + (binFt - 1) / 2, band: binFt / 2 });
-export const inBin = (ft: number, d: number, binFt: number) => ft >= d - 0.5 && ft < d + binFt - 0.5;
 
 /** `fgPctByDistance` for the player and for the league, same `binFt`. */
 export interface DistanceBarsData {
