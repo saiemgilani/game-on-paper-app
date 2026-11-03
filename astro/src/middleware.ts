@@ -25,15 +25,21 @@ const GAME_ID_RE = /\/game\/(\d+)/;
  * feature flags, Pro) see exactly the path the router will match. null = malformed encoding.
  */
 export function canonicalPath(pathname: string): string | null {
-  let cur = pathname;
-  for (let i = 0; i < 4; i++) { // %2561 -> %61 -> a: decode until stable, like Astro
+  let cur: string;
+  try { cur = decodeURIComponent(pathname); } catch { return null; } // the raw path itself is malformed
+  for (let i = 0; i < 3; i++) { // %2561 -> %61 -> a: decode until stable, like Astro
     let next: string;
-    try { next = decodeURIComponent(cur); } catch { return null; }
+    try { next = decodeURIComponent(cur); } catch { break; } // a literal % (from %25) ends decoding
     if (next === cur) break;
     cur = next;
   }
-  // keep a decoded ? or # in the path instead of letting it start a query/fragment
-  return new URL(cur.replace(/%/g, '%25').replace(/\?/g, '%3F').replace(/#/g, '%23'), 'http://x').pathname;
+  // One leading slash: a decoded // or a backslash must never read as a host (protocol-relative Location).
+  // Setting .pathname (not parsing a URL) keeps the rest of the path a path; a decoded ? or #
+  // is re-encoded by the setter instead of starting a query or fragment.
+  const u = new URL('http://x/');
+  // the setter leaves a literal % as is, so escape it (else /a%25zz -> /a%zz, a 400 next hop)
+  u.pathname = cur.replace(/^[/\\]+/, '/').replace(/%/g, '%25');
+  return u.pathname;
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {

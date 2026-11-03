@@ -55,6 +55,20 @@ describe('percent-encoded paths are canonicalized before any gate', () => {
         expect(res.status).toBe(400);
     });
 
+    test('a decoded leading // or backslash never becomes a protocol-relative redirect', async () => {
+        for (const raw of ['/%2F%2Fevil.com', '/%2F/evil.com', '/%5Cevil.com', '/%5C%5Cevil.com']) {
+            const loc = (await run(raw)).res.headers.get('Location') ?? '';
+            expect(loc, raw).toMatch(/^\/[^/\\]/);
+        }
+    });
+
+    test('a valid literal % (encoded as %25) is not a 400', async () => {
+        expect(canonicalPath('/a%25zz')).toBe('/a%25zz');
+        const { res } = await run('/a%25zz');
+        expect(res.status).not.toBe(400);
+        expect(res.headers.get('Location')).toBeNull();
+    });
+
     test('a decoded ? or # stays in the path instead of becoming a query', () => {
         expect(canonicalPath('/a%3Fb')).toBe('/a%3Fb');
         expect(canonicalPath('/a%23b')).toBe('/a%23b');
