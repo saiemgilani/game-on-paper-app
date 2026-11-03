@@ -21,24 +21,26 @@ const rgb = (c: string) => {
   return m.slice(1).map(Number);
 };
 
-test("diff colours: hot red, cold blue, near-white at 0, clamped, muted without a league figure", () => {
-  const [hr, , hb] = rgb(diffColor(0.1));
-  const [cr, , cb] = rgb(diffColor(-0.1));
-  assert.ok(hr > hb + 80, `+0.1 should be red: ${diffColor(0.1)}`);
-  assert.ok(cb > cr + 80, `-0.1 should be blue: ${diffColor(-0.1)}`);
+test("diff colours: the site ramp, green above, purple below, white at 0, clamped, muted without a league figure", () => {
+  const [hr, hg, hb] = rgb(diffColor(0.1));
+  const [cr, cg, cb] = rgb(diffColor(-0.1));
+  assert.ok(hg > hr + 40 && hg > hb + 40, `+0.1 should be green: ${diffColor(0.1)}`);
+  assert.ok(cr > cg + 40 && cb > cg + 40, `-0.1 should be purple: ${diffColor(-0.1)}`);
+  assert.equal(diffColor(DIFF_DOMAIN), "rgb(52, 199, 89)"); // hulk-bg-level-9
+  assert.equal(diffColor(-DIFF_DOMAIN), "rgb(175, 82, 222)"); // hulk-bg-level-0
   assert.ok(rgb(diffColor(0)).every((ch) => ch > 230), `0 should be near white: ${diffColor(0)}`);
   assert.equal(diffColor(0.4), diffColor(DIFF_DOMAIN));
   assert.equal(diffColor(null), TOKENS.muted);
 });
 
-test("colours shrink toward the league with a 25-attempt prior: 1/1 reads near 0, 20/20 strongly red", () => {
+test("colours shrink toward the league with a 25-attempt prior: 1/1 reads near 0, 20/20 strongly green", () => {
   assert.equal(LEAGUE_PRIOR_ATTEMPTS, 25);
   const one = colourDiff(1, 1, 0.6);
   assert.ok(one !== null && Math.abs(one) < 0.02, `1/1 at a 60% hex: ${one}`);
   assert.ok(rgb(diffColor(one)).every((ch) => ch > 200), `1/1 is near white: ${diffColor(one)}`);
   const twenty = colourDiff(20, 20, 0.45);
   assert.ok(twenty !== null && twenty > DIFF_DOMAIN, `20/20 at a 45% hex: ${twenty}`);
-  assert.equal(diffColor(twenty), diffColor(DIFF_DOMAIN), "20/20 is full red");
+  assert.equal(diffColor(twenty), diffColor(DIFF_DOMAIN), "20/20 is full green");
   assert.equal(shrunkDiff(10, 20, 0.5), 0, "at the league rate the diff is 0");
   assert.equal(colourDiff(3, 5, null), null);
 });
@@ -67,7 +69,7 @@ test("hex fills use the shrunk difference, not the raw one", () => {
   const oneForOne = { ...marks[0].hex, makes: 1, attempts: 1, fgPct: 1, leagueFgPct: 0.4 };
   const [mark] = layoutHexes([oneForOne], 15, v).marks;
   assert.equal(mark.fill, diffColor(shrunkDiff(1, 1, 0.4)));
-  assert.notEqual(mark.fill, diffColor(0.6), "raw +60 points would be full red");
+  assert.notEqual(mark.fill, diffColor(0.6), "raw +60 points would be full green");
 });
 
 test("hexes carry the league FG% of the same hex (or the zone when the league hex is thin)", () => {
@@ -221,12 +223,13 @@ test("zone outlines add the corner breaks at the arc height", () => {
   assert.ok(zoneLines(v).at(-1)?.d.includes(`,${y.toFixed(2)}`));
 });
 
-test("dark mode centres on a grey near the card surface; ends stay red and blue; light keeps RdBu", () => {
+test("dark mode centres on a grey near the card surface; ends stay green and purple", () => {
   const [r, g, b] = rgb(diffColor(0, "dark"));
   assert.ok(Math.max(r, g, b) < 70 && Math.max(r, g, b) - Math.min(r, g, b) < 6, `dark centre ${diffColor(0, "dark")}`);
-  const [hr, , hb] = rgb(diffColor(0.1, "dark"));
-  const [cr, , cb] = rgb(diffColor(-0.1, "dark"));
-  assert.ok(hr > hb + 60 && cb > cr + 60, "dark ends are red and blue");
+  const [hr, hg, hb] = rgb(diffColor(0.1, "dark"));
+  const [cr, cg, cb] = rgb(diffColor(-0.1, "dark"));
+  assert.ok(hg > hr + 40 && hg > hb + 30, "dark + end is green");
+  assert.ok(cr > cg + 40 && cb > cg + 40, "dark - end is purple");
   assert.equal(diffColor(0.4, "dark"), diffColor(DIFF_DOMAIN, "dark"), "same ±15 domain, clamped");
   assert.equal(diffColor(0.05), diffColor(0.05, "light"));
   assert.notEqual(diffColor(0, "dark"), diffColor(0, "light"));
