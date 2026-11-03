@@ -61,6 +61,13 @@ export const squarePath = (s: number): string => `M${-s / 2},${-s / 2}h${s}v${s}
 /** Cells away from the linked distance fade to this opacity. */
 const DIM = 0.2;
 
+/**
+ * The 2021 Blazing the Nets sizing (Hexagon/index.js renderSize): a cell with one attempt is not drawn, and the busiest
+ * cell stops short of its lattice square so neighbours never touch (the sqrt-to-p95 scale tiled them edge to edge).
+ */
+export const MIN_DRAWN_ATTEMPTS = 2;
+export const SQUARE_FILL = 0.88;
+
 export interface HexMark {
   hex: HexVsLeague;
   cx: number;
@@ -159,7 +166,7 @@ export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, {
     drawZones(root, data, v, theme, tooltip(root, v.width, v.height), court);
   } else {
     drawCourt(root, v, { court });
-    const { marks, cap, size } = layoutHexes(data.squares, data.side, v, theme);
+    const { marks, cap, size } = layoutHexes(data.squares.filter((c) => c.attempts >= MIN_DRAWN_ATTEMPTS), data.side * SQUARE_FILL, v, theme);
     const ms = animate ? motionMs(500) : 0;
     cells = root
       .append("g")
@@ -223,7 +230,7 @@ export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, {
     // Legend rows: colour key first, then the size key.
     const legend = root.append("g").attr("transform", `translate(12,${v.height + 12})`);
     const used = drawDiffLegend(legend, 0, 0, width - 24, theme, [SHRINK_NOTE]);
-    const steps = [1, Math.max(2, Math.round(cap / 2)), cap];
+    const steps = [MIN_DRAWN_ATTEMPTS, Math.max(MIN_DRAWN_ATTEMPTS + 1, Math.round(cap / 2)), cap];
     const key = legend.append("g").attr("transform", `translate(0,${used + 8})`);
     steps.forEach((n, i) => {
       const x = 12 + i * 34;
@@ -237,7 +244,7 @@ export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, {
         .style("fill", TOKENS.muted)
         .text(i === steps.length - 1 ? `${n}+` : String(n));
     });
-    const notes = drawNotes(key, 118, 4, width - 24 - 118, ["square size: attempts", "hover or click a cell to mark its distance on the other charts"]);
+    const notes = drawNotes(key, 118, 4, width - 24 - 118, ["square size: attempts (single attempts not drawn)", "hover or click a cell to mark its distance on the other charts"]);
     setViewBox(svg, width, v.height + 12 + used + 8 + Math.max(42, notes + 8));
   }
 
