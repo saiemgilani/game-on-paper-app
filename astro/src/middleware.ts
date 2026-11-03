@@ -13,7 +13,7 @@ import { applyAdminView } from './utils/adminView';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
 import { FLAGS, isFeatureEnabled } from './utils/features';
 import { isCoachBoardPath } from './utils/coaches';
-import { isPlayerPath } from './utils/players';
+import { isAllTimePath, isPlayerPath } from './utils/players';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
 
@@ -180,6 +180,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // the hrefs that reach them are gated in their own components, because a
   // public link into a 404 namespace is worse than no link at all.
   if (isPlayerPath(effectivePath) && !isFeatureEnabled('player-pages', context.locals)) {
+    previewRewrite = '/404';
+  }
+  // The all-time player boards (/all-time/players/<category> and the /nfl twin): same gate.
+  if (isAllTimePath(effectivePath) && !isFeatureEnabled('all-time-leaderboards', context.locals)) {
     previewRewrite = '/404';
   }
 
