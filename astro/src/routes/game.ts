@@ -18,6 +18,8 @@ import { isFeatureEnabled } from '../utils/features';
 import { SOURCE_PARAM } from '../utils/adminView';
 import { LEAGUES, leaguePath, type League } from '../utils/league';
 import { warmShareCards } from './shareCard';
+import { retrieveFirstFinal } from '../resources/sdv';
+import { finalScoreFirst, firstFinalLabel } from '../utils/finalScore';
 
 export interface GameRouteData {
     league: League;
@@ -96,7 +98,21 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
             game = await retrieveProcessedGame(id, config.maxAge || 30, league, source);
         }
 
-        if (guarded.regressed || headerFallback) {
+        // 'final-score-first' (preview): the chip's lookup runs here, before the cache policy,
+        // so a FAILED lookup keeps this render out of the cache. Cached, a game that really is
+        // first would stay chipless for the whole final-game TTL. GameHeader reads the label.
+        let firstFinalFailed = false;
+        const comp = espnGame.gamepackageJSON.header.competitions[0] as any;
+        if (isFeatureEnabled('final-score-first', Astro.locals) && comp.status?.type?.completed === true) {
+            const [a, b] = (comp.competitors ?? []).map((c: any) => (c?.score == null ? NaN : Number(c.score)));
+            if (Number.isInteger(a) && Number.isInteger(b)) {
+                const rows = await retrieveFirstFinal(league, a, b);
+                firstFinalFailed = rows === null;
+                Astro.locals.firstFinal = rows && finalScoreFirst(rows, id) ? firstFinalLabel(league, a, b) : null;
+            }
+        }
+
+        if (guarded.regressed || headerFallback || firstFinalFailed) {
             // Astro.cache.set(false) emits NO header, and Workers Caching treats a
             // header-less 200 as cacheable for a heuristic two hours -- longer than any
             // live TTL here. Opting out has to be explicit.

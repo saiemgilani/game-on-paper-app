@@ -21,6 +21,8 @@ declare namespace App {
         adminActor?: string;
         /** which league this request renders; set by the page (pages/nfl/** set 'nfl'), 'cfb' when absent */
         league?: import('./utils/league').League;
+        /** 'final-score-first' chip label for this game, set by routes/game.ts; null = no chip */
+        firstFinal?: string | null;
     }
   interface SessionData {
     favorites?: {

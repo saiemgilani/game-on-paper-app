@@ -128,6 +128,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // IF-6: on a final game, GameHeader shows "First <W>-<L> final (<span>)" when no earlier
+    // completed game in the Data API schedule table ended with that score (CFB: FBS vs FBS
+    // since 2001; NFL: since 1999). utils/finalScore.ts. Off: no read, the header is unchanged.
+    'final-score-first': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
