@@ -831,6 +831,7 @@ def _process_basketball(league: str, game_id: int, source: str | None = None):
         if _ALL_SOURCES_FAILED is not None and isinstance(e, _ALL_SOURCES_FAILED):
             # no source has this game, ESPN included: a clean "nothing here", as on the football routes
             log.info("%s %s: no source produced the game: %s", league, game_id, e)
+            target = f"{source}_{league}_pbp"  # the request, not just ESPN; the error lists every source tried
             upstream(False, None, str(e)[:500])  # the per-source errors, so an outage is visible
             return failed({"status": "bad", "message": "No source could produce this game."}, 404)
         import traceback

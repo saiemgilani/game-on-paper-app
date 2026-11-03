@@ -174,7 +174,7 @@ def test_every_source_failing_is_a_404_not_a_500(monkeypatch):
     assert logged == []
     # ...but an outage must not be invisible: one upstream-failure row carrying every source's error
     (row,) = [row for kind, row in pushes if kind == "upstream_log"]
-    assert row["ok"] is False and row["status"] is None
+    assert row["ok"] is False and row["status"] is None and row["target"] == "live_nba_pbp"
     assert "live:" in row["error"] and "espn:" in row["error"]
 
 
