@@ -8,6 +8,7 @@ import { isFeatureEnabled } from '../utils/features';
 import { teamLogoUrl } from '../utils/league';
 import { CURRENT_YEAR } from '../utils/constants';
 import { roundNumber } from '../utils/misc';
+import { calculatePredictedPointMargin, calculatePredictedWinProb } from '../resources/sdv';
 
 if (!isFeatureEnabled('playoff-projection', Astro.locals)) {
     return Astro.rewrite("/404");
@@ -25,7 +26,10 @@ if (projection) {
 
 const byId = new Map((projection?.teams ?? []).map((t) => [t.team_id, t]));
 const names = Object.fromEntries((projection?.teams ?? []).map((t) => [t.team_id, t.name]));
-const bracket = projection ? buildBracket(projection.field) : null;
+// each bracket game priced head to head by the same pregame model the simulation used
+const beats = (a: string, b: string, home: boolean) =>
+    calculatePredictedWinProb(calculatePredictedPointMargin(byId.get(b)!.rating, byId.get(a)!.rating, !home))!;
+const bracket = projection ? buildBracket(projection.field, beats) : null;
 const lastOut = (projection?.last_out ?? []).map((id) => byId.get(id)).filter((t) => t != null);
 // a real playoff shot, or a real shot at a conference title; the rest of FBS rounds to ~0%
 const contenders = (projection?.teams ?? []).filter((t) => t.playoff >= 0.005 || t.conf_title >= 0.1);
@@ -136,8 +140,8 @@ const subtitle = "The projected 12-team bracket, with each team's chances to win
                     ACC, Big Ten, Big 12 and SEC champions, the highest-ranked champion from the other six conferences, Notre Dame if it ranks in the top 12,
                     and at-large teams for the rest (seven, or six when Notre Dame is in), seeded straight by rank with any automatic qualifier outside the top 12 taking the lowest seeds. The committee's
                     ranking is stood in for by Adj EPA/Play minus {roundNumber(projection.loss_penalty, 2, 2)} per loss. The bracket above applies the same rules to the
-                    average season (each conference's likeliest champion); each number on it is the team's chance of winning that game if that
-                    field holds. The Playoff, Bye and Title columns count every simulated season, so they also price the chance of missing the field.
+                    average season (each conference's likeliest champion): each number on it is the team's chance of beating the opponent shown,
+                    the favourite advances, and the champion's number is its title chance if that field holds. The Playoff, Bye and Title columns count every simulated season, so they also price the chance of missing the field.
                     Win Out counts regular-season games only.
                 </p>
             </>

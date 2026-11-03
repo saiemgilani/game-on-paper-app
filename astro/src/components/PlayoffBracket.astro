@@ -22,7 +22,7 @@ const { rounds, champion, names } = Astro.props;
                                 <span class="bracket-seed">{s.seed}</span>
                                 <img class={`team-logo-${s.teamId}`} width="20" height="20" src={teamLogoUrl('cfb', s.teamId, false)} alt="" />
                                 <span class="bracket-team">{names[s.teamId] ?? s.teamId}</span>
-                                <span class="bracket-pct" title="Chance to win this game, if the projected field holds">{pct(s.pct)}</span>
+                                <span class="bracket-pct" title="Chance to beat this opponent">{pct(s.pct)}</span>
                             </a>
                         ))}
                     </div>
