@@ -19,8 +19,42 @@ import { isPlayerPath } from './utils/players';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
 
+/**
+ * The path Astro will route, in the URL parser's canonical spelling. Astro fully
+ * decodes the pathname before matching a route (core/app/base.js
+ * safeDecodePathname), while every gate below reads the raw url.pathname. Decoding
+ * the same way here and redirecting to the canonical spelling makes every gate (admin,
+ * feature flags, Pro) see exactly the path the router will match. null = malformed encoding.
+ */
+export function canonicalPath(pathname: string): string | null {
+  let cur: string;
+  try { cur = decodeURIComponent(pathname); } catch { return null; } // the raw path itself is malformed
+  for (let i = 0; i < 3; i++) { // %2561 -> %61 -> a: decode until stable, like Astro
+    let next: string;
+    try { next = decodeURIComponent(cur); } catch { break; } // a literal % (from %25) ends decoding
+    if (next === cur) break;
+    cur = next;
+  }
+  // One leading slash: a decoded // or a backslash must never read as a host (protocol-relative Location).
+  // Setting .pathname (not parsing a URL) keeps the rest of the path a path; a decoded ? or #
+  // is re-encoded by the setter instead of starting a query or fragment.
+  const u = new URL('http://x/');
+  // the setter leaves a literal % as is, so escape it (else /a%25zz -> /a%zz, a 400 next hop)
+  u.pathname = cur.replace(/^[/\\]+/, '/').replace(/%/g, '%25');
+  return u.pathname;
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
+
+  // Gates below compare url.pathname; make it the router's view first (see canonicalPath).
+  if (url.pathname.includes('%')) {
+    const canon = canonicalPath(url.pathname);
+    if (canon === null) return new Response('Bad request', { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    if (canon !== url.pathname) {
+      return new Response(null, { status: 308, headers: { Location: canon + url.search, 'Cache-Control': 'no-store' } });
+    }
+  }
 
   // Preview magic link: ?preview_key=<signed token> on any URL sets the
   // preview cookie and lands on the uncacheable /preview surface (the clean
