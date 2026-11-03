@@ -70,12 +70,16 @@ export function shootingLine(shots: Pick<Shot, "shot_result" | "shot_value">[]):
   return lineOf(countFieldGoals(shots));
 }
 
+/**
+ * One lattice cell, hex or square (the name is from the hex era). It holds no geometry: the cell size travels beside it
+ * (`HexShotChartData.side`, `layoutHexes`' radius), so no reader can draw it with the wrong shape from the type alone.
+ */
 export interface HexBin extends Split {
-  /** Hex centre, legacy frame. */
+  /** Cell centre, legacy frame. */
   x: number;
   y: number;
   meanDistance: number;
-  /** The zone most of the hex's attempts fall in. */
+  /** The zone most of the cell's attempts fall in. */
   zone: Zone;
 }
 

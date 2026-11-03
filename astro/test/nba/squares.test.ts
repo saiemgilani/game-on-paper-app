@@ -2,10 +2,10 @@
 // Square bins (sdvplot-js's lattice), the league squares rebuilt from the league's hexes, and the distance link between charts.
 import { describe, expect, test } from 'vitest';
 import { renderDistanceBars } from '../../src/nba/charts/distanceBars';
-import { MIN_DRAWN_ATTEMPTS, renderHexShotChart, SQUARE_FILL } from '../../src/nba/charts/hexShotChart';
+import { MIN_DRAWN_ATTEMPTS, renderHexShotChart, SQUARE_FILL, type HexMark } from '../../src/nba/charts/hexShotChart';
 import { courtViewport } from '../../src/nba/charts/court';
 import { toSvgLength } from '../../src/nba/data/court';
-import { emitDistance, onDistance } from '../../src/nba/charts/link';
+import { binCursor, emitDistance, onDistance } from '../../src/nba/charts/link';
 import { renderShootingSignature } from '../../src/nba/charts/shootingSignature';
 import { buildDashboard, HEX_RADIUS, leagueContext, SQUARE_SIDE } from '../../src/nba/dashboard';
 import { leagueHexIndex, leagueSquares, squarebinShots, squaresVsLeague } from '../../src/nba/data/aggregate';
@@ -119,13 +119,56 @@ describe('linked distance', () => {
         // the 24-26 ft bin's hover target: the second set of rects after the bars
         const targets = [...bars.querySelectorAll<SVGRectElement>('g > rect')].filter((r) => r.getAttribute('height') && r.style.fill === 'transparent');
         targets[8].dispatchEvent(new Event('pointerenter'));
+        const { ft, band } = binCursor(24, data.bars.binFt);
         expect(ring.style.display).toBe('inline');
-        expect(Number(ring.getAttribute('r'))).toBeGreaterThan(0);
-        const opacities = [...court.querySelectorAll('g > path')].map((p) => (p as SVGPathElement).style.opacity).filter((o) => o !== '');
-        expect(opacities).toContain('0.2');
+        expect(Number(ring.getAttribute('r'))).toBeCloseTo(toSvgLength(ft! * 10, courtViewport(500)), 6);
+        // every cell away from 24-26 ft fades, every cell in it stays lit
+        const cells = [...court.querySelectorAll<SVGPathElement>(':scope > g > g > path[transform]')].filter((p) => (p as any).__data__?.hex);
+        const far = (p: SVGPathElement) => Math.abs(((p as any).__data__ as HexMark).hex.meanDistance - ft!) > band! + 0.5;
+        expect(cells.filter(far).length).toBeGreaterThan(10);
+        expect(cells.filter((p) => !far(p)).length).toBeGreaterThan(0);
+        for (const p of cells) expect(p.style.opacity).toBe(far(p) ? '0.2' : '');
         expect(signature.querySelector('g[pointer-events="none"]')!.getAttribute('style')).toContain('display: inline');
         targets[8].dispatchEvent(new Event('pointerleave'));
         expect(ring.style.display).toBe('none');
+        hub.remove();
+    });
+
+    test('a pin holds the dashboard until its chart lets go, and a chart that registers late hears the current distance', () => {
+        const hub = document.body.appendChild(hubDiv());
+        const [a, b, c] = [0, 1, 2].map(() => hub.appendChild(document.createElement('svg')));
+        const heard: (number | null)[] = [];
+        onDistance(c, ({ ft }) => heard.push(ft));
+        emitDistance(a, { ft: 10 }, { pin: true });
+        emitDistance(b, { ft: 20 }); // another chart's hover: ignored while a holds
+        emitDistance(b, { ft: null });
+        const late: (number | null)[] = [];
+        onDistance(b, ({ ft }) => late.push(ft));
+        emitDistance(a, { ft: null }, { pin: false });
+        emitDistance(b, { ft: 30 });
+        expect(heard).toEqual([10, null, 30]);
+        expect(late).toEqual([10, null]);
+        hub.remove();
+    });
+
+    test('a pinned square stays pinned through a redraw', async () => {
+        (SVGElement.prototype as any).getBBox ??= () => ({ x: 0, y: 0, width: 40, height: 12 });
+        const shots = await fixtureShots();
+        const data = buildDashboard(shots.slice(0, 400), leagueContext(shots));
+        const hub = document.body.appendChild(hubDiv());
+        const court = hub.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement);
+        const listener = hub.appendChild(document.createElement('div'));
+        const heard: (number | null)[] = [];
+        onDistance(listener, ({ ft }) => heard.push(ft));
+        let cleanup = renderHexShotChart(court, data.hex, { width: 500, mode: 'squares', animate: false });
+        const cell = [...court.querySelectorAll(':scope > g > g > path[transform]')].map((p) => (p as any).__data__ as HexMark).find((m) => m?.hex);
+        court.querySelector<SVGRectElement>('rect[style*="cursor"]')!.dispatchEvent(new MouseEvent('click', { clientX: cell!.cx, clientY: cell!.cy }));
+        expect(heard).toEqual([cell!.hex.meanDistance]);
+        cleanup();
+        cleanup = renderHexShotChart(court, data.hex, { width: 500, mode: 'squares', animate: false });
+        expect(heard).toEqual([cell!.hex.meanDistance, cell!.hex.meanDistance]);
+        expect(court.textContent).toContain('(click to unpin)');
+        cleanup();
         hub.remove();
     });
 });
