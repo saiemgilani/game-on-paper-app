@@ -17,8 +17,36 @@ import { isPlayerPath } from './utils/players';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
 
+/**
+ * The path Astro will route, in the URL parser's canonical spelling. Astro fully
+ * decodes the pathname before matching a route (core/app/base.js
+ * safeDecodePathname), while every gate below reads the raw url.pathname. Decoding
+ * the same way here and redirecting to the canonical spelling makes every gate (admin,
+ * feature flags, Pro) see exactly the path the router will match. null = malformed encoding.
+ */
+export function canonicalPath(pathname: string): string | null {
+  let cur = pathname;
+  for (let i = 0; i < 4; i++) { // %2561 -> %61 -> a: decode until stable, like Astro
+    let next: string;
+    try { next = decodeURIComponent(cur); } catch { return null; }
+    if (next === cur) break;
+    cur = next;
+  }
+  // keep a decoded ? or # in the path instead of letting it start a query/fragment
+  return new URL(cur.replace(/%/g, '%25').replace(/\?/g, '%3F').replace(/#/g, '%23'), 'http://x').pathname;
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
+
+  // Gates below compare url.pathname; make it the router's view first (see canonicalPath).
+  if (url.pathname.includes('%')) {
+    const canon = canonicalPath(url.pathname);
+    if (canon === null) return new Response('Bad request', { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    if (canon !== url.pathname) {
+      return new Response(null, { status: 308, headers: { Location: canon + url.search, 'Cache-Control': 'no-store' } });
+    }
+  }
 
   // Preview magic link: ?preview_key=<signed token> on any URL sets the
   // preview cookie and lands on the uncacheable /preview surface (the clean
