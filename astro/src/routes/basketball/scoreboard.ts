@@ -20,6 +20,8 @@ export type BasketballScoreboardParams = {
     stale: boolean;
     /** No ?date= was given. With `degraded` the day is the server's guess, so the page names no date. */
     undated?: boolean;
+    /** The live board, but ESPN's day is over a day behind the server's date (an off-season board keeps its last game day): never "Tonight". */
+    offDay?: boolean;
 };
 export type BasketballScoreboardPrep = { badDate: 'format' | 'calendar' | 'range' } | BasketballScoreboardParams;
 
@@ -69,7 +71,10 @@ export async function prepareBasketballScoreboard(Astro: AstroGlobal, league: Ba
         // ESPN's day after the one the live key holds is its real current day during the KV lag at rollover
         setCache(Astro, date < live.day ? (isOld(date, live.day) ? c.oldDay : c.pastDay) : date === dayNav(live.day).next ? c.live : c.futureDay);
     }
-    return { day: date, isLive, degraded: board.degraded, games, nav: dayNav(date), today: live.day, undated: raw === null, stale: useLive ? !fresh : !!board.stale };
+    // ponytail: not NBA yet; the /nba pages stay byte-identical to main (it is in season), its own change goes on main
+    const offDay = league !== 'nba' && isLive && (Date.parse(new Date().toISOString().slice(0, 10)) - Date.parse(live.day)) / 86400000 > 1;
+    return { day: date, isLive, degraded: board.degraded, games, nav: dayNav(date), today: live.day, undated: raw === null, stale: useLive ? !fresh : !!board.stale,
+        ...(offDay ? { offDay } : {}) };
 }
 
 const isOld = (date: string, liveDay: string) => (Date.parse(liveDay) - Date.parse(date)) / 86400000 > OLD_DAY_AFTER_DAYS;
