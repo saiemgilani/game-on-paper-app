@@ -1,0 +1,78 @@
+---
+/**
+ * Admin-only: the basketball game page's source tool (BB-G21), football's Source control and source compare
+ * (components/game/AdminGameTools.astro) for nba/wnba/mbb/wbb. Rendered only when routes/basketball/game.ts handed
+ * over `tools`, which it does only for an authenticated admin on the 'source-switch' path; the admin check here is
+ * the second lock, so a stray prop can never show it to anyone else.
+ *
+ * ponytail: no View/Flags dropdowns here -- football's toolbar has them; add them when a basketball flag needs flipping.
+ */
+import { adminToolsHref } from '../../../utils/adminView';
+import { compareBasketballSources } from '../../../utils/sourceCompare';
+import { cleanAbbreviation, generateMarginalString, roundNumber } from '../../../utils/misc';
+import type { NbaGame } from '../../../resources/nbaGame';
+import type { BasketballSourceTools } from '../../../routes/basketball/game';
+
+interface Props { game: NbaGame; tools: BasketballSourceTools }
+const { game, tools } = Astro.props;
+const admin = Astro.locals.adminAuthed === true;
+const provenance = game.provenance;
+const comparison = admin && tools.selected && tools.selected !== 'espn' ? compareBasketballSources(game, tools.espn) : null;
+const cell = (value: number | null, fixed: number, percent?: boolean) =>
+    value === null ? '' : `${roundNumber(value, fixed, fixed)}${percent ? '%' : ''}`;
+---
+{admin && (
+    <div class="d-flex justify-content-center align-items-center flex-wrap gap-2 mb-3" data-admin-game-tools>
+        <span class="text-muted text-small">Admin</span>
+        <select class="form-select form-select-sm w-auto" aria-label="Choose the processing source"
+                onchange="window.location.href = this.value">
+            {/* default clears ?source=: the public render (the Data API on an ingested final); every registry entry, ESPN included, is the processor from that feed */}
+            <option value={adminToolsHref(Astro.url, { source: null })} selected={tools.selected === null}>Source: default</option>
+            {tools.sources.map((name) => (
+                <option value={adminToolsHref(Astro.url, { source: name })}
+                        selected={tools.selected === name}>Source: {name}</option>
+            ))}
+        </select>
+        <span class="text-small text-muted" data-admin-provenance>
+            Served: {provenance ? `${provenance.source}${provenance.fallback_used ? ' (fallback)' : ''}` : game.source === 'data_api' ? 'Data API' : 'espn'}
+            {provenance?.contract_sha ? `, contract ${provenance.contract_sha.slice(0, 7)}` : ''}
+        </span>
+    </div>
+)}
+{comparison && (
+    <div class="mb-3" id="source-compare" data-admin-source-compare>
+        <p class="text-muted text-small mt-2 mb-1">
+            {tools.selected} against ESPN, on the numbers the processor already computed.
+            Plays: {comparison.playsSelected} against {comparison.playsEspn ?? 'n/a (the ESPN side did not load)'}.
+        </p>
+        <div class="table-responsive">
+            <table class="table table-sm table-responsive">
+                <thead>
+                    <tr>
+                        <th class="box-heading">Metric</th>
+                        <th style="text-align: center;">{tools.selected}</th>
+                        <th style="text-align: center;">ESPN</th>
+                        <th style="text-align: center;">Delta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {comparison.teams.map((team) => (
+                        <Fragment>
+                            <tr><td class="box-heading" colspan="4" style="text-align: left;">{cleanAbbreviation(game[team.side].team)}</td></tr>
+                            {team.rows.map((row) => (
+                                <tr>
+                                    <td style="text-align: left;">&emsp;&emsp;{row.label}</td>
+                                    <td class="numeral" style="text-align: center;">{cell(row.selected, row.fixed, row.percent)}</td>
+                                    <td class="numeral" style="text-align: center;">{cell(row.espn, row.fixed, row.percent)}</td>
+                                    <td class="numeral" style="text-align: center;">
+                                        {row.delta === null ? '' : `${generateMarginalString(row.delta, row.fixed, row.fixed)}${row.percent ? '%' : ''}`}
+                                    </td>
+                                </tr>
+                            ))}
+                        </Fragment>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    </div>
+)}
