@@ -2,7 +2,7 @@
 // Square bins (sdvplot-js's lattice), the league squares rebuilt from the league's hexes, and the distance link between charts.
 import { describe, expect, test } from 'vitest';
 import { renderDistanceBars } from '../../src/nba/charts/distanceBars';
-import { MIN_DRAWN_ATTEMPTS, renderHexShotChart, SQUARE_FILL, type HexMark } from '../../src/nba/charts/hexShotChart';
+import { describeHex, MIN_DRAWN_ATTEMPTS, renderHexShotChart, SQUARE_FILL, type HexMark } from '../../src/nba/charts/hexShotChart';
 import { courtViewport } from '../../src/nba/charts/court';
 import { toSvgLength } from '../../src/nba/data/court';
 import { binCursor, emitDistance, onDistance } from '../../src/nba/charts/link';
@@ -79,6 +79,20 @@ describe('square sizing (the 2021 rule)', () => {
         expect(Math.max(...sides)).toBeLessThanOrEqual(cell * SQUARE_FILL + 1e-9);
         expect(Math.max(...sides)).toBeLessThan(cell);
         svg.remove();
+    });
+
+    test("a sparse chart's size key never repeats or overshoots a step, and the text counts only drawn squares", async () => {
+        const shots = await fixtureShots();
+        const data = buildDashboard(shots.slice(0, 600), leagueContext(shots)).hex;
+        // every cell at 2 attempts: the cap is 2, so the key is the one step "2+"
+        const sparse = { ...data, squares: data.squares.slice(0, 5).map((c) => ({ ...c, attempts: 2, makes: 1 })) };
+        const svg = document.body.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement);
+        renderHexShotChart(svg, sparse, { width: 500, mode: 'squares', animate: false });
+        const keys = [...svg.querySelectorAll('text[y="36"]')].map((t) => t.textContent ?? '').filter((t) => /^\d+\+?$/.test(t)); // the size key's labels
+        expect(keys).toEqual(['2+']);
+        svg.remove();
+        const drawn = data.squares.filter((c) => c.attempts >= MIN_DRAWN_ATTEMPTS).length;
+        expect(describeHex(data)).toContain(`; ${drawn} 2.5 ft squares with ${MIN_DRAWN_ATTEMPTS} or more.`);
     });
 });
 

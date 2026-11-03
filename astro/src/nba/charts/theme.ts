@@ -31,7 +31,7 @@ export const DIFF_DOMAIN = 0.15;
 export const SHRINK_NOTE = `colour shrunk toward the league rate (${LEAGUE_PRIOR_ATTEMPTS}-attempt prior)`;
 
 /** The colour key in words; every diff legend prints it. */
-export const DIFF_WORDS = "green: above league · purple: below";
+export const DIFF_WORDS = "green: above league, purple: below";
 
 export type ChartTheme = "light" | "dark";
 
