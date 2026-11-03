@@ -21,7 +21,7 @@
         },
         {
             "term": "FG% vs league (basketball shot charts)",
-            "definition": "On the shot charts, signature and zone views, each spot's colour is its field goal percentage minus the league's from the same spot that season: red above league, blue below, saturating at 15 points. The colour is shrunk toward the league rate with a 25-attempt prior, so a 2-for-2 square is not the hottest spot on the floor; the tooltips show the raw makes and attempts.",
+            "definition": "On the shot charts, signature and zone views, each spot's colour is its field goal percentage minus the league's from the same spot that season: green above league, purple below (the site's ramp), saturating at 15 points. The colour is shrunk toward the league rate with a 25-attempt prior, so a 2-for-2 square is not the hottest spot on the floor; the tooltips show the raw makes and attempts.",
             "source": ""
         }
     ],
