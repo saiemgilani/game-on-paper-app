@@ -4,8 +4,8 @@ import { basketballEventJsonLd, basketballSpice, playersToWatch, type SpiceInput
 import { SpiceLevel } from '../../src/utils/misc';
 import type { SeasonPlayerRow } from '../../src/resources/nbaShots';
 
-const row = (person_id: number, team_id: number, pts_pg: number | null, gp: number, has_stats = true) =>
-    ({ person_id, player_name: `P${person_id}`, team_id, pts_pg, gp, has_stats, ts_pct: 0.6, usg_pct: 0.25 }) as SeasonPlayerRow;
+const row = (person_id: number, team_id: number, pts_pg: number | null, gp: number, has_stats = true, is_primary = true) =>
+    ({ person_id, player_name: `P${person_id}`, team_id, pts_pg, gp, has_stats, is_primary, ts_pct: 0.6, usg_pct: 0.25 }) as SeasonPlayerRow;
 
 describe('playersToWatch', () => {
     test("the team's top scorers among its regulars, highest first", () => {
@@ -15,6 +15,12 @@ describe('playersToWatch', () => {
         expect(playersToWatch(rows, 10, 1)[0]).toEqual({ personId: 3, name: 'P3', ptsPg: 25, tsPct: 0.6, usgPct: 0.25, gp: 20 });
     });
     test('no rows for the team: nobody', () => expect(playersToWatch([row(1, 10, 20, 30)], 11)).toEqual([]));
+    test('a traded player is on his primary team only, and his other row sets no games cutoff', () => {
+        // 9 was traded from 10 to 11: his row for 10 is not primary, so 10's busiest regular is 1 (20 games) and 4 (12) qualifies
+        const rows = [row(9, 10, 30, 60, true, false), row(9, 11, 28, 10), row(1, 10, 20, 20), row(4, 10, 12, 12)];
+        expect(playersToWatch(rows, 10).map((p) => p.personId)).toEqual([1, 4]);
+        expect(playersToWatch(rows, 11).map((p) => p.personId)).toEqual([9]);
+    });
 });
 
 describe('basketballSpice', () => {

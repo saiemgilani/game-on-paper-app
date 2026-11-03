@@ -16,10 +16,11 @@ export interface WatchPlayer {
 
 /**
  * Like football's Players to Watch (our numbers, not ESPN's leaders): a team's top scorers this season from the Data API's
- * season rows, among players with at least half the games of its most-used player, so a two-game cameo never leads.
+ * season rows, among players with at least half the games of its most-used player, so a two-game cameo never leads. A
+ * traded player counts only for his primary team (`is_primary`), so he is on one card and in one team's games cutoff.
  */
 export function playersToWatch(rows: readonly SeasonPlayerRow[], teamId: number, n = 3): WatchPlayer[] {
-    const mine = rows.filter((r) => r.team_id === teamId && r.has_stats && r.pts_pg != null && (r.gp ?? 0) > 0);
+    const mine = rows.filter((r) => r.team_id === teamId && r.is_primary && r.has_stats && r.pts_pg != null && (r.gp ?? 0) > 0);
     const most = Math.max(0, ...mine.map((r) => r.gp ?? 0));
     return mine
         .filter((r) => (r.gp ?? 0) * 2 >= most)

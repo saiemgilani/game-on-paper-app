@@ -5,9 +5,10 @@ import { basketball, seasonLabelFor } from '../../../basketball/config';
 import { playersToWatch } from '../../../basketball/parity';
 import { retrieveSeasonPlayerRows } from '../../../resources/nbaShots';
 import { playerHref, teamHrefFromEspn } from '../../../nba/links';
-import { fmtPct } from '../../../nba/format';
+import { fmtDec, fmtPct } from '../../../nba/format';
 import { cleanAbbreviation } from '../../../utils/misc';
-import { espnLogoLeague } from '../../../utils/league';
+import { teamLogoUrl } from '../../../utils/league';
+import DarkModeLogos from '../../DarkModeLogos.astro';
 
 interface Props {
     homeTeam: { id: string | number; abbreviation?: string; displayName?: string }
@@ -26,6 +27,7 @@ const watch = (t: Props['homeTeam']) => {
 const sides = [{ team: awayTeam, rows: watch(awayTeam) }, { team: homeTeam, rows: watch(homeTeam) }];
 ---
 {sides.some((s) => s.rows.length > 0) && (
+<DarkModeLogos teamIds={[awayTeam.id, homeTeam.id]} />
 <div class="row mb-3">
     <div class="col-lg-2 d-none d-lg-block"></div>
     <div class="col-lg-8 col-md-12 margin-override">
@@ -38,7 +40,7 @@ const sides = [{ team: awayTeam, rows: watch(awayTeam) }, { team: homeTeam, rows
                         const href = teamHrefFromEspn(team, league, season);
                         const name = (
                             <span class="d-flex align-items-center gap-2">
-                                <img class={`team-logo-${team.id}`} width="20" height="20" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${team.id}.png`} alt="" />
+                                <img class={`team-logo-${team.id}`} width="20" height="20" src={teamLogoUrl(league, team.id, false, season)} alt="" />
                                 <span>{cleanAbbreviation(team as any)}</span>
                             </span>
                         );
@@ -50,7 +52,7 @@ const sides = [{ team: awayTeam, rows: watch(awayTeam) }, { team: homeTeam, rows
                                     : players.map((p) => (
                                         <p class="small mb-1">
                                             <a href={playerHref(p.personId, '', league)}><strong>{p.name}</strong></a>
-                                            <span class="text-muted d-block">{p.ptsPg.toFixed(1)} pts/g, {fmtPct(p.tsPct)} TS, {fmtPct(p.usgPct)} USG, {p.gp} GP</span>
+                                            <span class="text-muted d-block">{fmtDec(p.ptsPg)} pts/g, {fmtPct(p.tsPct)} TS, {fmtPct(p.usgPct)} USG, {p.gp} GP</span>
                                         </p>
                                     ))}
                             </div>

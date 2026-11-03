@@ -14,7 +14,12 @@ const caption = (page, title, text) =>
         + 'box-shadow:0 6px 24px rgba(0,0,0,.35);pointer-events:none';
       document.body.appendChild(el);
     }
-    el.innerHTML = `<div style="font-weight:700;font-size:16px;margin-bottom:2px">${t}</div><div>${s}</div>`;
+    const head = document.createElement('div');
+    head.style.cssText = 'font-weight:700;font-size:16px;margin-bottom:2px';
+    head.textContent = t;
+    const body = document.createElement('div');
+    body.textContent = s;
+    el.replaceChildren(head, body);
   }, [title, text]);
 
 const go = async (page, base, path) => {
