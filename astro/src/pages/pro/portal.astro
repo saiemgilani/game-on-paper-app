@@ -17,6 +17,9 @@ import {
 } from '../../utils/pro';
 import { PRO_SEASON, proObject, readBoard, readFilters } from '../../resources/pro';
 
+// Defense in depth: the middleware already sent anyone without a live entitlement to
+// /pricing; this page refuses to render for them on its own too.
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
 const viewer = Astro.locals.pro!;
 const board = await proObject<{ rendered: string; entrants: BoardEntrant[] }>(`pro/${PRO_SEASON}/portal/board.json`);
 const params = Astro.url.searchParams;

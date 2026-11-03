@@ -44,6 +44,15 @@ export async function createLoginToken(email: string): Promise<string> {
     return token;
 }
 
+/** One sign-in email per address per minute (KV's shortest TTL), so knowing a subscriber's
+ * address is not enough to flood their inbox. true = may send now (and starts the cooldown). */
+export async function claimLoginSend(email: string): Promise<boolean> {
+    const key = `pro:cool:${email}`;
+    if (await kv().get(key)) return false;
+    await kv().put(key, '1', { expirationTtl: 60 });
+    return true;
+}
+
 /**
  * The address a token was minted for, consuming it; null when unknown or expired.
  * ponytail: get-then-delete is not atomic across KV edges, so two clicks landing in

@@ -20,7 +20,7 @@ import {
     describeFilters, digestEntrants, digestText, filterBoard, formatPffValue, formatProDelta, formatProMetric,
     mintProCookie, parseBoardFilters, PRO_COOKIE, PRO_TOKEN_TTL_S, sortBoard, verifyProCookie, type BoardEntrant,
 } from '../src/utils/pro';
-import { createLoginToken, isProKey, redeemLoginToken, runProDigest } from '../src/resources/pro';
+import { claimLoginSend, createLoginToken, isProKey, redeemLoginToken, runProDigest } from '../src/resources/pro';
 
 const board: { entrants: BoardEntrant[] } = JSON.parse(readFileSync(new URL('./fixtures/pro/2026/portal/board.json', import.meta.url)).toString());
 const DAY = 86_400_000;
@@ -303,4 +303,27 @@ describe('the pages', () => {
         expect(html).toContain('Contact us');
         expect(html).not.toContain('Subscribe</a>');
     }, 60_000);
+});
+
+describe('Pro pages refuse to render without an entitlement on their own', () => {
+    test.each(['index', 'players/[id]', 'portal'])('/pro/%s redirects to /pricing when locals.pro is null', async (page) => {
+        const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
+        const pages: Record<string, () => Promise<any>> = {
+            index: () => import('../src/pages/pro/index.astro'),
+            'players/[id]': () => import('../src/pages/pro/players/[id].astro'),
+            portal: () => import('../src/pages/pro/portal.astro'),
+        };
+        const Page = (await pages[page]()).default;
+        const res = await container.renderToResponse(Page, {
+            params: { id: '1' }, request: new Request('https://gameonpaper.com/pro/x'), locals: { preview: true, pro: null } as any,
+        });
+        expect(res.status).toBe(302);
+        expect(res.headers.get('Location')).toBe('/pricing');
+    });
+});
+
+test('sign-in emails are limited to one per address per minute', async () => {
+    expect(await claimLoginSend('coach@example.edu')).toBe(true);
+    expect(await claimLoginSend('coach@example.edu')).toBe(false);
+    expect(await claimLoginSend('other@example.edu')).toBe(true);
 });

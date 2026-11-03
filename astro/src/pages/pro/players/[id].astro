@@ -31,6 +31,9 @@ interface ProProfile {
     notes: { key: string; text: string }[]
 }
 
+// Defense in depth: the middleware already sent anyone without a live entitlement to
+// /pricing; this page refuses to render for them on its own too.
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
 const id = Astro.params.id ?? '';
 const doc = /^\d+$/.test(id) ? await proObject<ProProfile>(`pro/${PRO_SEASON}/players/${id}.json`) : null;
 if (!doc) {

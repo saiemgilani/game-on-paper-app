@@ -4,12 +4,12 @@
  * The link is sent only to an address holding a live entitlement, and the page
  * answers the same either way, so it neither mails strangers nor says who
  * subscribes. Astro's origin check rejects a cross-site POST before this runs.
- * ponytail: no rate limit; KV token writes are the only cost an abuser can run up.
+ * One email per address per minute (claimLoginSend); the page reads the same either way.
  */
 import GenericPage from '../../layouts/GenericPage.astro';
 import ProNav from '../../components/pro/ProNav.astro';
 import { isEmail, normalizeEmail } from '../../utils/pro';
-import { createLoginToken, readEntitlement, sendEmail } from '../../resources/pro';
+import { claimLoginSend, createLoginToken, readEntitlement, sendEmail } from '../../resources/pro';
 
 let state: 'form' | 'sent' | 'invalid' = Astro.url.searchParams.get('err') ? 'invalid' : 'form';
 if (Astro.request.method === 'POST') {
@@ -18,7 +18,7 @@ if (Astro.request.method === 'POST') {
     if (!isEmail(email)) {
         state = 'invalid';
     } else {
-        if (await readEntitlement(email)) {
+        if (await readEntitlement(email) && await claimLoginSend(email)) {
             const link = new URL(`/pro/auth?t=${await createLoginToken(email)}`, Astro.url.origin).href;
             await sendEmail({
                 to: email,

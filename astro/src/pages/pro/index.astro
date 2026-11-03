@@ -14,6 +14,9 @@ interface ProIndex {
     snapshot: string; rendered: string
     players: { espn_id: number; name: string | null; team: string | null; team_id: number | null; position: string | null }[]
 }
+// Defense in depth: the middleware already sent anyone without a live entitlement to
+// /pricing; this page refuses to render for them on its own too.
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
 const index = await proObject<ProIndex>(`pro/${PRO_SEASON}/players/index.json`);
 const q = (Astro.url.searchParams.get('q') ?? '').trim();
 const needle = q.toLowerCase();
