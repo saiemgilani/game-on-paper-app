@@ -40,7 +40,7 @@ describe('D-I membership by season (plan #6 TeamModule members)', () => {
         expect(OTHER.map((r) => r.id)).toEqual([2113, 2542, 2597]);
         expect(mbbTeamInSeason(2697, 2027)?.tricode).toBe('UWF');
         expect(mbbTeamInSeason(2697, 2026)).toBeUndefined();
-        expect(mbbSeasonsOf(2697)).toEqual([2027]); // its measured D-I seasons, not clamped to MBB_LAST_KNOWN_SEASON
+        expect(mbbSeasonsOf(2697)).toEqual([]); // clamped to MBB_LAST_KNOWN_SEASON (2026) until the 2026-27 dashboards roll, as wbbSeasonsOf
         // hoopR-mbb-data's 2023 schedule (its last D-I season) spells St. Francis Brooklyn SFBK, as ESPN's team endpoint does
         expect(mbbTeamInSeason(2597, 2023)!.tricode).toBe('SFBK');
         expect(mbbTeamInSeason(2597, 2024)).toBeUndefined();             // left D-I after 2023

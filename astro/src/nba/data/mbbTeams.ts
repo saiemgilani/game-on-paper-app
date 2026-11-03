@@ -448,10 +448,11 @@ export function mbbFranchiseOf(tricode: string): number | undefined {
 
 /**
  * TeamModule.seasonsOf (R3): one of the 366 lists every season (as mbbTeamInSeason answers it in every season; who played D-I
- * that season is plan #9's withSeasonMembers), a departed program its measured D-I seasons first..last; undefined = unknown id.
+ * that season is plan #9's withSeasonMembers), another D-I program its measured D-I seasons first..last clamped to
+ * MBB_LAST_KNOWN_SEASON, as wbbSeasonsOf (West Florida runs to 2027, which no picker lists yet); undefined = unknown id.
  */
 export function mbbSeasonsOf(teamId: number): readonly number[] | undefined {
     if (BY_ESPN_ID.has(teamId)) return ALL_SEASONS;
     const o = MBB_OTHER_DI.find((x) => x.team.team_id === teamId);
-    return o ? span(o.first, o.last) : undefined;
+    return o ? span(o.first, Math.min(o.last, MBB_LAST_KNOWN_SEASON)) : undefined;
 }
