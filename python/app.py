@@ -38,6 +38,43 @@ try:
 except ImportError:  # pragma: no cover - depends on the deployed sdv-py pin
     _SOURCE_ORDER, _dispatch_game, _ALL_SOURCES_FAILED = {}, None, None
 
+# The basketball half (sportsdataverse-py #1063), same rules: the registry is the
+# contract's, so the cdn.nba.com adapter (BB-D13) becomes selectable the moment
+# the pin lists it in SOURCE_ORDER. It raises football's AllSourcesFailed.
+try:
+    from sportsdataverse.basketball.sources.dispatch import SOURCE_ORDER as _BB_SOURCE_ORDER
+    from sportsdataverse.basketball.sources.dispatch import _process_game as _bb_dispatch_game
+except ModuleNotFoundError as e:
+    # an older pin has no basketball contract: ESPN only. A contract that exists but fails its own
+    # imports must not quietly shrink /sources to ESPN, so that surfaces as a startup error.
+    if e.name not in ("sportsdataverse.basketball", "sportsdataverse.basketball.sources",
+                      "sportsdataverse.basketball.sources.dispatch"):
+        raise
+    _BB_SOURCE_ORDER, _bb_dispatch_game = {}, None
+
+
+def _source_order(league: str) -> tuple:
+    """`league`'s selectable sources in failover order; ESPN alone when the pin has no registry."""
+    registry = _BB_SOURCE_ORDER if league in BASKETBALL_PROCESSORS else _SOURCE_ORDER
+    return tuple(registry.get(league) or ("espn",))
+
+
+def _unknown_source(league: str, source: str):
+    return jsonify(
+        {"status": "bad", "message": f"unknown source {source!r} for {league}; known: {list(_source_order(league))}"}
+    ), 400
+
+
+def _provenance(served: str, requested: str, fallback_used: bool) -> dict:
+    """The `provenance` block a `?source=` response carries, football and basketball alike."""
+    return {
+        "source": served,
+        "requested": requested,
+        "fallback_used": fallback_used,
+        "contract_version": _SDV_VERSION,
+        "contract_sha": _SDV_SHA,
+    }
+
 # span key -> drive-summary period windows (drives book to their start quarter)
 _SPAN_PERIODS = {
     "q1": {1}, "q2": {2}, "q3": {3}, "q4": {4},
@@ -378,14 +415,8 @@ def _process_game(league: str, game_id: int, source: str | None = None):
     the league's order with ESPN as the terminal fallback.
     """
     timings = {}
-    order = _SOURCE_ORDER.get(league) or ("espn",)
-    if source is not None and source not in order:
-        return jsonify(
-            {
-                "status": "bad",
-                "message": f"unknown source {source!r} for {league}; known: {list(order)}",
-            }
-        ), 400
+    if source is not None and source not in _source_order(league):
+        return _unknown_source(league, source)
     try:
         cls, fetch_name = _PROCESSORS[league]
         g.gop_meta = {"game_id": str(game_id), "league": league}
@@ -437,13 +468,7 @@ def _process_game(league: str, game_id: int, source: str | None = None):
         # stays byte-for-byte what it is today, so the classic game page and
         # every other consumer are untouched.
         if source is not None:
-            processed_game["provenance"] = {
-                "source": served,
-                "requested": source,
-                "fallback_used": fallback_used,
-                "contract_version": _SDV_VERSION,
-                "contract_sha": _SDV_SHA,
-            }
+            processed_game["provenance"] = _provenance(served, source, fallback_used)
 
         # Every block below reads the processor's enriched polars frame and is
         # fail-open, so a processor that never exposes one (NFLPlayProcess
@@ -702,12 +727,19 @@ def _regulation_periods(summary: dict) -> int | None:
         return None
 
 
-def _process_basketball(league: str, game_id: int):
+def _process_basketball(league: str, game_id: int, source: str | None = None):
     """One game for the Astro basketball game page: sdv-py's game_page_frames as JSON.
 
     The id converter bounds the id to 6-12 digits, so a malformed id 404s before any ESPN call
     (and cannot overflow polars' i32 downstream).
+
+    `source` follows the football routes: None (every public request) is the ESPN path, byte for
+    byte; `espn` is that path plus a `provenance` block; any other value must be in the
+    contract's registry (else 400) and goes through sdv-py's basketball dispatch, which validates
+    the adapted summary and falls through to ESPN. Nothing answering means 404.
     """
+    if source is not None and source not in _source_order(league):
+        return _unknown_source(league, source)
     import importlib
 
     from sportsdataverse.errors import AssetFetchError, NoDataError
@@ -721,13 +753,14 @@ def _process_basketball(league: str, game_id: int):
     timings: dict = {}
     g.gop_meta = {"game_id": str(game_id), "league": league}
     log = logging.getLogger("root")
+    target = spec["fetch"]  # the dispatched path renames it after the source that served
 
     def upstream(ok: bool, status, error=None):
         TEL.push(
             "upstream_log",
             {
                 "service": "python",
-                "target": spec["fetch"],
+                "target": target,
                 "status": status,
                 "duration_ms": timings.get("espn_fetch_ms"),
                 "ok": ok,
@@ -741,18 +774,34 @@ def _process_basketball(league: str, game_id: int):
         return jsonify(body), code
 
     fetched = False
+    served = "espn"  # the dispatched path overwrites it once a source has produced the game
     try:
-        with stage(timings, "espn_fetch"):
-            summary = fetch_pbp(game_id, raw=True)  # the one ESPN fetch; keys defaulted, nothing parsed
-        fetched = True
-        upstream(True, 200)
-        if not summary.get("plays"):  # tip-off not yet: ESPN has the shell but no plays
-            return failed({"status": "bad", "message": "No plays available for this game yet."}, 404)
-        with stage(timings, "parse"):
-            final = parse_pbp(game_id, summary)  # the rest of espn_nba_pbp; errors here are real bugs
-        with stage(timings, "process"):
-            frames = game_page_frames(final, **spec["frames_kwargs"])
-        payload = build_payload(game_id, final, frames, _regulation_periods(summary))
+        if source is None or source == "espn":
+            with stage(timings, "espn_fetch"):
+                summary = fetch_pbp(game_id, raw=True)  # the one ESPN fetch; keys defaulted, nothing parsed
+            fetched = True
+            upstream(True, 200)
+            if not summary.get("plays"):  # tip-off not yet: ESPN has the shell but no plays
+                return failed({"status": "bad", "message": "No plays available for this game yet."}, 404)
+            with stage(timings, "parse"):
+                final = parse_pbp(game_id, summary)  # the rest of espn_nba_pbp; errors here are real bugs
+            with stage(timings, "process"):
+                frames = game_page_frames(final, **spec["frames_kwargs"])
+            served, fallback_used, regulation = "espn", False, _regulation_periods(summary)
+        else:
+            # fetch, contract check, parse and frames in one call, ESPN the terminal fallback; a game
+            # with no plays yet fails the contract everywhere and lands in the 404 below
+            with stage(timings, "espn_fetch"):
+                dispatched = _bb_dispatch_game(league, game_id, source=source)
+            final, frames = dispatched.final, dispatched.frames
+            served, fallback_used = dispatched.provenance["served"], dispatched.provenance["fallback"]
+            target = spec["fetch"] if served == "espn" else f"{served}_{league}_pbp"
+            fetched = True
+            upstream(True, 200)
+            regulation = _regulation_periods(final)  # helper_<league>_pbp carries `format` through
+        payload = build_payload(game_id, final, frames, regulation)
+        if source is not None:  # additive, so the public (no-`source`) payload is unchanged
+            payload["provenance"] = _provenance(served, source, fallback_used)
         g.gop_meta = {**g.gop_meta, "render_outcome": "ok", "timings": timings}
         body = orjson.dumps(
             payload, default=_orjson_default, option=orjson.OPT_SERIALIZE_NUMPY | orjson.OPT_NON_STR_KEYS
@@ -772,12 +821,19 @@ def _process_basketball(league: str, game_id: int):
     except KeyError as e:
         # 502, not the football routes' 404: the page reads a basketball 404 as "no plays yet" and would
         # cache a pregame page for a live game; a garbled payload is an unknown, so it is not cached
-        log.error("%s %s: malformed ESPN payload, threw 502: %r", league, game_id, e)
+        who = "ESPN" if served == "espn" else served  # a dispatched alternate is named, never blamed on ESPN
+        log.error("%s %s: malformed %s payload, threw 502: %r", league, game_id, who, e)
         if not fetched:
             upstream(False, None, ("KeyError: %r" % (e,))[:500])
-        TEL.log_error("ESPN payload malformed (KeyError: %r)" % (e,), path=request.path, game_id=str(game_id))
-        return failed({"status": "bad", "message": "ESPN payload is malformed. Data not available."}, 502)
+        TEL.log_error("%s payload malformed (KeyError: %r)" % (who, e), path=request.path, game_id=str(game_id))
+        return failed({"status": "bad", "message": "%s payload is malformed. Data not available." % who}, 502)
     except Exception as e:  # noqa: BLE001 - the Worker renders an error page from the 500
+        if _ALL_SOURCES_FAILED is not None and isinstance(e, _ALL_SOURCES_FAILED):
+            # no source has this game, ESPN included: a clean "nothing here", as on the football routes
+            log.info("%s %s: no source produced the game: %s", league, game_id, e)
+            target = f"{source}_{league}_pbp"  # the request, not just ESPN; the error lists every source tried
+            upstream(False, None, str(e)[:500])  # the per-source errors, so an outage is visible
+            return failed({"status": "bad", "message": "No source could produce this game."}, 404)
         import traceback
 
         log.error("%s %s: processing failed, threw 500: %r", league, game_id, e)
@@ -794,7 +850,15 @@ for _league in BASKETBALL_PROCESSORS:
     app.add_url_rule(
         f"/{_league}/<int(min=100000,max=999999999999):game_id>/process",
         endpoint=f"process_{_league}",
-        view_func=require_auth_token(lambda game_id, _lg=_league: _process_basketball(_lg, game_id)),
+        view_func=require_auth_token(
+            lambda game_id, _lg=_league: _process_basketball(_lg, game_id, request.args.get("source"))
+        ),
+        methods=["GET"],
+    )
+    app.add_url_rule(
+        f"/{_league}/<int(min=100000,max=999999999999):game_id>/sources",
+        endpoint=f"sources_{_league}",
+        view_func=require_auth_token(lambda game_id, _lg=_league: _sources(_lg, game_id)),
         methods=["GET"],
     )
 
@@ -823,7 +887,7 @@ def _sources(league: str, game_id: int):
         {
             "league": league,
             "game_id": game_id,
-            "sources": list(_SOURCE_ORDER.get(league) or ("espn",)),
+            "sources": list(_source_order(league)),
             "contract_version": _SDV_VERSION,
             "contract_sha": _SDV_SHA,
         }
