@@ -160,7 +160,8 @@ def test_every_source_failing_is_a_404_not_a_500(monkeypatch):
     def no_plays(league, espn_id, ctx):
         return dispatch.AdaptedGame(summary=summary)
 
-    app_mod = _app(monkeypatch, summary)
+    pushes = []
+    app_mod = _app(monkeypatch, summary, pushes=pushes)
     _register_live(monkeypatch, no_plays)
     logged = []
     monkeypatch.setattr(app_mod.TEL, "log_error", lambda *a, **k: logged.append(a))
@@ -171,6 +172,56 @@ def test_every_source_failing_is_a_404_not_a_500(monkeypatch):
         "message": "No source could produce this game.",
     }
     assert logged == []
+    # ...but an outage must not be invisible: one upstream-failure row carrying every source's error
+    (row,) = [row for kind, row in pushes if kind == "upstream_log"]
+    assert row["ok"] is False and row["status"] is None
+    assert "live:" in row["error"] and "espn:" in row["error"]
+
+
+def test_a_malformed_dispatched_payload_is_a_502_that_names_its_source(monkeypatch):
+    # GOP's own payload builder choking on what an alternate served must not be logged as ESPN's fault
+    import nba_game
+
+    def broken(*a, **k):
+        raise KeyError("competitions")
+
+    app_mod = _app(monkeypatch, _summary())
+    _register_live(monkeypatch)
+    monkeypatch.setattr(nba_game, "build_payload", broken)
+    logged = []
+    monkeypatch.setattr(app_mod.TEL, "log_error", lambda *a, **k: logged.append(a))
+    r = app_mod.app.test_client().get(f"{GAME}/process?source=live", headers=AUTH)
+    assert r.status_code == 502
+    assert r.get_json()["message"] == "live payload is malformed. Data not available."
+    assert logged[0][0].startswith("live payload malformed")
+    # and the ESPN path keeps its exact wording
+    assert app_mod.app.test_client().get(f"{GAME}/process", headers=AUTH).get_json()[
+        "message"
+    ] == ("ESPN payload is malformed. Data not available.")
+
+
+def test_a_missing_contract_falls_back_but_a_broken_one_fails_startup(monkeypatch):
+    import importlib
+    import sys
+
+    monkeypatch.setenv("PYTHON_HTTP_TOKEN", "secret")
+    import app as app_mod
+
+    # absent (an older pin): ESPN only
+    monkeypatch.setitem(
+        sys.modules, "sportsdataverse.basketball.sources.dispatch", None
+    )
+    importlib.reload(app_mod)
+    assert app_mod._BB_SOURCE_ORDER == {} and app_mod._source_order("nba") == ("espn",)
+    # present but its own import breaks: surfaces instead of quietly offering ESPN alone
+    monkeypatch.delitem(sys.modules, "sportsdataverse.basketball.sources.dispatch")
+    monkeypatch.setitem(
+        sys.modules, "sportsdataverse.basketball.sources.contract", None
+    )
+    with pytest.raises(ModuleNotFoundError):
+        importlib.reload(app_mod)
+    monkeypatch.undo()
+    importlib.reload(app_mod)  # leave a working module for whoever imports it next
 
 
 def test_any_other_dispatch_error_is_still_a_500(monkeypatch):

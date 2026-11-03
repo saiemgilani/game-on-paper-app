@@ -44,7 +44,12 @@ except ImportError:  # pragma: no cover - depends on the deployed sdv-py pin
 try:
     from sportsdataverse.basketball.sources.dispatch import SOURCE_ORDER as _BB_SOURCE_ORDER
     from sportsdataverse.basketball.sources.dispatch import _process_game as _bb_dispatch_game
-except ImportError:  # pragma: no cover - depends on the deployed sdv-py pin
+except ModuleNotFoundError as e:
+    # an older pin has no basketball contract: ESPN only. A contract that exists but fails its own
+    # imports must not quietly shrink /sources to ESPN, so that surfaces as a startup error.
+    if e.name not in ("sportsdataverse.basketball", "sportsdataverse.basketball.sources",
+                      "sportsdataverse.basketball.sources.dispatch"):
+        raise
     _BB_SOURCE_ORDER, _bb_dispatch_game = {}, None
 
 
@@ -769,6 +774,7 @@ def _process_basketball(league: str, game_id: int, source: str | None = None):
         return jsonify(body), code
 
     fetched = False
+    served = "espn"  # the dispatched path overwrites it once a source has produced the game
     try:
         if source is None or source == "espn":
             with stage(timings, "espn_fetch"):
@@ -815,15 +821,17 @@ def _process_basketball(league: str, game_id: int, source: str | None = None):
     except KeyError as e:
         # 502, not the football routes' 404: the page reads a basketball 404 as "no plays yet" and would
         # cache a pregame page for a live game; a garbled payload is an unknown, so it is not cached
-        log.error("%s %s: malformed ESPN payload, threw 502: %r", league, game_id, e)
+        who = "ESPN" if served == "espn" else served  # a dispatched alternate is named, never blamed on ESPN
+        log.error("%s %s: malformed %s payload, threw 502: %r", league, game_id, who, e)
         if not fetched:
             upstream(False, None, ("KeyError: %r" % (e,))[:500])
-        TEL.log_error("ESPN payload malformed (KeyError: %r)" % (e,), path=request.path, game_id=str(game_id))
-        return failed({"status": "bad", "message": "ESPN payload is malformed. Data not available."}, 502)
+        TEL.log_error("%s payload malformed (KeyError: %r)" % (who, e), path=request.path, game_id=str(game_id))
+        return failed({"status": "bad", "message": "%s payload is malformed. Data not available." % who}, 502)
     except Exception as e:  # noqa: BLE001 - the Worker renders an error page from the 500
         if _ALL_SOURCES_FAILED is not None and isinstance(e, _ALL_SOURCES_FAILED):
             # no source has this game, ESPN included: a clean "nothing here", as on the football routes
             log.info("%s %s: no source produced the game: %s", league, game_id, e)
+            upstream(False, None, str(e)[:500])  # the per-source errors, so an outage is visible
             return failed({"status": "bad", "message": "No source could produce this game."}, 404)
         import traceback
 
