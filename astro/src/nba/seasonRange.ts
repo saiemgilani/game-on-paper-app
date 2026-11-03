@@ -12,9 +12,9 @@ import type { LeaderBars } from "./data/leaders";
  */
 export const FIRST_SEASON = 1998;
 
-/** `nba_stats_shots` holds shots_1997..shots_2026 (checked 2026-09-30). Bump when a season lands. */
+/** `nba_stats_shots` holds shots_1997..shots_2027 (2026-27: shots, season players, league context and player games, checked 2026-11-03). Bump when a season lands. */
 export const FIRST_DATA_SEASON = 1997;
-export const LAST_KNOWN_SEASON = 2026;
+export const LAST_KNOWN_SEASON = 2027;
 
 /** A season a URL may name: listed now, or the next one once it is published. */
 export function isAddressableSeason(year: number): boolean {

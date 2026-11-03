@@ -7,6 +7,8 @@
 // (square bins, the distance link): that diff is the shot-chart island and its Squares button, nothing else.
 // game-*.html and pregame.html were re-captured on feat/basketball-parity: a SportsEvent JSON-LD script on each, and the
 // pregame's Players to Watch card.
+// home, leaders, player, players, scatter, team and teams .html were re-captured on feat/basketball-2026-27: the NBA lists
+// 2026-27, so each season picker gains it and the 2025-26 pages these captures load carry ?season=2026 in canonical and links.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';

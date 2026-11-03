@@ -17,7 +17,7 @@ beforeAll(async () => { container = await AstroContainer.create({ renderers: awa
 describe('/nba/teams', () => {
     test('one card per team in tricode order, each linking to its team page with the season', async () => {
         const { default: Page } = await import('../../src/pages/nba/teams.astro');
-        const html = await container.renderToString(Page, { request: new Request('https://gameonpaper.com/nba/teams?season=2026'), locals: { preview: true } as App.Locals });
+        const html = await container.renderToString(Page, { request: new Request('https://gameonpaper.com/nba/teams'), locals: { preview: true } as App.Locals });
         expect(html.split('<h1').length - 1).toBe(1);
         const grid = html.split('id="nba-teams"')[1];
         expect(grid.match(/href="\/nba\/team\/\d+"/g)?.length).toBe(30);

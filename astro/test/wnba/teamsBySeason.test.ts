@@ -104,7 +104,7 @@ describe('plan #6 final-review fixes, on real fixtures', () => {
         expect(BASKETBALL.wnba.teams.seasonsOf(0, 2025)).toBeUndefined();
         for (const t of WNBA_TEAMS) expect(BASKETBALL.wnba.teams.seasonsOf(t.team_id, 2026)!.at(-1)).toBe(2026);
         // the NBA: every listed season for every team, so its pickers are unchanged
-        expect(BASKETBALL.nba.teams.seasonsOf(1610612751, 2026)).toEqual(range(1998, 2026));
+        expect(BASKETBALL.nba.teams.seasonsOf(1610612751, 2026)).toEqual(range(1998, 2027)); // the NBA lists 2026-27 (2026-11-03)
         expect(BASKETBALL.nba.teams.seasonsOf(1, 2026)).toBeUndefined();
     });
     test('teamHrefFromEspn on the real 2002-06-15 board: the season rides along, the team id resolves to that season', () => {

@@ -26,7 +26,7 @@ async function render(query: string) {
 
 describe('/nba/players', () => {
     test("the season's Nets by attempts, one table, headers in body order, numbers in .numeral cells", async () => {
-        const html = await render('?season=2026');
+        const html = await render(''); // the current season: its links carry no ?season
         expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
         const table = parseTable(tableFrom(html));
         expect(table.headers.slice(0, 2)).toEqual(['Player', 'Team']);
@@ -46,7 +46,7 @@ describe('/nba/players', () => {
         expect(html).not.toContain('NaN');
     });
     test('?team=ALL lists every player and the team column; the sort link flips direction on the sorted column', async () => {
-        const html = await render('?season=2026&team=ALL&sort=fgPct');
+        const html = await render('?team=ALL&sort=fgPct');
         const table = parseTable(tableFrom(html));
         expect(table.rows.slice(1).length).toBe(new Set(api.map((r) => r.person_id)).size);
         expect(html).toContain('href="/nba/players?team=ALL&amp;sort=fgPct&amp;dir=asc"');
