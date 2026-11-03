@@ -2,7 +2,9 @@
 // Square bins (sdvplot-js's lattice), the league squares rebuilt from the league's hexes, and the distance link between charts.
 import { describe, expect, test } from 'vitest';
 import { renderDistanceBars } from '../../src/nba/charts/distanceBars';
-import { renderHexShotChart } from '../../src/nba/charts/hexShotChart';
+import { MIN_DRAWN_ATTEMPTS, renderHexShotChart, SQUARE_FILL } from '../../src/nba/charts/hexShotChart';
+import { courtViewport } from '../../src/nba/charts/court';
+import { toSvgLength } from '../../src/nba/data/court';
 import { emitDistance, onDistance } from '../../src/nba/charts/link';
 import { renderShootingSignature } from '../../src/nba/charts/shootingSignature';
 import { buildDashboard, HEX_RADIUS, leagueContext, SQUARE_SIDE } from '../../src/nba/dashboard';
@@ -57,6 +59,26 @@ describe('the dashboard ships squares only', () => {
         const hex = buildDashboard(shots.slice(0, 300), leagueContext(shots)).hex;
         expect(Object.keys(hex).sort()).toEqual(['side', 'squares', 'zones']);
         expect(hex.side).toBe(SQUARE_SIDE);
+    });
+});
+
+describe('square sizing (the 2021 rule)', () => {
+    test('single attempts are not drawn, and no square reaches its neighbour', async () => {
+        const shots = await fixtureShots();
+        const data = buildDashboard(shots.slice(0, 600), leagueContext(shots)).hex;
+        const svg = document.body.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement);
+        renderHexShotChart(svg, data, { width: 500, mode: 'squares', animate: false });
+        // cell squares: a translate()d path whose d is a square (M-a,-ah s v s h -s z); the legend's size keys sit one g deeper
+        const sides = [...svg.querySelectorAll(':scope > g > g > path[transform]')]
+            .map((p) => /^M(-?[\d.]+),/.exec(p.getAttribute('d') ?? ''))
+            .filter((m): m is RegExpExecArray => m !== null)
+            .map((m) => -2 * Number(m[1]));
+        expect(sides).toHaveLength(data.squares.filter((c) => c.attempts >= MIN_DRAWN_ATTEMPTS).length);
+        expect(data.squares.some((c) => c.attempts < MIN_DRAWN_ATTEMPTS)).toBe(true);
+        const cell = toSvgLength(data.side, courtViewport(500));
+        expect(Math.max(...sides)).toBeLessThanOrEqual(cell * SQUARE_FILL + 1e-9);
+        expect(Math.max(...sides)).toBeLessThan(cell);
+        svg.remove();
     });
 });
 
