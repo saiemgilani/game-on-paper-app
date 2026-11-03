@@ -5,9 +5,11 @@ import {
 } from './utils/telemetry';
 import { checkBasicAuth } from './resources/admin';
 import {
-  PREVIEW_COOKIE, PREVIEW_LINK_PARAM, PREVIEW_PATH_PREFIX, previewSetCookie,
+  PREVIEW_COOKIE, PREVIEW_LINK_PARAM, PREVIEW_PATH_PREFIX, keepPreviewSurface, previewSetCookie,
   readCookie, verifyPreviewCookie, verifyPreviewLink,
 } from './utils/preview';
+import { PRO_COOKIE, isOpenProPath, isProPath, proAllows, verifyProCookie } from './utils/pro';
+import { readEntitlement } from './resources/pro';
 import { ADMIN_COOKIE, verifyAdminCookie } from './utils/adminSession';
 import { applyAdminView } from './utils/adminView';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
@@ -182,6 +184,30 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (isPlayerPath(effectivePath) && !isFeatureEnabled('player-pages', context.locals)) {
     previewRewrite = '/404';
   }
+  // Game on Paper Pro: /pro/** and /pricing are one more 'preview' namespace. Past
+  // the flag, a /pro path other than login/auth/logout/methodology needs a live
+  // entitlement: the signed gop_pro cookie names an address, KV says what it bought
+  // (resolved once here onto locals.pro, and only on /pro paths, so no public page
+  // pays a KV read). No entitlement: pages go to /pricing, files get a bare 403 --
+  // never a redirect that could hint at the object behind it.
+  const proPath = isProPath(effectivePath);
+  if ((proPath || effectivePath === '/pricing') && !isFeatureEnabled('pro', context.locals)) {
+    previewRewrite = '/404';
+  } else if (proPath) {
+    const email = await verifyProCookie(
+      readCookie(context.request.headers.get('cookie'), PRO_COOKIE), getSecret('PRO_COOKIE_SECRET'));
+    const ent = email ? await readEntitlement(email) : null;
+    context.locals.pro = ent && email ? { ...ent, email } : null;
+    // No entitlement, or one whose tier/add-ons don't cover this path (utils/pro.ts proRequirement).
+    const allowed = context.locals.pro && proAllows(context.locals.pro, effectivePath);
+    if (!allowed && !isOpenProPath(effectivePath)) {
+      const headers = { 'Cache-Control': 'no-store' };
+      if (effectivePath.startsWith('/pro/file/') || effectivePath === '/pro/board') {
+        return new Response('Forbidden', { status: 403, headers });
+      }
+      return new Response(null, { status: 302, headers: { ...headers, Location: keepPreviewSurface('/pricing', url.pathname) } });
+    }
+  }
 
   if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
     // Two ways in: the signed session cookie a browser gets from /admin/login,
@@ -303,8 +329,9 @@ export function withPreviewCacheGuard(context: any, response: Response): Respons
   // its flag state overridden per request (?view=live renders the public page
   // while locals.preview is false), so the preview test alone no longer covers
   // it. Same reason as the others: a cached copy would reach the wrong viewer.
+  // Pro pages are per subscriber, and a HIT would skip the entitlement check.
   if (context.locals?.preview === true || context.locals?.adminAuthed === true
-      || isAdmin || carriesPreviewKey || isPreviewPath) {
+      || isAdmin || carriesPreviewKey || isPreviewPath || isProPath(url.pathname)) {
     try { context.cache?.set(false); } catch { /* cache provider absent in dev */ }
     response.headers.set('Cache-Control', 'no-store');
     if (isPreviewPath) response.headers.set('X-Robots-Tag', 'noindex');

@@ -1,0 +1,184 @@
+{
+ "schema": 1,
+ "season": 2026,
+ "snapshot": "20261103T044249Z",
+ "rendered": "2026-11-03",
+ "player": {
+  "espn_id": 1,
+  "name": "Fixture Player",
+  "team": "Fixture State",
+  "team_id": 1,
+  "position": "QB",
+  "position_group": "QB",
+  "pff_position": "QB",
+  "jersey": "0",
+  "class": "SO",
+  "height_in": 73.0,
+  "weight_lb": 208.0,
+  "conference": "Pac-12",
+  "division": "fbs",
+  "transferred": true,
+  "prev_team_id": 2
+ },
+ "metrics": [
+  {
+   "key": "pass_EPAplay",
+   "label": "EPA per dropback play",
+   "value": 0.2593,
+   "n": 301,
+   "n_label": "pass plays",
+   "qualified": true,
+   "eb": 0.2139,
+   "band_lo": 64.3478,
+   "band_mid": 89.5652,
+   "band_hi": 97.3913,
+   "prev_eb": null,
+   "delta_eb": null,
+   "delta_band_mid": null
+  },
+  {
+   "key": "pass_success",
+   "label": "Pass success rate",
+   "value": 0.4795,
+   "n": 301,
+   "n_label": "pass plays",
+   "qualified": true,
+   "eb": 0.4675,
+   "band_lo": 68.6957,
+   "band_mid": 86.087,
+   "band_hi": 96.5217,
+   "prev_eb": null,
+   "delta_eb": null,
+   "delta_band_mid": null
+  },
+  {
+   "key": "pass_comppct",
+   "label": "Completion %",
+   "value": 0.6634,
+   "n": 301.0,
+   "n_label": "attempts",
+   "qualified": true,
+   "eb": 0.6517,
+   "band_lo": 48.6957,
+   "band_mid": 82.6087,
+   "band_hi": 96.5217,
+   "prev_eb": null,
+   "delta_eb": null,
+   "delta_band_mid": null
+  },
+  {
+   "key": "rush_EPAplay",
+   "label": "EPA per rush",
+   "value": -0.0495,
+   "n": 15,
+   "n_label": "rushes",
+   "qualified": false,
+   "eb": 0.1395,
+   "band_lo": 0.0,
+   "band_mid": 30.9524,
+   "band_hi": 97.619,
+   "prev_eb": null,
+   "delta_eb": null,
+   "delta_band_mid": null
+  },
+  {
+   "key": "rush_success",
+   "label": "Rush success rate",
+   "value": 0.6,
+   "n": 15,
+   "n_label": "rushes",
+   "qualified": false,
+   "eb": 0.5208,
+   "band_lo": 4.7619,
+   "band_mid": 57.1429,
+   "band_hi": 95.2381,
+   "prev_eb": null,
+   "delta_eb": null,
+   "delta_band_mid": null
+  }
+ ],
+ "pff": [
+  {
+   "key": "grades_pass",
+   "label": "Passing grade",
+   "value": 70.0,
+   "pct": 50.0
+  },
+  {
+   "key": "grades_offense",
+   "label": "Offense grade",
+   "value": 70.0,
+   "pct": 50.0
+  },
+  {
+   "key": "big_time_throws",
+   "label": "Big-time throws",
+   "value": 70.0,
+   "pct": 50.0
+  },
+  {
+   "key": "turnover_worthy_plays",
+   "label": "Turnover-worthy plays",
+   "value": 70.0,
+   "pct": 50.0
+  },
+  {
+   "key": "grades_pass_pressure",
+   "label": "Grade under pressure",
+   "value": 70.0,
+   "pct": 50.0
+  }
+ ],
+ "volume": [
+  {
+   "label": "Attempts",
+   "value": 301.0
+  },
+  {
+   "label": "Pass yds",
+   "value": 2684.0
+  },
+  {
+   "label": "Pass TD",
+   "value": 21.0
+  },
+  {
+   "label": "INT",
+   "value": 2
+  },
+  {
+   "label": "Rushes",
+   "value": 15
+  },
+  {
+   "label": "Rush yds",
+   "value": 89
+  },
+  {
+   "label": "Rush TD",
+   "value": 1.0
+  },
+  {
+   "label": "Targets",
+   "value": 1
+  },
+  {
+   "label": "Catches",
+   "value": 1
+  },
+  {
+   "label": "Rec yds",
+   "value": 4
+  },
+  {
+   "label": "Rec TD",
+   "value": 1.0
+  }
+ ],
+ "notes": [
+  {
+   "key": "below_qualifier",
+   "text": "Below the qualifying sample for at least one metric: its band is wide."
+  }
+ ]
+}
