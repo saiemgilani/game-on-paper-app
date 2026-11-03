@@ -25,7 +25,7 @@ const viewer = Astro.locals.pro!;
 const latest = await latestBoard();
 const board = latest?.board ?? null;
 const boardSeason = latest?.season ?? PRO_SEASON;
-const cycle = board?.window ?? String(boardSeason);
+const cycle = typeof board?.window === 'string' ? board.window : String(boardSeason);
 const params = Astro.url.searchParams;
 const f = parseBoardFilters(params);
 const sortParam = params.get('sort');
