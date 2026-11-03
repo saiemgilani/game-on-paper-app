@@ -34,6 +34,7 @@ describe('basketballSpice', () => {
         expect(basketballSpice(g({ period: 2, regulationPeriods: 2, clock: 60, h: 70, a: 66 }))).toBe(SpiceLevel.SERRANO); // college halves
     });
     test('not late, not close, or not live: none', () => {
+        expect(basketballSpice(g({ clock: null }))).toBe(SpiceLevel.BELL); // no clock from ESPN: not known to be late
         expect(basketballSpice(g({ clock: 301 }))).toBe(SpiceLevel.BELL);
         expect(basketballSpice(g({ period: 3 }))).toBe(SpiceLevel.BELL);
         expect(basketballSpice(g({ h: 110 }))).toBe(SpiceLevel.BELL);

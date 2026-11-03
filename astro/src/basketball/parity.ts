@@ -33,8 +33,8 @@ export interface SpiceInput {
     /** ESPN status.type.state */
     state: string;
     period: number;
-    /** seconds left in the period */
-    clock: number;
+    /** seconds left in the period; null when ESPN sent none (never read as the last five minutes) */
+    clock: number | null;
     regulationPeriods: number;
     home: { score: number; rank?: number };
     away: { score: number; rank?: number };
@@ -48,7 +48,7 @@ export interface SpiceInput {
 export function basketballSpice(g: SpiceInput): SpiceLevel {
     if (g.state !== 'in' || g.period < 1) return SpiceLevel.BELL;
     const margin = Math.abs(g.home.score - g.away.score);
-    const late = g.period > g.regulationPeriods || (g.period === g.regulationPeriods && g.clock <= 300);
+    const late = g.period > g.regulationPeriods || (g.period === g.regulationPeriods && g.clock !== null && g.clock <= 300);
     const ranked = (r?: number) => r !== undefined && r < 26;
     if (late && margin <= 6) return ranked(g.home.rank) && ranked(g.away.rank) ? SpiceLevel.GHOST : SpiceLevel.SERRANO;
     const secondHalf = g.period > g.regulationPeriods / 2;
