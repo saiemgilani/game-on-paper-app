@@ -3,10 +3,18 @@ import { scaleBand, scaleLinear } from "d3-scale";
 import { select } from "d3-selection";
 import type { DistanceBin } from "../data/aggregate";
 import { DEFAULT_WIDTH } from "./court";
+import { emitDistance, onDistance } from "./link";
 import { fmtPct } from "../format";
 import { CHAR_PX, FONT_PX, motionMs, setViewBox, tooltip, TOKENS } from "./theme";
 
 export type BarMetric = "share" | "fgPct";
+
+/**
+ * A bin of rounded feet [d, d + binFt) holds true distances [d - 0.5, d + binFt - 0.5): the cursor it sends, and whether a
+ * distance another chart sent falls in it.
+ */
+export const binCursor = (d: number, binFt: number) => ({ ft: d + (binFt - 1) / 2, band: binFt / 2 });
+export const inBin = (ft: number, d: number, binFt: number) => ft >= d - 0.5 && ft < d + binFt - 0.5;
 
 /** `fgPctByDistance` for the player and for the league, same `binFt`. */
 export interface DistanceBarsData {
@@ -162,11 +170,22 @@ export function renderDistanceBars(
       const line = (who: string, b: DistanceBin) =>
         metric === "share" ? `${who}: ${fmtPct(b.share)} of shots (${b.attempts})` : `${who}: ${fmtPct(b.fgPct)} (${b.makes}/${b.attempts})`;
       tip.show(g.x + g.width / 2, M.top + 40, [`${g.label} ft`, line(subjectLabel, g.player), line("League", g.league)]);
+      emitDistance(svg, binCursor(g.player.distance, data.binFt));
     })
-    .on("pointerleave", () => tip.hide());
+    .on("pointerleave", () => {
+      tip.hide();
+      emitDistance(svg, { ft: null });
+    });
+  const linked = root.append("rect").attr("y", M.top).attr("height", H - M.top - M.bottom).attr("pointer-events", "none")
+    .style("fill", "none").style("stroke", TOKENS.fg).style("stroke-width", 1.5).style("display", "none");
+  const unlink = onDistance(svg, ({ ft }) => {
+    const g = ft === null ? undefined : groups.find((x) => inBin(ft, x.player.distance, data.binFt));
+    linked.style("display", g ? "inline" : "none").attr("x", g?.x ?? 0).attr("width", g?.width ?? 0);
+  });
 
   setViewBox(svg, W, H);
   return () => {
+    unlink();
     bars.interrupt();
     root.remove();
   };

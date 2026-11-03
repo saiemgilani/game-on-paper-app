@@ -1,6 +1,6 @@
 // astro/test/wnba/hexCourt.test.ts
 // @vitest-environment jsdom
-// The hex chart draws the court its data names (raw and zones modes); without one it draws the NBA's.
+// The hex chart draws the court its data names (squares and zones modes); without one it draws the NBA's.
 import { describe, expect, test } from 'vitest';
 import { courtFor, type Court } from '../../src/basketball/config';
 import { leagueContextFromRows, shotsFromRows } from '../../src/nba/adapters';
@@ -11,7 +11,7 @@ import { COURT, courtLines, zoneAreas } from '../../src/nba/data/court';
 import { SEA, leagueContext, leagueShots2003, seaShots } from './dashboardFixtures';
 
 const W = 500;
-const drawn = (data: Parameters<typeof renderHexShotChart>[1], mode: 'raw' | 'zones') => {
+const drawn = (data: Parameters<typeof renderHexShotChart>[1], mode: 'squares' | 'zones') => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement;
     document.body.appendChild(svg);
     renderHexShotChart(svg, data, { width: W, mode, animate: false });
@@ -28,7 +28,7 @@ describe('the hex chart draws the season court', () => {
     ] as const;
     for (const [season, data] of cases) test(String(season), () => {
         const court = courtFor('wnba', season);
-        const raw = drawn(data, 'raw');
+        const raw = drawn(data, 'squares');
         expect(raw).toContain(line(court, 'three-point-line'));
         expect(raw).toContain(line(court, 'paint'));
         expect(raw).not.toContain(line(COURT, 'three-point-line'));
@@ -37,6 +37,6 @@ describe('the hex chart draws the season court', () => {
     });
     test('no court in the data: the NBA court', () => {
         const { court: _drop, ...nbaShaped } = cases[1][1];
-        expect(drawn(nbaShaped, 'raw')).toContain(line(COURT, 'three-point-line'));
+        expect(drawn(nbaShaped, 'squares')).toContain(line(COURT, 'three-point-line'));
     });
 });

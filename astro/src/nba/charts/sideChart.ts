@@ -1,6 +1,8 @@
 import { max } from "d3-array";
 import { scaleLinear } from "d3-scale";
 import { select } from "d3-selection";
+import { emitDistance, onDistance } from "./link";
+import { binCursor, inBin } from "./distanceBars";
 import type { SideBin, Split } from "../data/aggregate";
 import { DEFAULT_WIDTH } from "./court";
 import type { BarMetric } from "./distanceBars";
@@ -178,12 +180,23 @@ export function renderSideChart(
           (b) => `${b.side}: ${fmtPct(b.value)} (league ${fmtPct(b.league)}), ${r.player[b.side].makes}/${r.player[b.side].attempts}`,
         ),
       ]);
+      emitDistance(svg, binCursor(r.player.distance, data.binFt));
     })
-    .on("pointerleave", () => tip.hide());
+    .on("pointerleave", () => {
+      tip.hide();
+      emitDistance(svg, { ft: null });
+    });
+  const linked = root.append("rect").attr("x", M.left).attr("width", W - M.left - M.right).attr("height", ROW).attr("pointer-events", "none")
+    .style("fill", "none").style("stroke", TOKENS.fg).style("stroke-width", 1.5).style("display", "none");
+  const unlink = onDistance(svg, ({ ft }) => {
+    const r = ft === null ? undefined : rows.find((x) => inBin(ft, x.player.distance, data.binFt));
+    linked.style("display", r ? "inline" : "none").attr("y", r?.y ?? 0);
+  });
 
   const notes = drawNotes(root, M.left, H + 2, W - M.left - M.right, [NOTE]);
   setViewBox(svg, W, H + 6 + notes);
   return () => {
+    unlink();
     bars.interrupt();
     root.remove();
   };
