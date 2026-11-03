@@ -6,10 +6,13 @@ import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { parseTable, text } from '../helpers/tables';
 import { apiSeasonPlayerRows } from './rows';
 
+// the seasons each render reads, so a seasonless URL is checked to read the current season (the fixture rows are 2026's)
+const reads = vi.hoisted(() => [] as number[]);
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
-    retrieveSeasonPlayerRows: async () => apiSeasonPlayerRows(),
+    retrieveSeasonPlayerRows: async (season: number) => (reads.push(season), apiSeasonPlayerRows()),
 }));
+import { LAST_KNOWN_SEASON } from '../../src/nba/seasonRange';
 
 import { NETS_TEAM_ID } from '../../src/nba/data/teams';
 
@@ -26,7 +29,10 @@ async function render(query: string) {
 
 describe('/nba/players', () => {
     test("the season's Nets by attempts, one table, headers in body order, numbers in .numeral cells", async () => {
+        reads.length = 0;
         const html = await render(''); // the current season: its links carry no ?season
+        expect(reads.length).toBeGreaterThan(0);
+        expect(new Set(reads)).toEqual(new Set([LAST_KNOWN_SEASON]));
         expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
         const table = parseTable(tableFrom(html));
         expect(table.headers.slice(0, 2)).toEqual(['Player', 'Team']);
