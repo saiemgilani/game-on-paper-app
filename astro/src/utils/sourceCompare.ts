@@ -12,6 +12,7 @@
  * logic is in this file.
  */
 import type { ProcessedGame } from '../resources/python';
+import type { NbaGame, NbaSide, NbaTeamBox, NbaTeamRates } from '../resources/nbaGame';
 import { finiteNumber, getNumberWithOrdinal, toPercent } from './misc';
 
 export interface CompareRow {
@@ -164,5 +165,55 @@ export function compareSources(
         firstDifference,
         unmatchedSelected: unmatched(selectedKeys, espnKeys),
         unmatchedEspn: unmatched(espnKeys, selectedKeys),
+    };
+}
+
+/**
+ * The basketball half (BB-G21): the selected source against ESPN on what the page renders -- the score, the team box,
+ * the four-factor rates and the play count -- read straight off both payloads' `NbaGame`, nothing recomputed.
+ *
+ * Sides are matched on home/away, not on team id: an alternate feed's ids are crosswalked to ESPN's upstream
+ * (sdv-py's basketball id map), and a miss there would blank a whole team instead of showing up as a difference.
+ * Play ids are source-local and there is no basketball play-alignment contract yet, so plays are compared on
+ * their count only.
+ */
+export interface BasketballSourceComparison {
+    /** away then home, the page's own column order */
+    teams: { id: string; side: 'away' | 'home'; rows: CompareRow[] }[];
+    playsSelected: number;
+    /** null when the ESPN side could not be fetched */
+    playsEspn: number | null;
+}
+
+const BOX_ROWS: [string, keyof NbaTeamBox][] = [
+    ['FGM', 'field_goals_made'], ['FGA', 'field_goals_attempted'],
+    ['3PM', 'three_point_field_goals_made'], ['3PA', 'three_point_field_goals_attempted'],
+    ['FTM', 'free_throws_made'], ['FTA', 'free_throws_attempted'],
+    ['Offensive rebounds', 'offensive_rebounds'], ['Defensive rebounds', 'defensive_rebounds'],
+    ['Assists', 'assists'], ['Steals', 'steals'], ['Blocks', 'blocks'],
+    ['Turnovers (total)', 'total_turnovers'], ['Fouls', 'fouls'],
+];
+/** label, key, decimals, and whether it is a fraction rendered as a percentage (NbaFourFactors' formats) */
+const RATE_ROWS: [string, keyof NbaTeamRates, number, boolean][] = [
+    ['eFG%', 'efg_pct', 1, true], ['TOV%', 'tov_pct', 1, true], ['ORB%', 'orb_pct', 1, true], ['FT rate', 'ft_rate', 3, false],
+    ['Possessions', 'possessions', 1, false], ['ORtg', 'off_rtg', 1, false], ['DRtg', 'def_rtg', 1, false], ['Pace', 'pace', 1, false],
+];
+
+export function compareBasketballSources(selected: NbaGame, espn: NbaGame | null): BasketballSourceComparison {
+    const sideRows = (a: NbaSide, b: NbaSide | undefined): CompareRow[] => [
+        row('Score', 0, finiteNumber(a.score), finiteNumber(b?.score)),
+        ...BOX_ROWS.map(([label, key]) => row(label, 0, finiteNumber(a.box?.[key]), finiteNumber(b?.box?.[key]))),
+        ...RATE_ROWS.map(([label, key, fixed, percent]) => {
+            const v = (s: NbaSide | undefined) => {
+                const n = finiteNumber(s?.rates?.[key]);
+                return n === null || !percent ? n : n * 100;
+            };
+            return row(label, fixed, v(a), v(b), percent);
+        }),
+    ];
+    return {
+        teams: (['away', 'home'] as const).map((side) => ({ id: selected[side].team.id, side, rows: sideRows(selected[side], espn?.[side]) })),
+        playsSelected: selected.plays.length,
+        playsEspn: espn ? espn.plays.length : null,
     };
 }

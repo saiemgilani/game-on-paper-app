@@ -70,7 +70,9 @@ export const FLAGS: Record<string, FeatureState> = {
     // Nothing public changes while this is 'preview': only this path sends
     // `?source=` to the API, so the request, its cache key and the response are
     // exactly what they are today for every other viewer. Promote to 'on' once
-    // an alternate adapter is trusted end to end.
+    // an alternate adapter is trusted end to end. The basketball game pages
+    // (nba/wnba/mbb/wbb, routes/basketball/game.ts) take the same `?source=`
+    // under the same flag and admin session, with no header fallback.
     'source-switch': 'preview',
     // Individual player pages: /players/<espn id> and the /nfl twin, plus the
     // hrefs the leaderboard rows and the game-page usage box grow to reach them.
