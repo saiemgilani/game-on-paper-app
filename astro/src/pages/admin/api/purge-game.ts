@@ -22,7 +22,9 @@ const KNOWN_TAGS = new Set(['game-completed', 'game-in-progress', 'game-schedule
     'player',
     // /year/* and /team/* (route rules in astro.config.mjs, 3-day maxAge) and the teams
     // index pages: without these a summaries republish waits out the TTL or a redeploy
-    'season', 'team', 'teams-index']);
+    'season', 'team', 'teams-index',
+    // /sitemap-index.xml and the player sitemaps, after a flag promotion changes what they list
+    'sitemap']);
 
 export const GET: APIRoute = async (context) => purge(context);
 export const POST: APIRoute = async (context) => purge(context);

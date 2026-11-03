@@ -31,8 +31,9 @@ describe('explicit /nfl pages', () => {
     test('every league-aware cfb page has an nfl twin, and nothing else lives under /nfl', () => {
         // pages with no league: admin/api/health/404/sitemap/glossary/changelog,
         // plus the standing explainer pages, which sit alongside the glossary
-        // and describe the site rather than a league's slate
-        const leagueless = /^(admin|api|changelog|data-sources|glossary|health|methodology|404|sitemap|nfl|nba)(\/|\.)/;
+        // and describe the site rather than a league's slate. The sitemap files
+        // (sitemap, sitemap-index, sitemap-players-[key]) cover both leagues from the root.
+        const leagueless = /^(admin|api|changelog|data-sources|glossary|health|methodology|404|sitemap(-[^/.]+)?|nfl|nba)(\/|\.)/;
         // CFB-only, and not the same thing as leagueless: this page IS league
         // -specific, it just has no NFL counterpart -- the AP and Coaches polls
         // have no professional equivalent. Standings are NOT in here: the NFL

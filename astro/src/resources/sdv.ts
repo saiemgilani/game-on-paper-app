@@ -8,7 +8,7 @@ import { wrappedFetch } from "../utils/telemetry"
 import { LEAGUES, type League, type SdvSource, leagueSource, teamCategoriesFor } from '../utils/league';
 import { coachMetricColumns, type CoachRow } from '../utils/coaches';
 import { formatRecord } from '../utils/resume';
-import { PLAYER_SPLITS } from '../utils/players';
+import { PLAYER_SPLITS, isEspnAthleteId } from '../utils/players';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -583,6 +583,8 @@ async function generateSDVCacheKey(fullKey: string): Promise<string> {
 const SDV_META_URL = new URL('meta', LEAGUES.cfb.sdvApiBase).toString();
 const SDV_META_KEY = 'sdv-meta:datasets';
 const SDV_META_TTL = 60 * 5;
+// a stalled meta read must not hold up the page: it falls back to the unversioned key
+const SDV_META_TIMEOUT_MS = 5_000;
 // Single-flight: the in-flight read is shared, so a burst on a fresh isolate makes one
 // meta call, not one per request. Sharing a promise across requests is safe under
 // `handle_cross_request_promise_resolution` (default since compatibility_date
@@ -595,7 +597,7 @@ async function fetchSDVDatasets(fresh = false): Promise<Record<string, string> |
     try {
         const cached = fresh ? null : await env.SDV_API_CACHE.get(SDV_META_KEY, "json");
         if (cached) return cached as Record<string, string>;
-        const req = await wrappedFetch(SDV_META_URL, { headers: { "Authorization": `Bearer ${SDV_AUTH_TOKEN}` } });
+        const req = await wrappedFetch(SDV_META_URL, { headers: { "Authorization": `Bearer ${SDV_AUTH_TOKEN}` }, signal: AbortSignal.timeout(SDV_META_TIMEOUT_MS) });
         if (!req.ok) throw new Error(`status ${req.status}`);
         const datasets = (await req.json() as any)?.datasets;
         if (!datasets || typeof datasets !== 'object') throw new Error('no datasets in the response');
@@ -1614,4 +1616,102 @@ export async function retrieveNflEspnGameIds(season: number): Promise<Record<str
         if (r?.game_id && r?.espn) out[String(r.game_id)] = String(r.espn);
     }
     return out;
+}
+
+// --------------------------------------------------------------- sitemap reads
+//
+// The player sitemaps need every player id each season has, which the Data API has
+// no player-list route for -- but the season leaderboard tables are exactly that:
+// one row per player-team-season in passing/rushing/receiving, the same tables
+// `/players/{id}` builds `seasons` from (sdv-db `player_routes._seasons`), so
+// every id read here is a player whose `?season=` page renders.
+//
+// Workers on the free plan may make 50 external subrequests per request, and which
+// plan this Worker runs on is not recorded anywhere in the repo. So a league's ids
+// are read in a handful of whole-table reads -- every season at once, one SQL
+// statement each, no offset paging -- and the reader refuses to go past a fixed
+// budget rather than let the platform kill the request part way. A season file
+// asks for its one season only: ~4k CFB rows to parse instead of the league's ~90k.
+
+/** The Data API's `MAX_LIMIT` (sdv-db `api/query.py`): a larger `limit` is capped to it. */
+const SITEMAP_ROW_LIMIT = 50_000;
+/** Data API reads one league's ids may take. A request's other subrequests are the
+ *  /v1/meta read and the middleware's telemetry POST (`waitUntil`, same request), so
+ *  two leagues at the budget make 2 + 2 x 23 = 48, under the free plan's 50.
+ *  Today CFB takes 3 and NFL 4 (3 tables + the crosswalk); at 4x today's rows, CFB takes 15. */
+export const SITEMAP_FETCH_BUDGET = 23;
+/** Subrequests every sitemap request makes besides the reader's: meta + the telemetry POST. */
+export const SITEMAP_OTHER_SUBREQUESTS = 2;
+/** A stalled Data API read becomes an error (and an uncached 503), never a hung request. */
+const SITEMAP_READ_TIMEOUT_MS = 15_000;
+const SITEMAP_SEASON_TABLES = ['passing', 'rushing', 'receiving'] as const;
+
+type SitemapRow = { player_id: string | number | null; season: number };
+
+/**
+ * Every row a season table has for seasons `from`..`to`, as one read when it fits under
+ * the row limit. A full answer may be truncated, so the range is halved and each half
+ * read instead; a single season that alone fills the limit throws. Each read is one
+ * statement, so it sees one snapshot: an ingest between two reads can only touch
+ * different seasons, never shift rows between pages the way offset paging would.
+ */
+async function readSeasonRange(league: League, table: string, from: number, to: number, budget: { left: number }): Promise<SitemapRow[]> {
+    if (--budget.left < 0) throw new Error(`player sitemap: ${league} ids need more than ${SITEMAP_FETCH_BUDGET} Data API reads`);
+    const rows = await retrieveRowsFrom<SitemapRow>(leagueSource(league), table, {
+        select: 'player_id,season', season__gte: String(from), season__lte: String(to), limit: String(SITEMAP_ROW_LIMIT),
+    }, 60 * 60 * 24, true, SITEMAP_READ_TIMEOUT_MS);
+    if (rows.length < SITEMAP_ROW_LIMIT) return rows;
+    if (from === to) throw new Error(`player sitemap: ${league}.${table} ${from} fills the ${SITEMAP_ROW_LIMIT}-row limit`);
+    const mid = Math.floor((from + to) / 2);
+    return [...await readSeasonRange(league, table, from, mid, budget), ...await readSeasonRange(league, table, mid + 1, to, budget)];
+}
+
+async function readPlayerSitemapIds(league: League, only?: number): Promise<Map<number, string[]>> {
+    if (!LEAGUES[league].sdvEnabled) return new Map();
+    const seasons = only === undefined ? LEAGUES[league].seasons : [only];
+    const budget = { left: SITEMAP_FETCH_BUDGET };
+    let espnByGsis: Map<string, string> | null = null;
+    if (league === 'nfl') {
+        // NFL rows key on gsis; nfl.players is one row per player (~25k), one read
+        budget.left--;
+        const xwalk = await retrieveRowsFrom<{ gsis_id: string | null; espn_id: string | number | null }>(leagueSource('nfl'), 'players',
+            { select: 'gsis_id,espn_id', limit: String(SITEMAP_ROW_LIMIT) }, 60 * 60 * 24 * 7, true, SITEMAP_READ_TIMEOUT_MS);
+        if (xwalk.length >= SITEMAP_ROW_LIMIT) throw new Error(`player sitemap: nfl.players fills the ${SITEMAP_ROW_LIMIT}-row limit`);
+        espnByGsis = new Map(xwalk.filter((r) => r.gsis_id && r.espn_id != null).map((r) => [String(r.gsis_id), String(r.espn_id)]));
+    }
+    const tables = await Promise.all(SITEMAP_SEASON_TABLES.map((t) =>
+        readSeasonRange(league, t, Math.min(...seasons), Math.max(...seasons), budget)));
+    const bySeason = new Map<number, Set<string>>();
+    for (const r of tables.flat()) {
+        if (r.player_id === null || r.player_id === undefined || !seasons.includes(Number(r.season))) continue;
+        const id = espnByGsis ? espnByGsis.get(String(r.player_id)) : String(r.player_id);
+        if (!id || !isEspnAthleteId(id)) continue;
+        const season = Number(r.season);
+        if (!bySeason.has(season)) bySeason.set(season, new Set());
+        bySeason.get(season)!.add(id);
+    }
+    return new Map([...bySeason].sort(([a], [b]) => a - b)
+        .map(([s, ids]) => [s, [...ids].sort((a, b) => Number(a) - Number(b))] as [number, string[]]));
+}
+
+// One read per league per isolate at a time: concurrent crawler hits on a cold
+// index and its files share it (safe across requests; see `sdvMeta` above).
+const sitemapIdsInFlight = new Map<string, Promise<Map<number, string[]>>>();
+
+/**
+ * The ESPN athlete ids with a player page, per season (seasons with none are left
+ * out): ids as strings, unique, ascending. Every season of the league, or with
+ * `season` just that one (a season file's read: `season__gte = season__lte`). CFB's season tables key on the ESPN id
+ * itself; NFL's key on gsis and map through the nflverse crosswalk (`nfl.players`),
+ * and a player it has no ESPN id for is left out -- his gsis URL would only redirect.
+ * Strict: a failed, stalled or over-budget read throws.
+ */
+export function retrievePlayerSitemapIds(league: League, season?: number): Promise<Map<number, string[]>> {
+    const key = `${league}:${season ?? 'all'}`;
+    let p = sitemapIdsInFlight.get(key);
+    if (!p) {
+        p = readPlayerSitemapIds(league, season).finally(() => sitemapIdsInFlight.delete(key));
+        sitemapIdsInFlight.set(key, p);
+    }
+    return p;
 }
