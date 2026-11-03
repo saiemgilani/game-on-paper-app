@@ -1,0 +1,54 @@
+---
+/**
+ * Pro sign-in: an email form whose POST mails a one-time link (/pro/auth?t=...).
+ * The link is sent only to an address holding a live entitlement, and the page
+ * answers the same either way, so it neither mails strangers nor says who
+ * subscribes. Astro's origin check rejects a cross-site POST before this runs.
+ * ponytail: no rate limit; KV token writes are the only cost an abuser can run up.
+ */
+import GenericPage from '../../layouts/GenericPage.astro';
+import ProNav from '../../components/pro/ProNav.astro';
+import { isEmail, normalizeEmail } from '../../utils/pro';
+import { createLoginToken, readEntitlement, sendEmail } from '../../resources/pro';
+
+let state: 'form' | 'sent' | 'invalid' = Astro.url.searchParams.get('err') ? 'invalid' : 'form';
+if (Astro.request.method === 'POST') {
+    let email = '';
+    try { email = normalizeEmail((await Astro.request.formData()).get('email')); } catch { /* empty form */ }
+    if (!isEmail(email)) {
+        state = 'invalid';
+    } else {
+        if (await readEntitlement(email)) {
+            const link = new URL(`/pro/auth?t=${await createLoginToken(email)}`, Astro.url.origin).href;
+            await sendEmail({
+                to: email,
+                subject: 'Your Game on Paper Pro sign-in link',
+                text: `Sign in to Game on Paper Pro:\n\n${link}\n\nThe link works once, for 15 minutes. If you did not ask for it, ignore this email.`,
+            });
+        }
+        state = 'sent';
+    }
+}
+---
+<GenericPage title="Sign in | Game on Paper Pro" subtitle="Sign in to Game on Paper Pro" slug="/pro/login" heading="Sign in to Game on Paper Pro"
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Sign in', active: true }]}>
+    <ProNav />
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-lg-6 col-12">
+                <h1 class="fs-3">Sign in</h1>
+                {state === 'sent'
+                    ? <p id="pro-login-sent">If that address has a Game on Paper Pro subscription, a sign-in link is on its way. It works once, for 15 minutes.</p>
+                    : (
+                    <form method="post" action="/pro/login" id="pro-login-form">
+                        <label class="form-label" for="pro-email">Email</label>
+                        <input class="form-control mb-2" type="email" id="pro-email" name="email" autocomplete="email" required />
+                        {state === 'invalid' && <p class="text-danger text-small">That link or address did not work. Enter your email for a new link.</p>}
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">Email me a sign-in link</button>
+                    </form>
+                    )}
+                <p class="text-muted text-small mt-3">No subscription yet? See <a href="/pricing">pricing</a>.</p>
+            </div>
+        </div>
+    </div>
+</GenericPage>
