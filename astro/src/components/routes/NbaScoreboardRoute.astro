@@ -31,6 +31,8 @@ const tonightHref = `${lp('/scoreboard')}${gq ? `?${gq}` : ''}`;
 // "which day is it" is unknown only when the live read failed; a fresh live read fixed the day even if the
 // D-I fallback behind it then failed (that failure only makes the board say unavailable)
 const noDay = !('badDate' in data) && data.degraded && !!data.undated && !data.isLive;
+// the live board names its day when that day is not tonight (an off-season board keeps ESPN's last game day)
+const tonight = !('badDate' in data) && data.isLive && !data.offDay;
 const maxDay = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
 ---
 {'badDate' in data ? (data.badDate === 'group' ? (
@@ -40,14 +42,14 @@ const maxDay = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
     <ErrorPage htmlTitle="Bad date" htmlSubtitle={`${name} scoreboard`} slug={lp('/scoreboard')} humanTitle="That is not a date we can show."
         message={`Use ?date=YYYY-MM-DD for a day between ${firstMonth} and two weeks from today.`} />
 )) : (
-    <GenericPage title={`${name} scoreboard${data.isLive || noDay ? '' : `, ${data.nav.label}`}${data.groupLabel && grp !== groups?.default ? `, ${data.groupLabel}` : ''} | Game on Paper`}
+    <GenericPage title={`${name} scoreboard${tonight || noDay ? '' : `, ${data.nav.label}`}${data.groupLabel && grp !== groups?.default ? `, ${data.groupLabel}` : ''} | Game on Paper`}
         subtitle={`${name} scores${noDay ? '' : ` for ${data.nav.label}`} with win probability, four factors and shot charts for every game.`}
         slug={lp('/scoreboard')} breadcrumbs={breadcrumbs}
         description={`Live ${name} scoreboard with Game on Paper's win probability, four factors, advanced box scores and shot charts for every game.`}
         canonicalPath={data.isLive || noDay ? tonightHref : dayHref(data.day)}>
       <div class="container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-          <h1 class="h3 mb-0">{noDay ? 'Scoreboard' : data.isLive ? 'Tonight' : data.nav.label}</h1>
+          <h1 class="h3 mb-0">{noDay ? 'Scoreboard' : tonight ? 'Tonight' : data.nav.label}</h1>
           <div class="d-flex flex-wrap align-items-center gap-2">
             {!noDay && data.nav.prev >= cfg.firstScoreboardDay && <a class="btn btn-sm btn-outline-primary text-nowrap" href={dayHref(data.nav.prev)} rel="prev">&larr; {shortDay(data.nav.prev)}</a>}
             <form method="get" action={lp('/scoreboard')} class="d-inline-flex align-items-center gap-1">

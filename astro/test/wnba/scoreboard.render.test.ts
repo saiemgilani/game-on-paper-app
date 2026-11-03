@@ -87,3 +87,25 @@ describe('/wnba/scoreboard render (real days)', () => {
         expect(await res.text()).toContain('May 2002');
     });
 });
+
+describe('/wnba/scoreboard off-season', () => {
+    // ESPN's WNBA board keeps its last game day (2026-10-31, Finals Game 7) into the off-season: the bare page is
+    // still the live page, but it names that day instead of calling it "Tonight"
+    test('a live day over a day behind the server date is named, never Tonight; a current one is Tonight', async () => {
+        const real = await vi.importActual<typeof import('../../src/routes/basketball/scoreboard')>('../../src/routes/basketball/scoreboard');
+        vi.useFakeTimers({ toFake: ['Date'] });
+        try {
+            for (const [now, offDay] of [['2026-11-03T03:00:00Z', true], ['2026-11-01T03:00:00Z', false]] as const) {
+                vi.setSystemTime(new Date(now));
+                prep.mockImplementationOnce((...a: Parameters<typeof real.prepareBasketballScoreboard>) => real.prepareBasketballScoreboard(...a));
+                sbDay.mockImplementation(async () => ({ day: '2026-10-31', events: [], degraded: false }));
+                const html = await render();
+                const h1 = html.match(/<h1[^>]*>([^<]+)<\/h1>/)?.[1];
+                expect(h1).toBe(offDay ? 'Saturday, October 31' : 'Tonight');
+                expect(html.includes('WNBA scoreboard, Saturday, October 31 | Game on Paper')).toBe(offDay);
+            }
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+});
