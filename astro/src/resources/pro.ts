@@ -171,6 +171,18 @@ export async function proObject<T = unknown>(key: string): Promise<T | null> {
     return null;
 }
 
+export type PortalBoard = { rendered: string; window?: string; entrants: BoardEntrant[] };
+
+/** The newest portal board: this cycle's once its window opens, else the last cycle's
+ * (a cycle is keyed by its fall season: 2025-26 is pro/2025/portal). */
+export async function latestBoard(season = PRO_SEASON): Promise<{ season: number; board: PortalBoard } | null> {
+    for (const s of [season, season - 1]) {
+        const board = await proObject<PortalBoard>(`pro/${s}/portal/board.json`);
+        if (board) return { season: s, board };
+    }
+    return null;
+}
+
 const CONTENT_TYPES: Record<string, string> = { pdf: 'application/pdf', csv: 'text/csv; charset=utf-8', json: 'application/json' };
 
 /** A file to stream to an entitled viewer (the route checks entitlement first). */

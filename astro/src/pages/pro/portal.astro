@@ -15,13 +15,17 @@ import {
     BOARD_SORTS, describeFilters, entrantKey, filterBoard, parseBoardFilters, PRO_METRIC_LABELS, sortBoard,
     type BoardEntrant, type BoardSort,
 } from '../../utils/pro';
-import { PRO_SEASON, proObject, readBoard, readFilters } from '../../resources/pro';
+import { latestBoard, PRO_SEASON, readBoard, readFilters } from '../../resources/pro';
 
 // Defense in depth: the middleware already sent anyone without a live entitlement to
 // /pricing; this page refuses to render for them on its own too.
 if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
 const viewer = Astro.locals.pro!;
-const board = await proObject<{ rendered: string; entrants: BoardEntrant[] }>(`pro/${PRO_SEASON}/portal/board.json`);
+// Between windows this cycle has no board yet, so the last cycle's shows, labelled.
+const latest = await latestBoard();
+const board = latest?.board ?? null;
+const boardSeason = latest?.season ?? PRO_SEASON;
+const cycle = board?.window ?? String(boardSeason);
 const params = Astro.url.searchParams;
 const f = parseBoardFilters(params);
 const sortParam = params.get('sort');
@@ -58,7 +62,7 @@ const columns: [BoardSort | null, string, string][] = [
     [null, '', 'text-center'],
 ];
 ---
-<GenericPage title="Portal Board | Game on Paper Pro" subtitle={`${PRO_SEASON} transfer portal board`} slug="/pro/portal"
+<GenericPage title="Portal Board | Game on Paper Pro" subtitle={`${cycle} transfer portal board`} slug="/pro/portal"
     breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Portal Board', active: true }]} heading="Transfer portal board">
     <ProNav active="portal" />
     <div class="container">
@@ -67,7 +71,7 @@ const columns: [BoardSort | null, string, string][] = [
             : (
         <Fragment>
         <Panel id="pro-board" title="Portal Board" show={true} class="mb-3">
-            <p slot="panel-subtitle" class="m-0 text-muted text-small">Band is the percentile band's midpoint, among qualifiers at the position. Updated {board.rendered}.</p>
+            <p slot="panel-subtitle" class="m-0 text-muted text-small" id="pro-board-cycle">{cycle} cycle{boardSeason < PRO_SEASON ? ` (the ${PRO_SEASON} window has not opened yet)` : ''}. Band is the percentile band's midpoint, among qualifiers at the position. Updated {board.rendered}.</p>
             <Fragment slot="panel-body">
                 <form method="get" action="/pro/portal" class="d-flex flex-wrap align-items-end gap-2 mb-3" id="pro-board-filters">
                     <div>
@@ -90,7 +94,7 @@ const columns: [BoardSort | null, string, string][] = [
                     </div>
                     {sort && <input type="hidden" name="sort" value={sort} />}
                     <button class="btn btn-sm btn-outline-secondary" type="submit">Apply</button>
-                    <a class="btn btn-sm btn-outline-secondary" href={`/pro/file/pro/${PRO_SEASON}/portal/board.csv`} id="pro-board-csv">Download CSV</a>
+                    <a class="btn btn-sm btn-outline-secondary" href={`/pro/file/pro/${boardSeason}/portal/board.csv`} id="pro-board-csv">Download CSV</a>
                 </form>
                 <div class="table-responsive" id="pro-board-table">
                     <table class="table table-sm">

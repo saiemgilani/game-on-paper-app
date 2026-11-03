@@ -20,7 +20,7 @@ import {
     describeFilters, digestEntrants, digestText, filterBoard, formatPffValue, formatProDelta, formatProMetric,
     mintProCookie, parseBoardFilters, PRO_COOKIE, PRO_TOKEN_TTL_S, proAllows, sortBoard, verifyProCookie, type BoardEntrant,
 } from '../src/utils/pro';
-import { claimDownload, claimLoginSend, createLoginToken, isProKey, redeemLoginToken, runProDigest } from '../src/resources/pro';
+import { claimDownload, claimLoginSend, createLoginToken, isProKey, latestBoard, redeemLoginToken, runProDigest } from '../src/resources/pro';
 
 const board: { entrants: BoardEntrant[] } = JSON.parse(readFileSync(new URL('./fixtures/pro/2026/portal/board.json', import.meta.url)).toString());
 const DAY = 86_400_000;
@@ -202,6 +202,14 @@ describe('the portal board', () => {
         // junk never becomes a filter
         expect(parseBoardFilters(new URLSearchParams('pos=<script>&metric=evil&min=500'))).toEqual({});
         expect(parseBoardFilters(new URLSearchParams('min=50'))).toEqual({});
+    });
+
+    test("between windows the last cycle's board shows, and its season says which", async () => {
+        expect((await latestBoard(2026))?.season).toBe(2026);   // this cycle's board exists: it wins
+        const prior = await latestBoard(2027);                   // no 2027 board yet: last cycle's
+        expect(prior?.season).toBe(2026);
+        expect(prior?.board.entrants.length).toBe(board.entrants.length);
+        expect(await latestBoard(2030)).toBeNull();
     });
 
     test('Save and the digest filters land in KV and come back to the board view', async () => {
