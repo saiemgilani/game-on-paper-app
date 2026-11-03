@@ -1,0 +1,73 @@
+{
+    "D": [
+        {
+            "term": "Defensive rating (DRtg, basketball)",
+            "definition": "Points a team allowed per 100 possessions in a game. Lower is better. Shown in the four factors panel on NBA, WNBA and college basketball game pages.",
+            "source": ""
+        }
+    ],
+    "E": [
+        {
+            "term": "Effective field goal percentage (eFG%, basketball)",
+            "definition": "(FGM + 0.5 &times; 3PM) / FGA: field goal percentage with a made three worth one and a half made twos, because it is worth 3 points to a two's 2. One of the <a href='#glossary-section-F'>four factors</a>.",
+            "source": "https://www.basketball-reference.com/about/glossary.html"
+        }
+    ],
+    "F": [
+        {
+            "term": "Four factors (basketball)",
+            "definition": "Dean Oliver's four things that decide a basketball game, each for both teams: shooting (<a href='#glossary-section-E'>eFG%</a>), turnovers (TOV%, turnovers per possession), offensive rebounding (ORB%, the share of a team's missed shots it rebounds) and free throws (FT rate, free throws made per field goal attempt). Game pages show them with possessions, <a href='#glossary-section-O'>offensive</a> and <a href='#glossary-section-D'>defensive rating</a> and pace.",
+            "source": "https://www.basketball-reference.com/about/factors.html"
+        },
+        {
+            "term": "FG% vs league (basketball shot charts)",
+            "definition": "On the shot charts, signature and zone views, each spot's colour is its field goal percentage minus the league's from the same spot that season: red above league, blue below, saturating at 15 points. The colour is shrunk toward the league rate with a 25-attempt prior, so a 2-for-2 square is not the hottest spot on the floor; the tooltips show the raw makes and attempts.",
+            "source": ""
+        }
+    ],
+    "O": [
+        {
+            "term": "Offensive rating (ORtg, basketball)",
+            "definition": "Points a team scored per 100 possessions in a game. Possessions are estimated from the box score: FGA - ORB + TOV + 0.44 &times; FTA.",
+            "source": "https://www.basketball-reference.com/about/ratings.html"
+        }
+    ],
+    "P": [
+        {
+            "term": "Pace (basketball)",
+            "definition": "Possessions per 48 minutes (40 in college and the WNBA), the average of the two teams' estimates: how fast a game was played, separate from how well.",
+            "source": ""
+        },
+        {
+            "term": "PIE (Player Impact Estimate, basketball)",
+            "definition": "The NBA's share-of-game-events measure: a player's points, rebounds, assists, steals, blocks and shooting, less misses, fouls and turnovers, over the same totals for everyone in the game. Shown for the NBA and WNBA from stats.nba.com and stats.wnba.com; college pages leave it out because the box-score formula does not reproduce it.",
+            "source": "https://www.nba.com/stats/help/glossary#pie"
+        }
+    ],
+    "S": [
+        {
+            "term": "Shooting signature (basketball)",
+            "definition": "A player's or team's field goal percentage by distance from the rim, foot by foot, smoothed, against the league's dashed line. The ribbon's width is the share of shots taken from that distance and its colour is <a href='#glossary-section-F'>FG% vs league</a>. Hovering a distance marks it on the shot chart and the distance bars.",
+            "source": "https://github.com/saiemgilani/game-on-paper-app"
+        },
+        {
+            "term": "Square bins (basketball shot charts)",
+            "definition": "The shot chart groups attempts into 2.5 ft squares laid on a grid centred on the rim, so the rim is a square's centre. A square's size is its attempts (square root, capped at the busiest 5%) and its colour is <a href='#glossary-section-F'>FG% vs league</a>; the league's squares come from the same season's shots. Click a square to pin its distance on the other charts.",
+            "source": ""
+        }
+    ],
+    "T": [
+        {
+            "term": "True shooting percentage (TS%, basketball)",
+            "definition": "PTS / (2 &times; (FGA + 0.44 &times; FTA)): scoring efficiency counting twos, threes and free throws together.",
+            "source": "https://www.basketball-reference.com/about/glossary.html"
+        }
+    ],
+    "U": [
+        {
+            "term": "Usage rate (USG%, basketball)",
+            "definition": "The share of a team's possessions a player ended with a field goal attempt, free throw attempt or turnover while on the floor. NBA and WNBA figures come from the league's stats site; college figures are box-score usage from ESPN box scores.",
+            "source": "https://www.basketball-reference.com/about/glossary.html"
+        }
+    ]
+}

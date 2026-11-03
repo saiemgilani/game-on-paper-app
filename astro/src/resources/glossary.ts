@@ -1,5 +1,6 @@
 // import logger from '../../utils/logger.js';
 import glossaryRaw from '../static/glossary.json' with { type: 'json' };
+import basketballRaw from '../static/glossary-basketball.json' with { type: 'json' };
 import { METRIC_YEAR } from '../utils/constants';
 import { FLAGS } from '../utils/features';
 
@@ -33,7 +34,10 @@ export function generateGlossaryItems(): Glossary {
     try {
         console.info(`Loading glossary...`)
         ALPHABET.forEach(letter => {
-            let records = (glossaryRaw as Record<string, GlossaryEntry[]>)[letter];
+            // basketball terms join once the NBA pages are public; until then the prerendered glossary is football's alone
+            const basketball = FLAGS['nba'] === 'on' ? ((basketballRaw as Record<string, GlossaryEntry[]>)[letter] ?? []) : [];
+            const football = (glossaryRaw as Record<string, GlossaryEntry[]>)[letter];
+            let records = football || basketball.length ? [...(football ?? []), ...basketball] : undefined;
             if (records) {
                 // Leaderboard links in the copy are written as /year/{season}/... so
                 // the JSON never goes stale; resolve to the latest finished season here.
