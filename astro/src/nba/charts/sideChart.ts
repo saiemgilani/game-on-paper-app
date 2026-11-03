@@ -1,8 +1,7 @@
 import { max } from "d3-array";
 import { scaleLinear } from "d3-scale";
 import { select } from "d3-selection";
-import { emitDistance, onDistance } from "./link";
-import { binCursor, inBin } from "./distanceBars";
+import { binCursor, emitDistance, inBin, onDistance } from "./link";
 import type { SideBin, Split } from "../data/aggregate";
 import { DEFAULT_WIDTH } from "./court";
 import type { BarMetric } from "./distanceBars";
