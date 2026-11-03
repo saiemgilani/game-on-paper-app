@@ -64,7 +64,8 @@ describe('prepareBasketballGame: admin + source-switch', () => {
         const { prepareBasketballGame } = await import('../../src/routes/basketball/game');
         const r: any = await prepareBasketballGame(fakeAstro(league, '?source=live', ADMIN).astro, league);
         expect(sched).not.toHaveBeenCalled(); expect(rows).not.toHaveBeenCalled();
-        expect(proc.mock.calls).toEqual(expect.arrayContaining([[ID, 86400, league, 'live'], [ID, 86400, league]]));
+        // the source request holds a minute at most (a failover must not stick for a day); the ESPN side is the public request
+        expect(proc.mock.calls).toEqual(expect.arrayContaining([[ID, 60, league, 'live'], [ID, 86400, league]]));
         expect(sources).toHaveBeenCalledWith(ID, league);
         expect(r.game.provenance.source).toBe('live');
         expect(r.sourceTools.selected).toBe('live');
@@ -76,8 +77,17 @@ describe('prepareBasketballGame: admin + source-switch', () => {
         const { prepareBasketballGame } = await import('../../src/routes/basketball/game');
         const r: any = await prepareBasketballGame(fakeAstro('nba', '', ADMIN).astro, 'nba');
         expect(r.game.source).toBe('data_api');
-        expect(r.sourceTools).toEqual({ sources: ['espn'], selected: 'espn', espn: null });
+        expect(r.sourceTools).toEqual({ sources: ['espn'], selected: null, espn: null });
         expect(proc).not.toHaveBeenCalled();
+    });
+    test('?source=espn on an ingested final is the ESPN processor, not the warehouse, with nothing to compare', async () => {
+        espn.mockResolvedValueOnce(finalPage()); procBySource();
+        const { prepareBasketballGame } = await import('../../src/routes/basketball/game');
+        const r: any = await prepareBasketballGame(fakeAstro('nba', '?source=espn', ADMIN).astro, 'nba');
+        expect(sched).not.toHaveBeenCalled();
+        expect(proc.mock.calls).toEqual([[ID, 60, 'nba', 'espn']]);
+        expect(r.game.source).toBe('processor');
+        expect(r.sourceTools).toEqual({ sources: ['espn'], selected: 'espn', espn: null });
     });
     test('a registry that cannot answer is ESPN alone; a failed ESPN side is an empty column, not a failed page', async () => {
         espn.mockResolvedValueOnce(finalPage());
@@ -114,9 +124,11 @@ describe('the tool on the page', () => {
         expect(html).not.toContain('source-compare');
     });
     test('ESPN only (today\'s registry): the select and provenance, no compare', async () => {
-        const html = await render(ADMIN, '', { sources: ['espn'], selected: 'espn', espn: null });
+        const html = await render(ADMIN, '', { sources: ['espn'], selected: null, espn: null });
         expect(html).toContain('data-admin-game-tools');
-        expect(html).toContain('Source: espn');
+        // default (the public render) is selected; ESPN asks for the ESPN processor explicitly
+        expect(html).toMatch(/<option value="\/nba\/game\/401766458" selected[^>]*>Source: default/);
+        expect(html).toMatch(/<option value="\/nba\/game\/401766458\?source=espn"[^>]*>Source: espn/);
         expect(html).not.toContain('Source: live');
         expect(html).not.toContain('data-admin-source-compare');
     });
@@ -124,8 +136,10 @@ describe('the tool on the page', () => {
         const { fromProcessor } = await import('../../src/resources/nbaGame');
         const html = await render(ADMIN, '?source=live', { sources: ['live', 'espn'], selected: 'live', espn: fromProcessor(procJson(), 'nba') }, mockLive());
         expect(html).toContain('Source: live');
-        // the ESPN option clears ?source=, so the select lands on the public URL's processing
-        expect(html).toMatch(/<option value="\/nba\/game\/401766458"[^>]*>Source: espn/);
+        expect(html).toMatch(/<option value="\/nba\/game\/401766458\?source=live" selected[^>]*>Source: live/);
+        expect(html).toMatch(/<option value="\/nba\/game\/401766458\?source=espn"[^>]*>Source: espn/);
+        // default clears ?source=: the public render
+        expect(html).toMatch(/<option value="\/nba\/game\/401766458"[^>]*>Source: default/);
         expect(html).toContain('Served: live');
         expect(html).toContain('contract abcdef1');
         expect(html).toContain('data-admin-source-compare');

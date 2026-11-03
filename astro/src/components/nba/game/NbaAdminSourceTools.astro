@@ -17,7 +17,7 @@ interface Props { game: NbaGame; tools: BasketballSourceTools }
 const { game, tools } = Astro.props;
 const admin = Astro.locals.adminAuthed === true;
 const provenance = game.provenance;
-const comparison = admin && tools.selected !== 'espn' ? compareBasketballSources(game, tools.espn) : null;
+const comparison = admin && tools.selected && tools.selected !== 'espn' ? compareBasketballSources(game, tools.espn) : null;
 const cell = (value: number | null, fixed: number, percent?: boolean) =>
     value === null ? '' : `${roundNumber(value, fixed, fixed)}${percent ? '%' : ''}`;
 ---
@@ -26,8 +26,10 @@ const cell = (value: number | null, fixed: number, percent?: boolean) =>
         <span class="text-muted text-small">Admin</span>
         <select class="form-select form-select-sm w-auto" aria-label="Choose the processing source"
                 onchange="window.location.href = this.value">
+            {/* default clears ?source=: the public render (the Data API on an ingested final); every registry entry, ESPN included, is the processor from that feed */}
+            <option value={adminToolsHref(Astro.url, { source: null })} selected={tools.selected === null}>Source: default</option>
             {tools.sources.map((name) => (
-                <option value={adminToolsHref(Astro.url, { source: name === 'espn' ? null : name })}
+                <option value={adminToolsHref(Astro.url, { source: name })}
                         selected={tools.selected === name}>Source: {name}</option>
             ))}
         </select>

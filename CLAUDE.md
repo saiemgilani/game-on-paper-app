@@ -209,8 +209,9 @@ they are written once and an admin can flip between the twins from either side.
 The basketball game pages (nba/wnba/mbb/wbb) have the Source control only, under
 the same flag and admin session: `routes/basketball/game.ts` reads `?source=`,
 skips the Data API for that render (the warehouse is ESPN's play-by-play) and
-hands `components/nba/game/NbaAdminSourceTools.astro` the registry plus, for a
-non-ESPN source, the ESPN processor payload; `compareBasketballSources`
+hands `components/nba/game/NbaAdminSourceTools.astro` the registry (its select adds a
+`default` option that clears `?source=`, the public render) plus, for a non-ESPN
+source, the ESPN processor payload; a source request is held a minute at most; `compareBasketballSources`
 (`utils/sourceCompare.ts`) sets them side by side on score, team box, four-factor
 rates and play count.
 

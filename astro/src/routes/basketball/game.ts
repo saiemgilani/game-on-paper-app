@@ -18,8 +18,8 @@ import { setCache, uncacheable } from './cache';
 export interface BasketballSourceTools {
     /** the contract's registry for the league, ESPN first, from GET /<league>/<id>/sources; ['espn'] when it cannot answer */
     sources: string[]
-    /** the `?source=` the page was asked for; 'espn' without one */
-    selected: string
+    /** the `?source=` the page was asked for; null without one (the public render: the Data API for an ingested final) */
+    selected: string | null
     /** the ESPN processor payload to compare against, only when another source was selected; null when it failed */
     espn: NbaGame | null
 }
@@ -32,10 +32,10 @@ export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { 
  * failed ESPN side an empty column, never a failed page.
  */
 async function sourceTools(id: string, league: BasketballLeague, cacheTTL: number, source: string | undefined): Promise<BasketballSourceTools> {
-    const selected = source ?? 'espn';
+    const selected = source ?? null;
     const [registry, espn] = await Promise.all([
         retrieveGameSources(id, league),
-        selected === 'espn' ? null : retrieveNbaProcessedGame(id, cacheTTL, league).then((j) => fromProcessor(j, league)).catch(() => null),
+        !selected || selected === 'espn' ? null : retrieveNbaProcessedGame(id, cacheTTL, league).then((j) => fromProcessor(j, league)).catch(() => null),
     ]);
     return { sources: registry?.sources ?? ['espn'], selected, espn };
 }
@@ -143,7 +143,8 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     try {
         const ttl = config.maxAge || 30;
         const [payload, tools] = await Promise.all([
-            retrieveNbaProcessedGame(id, ttl, league, source),
+            // an admin source request holds a minute at most: a failed-over (ESPN) answer must not outlive the outage by a day
+            retrieveNbaProcessedGame(id, source ? Math.min(ttl, 60) : ttl, league, source),
             sourceSwitch ? sourceTools(id, league, ttl, source) : undefined,
         ]);
         const game = fromProcessor(payload, league);

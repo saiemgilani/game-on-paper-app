@@ -189,9 +189,11 @@ const BOX_ROWS: [string, keyof NbaTeamBox][] = [
     ['FGM', 'field_goals_made'], ['FGA', 'field_goals_attempted'],
     ['3PM', 'three_point_field_goals_made'], ['3PA', 'three_point_field_goals_attempted'],
     ['FTM', 'free_throws_made'], ['FTA', 'free_throws_attempted'],
-    ['Offensive rebounds', 'offensive_rebounds'], ['Defensive rebounds', 'defensive_rebounds'],
+    ['Offensive rebounds', 'offensive_rebounds'], ['Defensive rebounds', 'defensive_rebounds'], ['Total rebounds', 'total_rebounds'],
     ['Assists', 'assists'], ['Steals', 'steals'], ['Blocks', 'blocks'],
     ['Turnovers (total)', 'total_turnovers'], ['Fouls', 'fouls'],
+    // strings in the box (NbaTeamBox renders them as given); finiteNumber reads them
+    ['Fast-break points', 'fast_break_points'], ['Points in the paint', 'points_in_paint'], ['Largest lead', 'largest_lead'],
 ];
 /** label, key, decimals, and whether it is a fraction rendered as a percentage (NbaFourFactors' formats) */
 const RATE_ROWS: [string, keyof NbaTeamRates, number, boolean][] = [
