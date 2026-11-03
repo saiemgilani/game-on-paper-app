@@ -19,8 +19,37 @@ export const PRO_TOKEN_TTL_S = 15 * 60;
 export const PRO_TIERS = ['analyst', 'pro', 'program', 'agency'] as const;
 export type ProTier = typeof PRO_TIERS[number];
 
+/** Bought on top of a tier (spec §3): the Portal Board add-on, Coach Dossiers. */
+export const PRO_ADDONS = ['portal', 'dossier'] as const;
+export type ProAddon = typeof PRO_ADDONS[number];
+
 /** `pro:ent:<lowercased email>` in the SESSION KV. `team` is a Program license's school. */
-export interface ProEntitlement { tier: ProTier; expires: string; team?: string }
+export interface ProEntitlement { tier: ProTier; expires: string; team?: string; addons?: ProAddon[] }
+
+/**
+ * What a /pro path needs beyond a live entitlement (gop-pro spec v2 §3): the Portal Board
+ * and its files and saved boards are the add-on; Scout Pack files are Pro seat / Program;
+ * Coach Dossiers are bought separately. Everything else (profiles, search, methodology)
+ * is open to any tier. null = no extra requirement.
+ */
+export function proRequirement(path: string): { tiers?: ProTier[]; addon?: ProAddon } | null {
+    if (/^\/pro\/(portal|board)(\/|$)/.test(path) || /^\/pro\/file\/pro\/\d{4}\/portal\//.test(path)) return { addon: 'portal' };
+    if (/^\/pro\/file\/pro\/\d{4}\/teams\//.test(path)) return { tiers: ['pro', 'program'] };
+    if (/^\/pro\/file\/pro\/coaches\//.test(path)) return { addon: 'dossier' };
+    return null;
+}
+
+export function proAllows(viewer: ProEntitlement, path: string): boolean {
+    const need = proRequirement(path);
+    if (!need) return true;
+    if (need.tiers && !need.tiers.includes(viewer.tier)) return false;
+    return !need.addon || (viewer.addons ?? []).includes(need.addon);
+}
+
+/** Downloads per viewer: Analyst gets 10 PDFs a month (spec §3); everyone is capped per day
+ * so a subscription can't be used to mirror the whole bucket (PFF-derived data). */
+export const PRO_ANALYST_PDFS_PER_MONTH = 10;
+export const PRO_FILES_PER_DAY = 150;
 /** What the middleware puts on `locals.pro` for an entitled viewer. */
 export interface ProViewer extends ProEntitlement { email: string }
 
@@ -38,7 +67,10 @@ export function activeEntitlement(raw: unknown, now = Date.now()): ProEntitlemen
     const e = raw as ProEntitlement;
     if (!(PRO_TIERS as readonly string[]).includes(e.tier)) return null;
     const exp = Date.parse(e.expires);
-    return Number.isFinite(exp) && exp > now ? e : null;
+    if (!Number.isFinite(exp) || exp <= now) return null;
+    // unknown add-on names are dropped, never trusted
+    const addons = (Array.isArray(e.addons) ? e.addons : []).filter((a) => (PRO_ADDONS as readonly string[]).includes(a));
+    return { ...e, addons };
 }
 
 // base64url, so an address's dots and plus signs cannot collide with the

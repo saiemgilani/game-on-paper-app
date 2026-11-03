@@ -8,7 +8,7 @@ import {
   PREVIEW_COOKIE, PREVIEW_LINK_PARAM, PREVIEW_PATH_PREFIX, keepPreviewSurface, previewSetCookie,
   readCookie, verifyPreviewCookie, verifyPreviewLink,
 } from './utils/preview';
-import { PRO_COOKIE, isOpenProPath, isProPath, verifyProCookie } from './utils/pro';
+import { PRO_COOKIE, isOpenProPath, isProPath, proAllows, verifyProCookie } from './utils/pro';
 import { readEntitlement } from './resources/pro';
 import { ADMIN_COOKIE, verifyAdminCookie } from './utils/adminSession';
 import { applyAdminView } from './utils/adminView';
@@ -164,9 +164,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
       readCookie(context.request.headers.get('cookie'), PRO_COOKIE), getSecret('PRO_COOKIE_SECRET'));
     const ent = email ? await readEntitlement(email) : null;
     context.locals.pro = ent && email ? { ...ent, email } : null;
-    if (!context.locals.pro && !isOpenProPath(effectivePath)) {
+    // No entitlement, or one whose tier/add-ons don't cover this path (utils/pro.ts proRequirement).
+    const allowed = context.locals.pro && proAllows(context.locals.pro, effectivePath);
+    if (!allowed && !isOpenProPath(effectivePath)) {
       const headers = { 'Cache-Control': 'no-store' };
-      if (effectivePath.startsWith('/pro/file/')) return new Response('Forbidden', { status: 403, headers });
+      if (effectivePath.startsWith('/pro/file/') || effectivePath === '/pro/board') {
+        return new Response('Forbidden', { status: 403, headers });
+      }
       return new Response(null, { status: 302, headers: { ...headers, Location: keepPreviewSurface('/pricing', url.pathname) } });
     }
   }

@@ -3,7 +3,7 @@ export const prerender = false;
 
 import GenericPage from "../../layouts/GenericPage.astro";
 import { QA_WINDOWS } from "../../utils/adminQa";
-import { PRO_TIERS } from "../../utils/pro";
+import { PRO_ADDONS, PRO_TIERS } from "../../utils/pro";
 
 // the Pro entitlement form's last result, handed back by its 303
 const proStatus = Astro.url.searchParams.get("pro");
@@ -65,6 +65,7 @@ const subtitle = "Operational dashboards for Game on Paper";
         </select>
         <input class="form-control form-control-sm w-auto" name="expires" type="date" title="Access runs to the end of this day, UTC" />
         <input class="form-control form-control-sm w-auto" name="team" placeholder="team (Program only)" size="18" />
+        {PRO_ADDONS.map((a) => <label class="small"><input type="checkbox" name="addons" value={a} /> {a}</label>)}
         <button class="btn btn-sm btn-outline-primary" type="submit" name="action" value="save">Add / extend</button>
         <button class="btn btn-sm btn-outline-danger" type="submit" name="action" value="remove" formnovalidate>Remove</button>
         {proStatus && <span class="small admin-muted" id="pro-entitlement-result">{proStatus}</span>}

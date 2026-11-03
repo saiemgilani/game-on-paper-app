@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { isProKey, proFile } from '../../../resources/pro';
+import { claimDownload, isProKey, proFile } from '../../../resources/pro';
 
 export const prerender = false;
 
@@ -13,6 +13,9 @@ export const GET: APIRoute = async ({ params, locals }) => {
     const key = params.key ?? '';
     const file = isProKey(key) ? await proFile(key) : null;
     if (!file) return new Response('Not found', { status: 404, headers });
+    if (!(await claimDownload(locals.pro, key))) {
+        return new Response('Download limit reached for today (or this month on Analyst). See /pricing.', { status: 429, headers });
+    }
     return new Response(file.body, {
         headers: {
             ...headers,

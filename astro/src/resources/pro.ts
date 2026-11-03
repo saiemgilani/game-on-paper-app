@@ -15,8 +15,9 @@
 import { env } from 'cloudflare:workers';
 import { CURRENT_YEAR } from '../utils/constants';
 import {
-    activeEntitlement, digestEntrants, digestText, parseBoardFilters, PRO_TOKEN_TTL_S,
-    type BoardEntrant, type BoardFilters, type ProEntitlement,
+    activeEntitlement, digestEntrants, digestText, parseBoardFilters, PRO_ANALYST_PDFS_PER_MONTH,
+    PRO_FILES_PER_DAY, PRO_TOKEN_TTL_S, type BoardEntrant, type BoardFilters, type ProEntitlement,
+    type ProViewer,
 } from '../utils/pro';
 
 /** The season every Pro route reads: the site's current CFB season. */
@@ -66,6 +67,25 @@ export async function redeemLoginToken(token: string | null | undefined): Promis
     if (!email) return null;
     await kv().delete(key);
     return email;
+}
+
+/**
+ * Count one file download against the viewer's quotas; false = over quota (nothing counted).
+ * Daily cap for everyone, plus Analyst's 10 PDFs a month. ponytail: KV read-then-write is not
+ * atomic, so a burst of parallel requests can overshoot by a few -- a cap, not a meter.
+ */
+export async function claimDownload(viewer: ProViewer, key: string, now = new Date()): Promise<boolean> {
+    const day = now.toISOString().slice(0, 10);
+    const dayKey = `pro:dl:${viewer.email}:${day}`;
+    const monthKey = `pro:dlpdf:${viewer.email}:${day.slice(0, 7)}`;
+    const nDay = Number((await kv().get(dayKey)) ?? 0);
+    if (nDay >= PRO_FILES_PER_DAY) return false;
+    const metered = viewer.tier === 'analyst' && key.endsWith('.pdf');
+    const nMonth = metered ? Number((await kv().get(monthKey)) ?? 0) : 0;
+    if (metered && nMonth >= PRO_ANALYST_PDFS_PER_MONTH) return false;
+    await kv().put(dayKey, String(nDay + 1), { expirationTtl: 2 * 86_400 });
+    if (metered) await kv().put(monthKey, String(nMonth + 1), { expirationTtl: 40 * 86_400 });
+    return true;
 }
 
 export async function readBoard(email: string): Promise<string[]> {

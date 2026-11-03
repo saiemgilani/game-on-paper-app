@@ -18,19 +18,21 @@ import { onRequest } from '../src/middleware';
 import { mintPreviewCookie, PREVIEW_COOKIE } from '../src/utils/preview';
 import {
     describeFilters, digestEntrants, digestText, filterBoard, formatPffValue, formatProDelta, formatProMetric,
-    mintProCookie, parseBoardFilters, PRO_COOKIE, PRO_TOKEN_TTL_S, sortBoard, verifyProCookie, type BoardEntrant,
+    mintProCookie, parseBoardFilters, PRO_COOKIE, PRO_TOKEN_TTL_S, proAllows, sortBoard, verifyProCookie, type BoardEntrant,
 } from '../src/utils/pro';
-import { claimLoginSend, createLoginToken, isProKey, redeemLoginToken, runProDigest } from '../src/resources/pro';
+import { claimDownload, claimLoginSend, createLoginToken, isProKey, redeemLoginToken, runProDigest } from '../src/resources/pro';
 
 const board: { entrants: BoardEntrant[] } = JSON.parse(readFileSync(new URL('./fixtures/pro/2026/portal/board.json', import.meta.url)).toString());
 const DAY = 86_400_000;
-const live = { tier: 'pro' as const, expires: new Date(Date.now() + 30 * DAY).toISOString() };
+const live = { tier: 'pro' as const, expires: new Date(Date.now() + 30 * DAY).toISOString(), addons: ['portal', 'dossier'] };
+const analyst = { tier: 'analyst' as const, expires: new Date(Date.now() + 30 * DAY).toISOString() };
 const lapsed = { tier: 'analyst', expires: new Date(Date.now() - DAY).toISOString() };
 
 beforeEach(async () => {
     SESSION.m.clear();
     await SESSION.put('pro:ent:coach@example.edu', JSON.stringify(live));
     await SESSION.put('pro:ent:old@example.edu', JSON.stringify(lapsed));
+    await SESSION.put('pro:ent:fan@example.com', JSON.stringify(analyst));
 });
 afterEach(() => vi.useRealTimers());
 
@@ -326,4 +328,46 @@ test('sign-in emails are limited to one per address per minute', async () => {
     expect(await claimLoginSend('coach@example.edu')).toBe(true);
     expect(await claimLoginSend('coach@example.edu')).toBe(false);
     expect(await claimLoginSend('other@example.edu')).toBe(true);
+});
+
+describe('tiers and add-ons (spec v2 section 3)', () => {
+    test('what each entitlement unlocks', () => {
+        const base = { expires: '2099-01-01T00:00:00Z' };
+        const a = { ...base, tier: 'analyst' as const };
+        const pro = { ...base, tier: 'pro' as const };
+        expect(proAllows(a, '/pro/players/1')).toBe(true);
+        expect(proAllows(a, '/pro/file/pro/2026/players/1.pdf')).toBe(true);
+        expect(proAllows(a, '/pro/portal')).toBe(false);
+        expect(proAllows(a, '/pro/board')).toBe(false);
+        expect(proAllows(a, '/pro/file/pro/2025/portal/board.csv')).toBe(false);
+        expect(proAllows({ ...a, addons: ['portal'] }, '/pro/portal')).toBe(true);
+        expect(proAllows(a, '/pro/file/pro/2026/teams/52.pdf')).toBe(false);
+        expect(proAllows(pro, '/pro/file/pro/2026/teams/52.pdf')).toBe(true);
+        expect(proAllows(pro, '/pro/file/pro/coaches/kirk-ferentz.pdf')).toBe(false);
+        expect(proAllows({ ...pro, addons: ['dossier'] }, '/pro/file/pro/coaches/kirk-ferentz.pdf')).toBe(true);
+    });
+
+    test('the middleware enforces them: pages to /pricing, files and board posts 403', async () => {
+        const page = await run('/pro/portal', { preview: true, email: 'fan@example.com' });
+        expect(page.res.status).toBe(302);
+        expect(page.res.headers.get('Location')).toContain('/pricing');
+        expect((await run('/pro/file/pro/2025/portal/board.csv', { preview: true, email: 'fan@example.com' })).res.status).toBe(403);
+        expect((await run('/pro/players/1', { preview: true, email: 'fan@example.com' })).rewrittenTo).not.toBe('never-called');
+        expect((await run('/pro/portal', { preview: true, email: 'coach@example.edu' })).rewrittenTo).not.toBe('never-called');
+    });
+
+    test('unknown add-on names in KV are ignored', async () => {
+        await SESSION.put('pro:ent:x@example.com', JSON.stringify({ ...analyst, addons: ['portal-free', 'everything'] }));
+        expect((await run('/pro/portal', { preview: true, email: 'x@example.com' })).res.status).toBe(302);
+    });
+
+    test('Analyst gets 10 PDFs a month; CSVs are not metered; everyone has a daily cap', async () => {
+        const fan = { ...analyst, email: 'fan@example.com' };
+        for (let i = 0; i < 10; i++) expect(await claimDownload(fan, `pro/2026/players/${i}.pdf`)).toBe(true);
+        expect(await claimDownload(fan, 'pro/2026/players/11.pdf')).toBe(false);
+        expect(await claimDownload(fan, 'pro/2026/players/11.json')).toBe(true);
+        const coach = { ...live, email: 'coach@example.edu' } as any;
+        await SESSION.put(`pro:dl:coach@example.edu:${new Date().toISOString().slice(0, 10)}`, '150');
+        expect(await claimDownload(coach, 'pro/2026/players/1.pdf')).toBe(false);
+    });
 });

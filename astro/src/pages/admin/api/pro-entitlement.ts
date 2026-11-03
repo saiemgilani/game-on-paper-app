@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { isEmail, normalizeEmail, PRO_TIERS, type ProTier } from '../../../utils/pro';
+import { isEmail, normalizeEmail, PRO_ADDONS, PRO_TIERS, type ProAddon, type ProTier } from '../../../utils/pro';
 import { deleteEntitlement, writeEntitlement } from '../../../resources/pro';
 import { auditAdmin } from '../../../utils/telemetry';
 
@@ -38,7 +38,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
         return back('error: tier and an expiry date are required');
     }
     const team = field('team').slice(0, 100);
-    await writeEntitlement(email, { tier, expires: `${day}T23:59:59Z`, ...(team ? { team } : {}) });
-    auditAdmin(locals, 'pro-entitlement', `${email} ${tier} to ${day}${team ? ` (${team})` : ''}`, true);
+    const addons = (form?.getAll('addons') ?? []).map(String).filter((a): a is ProAddon => (PRO_ADDONS as readonly string[]).includes(a));
+    await writeEntitlement(email, { tier, expires: `${day}T23:59:59Z`, ...(team ? { team } : {}), ...(addons.length ? { addons } : {}) });
+    auditAdmin(locals, 'pro-entitlement', `${email} ${tier}${addons.length ? `+${addons.join('+')}` : ''} to ${day}${team ? ` (${team})` : ''}`, true);
     return back(`saved ${email}: ${tier} to ${day}`);
 };
