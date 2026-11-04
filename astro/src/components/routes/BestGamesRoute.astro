@@ -80,8 +80,7 @@ const shownIds = [...new Set(games.flatMap((g) => [g.home.id, g.away.id]).filter
         <table class="table table-sm align-middle table-fix-first-col" id="best-games-table">
           <thead>
             <tr>
-              <th class="text-center" title="Place on this board">#</th>
-              <th>Game</th>
+              <th title="Place on this board and the game">Game</th>
               <th class="text-center">Date</th>
               <th class="text-center" title="Game excitement index: the win probability's total movement, scaled to a game of average length">GEI</th>
               <th class="text-center" title="How often the leader changed (a tie is not a lead)">Lead Changes</th>
@@ -92,8 +91,9 @@ const shownIds = [...new Set(games.flatMap((g) => [g.home.id, g.away.id]).filter
           <tbody>
             {games.map((g, i) => (
               <tr>
-                <td class="text-center text-muted numeral">{i + 1}</td>
                 <td class="text-left text-nowrap">
+                  {/* the place rides in the sticky first column with the game, as the standings' seed does */}
+                  <span class="text-muted numeral me-1">{i + 1}</span>
                   <a href={gameHref(league, g.gameId)}>
                     {[g.away, g.home].map((t, j) => (
                       <Fragment>
