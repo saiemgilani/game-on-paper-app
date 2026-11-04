@@ -6,6 +6,7 @@ import math
 from typing import Any
 
 import polars as pl
+from sportsdataverse.nba.nba_game_page import game_excitement
 
 PLAY_COLUMNS = [
     "id", "sequence_number", "game_play_number", "period_number", "clock_display_value",
@@ -87,4 +88,9 @@ def build_payload(game_id: int, final: dict, frames: dict, regulation_periods: i
             "away": _rows(players.filter(pl.col("team_id") == int(away["id"]))),
         },
         "plays": _rows(frames["pbp"], PLAY_COLUMNS),
+        # sdv-py BB-D28 on the same WP series as `plays`: {gei, lead_changes, max_swing_pts, completed}.
+        # Additive; the page reads it only under the 'bball-gei' flag (NbaWinProbability.astro).
+        "excitement": game_excitement(
+            frames["pbp"], league=frames["league"], regulation_periods=frames["regulation_periods"]
+        ),
     }

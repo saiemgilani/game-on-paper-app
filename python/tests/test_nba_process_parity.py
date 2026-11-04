@@ -1,5 +1,5 @@
 # python/tests/test_nba_process_parity.py
-"""PR 0 gate: /nba/401585607/process returns the same JSON as on 81dbaf1e, plus the additive regulation_periods key."""
+"""PR 0 gate: /nba/401585607/process returns the same JSON as on 81dbaf1e, plus the additive regulation_periods and excitement keys."""
 
 import base64
 import gzip
@@ -10,7 +10,7 @@ import pathlib
 FIX = pathlib.Path(__file__).parent / "fixtures"
 SUMMARY = FIX / "nba_summary_401585607.json.gz"
 SNAP = FIX / "nba_process_401585607.payload.json"
-ADDED_IN_PR0 = {"regulation_periods"}
+ADDED_IN_PR0 = {"regulation_periods", "excitement"}  # excitement: BB-G29, checked in test_basketball_route
 
 
 class _Resp:

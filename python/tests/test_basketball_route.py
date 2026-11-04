@@ -55,6 +55,18 @@ def test_nba_payload_carries_regulation_from_the_summary(monkeypatch):
     assert row["target"] == "espn_nba_pbp"
 
 
+def test_nba_payload_carries_the_game_excitement_of_its_own_wp(monkeypatch):
+    body = _app(monkeypatch, _summary()).app.test_client().get("/nba/401585607/process", headers=AUTH).get_json()
+    ex = body["excitement"]
+    assert set(ex) == {"gei", "lead_changes", "max_swing_pts", "completed"}
+    assert ex["completed"] is True and ex["gei"] > 0  # a final: the last play swings to the result
+    # the leader flips the payload's own plays show (a tie is not a lead)
+    signs = [s for s in ((p["home_score"] or 0) - (p["away_score"] or 0) for p in body["plays"]) if s]
+    assert ex["lead_changes"] == sum((a > 0) != (b > 0) for a, b in zip(signs, signs[1:]))
+    # the biggest swing is at least every play's own WP change
+    assert ex["max_swing_pts"] >= 100 * max(abs(p["wp_delta"] or 0) for p in body["plays"]) - 1e-9
+
+
 def test_regulation_is_null_when_the_summary_has_no_format(monkeypatch):
     summary = _summary()
     del summary["format"]

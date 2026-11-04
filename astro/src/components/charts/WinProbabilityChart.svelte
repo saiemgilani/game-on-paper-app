@@ -8,7 +8,7 @@ import { GradientFillLineController, chartGridLines } from '../../resources/char
 import { wpMarkerGate, wpMarkerTitle } from '../../basketball/periods';
 import { exportTime, wpExportFooter } from '../../utils/chartExport'
 
-const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null, showOdds = true, allPeriodMarkers = false, regulationPeriods = 4, periodKind = 'quarter', season = null, exportMeta = null } = $props()
+const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, showGei = false, spanShade = null, colors = null, showOdds = true, allPeriodMarkers = false, regulationPeriods = 4, periodKind = 'quarter', season = null, exportMeta = null } = $props()
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
 
@@ -485,6 +485,9 @@ if (document.readyState !== 'loading') {
             <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/" title="Measures 'game excitement' by absolute changes in win probability. May not match eye-test in games with heavy favorites.">Game Excitement Index:</a> <span class={`${geiPctl.ramp_class} px-1`} title={geiTitle}>{ geiVal.toFixed(2) }</span> | 
             {/if}
             Odds: {printSpread()}, O/U {roundNumber(parseFloat(overUnder), 2, 1)}
+            {:else if showGei && !gameInProgress}
+            <!-- basketball ('bball-gei'): the GEI alone; no season percentiles to ramp it against yet -->
+            <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/" title="Measures 'game excitement' by absolute changes in win probability. May not match eye-test in games with heavy favorites.">Game Excitement Index:</a> <span class="px-1">{ geiVal.toFixed(2) }</span>
             {/if}
             {#if gameInProgress}
                 {#if (lastPlay.winProbability.before >= 0.5) }
@@ -494,7 +497,7 @@ if (document.readyState !== 'loading') {
                 {showOdds ? '| ' : ''}Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(awayTeam) : cleanAbbreviation(homeTeam)} {((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1)}%
                 {/if}
             {/if}
-            {(showOdds || gameInProgress) ? '| ' : ''}<a id="wp-download" download={`game-wp-${id}.png`} href="#">Download Chart</a>
+            {(showOdds || gameInProgress || showGei) ? '| ' : ''}<a id="wp-download" download={`game-wp-${id}.png`} href="#">Download Chart</a>
         </p>
     </div>
     <div class="w-100"  width="900" height="380" id="wp_container"><canvas id="wpChart"></canvas></div>
