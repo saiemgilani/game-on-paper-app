@@ -13,6 +13,7 @@ import { seasonLinesFromRows, seasonPlayerGamesFromRows } from '../../nba/adapte
 import { leaderBoards, type Boards, type LeaderWindow } from '../../nba/data/leaders';
 import { fmtDate } from '../../nba/format';
 import { retrieveLatestGameDate, retrieveSeasonPlayerGameRows, type PlayerGameRow } from '../../resources/nbaShots';
+import { isFeatureEnabled } from '../../utils/features';
 import { leaguePath, type BasketballLeague } from '../../utils/league';
 import { seasonCache, setCache, uncacheable } from './cache';
 import { readBasketballSeasonRows, readCoverageNote, resolveBasketballSeason } from './season';
@@ -31,6 +32,8 @@ export interface BasketballLeadersParams {
     windowNote?: string;
     /** Active shooters are measured from their own team's latest game (a restricted read: college). */
     activeByTeam?: true;
+    /** BB-G11 ('bball-rolling-movers'): the boards carry "declined"; absent with the flag off, so the page is today's. */
+    movers?: true;
 }
 
 export type BasketballLeadersPrep = { unavailable: true } | BasketballLeadersParams;
@@ -73,12 +76,14 @@ export async function prepareBasketballLeaders(Astro: AstroGlobal, league: Baske
     if (coverage === undefined) uncacheable(Astro);
     // D26: a restricted read builds only its windows and ranks "Most improved" against the season rows' line (the NBA/WNBA: {}, identical boards)
     const lr = BASKETBALL[league].leadersRead;
-    const opts = lr ? { windows: lr.windows, seasonLines: seasonLinesFromRows(players), activeByTeam: true } : {};
+    const movers = isFeatureEnabled('bball-rolling-movers', Astro.locals);
+    const opts = { ...(lr ? { windows: lr.windows, seasonLines: seasonLinesFromRows(players), activeByTeam: true } : {}), ...(movers ? { movers } : {}) };
     return {
         ...resolved,
         boards: placed.length ? leaderBoards(placed, ft?.statsTeamId ?? null, 15, BASKETBALL[league].leaderBars(season), opts) : null,
         ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
         ...(lr ? { activeByTeam: true as const } : {}),
+        ...(movers ? { movers: true as const } : {}),
         ...(lr && games.since ? { windows: lr.windows, windowNote: ` Windows count games from ${fmtDate(games.since)} on: the last ${lr.days} days of games.` } : {}),
     };
 }
