@@ -14,7 +14,7 @@ import { seasonLabelFor } from '../../basketball/config';
 import { gameHref, withParams } from '../../nba/links';
 
 interface Props { data: BestGamesParams }
-const { league, seasons, current, season, fallback, filter, teams, games, total, days } = Astro.props.data;
+const { league, seasons, current, season, fallback, filter, teams, games, matched, total, days } = Astro.props.data;
 const lp = (p: string) => leaguePath(league, p);
 const path = lp('/best-games');
 const label = seasonLabelFor(league, season);
@@ -38,7 +38,7 @@ const shownIds = [...new Set(games.flatMap((g) => [g.home.id, g.away.id]).filter
       <div class="col-12 d-flex flex-wrap align-items-center justify-content-between gap-2">
         <h1 class="fs-3 m-0">{title}</h1>
         {/* a GET form on the page's own path, so it stays on the uncacheable /preview surface; empty fields are left out of the URL */}
-        <form id="best-games-filters" method="get" action="" class="d-flex flex-wrap align-items-center gap-2" onsubmit="for (const e of this.elements) if (e.name && !e.value) e.disabled = true">
+        <form id="best-games-filters" method="get" action="" class="d-flex flex-wrap align-items-center gap-2" onsubmit="const off = [...this.elements].filter((e) => e.name && !e.value); off.forEach((e) => (e.disabled = true)); setTimeout(() => off.forEach((e) => (e.disabled = false)))">
           <label class="visually-hidden" for="best-games-season">Season</label>
           <select id="best-games-season" name="season" class="form-select form-select-sm w-auto" onchange="this.form.from.value = ''; this.form.to.value = ''; this.form.requestSubmit()">
             {[...seasons].reverse().map((s) => (<option value={s === current ? '' : String(s)} selected={s === season}>{seasonLabelFor(league, s)}</option>))}
@@ -63,13 +63,15 @@ const shownIds = [...new Set(games.flatMap((g) => [g.home.id, g.away.id]).filter
     {total === 0 && (
       <p class="text-muted" id="best-games-empty">There are no ranked games for {label}.</p>
     )}
-    {total > 0 && (
+    {matched > 0 && (
       <p class="small text-muted" id="best-games-scope">
-        The top {games.length === 1 ? 'game' : `${games.length} games`} of {total.toLocaleString()} completed{teamName ? ` involving ${teamName}` : ''}{filter.from || filter.to ? `, ${filter.from ? shortDay(filter.from) : 'the start'} to ${filter.to ? shortDay(filter.to) : 'the end'}` : ''}.
+        {filtered
+          ? `The top ${games.length} of ${matched.toLocaleString()} completed games${teamName ? ` involving ${teamName}` : ''}${filter.from || filter.to ? `, ${filter.from ? shortDay(filter.from) : 'the start'} to ${filter.to ? shortDay(filter.to) : 'the end'}` : ''} (${total.toLocaleString()} in the season).`
+          : `The top ${games.length} of ${total.toLocaleString()} completed games.`}
         {!fallback && season === current && seasons.includes(current - 1) && (<Fragment> Last season: <a href={withParams(path, { season: String(current - 1) })}>{seasonLabelFor(league, current - 1)}</a>.</Fragment>)}
       </p>
     )}
-    {total > 0 && games.length === 0 && (
+    {total > 0 && matched === 0 && (
       <p class="text-muted" id="best-games-none">No games match these filters.</p>
     )}
 

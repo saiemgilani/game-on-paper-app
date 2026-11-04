@@ -58,10 +58,9 @@ export function joinBestGames(excitement: GameExcitementRow[], schedule: BestGam
 
 export const isDay = (s: string | null | undefined): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
 
-export function filterBestGames(games: BestGame[], f: BestGamesFilter, size = BOARD_SIZE): BestGame[] {
-    return games
-        .filter((g) => (!f.from || g.date >= f.from) && (!f.to || g.date <= f.to) && (!f.team || g.home.id === f.team || g.away.id === f.team))
-        .slice(0, size);
+/** The games in the day range (inclusive) that the team played, in board order. */
+export function filterBestGames(games: BestGame[], f: BestGamesFilter): BestGame[] {
+    return games.filter((g) => (!f.from || g.date >= f.from) && (!f.to || g.date <= f.to) && (!f.team || g.home.id === f.team || g.away.id === f.team));
 }
 
 /** Every team that played a ranked game, by name: the team select's options. */

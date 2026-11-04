@@ -6,8 +6,10 @@
  */
 import type { AstroGlobal } from 'astro';
 import { retrieveBestGamesSeason } from '../../resources/bestGames';
-import { filterBestGames, isDay, joinBestGames, teamOptions, type BestGame, type BestGamesFilter } from '../../utils/bestGames';
-import { LEAGUES, type BasketballLeague } from '../../utils/league';
+import { BOARD_SIZE, filterBestGames, isDay, joinBestGames, teamOptions, type BestGame, type BestGamesFilter } from '../../utils/bestGames';
+import { LEAGUES, PRO_LEAGUES, type BasketballLeague } from '../../utils/league';
+import { collegeSeasonOf } from '../../utils/bracketology';
+import { proSeasonOf, type ProLeague } from '../../utils/playoffPicture';
 import { seasonCache, setCache, uncacheable } from './cache';
 
 /**
@@ -26,7 +28,10 @@ export interface BestGamesParams {
     fallback: boolean;
     filter: BestGamesFilter;
     teams: { id: string; name: string }[];
+    /** the board: the first BOARD_SIZE of the games that pass the filters */
     games: BestGame[];
+    /** the games that pass the filters */
+    matched: number;
     /** the season's ranked games before the filters */
     total: number;
     /** the season's first and last ranked game days (the date inputs' bounds); null when it has none */
@@ -35,10 +40,14 @@ export interface BestGamesParams {
 
 export type BestGamesPrep = { unavailable: true } | BestGamesParams;
 
-export async function prepareBestGames(Astro: AstroGlobal, league: BasketballLeague): Promise<BestGamesPrep> {
+/** The season being played (END year), or the league's last known one when that is later: the standings pages' rule. */
+const seasonOf = (league: BasketballLeague, day: Date) =>
+    Math.max(PRO_LEAGUES.includes(league) ? proSeasonOf(league as ProLeague, day) : collegeSeasonOf(day), LEAGUES[league].seasons.at(-1)!);
+
+export async function prepareBestGames(Astro: AstroGlobal, league: BasketballLeague, today = new Date()): Promise<BestGamesPrep> {
     Astro.locals.league = league;
     const sp = Astro.url.searchParams;
-    const current = LEAGUES[league].seasons.at(-1)!;
+    const current = seasonOf(league, today);
     const first = Math.max(GEI_FIRST_SEASON, LEAGUES[league].seasons[0]);
     const seasons = Array.from({ length: current - first + 1 }, (_, i) => first + i);
     const asked = Number(sp.get('season'));
@@ -48,8 +57,9 @@ export async function prepareBestGames(Astro: AstroGlobal, league: BasketballLea
     try {
         const load = async (s: number) => { const r = await retrieveBestGamesSeason(league, s); return joinBestGames(r.excitement, r.schedule); };
         all = await load(season);
-        // an explicit ?season= never falls back; the default does, once, labelled (the bracketology pages' rule)
-        if (all.length === 0 && !seasons.includes(asked) && seasons.includes(current - 1)) {
+        // the current season (the default URL, or its own ?season=) falls back once, labelled; an explicit past season never
+        // does (the bracketology pages' rule)
+        if (all.length === 0 && season === current && seasons.includes(current - 1)) {
             season = current - 1;
             fallback = true;
             all = await load(season);
@@ -73,5 +83,6 @@ export async function prepareBestGames(Astro: AstroGlobal, league: BasketballLea
     else uncacheable(Astro);
     const dates = all.map((g) => g.date).sort();
     const days = dates.length ? { first: dates[0], last: dates.at(-1)! } : null;
-    return { league, seasons, current, season, fallback, filter, teams, games: filterBestGames(all, filter), total: all.length, days };
+    const matches = filterBestGames(all, filter);
+    return { league, seasons, current, season, fallback, filter, teams, games: matches.slice(0, BOARD_SIZE), matched: matches.length, total: all.length, days };
 }

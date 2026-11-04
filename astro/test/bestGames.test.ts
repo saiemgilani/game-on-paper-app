@@ -25,6 +25,9 @@ const { FLAGS } = await import('../src/utils/features');
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 
+/** A day in the 2026 WNBA season (which the fixture has no rows for): the board's current season is 2026. */
+const MARCH = new Date('2026-03-01T12:00:00Z');
+
 /** Serve the fixture for `season` (2025) and empty tables for any other, recording each query. */
 function serve(season = 2025) {
     reads.mockReset();
@@ -72,7 +75,7 @@ describe('filterBestGames and the team options', () => {
     const f = fixture();
     const games = joinBestGames(f.game_excitement, f.schedule);
     test('no filter: the top of the board', () => {
-        expect(filterBestGames(games, { from: null, to: null, team: null })).toEqual(games.slice(0, BOARD_SIZE));
+        expect(filterBestGames(games, { from: null, to: null, team: null })).toEqual(games);
     });
     test('a day range is inclusive at both ends', () => {
         const day = games[0].date;
@@ -80,12 +83,12 @@ describe('filterBestGames and the team options', () => {
         expect(one.length).toBeGreaterThan(0);
         expect(one.every((g) => g.date === day)).toBe(true);
         expect(one[0]).toBe(games[0]);
-        const playoffs = filterBestGames(games, { from: '2025-09-14', to: null, team: null }, 500);
+        const playoffs = filterBestGames(games, { from: '2025-09-14', to: null, team: null });
         expect(playoffs.every((g) => g.postseason)).toBe(true);
     });
     test('a team: its home and away games only', () => {
         const id = games[0].home.id;
-        const mine = filterBestGames(games, { from: null, to: null, team: id }, 500);
+        const mine = filterBestGames(games, { from: null, to: null, team: id });
         expect(mine.length).toBeGreaterThan(40);
         expect(mine.every((g) => g.home.id === id || g.away.id === id)).toBe(true);
     });
@@ -105,7 +108,7 @@ describe('filterBestGames and the team options', () => {
 describe('the reads and the loader', () => {
     beforeEach(() => serve());
     test("season-filtered reads of the ESPN-keyed schema, completed games only, the page's columns", async () => {
-        await prepareBestGames(fakeAstro('/wnba/best-games?season=2025').astro, 'wnba');
+        await prepareBestGames(fakeAstro('/wnba/best-games?season=2025').astro, 'wnba', MARCH);
         const [gei, sched] = ['game_excitement', 'schedule'].map((t) => reads.mock.calls.find((c) => c[1] === t)!);
         expect((gei[0] as any).schema).toBe('wnba');
         expect(gei[2]).toMatchObject({ season: '2025', completed: 'true', select: 'game_id,season,gei,lead_changes,max_swing_pts,completed,gei_rank,gei_pct,gei_n' });
@@ -115,30 +118,47 @@ describe('the reads and the loader', () => {
     });
     test('the default season with no completed games falls back to last season, labelled and cached', async () => {
         const { astro, cache } = fakeAstro('/wnba/best-games');
-        const r = await prepareBestGames(astro, 'wnba') as any;
+        const r = await prepareBestGames(astro, 'wnba', MARCH) as any;
         expect(r).toMatchObject({ season: 2025, current: 2026, fallback: true, total: 312, days: { first: '2025-05-16', last: '2025-10-10' } });
         expect(r.games).toHaveLength(BOARD_SIZE);
         expect(cache).toEqual([{ maxAge: 21600, swr: 21600, tags: ['wnba'] }]);
     });
-    test('an explicit season never falls back; an empty one is uncacheable', async () => {
-        const { astro, headers } = fakeAstro('/wnba/best-games?season=2026');
-        const r = await prepareBestGames(astro, 'wnba') as any;
-        expect(r).toMatchObject({ season: 2026, fallback: false, total: 0, games: [], days: null });
+    test("the current season's own ?season= falls back the same way", async () => {
+        expect(await prepareBestGames(fakeAstro('/wnba/best-games?season=2026').astro, 'wnba', MARCH)).toMatchObject({ season: 2025, fallback: true });
+    });
+    test('an explicit past season never falls back; an empty one is uncacheable', async () => {
+        const { astro, headers } = fakeAstro('/wnba/best-games?season=2024');
+        const r = await prepareBestGames(astro, 'wnba', MARCH) as any;
+        expect(r).toMatchObject({ season: 2024, fallback: false, matched: 0, total: 0, games: [], days: null });
         expect(headers.get('Cache-Control')).toBe('no-store');
     });
     test('the filters are read from the URL; a bad day or an unknown team is ignored', async () => {
         const team = joinBestGames(fixture().game_excitement, fixture().schedule)[0].home.id;
-        const r = await prepareBestGames(fakeAstro(`/wnba/best-games?season=2025&from=2025-07-01&to=2025-07-31&team=${team}`).astro, 'wnba') as any;
+        const r = await prepareBestGames(fakeAstro(`/wnba/best-games?season=2025&from=2025-07-01&to=2025-07-31&team=${team}`).astro, 'wnba', MARCH) as any;
         expect(r.filter).toEqual({ from: '2025-07-01', to: '2025-07-31', team });
         expect(r.games.every((g: any) => g.date >= '2025-07-01' && g.date <= '2025-07-31' && (g.home.id === team || g.away.id === team))).toBe(true);
-        const bad = await prepareBestGames(fakeAstro('/wnba/best-games?season=2025&from=July&team=999999').astro, 'wnba') as any;
+        const bad = await prepareBestGames(fakeAstro('/wnba/best-games?season=2025&from=July&team=999999').astro, 'wnba', MARCH) as any;
         expect(bad.filter).toEqual({ from: null, to: null, team: null });
+    });
+    test('a day range: the board is the first 50 of the matches, and the count is all of them', async () => {
+        const r = await prepareBestGames(fakeAstro('/wnba/best-games?season=2025&from=2025-07-01').astro, 'wnba', MARCH) as any;
+        expect(r.matched).toBe(joinBestGames(fixture().game_excitement, fixture().schedule).filter((g) => g.date >= '2025-07-01').length);
+        expect(r.matched).toBeGreaterThan(BOARD_SIZE);
+        expect(r.games).toHaveLength(BOARD_SIZE);
+    });
+    test('the current season is the one being played: college from August, the WNBA from November', async () => {
+        const nov = new Date('2026-11-04T12:00:00Z');
+        expect(await prepareBestGames(fakeAstro('/mbb/best-games').astro, 'mbb', nov)).toMatchObject({ current: 2027, season: 2026, fallback: true });
+        expect(await prepareBestGames(fakeAstro('/wnba/best-games').astro, 'wnba', nov)).toMatchObject({ current: 2027, season: 2026, fallback: true });
+        const r = await prepareBestGames(fakeAstro('/nba/best-games').astro, 'nba', nov) as any;
+        expect(r.current).toBe(2027);
+        expect(r.seasons[0]).toBe(2002);
     });
     test('a failed read: unavailable, uncacheable', async () => {
         reads.mockRejectedValue(new Error('503'));
         const { astro, headers } = fakeAstro('/wnba/best-games');
         vi.spyOn(console, 'error').mockImplementation(() => {});
-        expect(await prepareBestGames(astro, 'wnba')).toEqual({ unavailable: true });
+        expect(await prepareBestGames(astro, 'wnba', MARCH)).toEqual({ unavailable: true });
         expect(headers.get('Cache-Control')).toBe('no-store');
     });
 });
@@ -146,7 +166,7 @@ describe('the reads and the loader', () => {
 describe('the template', () => {
     beforeEach(() => serve());
     const page = async (path: string) => {
-        const r = await prepareBestGames(fakeAstro(path).astro, 'wnba') as any;
+        const r = await prepareBestGames(fakeAstro(path).astro, 'wnba', MARCH) as any;
         return container.renderToString(BestGamesRoute, { props: { data: r }, locals: { league: 'wnba', preview: true } as App.Locals });
     };
     test('one row per game, linked to its game page, one number per cell', async () => {
@@ -156,7 +176,7 @@ describe('the template', () => {
         expect(html).toContain('href="/wnba/game/401736289"');
         expect(html).toContain('>11.18</td>');
         expect(html).toContain('id="best-games-scope">');
-        expect(html).toContain('The top 50 games of 312 completed.');
+        expect(html).toContain('The top 50 of 312 completed games.');
         expect(html).not.toContain('NaN');
         expect(html).not.toContain('undefined');
     });
@@ -166,7 +186,7 @@ describe('the template', () => {
         const f = await page('/wnba/best-games?season=2025&from=2025-07-01&to=2025-07-31');
         expect(f).toContain('value="2025-07-01"');
         expect(f).toContain('id="best-games-clear"');
-        expect(f).toContain(', Jul 1 to Jul 31.');
+        expect(f).toContain(', Jul 1 to Jul 31 (312 in the season).');
     });
     test('no game matches the filters; no season at all', async () => {
         expect(await page('/wnba/best-games?season=2025&from=2025-12-01')).toContain('id="best-games-none">No games match these filters.');
