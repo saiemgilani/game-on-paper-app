@@ -29,6 +29,9 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: 
 const params = { season: String(pick.season), view, ...(conference ? { conference } : {}) };
 const defaults = { season: String(current), view: 'bracket' };
 const url = (p: Record<string, string>) => withParams(path, Object.fromEntries(Object.entries({ ...params, ...p }).filter(([, v]) => v !== '')), defaults);
+// a select's option is the canonical URL; on the uncacheable /preview surface (utils/preview.ts keepPreviewSurface) stay on it,
+// since the public URL may answer a cached anonymous 404 before the preview cookie is read
+const NAV = "window.location.href = (location.pathname.startsWith('/preview/') ? '/preview' : '') + this.value";
 
 const sims = data?.sims ?? [];
 const simById = new Map(sims.map((r) => [r.team_id, r]));
@@ -81,20 +84,20 @@ const shownIds = view === 'bracket'
         <h1 class="fs-3 m-0">{title}</h1>
         <div class="d-flex flex-wrap gap-2">
           <label class="visually-hidden" for="bracketology-view">View</label>
-          <select id="bracketology-view" class="form-select w-auto" onchange="window.location.href = this.value">
+          <select id="bracketology-view" class="form-select w-auto" onchange={NAV}>
             {VIEWS.map((v) => (<option value={url({ view: v.key })} selected={v.key === view}>{v.label}</option>))}
           </select>
           {view !== 'bracket' && confs.length > 1 && (
             <Fragment>
               <label class="visually-hidden" for="bracketology-conference">Conference</label>
-              <select id="bracketology-conference" class="form-select w-auto" onchange="window.location.href = this.value">
+              <select id="bracketology-conference" class="form-select w-auto" onchange={NAV}>
                 <option value={url({ conference: '' })} selected={!conference}>All conferences</option>
                 {confs.map(([id, conf]) => (<option value={url({ conference: id })} selected={id === conference}>{conf}</option>))}
               </select>
             </Fragment>
           )}
           <label class="visually-hidden" for="bracketology-season">Season</label>
-          <select id="bracketology-season" class="form-select w-auto" onchange="window.location.href = this.value">
+          <select id="bracketology-season" class="form-select w-auto" onchange={NAV}>
             {[...seasons].reverse().map((s) => (<option value={url({ season: String(s), conference: '' })} selected={s === pick.season}>{seasonLabelFor(league, s)}</option>))}
           </select>
         </div>

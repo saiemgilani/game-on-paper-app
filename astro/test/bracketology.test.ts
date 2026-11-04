@@ -149,6 +149,10 @@ describe('BracketologyRoute', () => {
         expect(html).toContain('Reg. Season Title');
         expect(html).toContain('<option value="/mbb/bracketology?season=2026&amp;view=standings&amp;conference=');
         expect(html).not.toContain('bracket-round-name');
+        // every select stays on the /preview surface when the page is on it (Copilot on #394)
+        const handlers = [...html.matchAll(/<select id="bracketology-[a-z]+"[^>]*onchange="([^"]+)"/g)].map((m) => m[1].replace(/&#39;/g, "'"));
+        expect(handlers).toHaveLength(3);
+        for (const h of handlers) expect(h).toBe("window.location.href = (location.pathname.startsWith('/preview/') ? '/preview' : '') + this.value");
     });
     test('the team sheets: NET order, percentile shading on the green-to-purple ramp, one number per cell', async () => {
         const html = await render(params({ view: 'resume' }));
