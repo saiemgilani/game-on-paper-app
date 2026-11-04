@@ -5,7 +5,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { readFileSync } from 'node:fs';
-import { beforeAll, describe, expect, test, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import type { PlayerGameRow } from '../../src/resources/nbaShots';
 import type { BasketballLeague } from '../../src/utils/league';
 import { seasonPlayerRows } from '../nba/rows';
@@ -38,6 +38,12 @@ import { prepareBasketballLeaders } from '../../src/routes/basketball/leaders';
 const LEAGUES: BasketballLeague[] = ['nba', 'wnba', 'mbb', 'wbb'];
 const URL_OF = (lg: BasketballLeague) => `/${lg}/leaders${lg === 'nba' ? '?season=2026' : ''}`;
 const locals = (on: boolean) => ({ preview: true, flagOverrides: { 'bball-rolling-movers': on } }) as unknown as App.Locals;
+
+// Every read is mocked: a live request from a test sends vitest.config's 'Bearer test' and counts as a failed auth
+// against the Data API from this IP (429 lockout). A fetch here fails the file instead.
+const fetched: string[] = [];
+vi.stubGlobal('fetch', async (input: RequestInfo | URL) => { fetched.push(String(input instanceof Request ? input.url : input)); throw new Error('no network in tests'); });
+afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
