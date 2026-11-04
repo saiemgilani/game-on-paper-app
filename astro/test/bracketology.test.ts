@@ -158,6 +158,10 @@ describe('BracketologyRoute', () => {
         const cells = [...firstRow.matchAll(/<td[^>]*>(.*?)<\/td>/g)].map((m) => m[1].replace(/<[^>]+>/g, ''));
         expect(cells.slice(3, 7).every((c) => /^[+-]?\d+(\.\d)?$|^—$/.test(c))).toBe(true);
     });
+    test("the current season's label links last season's final snapshot", async () => {
+        const html = await render(params({ pick: { snapshot: { season: 2027, as_of_date: '2026-11-03' }, season: 2027, fallback: false } }));
+        expect(html).toContain('As of November 3, 2026: games before that day count. 10,000 simulated seasons. Last season: <a href="/mbb/bracketology?season=2026">2025-26\'s final snapshot</a>.');
+    });
     test("an old season's nulls (2004-05: 35 teams with no conference name and no title chance) render as dashes", async () => {
         // the shape of /v1/mbb/season_sims?season=2005: conference null, reg_season_title_prob null (a 500 before this)
         const f = fixture();

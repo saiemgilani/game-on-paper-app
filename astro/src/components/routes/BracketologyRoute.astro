@@ -107,7 +107,7 @@ const shownIds = view === 'bracket'
       <p class="text-muted">There are no projections for {label}.</p>
     )}
     {pick.snapshot && !pick.fallback && (
-      <p class="small text-muted">As of {day}: games before that day count. {n.toLocaleString()} simulated seasons.</p>
+      <p class="small text-muted">As of {day}: games before that day count. {n.toLocaleString()} simulated seasons.{pick.season === current && seasons.includes(current - 1) && (<Fragment> Last season: <a href={url({ season: String(current - 1), conference: '' })}>{seasonLabelFor(league, current - 1)}'s final snapshot</a>.</Fragment>)}</p>
     )}
 
     {data && view === 'bracket' && (
@@ -134,7 +134,7 @@ const shownIds = view === 'bracket'
                         {g.rows.map((r) => (
                           <tr>
                             <td class="text-left text-nowrap"><a href={href(r.team_id)}><img class={`team-logo-${r.team_id} me-1`} width="18" height="18" src={logo(r.team_id)} alt="" /><span class="d-md-none">{abbrs[r.team_id]}</span><span class="d-none d-md-inline">{r.team}</span></a></td>
-                            <td class="text-center text-muted">{record(r.wins, r.losses)}</td>
+                            <td class="text-center text-muted text-nowrap">{record(r.wins, r.losses)}</td>
                             <td class="text-center numeral">{rk(r.net_estimate_rank)}</td>
                             <td class="text-center numeral">{rk(r.rpi_rank)}</td>
                             <td class="text-center numeral">{r.wab == null ? '—' : generateMarginalString(r.wab, 1, 1)}</td>
@@ -201,10 +201,10 @@ const shownIds = view === 'bracket'
               {c.rows.map((r) => (
                 <tr>
                   <td class="text-left text-nowrap"><a href={href(r.team_id)}><img class={`team-logo-${r.team_id} me-1`} width="18" height="18" src={logo(r.team_id)} alt="" loading="lazy" /><span class="d-md-none">{abbrs[r.team_id]}</span><span class="d-none d-md-inline">{r.team}</span></a></td>
-                  <td class="text-center">{record(r.conf_wins, r.conf_losses)}</td>
-                  <td class="text-center">{record(r.wins, r.losses)}</td>
-                  <td class="text-center text-muted">{roundNumber(r.proj_conf_wins, 1, 1)}-{roundNumber(r.proj_conf_losses, 1, 1)}</td>
-                  <td class="text-center text-muted">{roundNumber(r.proj_wins, 1, 1)}-{roundNumber(r.proj_losses, 1, 1)}</td>
+                  <td class="text-center text-nowrap">{record(r.conf_wins, r.conf_losses)}</td>
+                  <td class="text-center text-nowrap">{record(r.wins, r.losses)}</td>
+                  <td class="text-center text-muted text-nowrap">{roundNumber(r.proj_conf_wins, 1, 1)}-{roundNumber(r.proj_conf_losses, 1, 1)}</td>
+                  <td class="text-center text-muted text-nowrap">{roundNumber(r.proj_wins, 1, 1)}-{roundNumber(r.proj_losses, 1, 1)}</td>
                   <td class:list={['text-center', 'numeral', probShade(r.reg_season_title_prob)]}>{prob(r.reg_season_title_prob)}</td>
                   <td class:list={['text-center', 'numeral', probShade(r.conf_tourney_title_prob)]}>{prob(r.conf_tourney_title_prob)}</td>
                   <td class:list={['text-center', 'numeral', probShade(r.auto_bid_prob)]}>{prob(r.auto_bid_prob)}</td>
@@ -241,7 +241,7 @@ const shownIds = view === 'bracket'
               <tr>
                 <td class="text-left text-nowrap"><a href={href(r.team_id)}><img class={`team-logo-${r.team_id} me-1`} width="18" height="18" src={logo(r.team_id)} alt="" loading="lazy" /><span class="d-md-none">{abbrs[r.team_id]}</span><span class="d-none d-md-inline">{r.team}</span></a></td>
                 {!conference && (<td class="text-left text-muted small">{r.conference ?? '—'}</td>)}
-                <td class="text-center">{record(r.wins, r.losses)}</td>
+                <td class="text-center text-nowrap">{record(r.wins, r.losses)}</td>
                 <td class:list={['text-center', 'numeral', shade(r.net_estimate_pct)]}>{rk(r.net_estimate_rank)}</td>
                 <td class:list={['text-center', 'numeral', shade(r.rpi_pct)]}>{rk(r.rpi_rank)}</td>
                 <td class:list={['text-center', 'numeral', shade(r.sos_pct)]}>{rk(r.sos_rank)}</td>
