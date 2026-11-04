@@ -43,7 +43,9 @@
    "departing_usd": 0,
    "departing_starters": 0,
    "scarcity": 1.0,
-   "replace_odds": null
+   "replace_odds": null,
+   "proj_upct": 55.0,
+   "proj_upct_sd": 19.0
   },
   {
    "unit": "WR",
@@ -60,7 +62,9 @@
    "departing_usd": 640000,
    "departing_starters": 1,
    "scarcity": 0.88,
-   "replace_odds": 0.45
+   "replace_odds": 0.45,
+   "proj_upct": 55.0,
+   "proj_upct_sd": 19.0
   },
   {
    "unit": "OL",
@@ -77,7 +81,9 @@
    "departing_usd": 0,
    "departing_starters": 0,
    "scarcity": 1.6,
-   "replace_odds": null
+   "replace_odds": null,
+   "proj_upct": 55.0,
+   "proj_upct_sd": 19.0
   }
  ],
  "strengths": [

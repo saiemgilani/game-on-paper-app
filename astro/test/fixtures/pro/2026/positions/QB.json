@@ -22,8 +22,10 @@
   "replacement_pct": 38.0,
   "reliability": 0.27,
   "proj_sd": 24.2,
-  "rmse_model": 23.0,
-  "rmse_persist": 29.7
+  "rmse_model": 24.4,
+  "rmse_persist": 29.4,
+  "cover80": 0.77,
+  "variant": "base"
  },
  "price_curve": [
   {
@@ -153,5 +155,36 @@
  "limits": [
   "Dollar figures are a fixture model, not reported deals.",
   "Fixture limit two."
- ]
+ ],
+ "backtest": {
+  "variants": [
+   {
+    "variant": "persistence",
+    "n": 392,
+    "rmse": 29.4,
+    "bias": -0.2,
+    "cover80": 0.82
+   },
+   {
+    "variant": "base",
+    "n": 392,
+    "rmse": 24.4,
+    "bias": 0.5,
+    "cover80": 0.77
+   }
+  ],
+  "unit_level": [
+   {
+    "variant": "returning",
+    "n": 200,
+    "rmse": 26.5
+   }
+  ],
+  "z80": 1.36,
+  "z80_moved": 1.39,
+  "folds": [
+   2024,
+   2025
+  ]
+ }
 }

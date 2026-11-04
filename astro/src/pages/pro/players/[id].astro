@@ -38,6 +38,7 @@ interface ProProfile {
         replacement: { target_pct: number; equiv_entrants: number | null; p_land: number | null
             routes: { route: string; stars: number; by_year: number; hit: number; signees_needed: number }[] }
         rushing: { carries: number; ryoe: number | null; repoe: number | null; repoe_pct: number | null } | null
+        qb_rushing?: { var: number | null; proj_season: number | null } | null
     } | null
 }
 
@@ -128,6 +129,12 @@ const breadcrumbs = [
                     <p class="text-muted text-small mb-1" id="pro-value-routes">
                         Other routes to a {val.replacement.target_pct}th-percentile starter: {val.replacement.routes.map((r) =>
                             `${r.route} ${r.stars}★ by year ${r.by_year + 1}: ${formatOdds(r.hit)} hit, ~${r.signees_needed} signees`).join(' · ')}
+                    </p>
+                )}
+                {val.qb_rushing && val.qb_rushing.var !== null && (
+                    <p class="text-muted text-small mb-1" id="pro-value-qbrun">
+                        QB rushing: {val.qb_rushing.var} EPA over expected on his runs this season; {val.qb_rushing.proj_season ?? '—'} projected
+                        over a full season next year. QB rushing carries over about twice as well as a back's, so it is part of his value.
                     </p>
                 )}
                 {val.rushing && val.rushing.carries >= 20 && (

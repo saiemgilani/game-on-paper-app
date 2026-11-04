@@ -225,6 +225,10 @@
    "ryoe": 0.8,
    "repoe": 0.05,
    "repoe_pct": null
+  },
+  "qb_rushing": {
+   "var": 12.3,
+   "proj_season": 8.1
   }
  }
 }

@@ -171,7 +171,13 @@ export async function proObject<T = unknown>(key: string): Promise<T | null> {
     return null;
 }
 
-export type PortalBoard = { rendered: string; window?: string; entrants: BoardEntrant[] };
+/** scarcity: the cycle's live table (P4 jobs opening per starter-caliber entrant); check: the board's
+ * own backtest once the next season exists. Both from gop-pro portal.py, both optional. */
+export type PortalBoard = {
+    rendered: string; window?: string; entrants: BoardEntrant[]
+    scarcity?: { unit: string; jobs: number | null; supply: number | null; scarcity: number | null }[]
+    check?: { unit: string; n: number; rmse: number; rmse_same: number; cover80: number; variant: string }[]
+};
 
 /** The newest portal board: this cycle's once its window opens, else the last cycle's
  * (a cycle is keyed by its fall season: 2025-26 is pro/2025/portal). */

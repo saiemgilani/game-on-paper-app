@@ -305,6 +305,19 @@ describe('the pages', () => {
         expect(html).toContain('Fixture A&amp;M');
     }, 60_000);
 
+    test('the board: valuation columns, sort by projected value, live scarcity, its own backtest', async () => {
+        const html = await render('../src/pages/pro/portal.astro', '/pro/portal?sort=projusd');
+        const rows = html.split('id="pro-board-table"')[1].split('</table>')[0].split('data-key=').slice(1);
+        expect(rows[0]).toContain('$1.90M');  // highest projected value first
+        expect(rows[0]).toContain('66 <span');
+        expect(rows[0]).toContain('71 · $2.10M');  // next season, actual
+        expect(rows[1]).toContain('$420K');
+        expect(html.split('id="pro-board-scarcity"')[1].split('</div>')[0]).toContain('QB 1.25');
+        expect(html).toContain('id="pro-board-check-table"');
+        expect(html).toContain('82%');
+        expect(html).toContain('not deals');
+    }, 60_000);
+
     test('pricing: the tiers, "Contact us" with no payment link set, and the plain statements', async () => {
         const html = await render('../src/pages/pricing.astro', '/pricing');
         for (const s of ['$29/mo', '$249/yr', '$179/mo', '$1,499/yr', 'P4 $7,500', '$1,995/yr', '$350', '$2,500 / $7,500', 'From $3,500']) expect(html, s).toContain(s);
@@ -323,6 +336,7 @@ describe('the pages', () => {
         expect(html).toContain('Model estimates at revenue-share rates, not reported deals.');
         expect(panel).toContain('HS 4★ by year 3: 12% hit, ~8 signees');
         expect(panel).toContain('61 carries');
+        expect(panel).toContain('QB rushing: 12.3 EPA over expected');
         // a profile without a value block has no panel
         const wr = await render('../src/pages/pro/players/[id].astro', '/pro/players/2', { id: '2' });
         expect(wr).not.toContain('id="pro-value"');
@@ -336,6 +350,7 @@ describe('the pages', () => {
         expect(html.split('data-unit="QB"')[1].split('</tr>')[0]).toContain('text-success');
         expect(html.split('data-unit="WR"')[1].split('</tr>')[0]).toContain('45%');
         expect(html).toContain('id="pro-departing-table"');
+        expect(html.split('data-unit="QB"')[1].split('</tr>')[0]).toContain('55 <span');
         expect(html).toContain('Fixture limit two.');
         const index = await render('../src/pages/pro/rosters/index.astro', '/pro/rosters');
         expect(index).toContain('href="/pro/rosters/1"');
@@ -344,6 +359,9 @@ describe('the pages', () => {
     test('the position and market reports render; an unknown unit is a 404', async () => {
         const qb = await render('../src/pages/pro/positions/[unit].astro', '/pro/positions/QB', { unit: 'QB' });
         for (const s of ['Quarterbacks: fixture headline one.', '$5.09M', '+3.6 pts', 'href="/pro/file/pro/2026/positions/QB.pdf"']) expect(qb, s).toContain(s);
+        const bt = qb.split('id="pro-backtest-table"')[1].split('</table>')[0];
+        expect(bt.split('data-variant="base"')[1].split('</tr>')[0]).toContain('fw-bold');
+        expect(qb).toContain('×1.39 for players who change teams');
         const market = await render('../src/pages/pro/market.astro', '/pro/market');
         for (const s of ['Tightest markets', 'Fixture Mover', '4.8%', 'href="/pro/file/pro/2026/market/market.pdf"']) expect(market, s).toContain(s);
         const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });

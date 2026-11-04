@@ -196,6 +196,16 @@ export interface BoardEntrant {
     pff_grade: number | null
     pff_grade_pct: number | null
     has_profile: boolean
+    /** gop-pro valuation as of the cycle's season (contract: portal board `value`); null when unmatched */
+    value?: BoardValue | null
+}
+
+export interface BoardValue {
+    unit: string; route: string; age: number | null; pct: number | null; prod_usd: number | null
+    proj: number | null; proj_lo: number | null; proj_hi: number | null; proj_usd: number | null
+    variant: string; at_destination: boolean; scarcity: number | null
+    /** what he did the next season, once it exists: the board's own backtest */
+    realized: { team: string; pct: number | null; prod_usd: number | null; started: boolean } | null
 }
 
 export interface BoardFilters {
@@ -207,7 +217,7 @@ export interface BoardFilters {
     min?: number
 }
 
-export const BOARD_SORTS = ['name', 'position', 'from', 'entered', 'stars', 'band', 'pff'] as const;
+export const BOARD_SORTS = ['name', 'position', 'from', 'entered', 'stars', 'band', 'pff', 'prod', 'next', 'projusd'] as const;
 export type BoardSort = typeof BOARD_SORTS[number];
 
 /** A row's identity for "my board": the ESPN id, or name + school for an unmatched entrant. */
@@ -249,6 +259,9 @@ export function sortBoard(rows: BoardEntrant[], sort: BoardSort | undefined, met
             case 'stars': return e.stars;
             case 'band': return e.band_mid?.[metric!] ?? null;
             case 'pff': return e.pff_grade;
+            case 'prod': return e.value?.prod_usd ?? null;
+            case 'next': return e.value?.proj ?? null;
+            case 'projusd': return e.value?.proj_usd ?? null;
         }
     };
     const asc = s === 'name' || s === 'position' || s === 'from';

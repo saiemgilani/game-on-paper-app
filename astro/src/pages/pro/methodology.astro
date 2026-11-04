@@ -113,14 +113,19 @@ import { PRO_SEASON } from '../../resources/pro';
                     <li><strong>Dollars</strong>: a P4 program's revenue-share pool for football (the House settlement cap, growing 4% a
                         year, 75% to football), split half by on-field value and half by starting slots, then within a unit by each
                         player's share of its value. Model estimates, not reported deals, and no third-party NIL.</li>
-                    <li><strong>Projection</strong>: next season's percentile from this season's, a talent prior (position, star rating,
-                        year in college) and years in college. Checked out of sample, it beats "same as this year", but the ranges are wide.</li>
+                    <li><strong>Projection</strong>: for each position, the candidate model with the lowest error on seasons it never saw
+                        (rolling origin): this season's percentile, a talent prior (position, star rating, year in college) and years in
+                        college, or the prior alone. It beats "same as this year" at every position. Ranges are widened until 80% of
+                        held-out outcomes land inside them, more for players who change teams.</li>
+                    <li><strong>Units</strong>: a team's unit next season from its level and the playing time expected back (historical return
+                        rates), also checked out of sample. The portal board reports how its own projections held up a season later.</li>
                     <li><strong>Age</strong>: a recruiting-class proxy, within a year of the birth date for 94% of players who have one.</li>
                     <li><strong>Scarcity and replace odds</strong>: P4 starting jobs opened per starter-caliber portal entrant last cycle,
                         and the chance a program lands an equal entrant, from its share of portal commits at that recruiting tier.</li>
                     <li><strong>Rushing over expected</strong>: the play-by-play analogue of RYOE (no tracking data), net of down, distance,
-                        field position, opponent and the rusher's own line. It describes a season well and projects poorly, so
-                        projections do not use it.</li>
+                        field position, opponent and the rusher's own line. It describes a season well, but adding it to a back's
+                        projection does not lower the error, so it is not used there. QB runs do carry over, so a quarterback's value
+                        includes them, and each team's run-blocking effect feeds the offensive line and unit projections.</li>
                 </ul>
                 <p>Every fitted number is in the <a href={`/pro/file/pro/${PRO_SEASON}/valuation/valuation.pdf`}>valuation methodology PDF</a>.</p>
 

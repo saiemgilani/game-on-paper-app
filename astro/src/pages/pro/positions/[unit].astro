@@ -15,13 +15,18 @@ interface PositionDoc {
     season: number; snapshot: string; rendered: string; unit: string; name: string; headlines: string[]; limits: string[]
     kpi: { beta: number; beta_rank: number; budget: number; starter_median: number | null; scarcity: number | null
         jobs_opened: number | null; entrants: number | null; replacement_pct: number; reliability: number
-        rmse_model: number | null; rmse_persist: number | null }
+        rmse_model: number | null; rmse_persist: number | null; cover80?: number | null; variant?: string }
     price_curve: { pctile: number; usd: number | null }[]
     aging: { yb: number; delta: number; n: number; p_still: number | null }[]
     age_vs_class: { class: string; age_for_class: string; n: number; p_play: number; p_start: number; pct: number | null }[]
     sources: { group: string; source: string; players: number; starters: number; starter_share: number | null; usd_per_starter: number | null }[]
     routes: { route: string; stars: number; y0: number | null; y1: number | null; y2: number | null; y3: number | null }[]
     top: ValuePlayer[]; next_season: ValuePlayer[]; young: ValuePlayer[]
+    backtest?: {
+        variants: { variant: string; n: number; rmse: number; bias: number; cover80: number }[]
+        unit_level: { variant: string; n: number; rmse: number }[]
+        z80: number | null; z80_moved: number | null; folds: number[] | null
+    }
 }
 
 if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
@@ -35,7 +40,7 @@ const tiles: [string, string, string][] = [
     ['P4 room budget', formatUsd(k.budget), 'model split of a P4 pool'],
     ['Median P4 starter', formatUsd(k.starter_median), 'production, full-season pace'],
     ['Scarcity index', k.scarcity === null ? '—' : k.scarcity.toFixed(2), `${k.jobs_opened ?? '—'} jobs / ${k.entrants ?? '—'} entrants`],
-    ['Year-to-year carry', k.reliability.toFixed(2), `backtest RMSE ${k.rmse_model ?? '—'} vs ${k.rmse_persist ?? '—'} naive`],
+    ['Projection check', String(k.rmse_model ?? '—'), `RMSE vs ${k.rmse_persist ?? '—'} naive · ${formatOdds(k.cover80)} in 80% range`],
 ];
 const signed = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}`;
 ---
@@ -123,6 +128,30 @@ const signed = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}`;
                     </table>
                 </Fragment>
             </Panel>
+            {doc.backtest && doc.backtest.variants.length > 0 && (
+            <Panel id="pro-backtest" title="Backtest: how well this position projects" show={true} class="mb-md-3">
+                <p slot="panel-subtitle" class="m-0 text-muted text-small">Held-out seasons {(doc.backtest.folds ?? []).join(', ')}. Bold: the model in use. Ranges widen until 80% of held-out outcomes land inside (×{doc.backtest.z80 ?? '—'} sd; ×{doc.backtest.z80_moved ?? '—'} for players who change teams).</p>
+                <Fragment slot="panel-body">
+                    <div class="row">
+                        <div class="col-lg-7 col-12">
+                            <table class="table table-sm" id="pro-backtest-table">
+                                <thead><tr><th class="text-left">Player model</th><th class="text-center">n</th><th class="text-center">RMSE</th><th class="text-center">Bias</th><th class="text-center">In 80% range</th></tr></thead>
+                                <tbody>{doc.backtest.variants.map((b) => (
+                                    <tr data-variant={b.variant}><td class:list={['text-left', { 'fw-bold': b.variant === k.variant }]}>{b.variant}</td><td class="text-center numeral">{b.n}</td>
+                                        <td class="text-center numeral">{b.rmse}</td><td class="text-center numeral">{b.bias}</td><td class="text-center numeral">{formatOdds(b.cover80)}</td></tr>
+                                ))}</tbody>
+                            </table>
+                        </div>
+                        <div class="col-lg-5 col-12">
+                            <table class="table table-sm" id="pro-backtest-units">
+                                <thead><tr><th class="text-left">Unit model</th><th class="text-center">n</th><th class="text-center">RMSE</th></tr></thead>
+                                <tbody>{doc.backtest.unit_level.map((b) => <tr><td class="text-left">{b.variant}</td><td class="text-center numeral">{b.n}</td><td class="text-center numeral">{b.rmse}</td></tr>)}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                </Fragment>
+            </Panel>
+            )}
             <Panel id="pro-top" title="Most valuable this season" show={true} class="mb-md-3">
                 <Fragment slot="panel-body"><ValueTable rows={doc.top} id="pro-top-table" /></Fragment>
             </Panel>

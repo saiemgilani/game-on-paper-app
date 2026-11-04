@@ -17,6 +17,8 @@ interface Unit {
     fbs_n: number; prod_usd: number | null; peer_median: number | null; conf_median: number | null
     proj_usd: number | null; departing_usd: number | null; departing_starters: number; scarcity: number | null
     replace_odds: number | null
+    /** projected unit percentile next season and its sd (gop-pro unit projection) */
+    proj_upct?: number | null; proj_upct_sd?: number | null
 }
 interface Mix { key: string; players: number; starters: number; prod_usd: number | null; vs_talent: number | null; age: number | null }
 interface RosterDoc {
@@ -74,7 +76,7 @@ const tone = (u: string) => (doc.strengths.includes(u) ? 'text-success fw-bold' 
                                 <tr>
                                     <th class="text-left">Unit</th><th class="text-center">Starters</th><th class="text-center">Unit pct</th>
                                     <th class="text-center">FBS rank</th><th class="text-center">Production</th><th class="text-center">Peer median</th>
-                                    <th class="text-center">Conf. median</th><th class="text-center">Departing</th><th class="text-center">Scarcity</th>
+                                    <th class="text-center">Conf. median</th><th class="text-center"><abbr title="Projected unit percentile next season, from its level and the playing time expected back; ± one sd">Next yr pct</abbr></th><th class="text-center">Departing</th><th class="text-center">Scarcity</th>
                                     <th class="text-center"><abbr title="Chance of landing at least one portal entrant of equal projected level">Replace odds</abbr></th>
                                 </tr>
                             </thead>
@@ -88,6 +90,7 @@ const tone = (u: string) => (doc.strengths.includes(u) ? 'text-success fw-bold' 
                                         <td class="text-center numeral">{formatUsd(u.prod_usd)}</td>
                                         <td class="text-center numeral">{formatUsd(u.peer_median)}</td>
                                         <td class="text-center numeral">{formatUsd(u.conf_median)}</td>
+                                        <td class="text-center numeral text-nowrap">{u.proj_upct == null ? '—' : <span>{Math.round(u.proj_upct)} <span class="text-muted text-small">±{Math.round(u.proj_upct_sd ?? 0)}</span></span>}</td>
                                         <td class="text-center numeral">{u.departing_starters ? `${formatUsd(u.departing_usd)} (${u.departing_starters})` : '—'}</td>
                                         <td class="text-center numeral">{u.scarcity === null ? '—' : u.scarcity.toFixed(2)}</td>
                                         <td class="text-center numeral">{formatOdds(u.replace_odds)}</td>
