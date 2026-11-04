@@ -141,7 +141,8 @@ const shownIds = teams.map(key);
                       {nba && (<td class:list={['text-center', 'numeral', probShade(t.sim.p_top6)]}>{prob(t.sim.p_top6)}</td>)}
                       {nba && (<td class:list={['text-center', 'numeral', probShade(t.sim.p_play_in)]}>{prob(t.sim.p_play_in)}</td>)}
                       <td class:list={['text-center', 'numeral', 'fw-bold', probShade(t.sim.p_playoffs)]} title={mcTitle(t.sim.p_playoffs_se)}>{prob(t.sim.p_playoffs)}</td>
-                      <td class:list={['text-center', 'numeral', probShade(t.sim.p_lottery)]}>{prob(t.sim.p_lottery)}</td>
+                      {/* missing the playoffs is not a "good" green: the lottery chance stays unshaded beside the playoff odds */}
+                      <td class="text-center numeral">{prob(t.sim.p_lottery)}</td>
                     </tr>
                   ))}
                 </Fragment>
