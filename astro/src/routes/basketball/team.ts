@@ -64,7 +64,6 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const mode = parseMode(Astro.url.searchParams.get('mode'));
 
     const coverageP = readCoverageNote(league, season);
-    const seasonBlockP = isFeatureEnabled('bball-team-season', Astro.locals) ? readSeasonBlock(league, season, teamId) : undefined;
     // college (D43/D47, R7): membership decides the page, so its two reads start beside the identity reads
     const membershipP = isNcaaDashboards(league) ? Promise.all([retrieveConferenceRows(season, league), retrieveScheduleTeamRows(season, league)]) : null;
     membershipP?.catch(() => {}); // handled below; this only keeps an early unavailable return from leaving an unhandled rejection
@@ -104,10 +103,12 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     }
     setCache(Astro, playerCache(league));
     if (coverage === undefined) uncacheable(Astro);
-    const seasonBlock = await seasonBlockP;
+    // read only once the page will render: a 404 or 503 never spends the five reads
+    const flagged = isFeatureEnabled('bball-team-season', Astro.locals);
+    const seasonBlock = flagged ? await readSeasonBlock(league, season, teamId) : undefined;
     // the block is decorative: a failed read renders the rest of the page, never cached
     if (seasonBlock === null) uncacheable(Astro);
-    const block = seasonBlockP ? { seasonBlock } : {};
+    const block = flagged ? { seasonBlock } : {};
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);

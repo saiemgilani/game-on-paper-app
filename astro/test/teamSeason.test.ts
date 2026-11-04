@@ -44,11 +44,11 @@ let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 beforeEach(() => { block.fn.mockReset(); block.fn.mockResolvedValue(asReads(NBA)); });
 
-function fakeAstro(locals: Record<string, unknown>) {
+function fakeAstro(locals: Record<string, unknown>, id = String(NETS_TEAM_ID)) {
     const cache: unknown[] = [];
     const headers = new Headers();
-    const url = new URL(`https://gameonpaper.com/nba/team/${NETS_TEAM_ID}?season=2026`);
-    return { astro: { params: { id: String(NETS_TEAM_ID) }, url, locals, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    const url = new URL(`https://gameonpaper.com/nba/team/${id}?season=2026`);
+    return { astro: { params: { id }, url, locals, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 const ok = (r: Awaited<ReturnType<typeof prepareNbaTeam>>) => { if ('notFound' in r || 'unavailable' in r) throw new Error(JSON.stringify(r)); return r; };
 
@@ -117,6 +117,10 @@ describe('prepareNbaTeam with the flag', () => {
         expect(r.seasonBlock).toEqual(asReads(NBA));
         expect(cache).toHaveLength(1);
         expect(cache[0]).not.toBe(false);
+    });
+    test('on, a 404 (a team_id the season does not name) spends no read', async () => {
+        expect(await prepareNbaTeam(fakeAstro({ preview: true }, '1').astro)).toEqual({ notFound: true });
+        expect(block.fn).not.toHaveBeenCalled();
     });
     test('on, a failed read: the page renders, the block is null, nothing is cached', async () => {
         block.fn.mockRejectedValueOnce(new Error('down'));
