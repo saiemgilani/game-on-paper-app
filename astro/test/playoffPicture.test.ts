@@ -81,6 +81,15 @@ describe('seedGroups (the play-in grouping)', () => {
         const means = g[0].rows.map((r) => r.sim.mean_seed!);
         expect(means).toEqual([...means].sort((a, b) => a - b));
     });
+    test('a day with standings for only some teams is one mean-seed group too', () => {
+        const f = fixture('nba');
+        const [east] = conferenceTables(joinTeams(f.sims, f.standings.filter((s) => s.team_id !== 1610612765)));
+        const g = seedGroups('nba', east.rows);
+        expect(g).toHaveLength(1);
+        const means = g[0].rows.map((r) => r.sim.mean_seed!);
+        expect(means).toEqual([...means].sort((a, b) => a - b));
+        expect(g[0].rows[0].sim.team_id).toBe(1610612765); // the unseeded leader is not pushed to the bottom
+    });
 });
 
 describe('projectedBracket', () => {

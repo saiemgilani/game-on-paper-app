@@ -69,7 +69,10 @@ export interface SeedGroup { key: 'direct' | 'play_in' | 'out' | 'all'; label: s
  * official line to cut at. A group with no team is left out.
  */
 export function seedGroups(league: ProLeague, rows: ProTeam[]): SeedGroup[] {
-    if (rows.some((r) => r.standing?.seed == null)) return [{ key: 'all', label: null, rows }];
+    if (rows.some((r) => r.standing?.seed == null)) {
+        // a partial day too: a seeded-first order would mix the two orders (Copilot on #395)
+        return [{ key: 'all', label: null, rows: [...rows].sort((a, b) => (a.sim.mean_seed ?? Infinity) - (b.sim.mean_seed ?? Infinity)) }];
+    }
     const { direct, playIn } = PRO_FORMAT[league];
     const seed = (r: ProTeam) => r.standing!.seed;
     return ([
