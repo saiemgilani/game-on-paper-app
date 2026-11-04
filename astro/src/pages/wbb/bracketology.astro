@@ -1,0 +1,17 @@
+---
+// src/pages/wbb/bracketology.astro
+import BracketologyRoute from '../../components/routes/BracketologyRoute.astro';
+import { prepareBracketology } from '../../routes/basketball/bracketology';
+import { unavailable } from '../../routes/basketball/cache';
+import { isFeatureEnabled } from '../../utils/features';
+
+if (!isFeatureEnabled('bball-bracketology', Astro.locals)) {
+    return Astro.rewrite('/404');
+}
+const r = await prepareBracketology(Astro, 'wbb');
+if ('unavailable' in r) {
+    return unavailable('wbb', 'Bracketology is temporarily unavailable. Please try again shortly.');
+}
+---
+
+<BracketologyRoute data={r} />

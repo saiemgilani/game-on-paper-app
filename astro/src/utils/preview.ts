@@ -36,7 +36,7 @@ export function keepPreviewSurface(target: string, pathname: string): string {
     return onPreview ? `${PREVIEW_PATH_PREFIX}${target}` : target;
 }
 
-async function hmacHex(secret: string, msg: string): Promise<string> {
+export async function hmacHex(secret: string, msg: string): Promise<string> {
     const key = await crypto.subtle.importKey(
         'raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
     const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg));
