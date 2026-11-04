@@ -15,6 +15,8 @@ import type { Team } from '../../nba/data/teams';
 import type { SortDir } from '../../nba/table';
 import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterRows, teamsFromSeasonRows, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
 import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
+import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
+import { isFeatureEnabled } from '../../utils/features';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
@@ -38,6 +40,8 @@ export interface BasketballTeamParams {
     empty?: true;
     /** college (R-S14): a member whose placed shots name no player (New Orleans 2443): the dashboard, no roster, no players link */
     noPlayers?: true;
+    /** BB-G5, only with 'bball-team-season' on: the season block's reads; null when one failed (the block says so) */
+    seasonBlock?: TeamSeasonReads | null;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -60,6 +64,7 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const mode = parseMode(Astro.url.searchParams.get('mode'));
 
     const coverageP = readCoverageNote(league, season);
+    const seasonBlockP = isFeatureEnabled('bball-team-season', Astro.locals) ? readSeasonBlock(league, season, teamId) : undefined;
     // college (D43/D47, R7): membership decides the page, so its two reads start beside the identity reads
     const membershipP = isNcaaDashboards(league) ? Promise.all([retrieveConferenceRows(season, league), retrieveScheduleTeamRows(season, league)]) : null;
     membershipP?.catch(() => {}); // handled below; this only keeps an early unavailable return from leaving an unhandled rejection
@@ -99,13 +104,17 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     }
     setCache(Astro, playerCache(league));
     if (coverage === undefined) uncacheable(Astro);
+    const seasonBlock = await seasonBlockP;
+    // the block is decorative: a failed read renders the rest of the page, never cached
+    if (seasonBlock === null) uncacheable(Astro);
+    const block = seasonBlockP ? { seasonBlock } : {};
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);
     const own = members ? undefined : BASKETBALL[league].teams.seasonsOf(teamId, season);
     const seasons = members ?? (own ? resolved.seasons.filter((s) => own.includes(s)) : resolved.seasons);
     if (!hasShots) {
-        return { ...resolved, seasons, team: member, line: shootingLine([]), roster: [], dashboard: null, sort, dir, mode, empty: true as const, coverage: coverage ?? null };
+        return { ...resolved, seasons, team: member, line: shootingLine([]), roster: [], dashboard: null, sort, dir, mode, empty: true as const, coverage: coverage ?? null, ...block };
     }
     return {
         ...resolved,
@@ -117,5 +126,18 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
         sort, dir, mode,
         ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
         ...(team ? {} : { noPlayers: true as const }),
+        ...block,
     };
+}
+
+/** The season block's reads (BB-G5); null when any failed. The NBA/WNBA season tables are keyed by the stats id, the games by ESPN's. */
+async function readSeasonBlock(league: BasketballLeague, season: number, teamId: number): Promise<TeamSeasonReads | null> {
+    const espnId = BASKETBALL[league].teams.inSeason(teamId, season)?.espn_id ?? (BASKETBALL[league].currentMembers ? teamId : 0);
+    try {
+        if (!espnId) throw new Error('no ESPN id for the team-season');
+        return await retrieveTeamSeason(league, season, teamId, espnId);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} season block for team ${teamId}: ${e}, ${e?.stack}`);
+        return null;
+    }
 }

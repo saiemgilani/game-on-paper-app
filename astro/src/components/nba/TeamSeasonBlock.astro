@@ -1,0 +1,139 @@
+---
+// src/components/nba/TeamSeasonBlock.astro
+// BB-G5, behind 'bball-team-season': the team page's season block, as football's season team page. The record, the
+// season rates with their league ranks, the all / home / away / close / clutch splits and the schedule with each game's
+// four factors; college adds adjusted efficiency margin and tempo. Every rate, rank and percentile is the producer's
+// (sdv-db team_season_rates / team_strength / game_team_rates): cells are shaded by the producer's percentile on the
+// site's green-to-purple ramp, one number per cell. Pace is ranked but not shaded: fast is not better.
+import { DateTime } from 'luxon';
+import type { TeamSeasonRateRow, TeamSeasonReads } from '../../resources/teamSeason';
+import { SPLIT_LABEL, scheduleRows, splitRows } from '../../utils/teamSeason';
+import { fmtDate, fmtDec, fmtInt, fmtPct } from '../../nba/format';
+import { gameHref, teamHrefFromEspn } from '../../nba/links';
+import { formatRank, generateColorRampValue, generateMarginalString } from '../../utils/misc';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+import { isNcaaDashboards } from '../../basketball/dashboards';
+
+interface Props { data: TeamSeasonReads | null; season: number; espnId: number; teamName: string }
+const { data, season, espnId, teamName } = Astro.props;
+const cfg = basketball(Astro.locals.league);
+const league = cfg.league;
+const college = isNcaaDashboards(league);
+const label = seasonLabelFor(league, season);
+
+const all = data?.rates.find((r) => r.split === 'all') ?? null;
+const splits = splitRows(data?.rates ?? []);
+const games = data ? scheduleRows(data.games, data.gameRates, espnId) : [];
+const st = data?.strength ?? null;
+const record = st?.wins != null && st?.losses != null ? `${st.wins}-${st.losses}` : null;
+
+const dash = '—';
+const shade = (pct: number | null | undefined) => generateColorRampValue(pct ?? null, 100);
+const rank = (r: number | null | undefined) => (r == null ? dash : formatRank(r));
+const rtg = (v: number | null | undefined) => (v == null ? dash : fmtDec(v, 1));
+const net = (v: number | null | undefined) => (v == null ? dash : generateMarginalString(v, 1, 1));
+const pct = (v: number | null | undefined) => (v == null ? dash : fmtPct(v));
+const rate = (v: number | null | undefined) => (v == null ? dash : fmtDec(v, 3));
+const cell = (row: TeamSeasonRateRow | null, k: string) => (row as Record<string, number | null> | null)?.[k] ?? null;
+
+// the season table: one row per measure, the offense and the defense side by side (football's Five Factors layout)
+const MEASURES = [
+    { label: 'Rating', hover: 'Points per 100 possessions', off: 'off_rtg', def: 'def_rtg', fmt: rtg },
+    { label: 'eFG%', hover: 'Effective field-goal percentage: (FGM + 0.5 × 3PM) / FGA', off: 'efg_pct', def: 'opp_efg_pct', fmt: pct },
+    { label: 'TOV%', hover: 'Turnovers per possession', off: 'tov_pct', def: 'opp_tov_pct', fmt: pct },
+    { label: 'ORB%', hover: 'Offensive rebounds over offensive-rebound chances', off: 'orb_pct', def: 'opp_orb_pct', fmt: pct },
+    { label: 'FT rate', hover: 'Free-throw attempts per field-goal attempt', off: 'ft_rate', def: 'opp_ft_rate', fmt: rate },
+] as const;
+
+// the day of the tip where the league keeps its scoreboard (a 10 pm ET tip is the next day in UTC)
+const day = (iso: string) => fmtDate(DateTime.fromISO(iso, { zone: 'utc' }).setZone(cfg.scoreboardTimeZone).toISODate() ?? iso.slice(0, 10));
+const venueMark = { home: 'vs', away: '@', neutral: 'vs' } as const;
+const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore == null ? null : `${g.teamScore > g.oppScore ? 'W' : g.teamScore < g.oppScore ? 'L' : 'T'} ${g.teamScore}-${g.oppScore}`);
+---
+<section id="season" aria-label={`${label} season`} class="mb-4">
+  <h2 class="h5">{label} season</h2>
+  {data === null ? (<p class="text-muted" id="season-unavailable">The {label} season numbers are temporarily unavailable.</p>) : !all ? (<p class="text-muted" id="season-empty">No {label} possessions are rated for {teamName} yet.</p>) : (<Fragment>
+  <p class="numeral mb-2" id="season-line">
+    {record && (<Fragment><span class="fw-bold">{record}</span> &middot; </Fragment>)}{fmtInt(all.games)} games rated &middot; Net {net(all.net_rtg)} <span class="text-muted">(#{rank(all.net_rtg_rank)})</span> &middot; Pace {rtg(all.pace)} <span class="text-muted">(#{rank(all.pace_rank)})</span>
+  </p>
+  {college && st?.adj_net_rtg != null && (
+    <p class="numeral mb-2" id="season-adjusted">
+      Adj. EM {net(st.adj_net_rtg)} <span class="text-muted">(#{rank(st.adj_net_rtg_rank)})</span> &middot; Adj. O {rtg(st.adj_off_rtg)} <span class="text-muted">(#{rank(st.adj_off_rtg_rank)})</span> &middot; Adj. D {rtg(st.adj_def_rtg)} <span class="text-muted">(#{rank(st.adj_def_rtg_rank)})</span> &middot; Tempo {rtg(all.pace)} <span class="text-muted">(#{rank(all.pace_rank)})</span>
+    </p>
+  )}
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0" id="season-rates">
+          <caption class="small text-muted">Per possession, {college ? 'every game' : 'regular season'}. Rank among the league's teams; shading by percentile.</caption>
+          <thead><tr><th scope="col"></th><th scope="col" class="text-center">Offense</th><th scope="col" class="text-center">Rank</th><th scope="col" class="text-center">Defense</th><th scope="col" class="text-center">Rank</th></tr></thead>
+          <tbody>
+            {MEASURES.map((m) => (
+              <tr>
+                <th scope="row" class="text-nowrap fw-normal"><abbr title={m.hover}>{m.label}</abbr></th>
+                <td class:list={['numeral', 'text-center', shade(cell(all, `${m.off}_pct`))]}>{m.fmt(cell(all, m.off))}</td>
+                <td class="numeral text-center text-muted small">{rank(cell(all, `${m.off}_rank`))}</td>
+                <td class:list={['numeral', 'text-center', shade(cell(all, `${m.def}_pct`))]}>{m.fmt(cell(all, m.def))}</td>
+                <td class="numeral text-center text-muted small">{rank(cell(all, `${m.def}_rank`))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0" id="season-splits">
+          <caption class="small text-muted">Close games: within 5 points in the last 5:00 or overtime. Clutch: those possessions only.</caption>
+          <thead><tr><th scope="col">Split</th><th scope="col" class="text-end">G</th><th scope="col" class="text-end">Poss</th><th scope="col" class="text-end">ORtg</th><th scope="col" class="text-end">DRtg</th><th scope="col" class="text-end">Net</th><th scope="col" class="text-end">Pace</th></tr></thead>
+          <tbody>
+            {splits.map((s) => (
+              <tr>
+                <th scope="row" class="text-nowrap fw-normal">{SPLIT_LABEL[s.split]}</th>
+                <td class="numeral text-end">{fmtInt(s.games)}</td>
+                <td class="numeral text-end">{fmtInt(s.poss)}</td>
+                <td class:list={['numeral', 'text-end', shade(s.off_rtg_pct)]}>{rtg(s.off_rtg)}</td>
+                <td class:list={['numeral', 'text-end', shade(s.def_rtg_pct)]}>{rtg(s.def_rtg)}</td>
+                <td class:list={['numeral', 'text-end', shade(s.net_rtg_pct)]}>{net(s.net_rtg)}</td>
+                <td class="numeral text-end">{rtg(s.pace)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {games.length > 0 && (
+    <details class="mt-3" id="season-schedule-panel">
+    <summary class="h6 mb-2">Schedule ({fmtInt(games.length)} games)</summary>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0" id="season-schedule">
+        <caption class="small text-muted">Each game's own rates (the game page's four factors). A game not yet rated shows dashes.</caption>
+        <thead><tr><th scope="col">Date</th><th scope="col">Opponent</th><th scope="col">Result</th><th scope="col" class="text-end">ORtg</th><th scope="col" class="text-end">DRtg</th><th scope="col" class="text-end">Pace</th><th scope="col" class="text-end">eFG%</th><th scope="col" class="text-end">TOV%</th><th scope="col" class="text-end">ORB%</th><th scope="col" class="text-end">FT rate</th></tr></thead>
+        <tbody>
+          {games.map((g) => {
+            const opp = teamHrefFromEspn({ id: g.oppId }, league, season);
+            const res = result(g);
+            const r = g.rates;
+            return (
+              <tr>
+                <td class="text-nowrap">{day(g.date)}</td>
+                <td class="text-nowrap"><span class="text-muted">{venueMark[g.venue]}</span> {opp ? (<a href={opp} title={g.oppName}>{g.oppAbbr}</a>) : (<span title={g.oppName}>{g.oppAbbr}</span>)}{g.venue === 'neutral' && (<span class="text-muted small"> (N)</span>)}</td>
+                <td class="numeral text-nowrap">{res ? (<a href={gameHref(league, g.gameId)}>{res}</a>) : (<a href={gameHref(league, g.gameId)} class="text-muted">Preview</a>)}</td>
+                <td class="numeral text-end">{rtg(r?.off_rtg)}</td>
+                <td class="numeral text-end">{rtg(r?.def_rtg)}</td>
+                <td class="numeral text-end">{rtg(r?.pace)}</td>
+                <td class="numeral text-end">{pct(r?.efg_pct)}</td>
+                <td class="numeral text-end">{pct(r?.tov_pct)}</td>
+                <td class="numeral text-end">{pct(r?.orb_pct)}</td>
+                <td class="numeral text-end">{rate(r?.ft_rate)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+    </details>
+  )}
+  </Fragment>)}
+</section>
