@@ -170,9 +170,9 @@ describe('the nba league', () => {
         expect(leaguePath('nba', '/players/1')).toBe('/nba/players/1');
         expect(leaguePath('nba', '/nba/players/1')).toBe('/nba/players/1');
     });
-    test('nba logos use ESPN numeric ids in both modes', () => {
+    test('nba logos: the numeric id in light mode, the abbreviation in dark (nba/500-dark/<id>.png is a 404)', () => {
         expect(teamLogoUrl('nba', 17, false)).toBe('https://a.espncdn.com/i/teamlogos/nba/500/17.png');
-        expect(teamLogoUrl('nba', 17, true)).toBe('https://a.espncdn.com/i/teamlogos/nba/500-dark/17.png');
+        expect(teamLogoUrl('nba', 17, true)).toBe('https://a.espncdn.com/i/teamlogos/nba/500-dark/bkn.png');
     });
 });
 

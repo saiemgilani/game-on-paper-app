@@ -1,0 +1,305 @@
+---
+// src/components/routes/PlayoffPictureRoute.astro
+// /<nba|wnba>/standings (BB-G23): the official standings with the playoff, play-in and lottery odds, the seed
+// distribution, the NBA's divisions, the first round if the season ended today (on the CFP page's bracket component)
+// and the lottery, from sdv-db's daily pro season snapshots. Every seed, rank and probability is the producer's; this
+// template orders and formats them. The view / season selects and the empty-season fallback are BB-G22's.
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import DarkModeLogos from '../DarkModeLogos.astro';
+import PlayoffBracket from '../PlayoffBracket.astro';
+import { viewsFor, type PlayoffPictureParams } from '../../routes/basketball/playoffPicture';
+import type { ProSimRow } from '../../resources/playoffPicture';
+import { snapshotDay, record } from '../../utils/bracketology';
+import {
+    PRO_FORMAT, conferenceTables, divisionTables, joinTeams, lotteryGrid, lotteryTeams, projectedBracket, seedGroups,
+    type BracketUnit, type ProTeam,
+} from '../../utils/playoffPicture';
+import { oddsShade, pct, type BracketSlot } from '../../utils/playoff';
+import { generateMarginalString, roundNumber } from '../../utils/misc';
+import { LEAGUES, leaguePath, teamLogoUrl } from '../../utils/league';
+import { BASKETBALL, seasonLabelFor } from '../../basketball/config';
+import { teamHrefFromEspn, withParams } from '../../nba/links';
+
+interface Props { data: PlayoffPictureParams }
+const { league, seasons, current, pick, data, view } = Astro.props.data;
+const nba = league === 'nba';
+const lp = (p: string) => leaguePath(league, p);
+const path = lp('/standings');
+const label = seasonLabelFor(league, pick.season);
+const name = LEAGUES[league].name;
+const title = `${name} Standings and Playoff Picture, ${label}`;
+const description = `${name} standings with projected records, playoff${nba ? ', play-in' : ''} and seed chances, the first round if the season ended today, and the draft lottery odds.`;
+const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: lp('/'), active: false }, { title: 'Standings', active: true }];
+
+// every select keeps the other parameters; a default value leaves its parameter out (the canonical URL)
+const params = { season: String(pick.season), view };
+const defaults = { season: String(current), view: 'standings' };
+const url = (p: Record<string, string>) => withParams(path, { ...params, ...p }, defaults);
+// a select's option is the canonical URL; on the uncacheable /preview surface (utils/preview.ts keepPreviewSurface) stay on it,
+// since the public URL may answer a cached anonymous 404 before the preview cookie is read
+const NAV = "window.location.href = (location.pathname.startsWith('/preview/') ? '/preview' : '') + this.value";
+
+const sims = data?.sims ?? [];
+const teams = joinTeams(sims, data?.standings ?? []);
+const n = sims[0]?.n_sims ?? 0;
+const day = pick.snapshot ? snapshotDay(pick.snapshot.as_of_date) : '';
+const format = PRO_FORMAT[league];
+
+// stats.nba.com ids to the season's ESPN team (logos, links): the team module the other nba_stats pages use
+const espnOf = new Map(sims.map((r) => [r.team_id, BASKETBALL[league].teams.inSeason(r.team_id, pick.season)]));
+const key = (t: ProTeam) => String(espnOf.get(t.sim.team_id)?.espn_id ?? t.sim.team_id);
+const names: Record<string, string> = Object.fromEntries(teams.map((t) => [key(t), espnOf.get(t.sim.team_id)?.name ?? String(t.sim.team_id)]));
+const abbrs: Record<string, string> = Object.fromEntries(teams.map((t) => [key(t), espnOf.get(t.sim.team_id)?.tricode ?? names[key(t)]]));
+const href = (espnId: string | number) => teamHrefFromEspn({ id: espnId }, league, pick.season);
+const logo = (espnId: string) => teamLogoUrl(league, espnId, false, pick.season);
+
+const prob = (p: number | null | undefined) => (p == null ? '—' : pct(p));
+const probShade = (p: number | null | undefined) => (p == null ? null : oddsShade(p));
+const proj = (r: ProSimRow) => `${roundNumber(r.proj_wins, 1, 1)}-${roundNumber(r.proj_losses, 1, 1)}`;
+const projTitle = (r: ProSimRow) => (r.proj_wins_p10 == null || r.proj_wins_p90 == null ? undefined : `80% of simulated seasons: ${r.proj_wins_p10}-${r.proj_wins_p90} wins`);
+const mcTitle = (se: number | null) => (se == null ? undefined : `Monte Carlo error: ±${roundNumber(se * 100, 1, 1)} points`);
+const gb = (g: number | null | undefined) => (g == null ? '—' : g === 0 ? '—' : roundNumber(g, 1, 1));
+
+const conferences = conferenceTables(teams);
+const divisions = divisionTables(league, teams);
+const seedCount = Math.max(0, ...conferences.map((c) => c.rows.length));
+const SEEDS = Array.from({ length: Math.min(seedCount, 15) }, (_, i) => i + 1);
+const seedProb = (r: ProSimRow, s: number) => r[`p_seed_${s}`] ?? 0;
+
+// the bracket, one per conference: the official seeds on this day
+const slot = (u: BracketUnit<ProTeam>): BracketSlot | { seed: number; label: string } =>
+    'team' in u ? { seed: u.seed, teamId: key(u.team), pct: u.team.sim.p_playoffs ?? 0 } : u;
+const brackets = conferences.map((c) => ({ name: c.name, rounds: projectedBracket(league, c.rows)?.map((r) => ({ name: r.name, games: r.games.map(([a, b]) => [slot(a), slot(b)] as [ReturnType<typeof slot>, ReturnType<typeof slot>]) })) ?? null }));
+
+const lottery = lotteryTeams(teams);
+const picksPublished = sims.some((r) => r.p_pick_1 != null);
+const grid = lotteryGrid(data?.lottery ?? []);
+const confTitle = (c: string) => (nba ? `${c}ern Conference` : null);
+// a column count for each table's group heading rows
+const standingsCols = nba ? 10 : 8;
+const shownIds = teams.map(key);
+---
+<GenericPage title={`${title} | Game on Paper`} subtitle={description} slug={path} breadcrumbs={breadcrumbs} description={description} canonicalPath={url({})}>
+  <link href="/assets/css/sticky-table.css" rel="stylesheet">
+  <div class="container my-4">
+    <div class="row mb-2">
+      <div class="col-12 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h1 class="fs-3 m-0">{title}</h1>
+        <div class="d-flex flex-wrap gap-2">
+          <label class="visually-hidden" for="standings-view">View</label>
+          <select id="standings-view" class="form-select w-auto" onchange={NAV}>
+            {viewsFor(league).map((v) => (<option value={url({ view: v.key })} selected={v.key === view}>{v.label}</option>))}
+          </select>
+          <label class="visually-hidden" for="standings-season">Season</label>
+          <select id="standings-season" class="form-select w-auto" onchange={NAV}>
+            {[...seasons].reverse().map((s) => (<option value={url({ season: String(s) })} selected={s === pick.season}>{seasonLabelFor(league, s)}</option>))}
+          </select>
+        </div>
+      </div>
+    </div>
+    {pick.fallback && (
+      <p class="text-muted" id="standings-fallback">The {seasonLabelFor(league, current)} season has no projections yet. This is the {label} season's last snapshot, from {day}.</p>
+    )}
+    {!pick.snapshot && (
+      <p class="text-muted" id="standings-empty">There are no projections for {label}.</p>
+    )}
+    {pick.snapshot && !pick.fallback && (
+      <p class="small text-muted">As of {day}: games before that day count. {n.toLocaleString()} simulated seasons.{pick.season === current && seasons.includes(current - 1) && (<Fragment> Last season: <a href={url({ season: String(current - 1) })}>{seasonLabelFor(league, current - 1)}'s final snapshot</a>.</Fragment>)}</p>
+    )}
+
+    {data && view === 'standings' && conferences.map((c) => (
+      <Fragment>
+        {confTitle(c.name) && (<h2 class="fs-5 mt-4 mb-2">{confTitle(c.name)}</h2>)}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle table-fix-first-col">
+            <thead>
+              <tr>
+                <th title="Official seed and team">Team</th>
+                <th class="text-center">Record</th>
+                <th class="text-center" title="Games behind the 1 seed">GB</th>
+                <th class="text-center" title="Adjusted net rating (points per 100 possessions) the simulation plays on">Adj. Net</th>
+                <th class="text-center" title="Mean simulated final record">Proj. Record</th>
+                <th class="text-center" title="Chance of a top-4 seed (first-round home court)">Top 4</th>
+                {nba && (<th class="text-center" title="Chance of a top-6 seed (straight to the playoffs)">Top 6</th>)}
+                {nba && (<th class="text-center" title="Chance of seeds 7-10 (the play-in)">Play-In</th>)}
+                <th class="text-center" title={nba ? 'Chance to make the playoffs: a top-6 seed or through the play-in' : 'Chance of a top-8 seed'}>Playoffs</th>
+                <th class="text-center" title="Chance to miss the playoffs (the draft lottery)">Lottery</th>
+              </tr>
+            </thead>
+            <tbody>
+              {seedGroups(league, c.rows).map((g) => (
+                <Fragment>
+                  {g.label && (<tr><td colspan={standingsCols} class="gt_group_heading fw-bold">{g.label}</td></tr>)}
+                  {g.rows.map((t) => (
+                    <tr>
+                      <td class="text-left text-nowrap"><span class="text-muted numeral me-1">{t.standing?.seed ?? '—'}</span><a href={href(key(t))}><img class={`team-logo-${key(t)} me-1`} width="18" height="18" src={logo(key(t))} alt="" loading="lazy" /><span class="d-md-none">{abbrs[key(t)]}</span><span class="d-none d-md-inline">{names[key(t)]}</span></a></td>
+                      <td class="text-center text-nowrap">{record(t.sim.wins, t.sim.losses)}</td>
+                      <td class="text-center numeral">{gb(t.standing?.games_back)}</td>
+                      <td class="text-center numeral">{t.sim.adj_net_rtg == null ? '—' : generateMarginalString(t.sim.adj_net_rtg, 1, 1)}</td>
+                      <td class="text-center text-muted text-nowrap" title={projTitle(t.sim)}>{proj(t.sim)}</td>
+                      <td class:list={['text-center', 'numeral', probShade(t.sim.p_top4)]}>{prob(t.sim.p_top4)}</td>
+                      {nba && (<td class:list={['text-center', 'numeral', probShade(t.sim.p_top6)]}>{prob(t.sim.p_top6)}</td>)}
+                      {nba && (<td class:list={['text-center', 'numeral', probShade(t.sim.p_play_in)]}>{prob(t.sim.p_play_in)}</td>)}
+                      <td class:list={['text-center', 'numeral', 'fw-bold', probShade(t.sim.p_playoffs)]} title={mcTitle(t.sim.p_playoffs_se)}>{prob(t.sim.p_playoffs)}</td>
+                      {/* missing the playoffs is not a "good" green: the lottery chance stays unshaded beside the playoff odds */}
+                      <td class="text-center numeral">{prob(t.sim.p_lottery)}</td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Fragment>
+    ))}
+
+    {data && view === 'seeds' && conferences.map((c) => (
+      <Fragment>
+        {confTitle(c.name) && (<h2 class="fs-5 mt-4 mb-2">{confTitle(c.name)}</h2>)}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle table-fix-first-col">
+            <caption class="caption-top">The chance of each final {nba ? 'conference' : 'league'} seed, by average simulated seed.</caption>
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th class="text-center" title="Average simulated final seed">Avg Seed</th>
+                {SEEDS.map((s) => (<th class="text-center">{s}</th>))}
+              </tr>
+            </thead>
+            <tbody>
+              {[...c.rows].sort((a, b) => (a.sim.mean_seed ?? 99) - (b.sim.mean_seed ?? 99)).map((t) => (
+                <tr>
+                  <td class="text-left text-nowrap"><a href={href(key(t))}><img class={`team-logo-${key(t)} me-1`} width="18" height="18" src={logo(key(t))} alt="" loading="lazy" /><span class="d-md-none">{abbrs[key(t)]}</span><span class="d-none d-md-inline">{names[key(t)]}</span></a></td>
+                  <td class="text-center numeral">{t.sim.mean_seed == null ? '—' : roundNumber(t.sim.mean_seed, 1, 1)}</td>
+                  {SEEDS.map((s) => (<td class:list={['text-center', 'numeral', oddsShade(seedProb(t.sim, s))]}>{seedProb(t.sim, s) > 0 ? pct(seedProb(t.sim, s)) : ''}</td>))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Fragment>
+    ))}
+
+    {data && view === 'divisions' && (
+      <div class="row">
+        {divisions.map((d) => (
+          <div class="col-lg-6 col-12 mb-3">
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0 table-fix-first-col">
+                <caption class="caption-top fw-bold text-body">{d.name}</caption>
+                <thead>
+                  <tr>
+                    <th title="Official division rank and team">Team</th>
+                    <th class="text-center">Record</th>
+                    <th class="text-center" title="Official conference seed">Seed</th>
+                    <th class="text-center" title="Mean simulated final record">Proj. Record</th>
+                    <th class="text-center" title="Chance to win the division">Division</th>
+                    <th class="text-center" title="Chance to make the playoffs: a top-6 seed or through the play-in">Playoffs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.rows.map((t) => (
+                    <tr>
+                      <td class="text-left text-nowrap"><span class="text-muted numeral me-1">{t.standing?.division_rank ?? '—'}</span><a href={href(key(t))}><img class={`team-logo-${key(t)} me-1`} width="18" height="18" src={logo(key(t))} alt="" loading="lazy" /><span class="d-md-none">{abbrs[key(t)]}</span><span class="d-none d-md-inline">{names[key(t)]}</span></a></td>
+                      <td class="text-center text-nowrap">{record(t.sim.wins, t.sim.losses)}</td>
+                      <td class="text-center numeral">{t.standing?.seed ?? '—'}</td>
+                      <td class="text-center text-muted text-nowrap" title={projTitle(t.sim)}>{proj(t.sim)}</td>
+                      <td class:list={['text-center', 'numeral', 'fw-bold', probShade(t.sim.p_division)]}>{prob(t.sim.p_division)}</td>
+                      <td class:list={['text-center', 'numeral', probShade(t.sim.p_playoffs)]} title={mcTitle(t.sim.p_playoffs_se)}>{prob(t.sim.p_playoffs)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
+    {data && view === 'bracket' && (
+      <Fragment>
+        <p class="small text-muted mt-3">The first round if the season ended today, from the official seeds{nba ? ': seeds 7 and 8 play for the 7 seed, the loser then plays the winner of 9 against 10 for the 8 seed' : ''}. Each number is the team's chance to make the playoffs.</p>
+        <div class="row">
+          {brackets.map((b) => (
+            <div class:list={[nba ? 'col-lg-6' : 'col-lg-8', 'col-12', 'mb-3']}>
+              {confTitle(b.name) && (<h2 class="fs-5 mt-2 mb-2">{confTitle(b.name)}</h2>)}
+              {b.rounds
+                ? <PlayoffBracket rounds={b.rounds} names={names} abbrs={abbrs} league={league} href={href} pctTitle="Chance to make the playoffs" label={`Projected ${confTitle(b.name) ?? name} first round`} />
+                : <p class="text-muted">The standings on this day do not seat every seed the bracket needs.</p>}
+            </div>
+          ))}
+        </div>
+      </Fragment>
+    )}
+
+    {data && view === 'lottery' && (
+      <Fragment>
+        <h2 class="fs-5 mt-4">Lottery chances</h2>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle table-fix-first-col">
+            <caption class="caption-top">Teams with a chance to miss the playoffs, {picksPublished ? 'by average pick' : 'by lottery chance, then projected record'}.{!picksPublished && (<Fragment> <span id="lottery-picks-unpublished">Pick odds: not published yet. The {name} has not published lottery chances for this many lottery teams.</span></Fragment>)}</caption>
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th class="text-center">Record</th>
+                <th class="text-center" title="Mean simulated final record">Proj. Record</th>
+                <th class="text-center" title="Chance to miss the playoffs">Lottery</th>
+                {picksPublished && (<th class="text-center" title="Chance of the No. 1 pick">No. 1 Pick</th>)}
+                {picksPublished && (<th class="text-center" title={`Chance of a pick from the drawing (the top ${format.drawn})`}>Top {format.drawn}</th>)}
+                {picksPublished && (<th class="text-center" title="Average pick when in the lottery">Avg Pick</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {lottery.map((t) => (
+                <tr>
+                  <td class="text-left text-nowrap"><a href={href(key(t))}><img class={`team-logo-${key(t)} me-1`} width="18" height="18" src={logo(key(t))} alt="" loading="lazy" /><span class="d-md-none">{abbrs[key(t)]}</span><span class="d-none d-md-inline">{names[key(t)]}</span></a></td>
+                  <td class="text-center text-nowrap">{record(t.sim.wins, t.sim.losses)}</td>
+                  <td class="text-center text-muted text-nowrap" title={projTitle(t.sim)}>{proj(t.sim)}</td>
+                  <td class:list={['text-center', 'numeral', probShade(t.sim.p_lottery)]}>{prob(t.sim.p_lottery)}</td>
+                  {picksPublished && (<td class:list={['text-center', 'numeral', 'fw-bold', probShade(t.sim.p_pick_1)]}>{prob(t.sim.p_pick_1)}</td>)}
+                  {picksPublished && (<td class:list={['text-center', 'numeral', probShade(t.sim.p_drawn_pick)]}>{prob(t.sim.p_drawn_pick)}</td>)}
+                  {picksPublished && (<td class="text-center numeral">{t.sim.mean_pick == null ? '—' : roundNumber(t.sim.mean_pick, 1, 1)}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h2 class="fs-5 mt-4">Lottery odds by slot</h2>
+        {grid.slots.length > 0 ? (
+          <div class="table-responsive">
+            <table class="table table-sm align-middle table-fix-first-col">
+              <caption class="caption-top">The chance of each pick by pre-lottery slot (1 is the worst record), exact over every draw.</caption>
+              <thead>
+                <tr>
+                  <th>Slot</th>
+                  <th class="text-center" title="Combinations of 1,000">Chances</th>
+                  {grid.picks.map((p) => (<th class="text-center">{p}</th>))}
+                </tr>
+              </thead>
+              <tbody>
+                {grid.slots.map((s) => (
+                  <tr>
+                    <td class="text-left numeral">{s.slot}</td>
+                    <td class="text-center numeral text-muted">{s.chances == null ? '—' : roundNumber(s.chances, 0, 0)}</td>
+                    {s.byPick.map((p) => (<td class:list={['text-center', 'numeral', p == null ? null : oddsShade(p)]}>{p ? pct(p) : ''}</td>))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p class="text-muted" id="lottery-odds-unpublished">Not published yet: the {name} has not published lottery chances for this many lottery teams.</p>
+        )}
+      </Fragment>
+    )}
+
+    {data && (
+      <p class="small text-muted mt-3">
+        How this works: sportsdataverse-py rates every team on its possessions so far, then simulates the rest of the regular season {n.toLocaleString()} times with the league's tiebreakers{nba ? ', the play-in' : ''} and the draft lottery.
+        Seeds{nba ? ', division ranks' : ''} and games back are the official standings on the day, under the league's tie-break rules. The lottery odds by slot are exact. Hover a playoff chance for its Monte Carlo error.
+      </p>
+    )}
+  </div>
+  <DarkModeLogos teamIds={shownIds} />
+</GenericPage>

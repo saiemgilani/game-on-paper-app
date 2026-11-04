@@ -68,6 +68,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // page's bracket component, the bubble, conference standings with projections and the team sheets. Off: the pages
     // are the site's 404 and the Header is today's.
     'bball-bracketology': 'preview',
+    // Pro standings and playoff picture (BB-G23): /nba/standings and /wnba/standings and their Header entry, inside each
+    // league's flag. sdv-db's daily pro season snapshots (season_sims, season_standings, lottery_odds): the official
+    // standings with playoff / play-in / lottery odds, the seed distribution, the NBA's divisions, the first round on the
+    // CFP page's bracket component and the draft lottery. Off: the pages are the site's 404 and the Header is today's.
+    'bball-playoff-picture': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

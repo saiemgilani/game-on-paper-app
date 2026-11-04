@@ -21,10 +21,10 @@ beforeAll(async () => { container = await AstroContainer.create({ renderers: awa
 const render = () => container.renderToString(Header, { locals: { league: 'nba', preview: true } as App.Locals });
 
 describe('Header basketball menu from the config', () => {
-    test('the nba menu: Scoreboard, Nets, Players, Teams, Scatter, Leaders', async () => {
+    test('the nba menu: Scoreboard, Nets, Players, Teams, Scatter, Leaders (and Standings behind its flag)', async () => {
         const html = await render();
         const items = [...html.matchAll(/<a href="(\/nba[^"]*)" class="nav-link px-2 link-secondary">([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`);
-        expect(items).toEqual(['Scoreboard /nba/scoreboard', 'Nets /nba', 'Players /nba/players', 'Teams /nba/teams', 'Scatter /nba/scatter', 'Leaders /nba/leaders']);
+        expect(items).toEqual(['Scoreboard /nba/scoreboard', 'Nets /nba', 'Players /nba/players', 'Teams /nba/teams', 'Scatter /nba/scatter', 'Leaders /nba/leaders', 'Standings /nba/standings']);
     });
     test('no featured team: no featured entry, the rest unchanged', async () => {
         state.noFeatured = true;
