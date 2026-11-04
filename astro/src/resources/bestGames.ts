@@ -7,6 +7,7 @@
  */
 import { retrieveRowsFrom } from './sdv';
 import { BASKETBALL } from '../basketball/config';
+import { NBA_READ_TIMEOUT_MS } from './nbaGames';
 import type { BasketballLeague } from '../utils/league';
 
 /** Both tables follow the nightly ingest: the season pages' window. */
@@ -50,7 +51,8 @@ const SCHEDULE_COLUMNS = 'id,game_date,season_type,home_id,home_display_name,hom
 const GEI_COLUMNS = 'game_id,season,gei,lead_changes,max_swing_pts,completed,gei_rank,gei_pct,gei_n';
 
 async function read<T>(league: BasketballLeague, table: string, query: Record<string, string>): Promise<T[]> {
-    const rows = await retrieveRowsFrom<T>(BASKETBALL[league].gamesSource, table, { ...query, limit: LIMIT }, TTL, true);
+    // the game reads' timeout: a hung warehouse answers the page's 503 instead of holding the request open
+    const rows = await retrieveRowsFrom<T>(BASKETBALL[league].gamesSource, table, { ...query, limit: LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS);
     if (rows.length >= Number(LIMIT)) throw new Error(`${table} reached the ${LIMIT}-row cap: the read is truncated`);
     return rows;
 }

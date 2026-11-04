@@ -115,6 +115,7 @@ describe('the reads and the loader', () => {
         expect(gei[2]).not.toHaveProperty('order');
         expect(sched[2]).toMatchObject({ season: '2025' });
         expect(gei[4]).toBe(true); // strict: an outage is never an empty season
+        expect(gei[5]).toBe(8000); // the game reads' timeout
     });
     test('the default season with no completed games falls back to last season, labelled and cached', async () => {
         const { astro, cache } = fakeAstro('/wnba/best-games');
