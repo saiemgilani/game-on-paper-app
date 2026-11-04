@@ -87,9 +87,11 @@ export interface CommitteeRanking {
  * poll from another season (the preseason feed can still carry last year's final ranking).
  */
 export function committeeRanking(r: ESPNRankingsResponse | null, season: number): CommitteeRanking | null {
-    const cfp = r?.rankings?.find((x) => x.type === 'cfp');
-    if (!cfp || cfp.season?.year !== season) return null;
-    const ranked = (cfp.ranks ?? [])
+    const polls = Array.isArray(r?.rankings) ? r.rankings : [];
+    const cfp = polls.find((x) => x?.type === 'cfp');
+    // the poll's own season, else the feed's; a poll that names another season is never this one
+    if (!cfp || (cfp.season?.year ?? r?.latestSeason?.year) !== season) return null;
+    const ranked = (Array.isArray(cfp.ranks) ? cfp.ranks : [])
         .filter((x) => x?.team?.id && Number.isFinite(x.current))
         .sort((a, b) => a.current - b.current);
     if (!ranked.length) return null;

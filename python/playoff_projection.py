@@ -16,7 +16,11 @@ summaries' net_adj_epa, so a matchup here reads the same as on the game page. Ra
 stay fixed through a simulated season.
 """
 
+import hashlib
+import json
 import math
+import threading
+from collections import OrderedDict
 
 import numpy as np
 import polars as pl
@@ -411,3 +415,46 @@ def project(payload):
         "teams": teams_out,
         "committee": committee,
     }
+
+
+# --- one simulation per payload per worker -----------------------------------------------------
+# The site caches the answer in KV, but a new ingest or committee ranking changes its key, and the
+# cold renders that follow all miss together. Concurrent identical payloads share one run here, and
+# the last few answers are reused, so a burst costs at most one simulation per worker process.
+_MEMO_SIZE = 4
+PROJECT_WAIT_S = 120
+_memo_lock = threading.Lock()
+_memo = OrderedDict()
+_running = {}
+
+
+def project_once(payload):
+    """``project`` with per-worker single-flight and a small memo of recent answers."""
+    key = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, default=str).encode()
+    ).hexdigest()
+    with _memo_lock:
+        if key in _memo:
+            _memo.move_to_end(key)
+            return _memo[key]
+        event = _running.get(key)
+        owner = event is None
+        if owner:
+            event = _running[key] = threading.Event()
+    if not owner:
+        event.wait(PROJECT_WAIT_S)
+        with _memo_lock:
+            if key in _memo:
+                return _memo[key]
+        return project(payload)  # the run it waited on failed or stalled: answer itself
+    try:
+        out = project(payload)
+        with _memo_lock:
+            _memo[key] = out
+            while len(_memo) > _MEMO_SIZE:
+                _memo.popitem(last=False)
+        return out
+    finally:
+        with _memo_lock:
+            _running.pop(key, None)
+        event.set()

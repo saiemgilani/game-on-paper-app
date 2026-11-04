@@ -286,3 +286,53 @@ def test_project_adds_the_committee_field_only_when_given_a_ranking():
     assert [f["team_id"] for f in c["field"]] == field
     assert c["last_out"] == last_out
     assert {f["team_id"] for f in c["field"] if f["auto"]} == auto
+
+
+# --- project_once: one simulation per payload per worker ---------------------------------------
+@pytest.fixture
+def counted_project(monkeypatch):
+    import threading as _t
+    calls, gate = [], _t.Event()
+
+    def fake(payload):
+        calls.append(payload["n"])
+        gate.wait(5)
+        return {"answer": payload["n"]}
+
+    monkeypatch.setattr(pp, "project", fake)
+    monkeypatch.setattr(pp, "_memo", type(pp._memo)())
+    monkeypatch.setattr(pp, "_running", {})
+    return calls, gate
+
+
+def test_concurrent_identical_payloads_share_one_run_and_repeats_hit_the_memo(counted_project):
+    import threading as _t
+    calls, gate = counted_project
+    out = []
+    threads = [_t.Thread(target=lambda: out.append(pp.project_once({"n": 1}))) for _ in range(4)]
+    for t in threads:
+        t.start()
+    gate.set()
+    for t in threads:
+        t.join(5)
+    assert calls == [1] and out == [{"answer": 1}] * 4
+    assert pp.project_once({"n": 1}) == {"answer": 1} and calls == [1]
+    assert pp.project_once({"n": 2}) == {"answer": 2} and calls == [1, 2]
+
+
+def test_a_failed_run_is_not_memoized_and_the_next_call_retries(monkeypatch):
+    monkeypatch.setattr(pp, "_memo", type(pp._memo)())
+    monkeypatch.setattr(pp, "_running", {})
+    attempts = []
+
+    def flaky(payload):
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise ValueError("bad payload")
+        return {"ok": True}
+
+    monkeypatch.setattr(pp, "project", flaky)
+    with pytest.raises(ValueError):
+        pp.project_once({"n": 3})
+    assert pp._running == {}
+    assert pp.project_once({"n": 3}) == {"ok": True}

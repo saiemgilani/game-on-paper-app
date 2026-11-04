@@ -53,7 +53,8 @@ export const FLAGS: Record<string, FeatureState> = {
     'coaches': 'on',
     // The CFP projection page (/playoff): sportsdataverse-py's season sims + cfbseedR tiebreakers
     // through the API (python/playoff_projection.py), the 2026 selection rules and the fixed
-    // bracket. Nothing links to it yet; promote to 'on' to publish the URL.
+    // bracket, plus the committee's field from the CFP rankings. Public since #389: linked
+    // under the header's Tools menu and listed in the sitemap.
     'playoff-projection': 'on',
     // The play processor's source switch (football-sources Stage 4): the game
     // page may ask the API to process a game from an alternate feed

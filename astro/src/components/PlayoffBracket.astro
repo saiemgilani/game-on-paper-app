@@ -9,15 +9,18 @@ interface Props {
     /** cleaned full names (md and up) and abbreviations (mobile), by team id */
     names: Record<string, string>
     abbrs: Record<string, string>
+    /** whose field this is, for the bracket's accessible name and the champion's tooltip */
+    label?: string
+    field?: string
 }
-const { rounds, champion, names, abbrs } = Astro.props;
+const { rounds, champion, names, abbrs, label = 'Projected College Football Playoff bracket', field = 'the projected field' } = Astro.props;
 const name = (id: string) => names[id] ?? id;
 const abbr = (id: string) => abbrs[id] ?? name(id);
 const BEAT = 'Chance to beat this opponent';
-const TITLE = 'Chance to win the title, if the projected field holds';
+const TITLE = `Chance to win the title, if ${field} holds`;
 ---
 <!-- md and up: the bracket graphic, each game a bordered two-row table -->
-<div class="playoff-bracket d-none d-md-grid" role="group" aria-label="Projected College Football Playoff bracket">
+<div class="playoff-bracket d-none d-md-grid" role="group" aria-label={label}>
     {rounds.map((round, r) => (
         <div class="bracket-round">
             <h2 class="bracket-round-name">{round.name}</h2>
@@ -60,7 +63,7 @@ const TITLE = 'Chance to win the title, if the projected field holds';
 
 <!-- mobile: the same games as one table, grouped by round, by abbreviation -->
 <div class="table-responsive d-md-none">
-    <table class="table table-sm align-middle bracket-table" aria-label="Projected College Football Playoff bracket">
+    <table class="table table-sm align-middle bracket-table" aria-label={label}>
         <tbody>
             {rounds.map((round) => (
                 <>
