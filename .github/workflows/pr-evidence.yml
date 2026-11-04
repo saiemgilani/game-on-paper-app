@@ -51,8 +51,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # the PR merge commit (default for pull_request); full history for the base worktree
-          fetch-depth: 0
+          # the PR merge commit (default for pull_request) and its parents: the base is HEAD^1.
+          # Not fetch-depth 0, which fetches every branch, pr-previews' ~6.6 GB of media included.
+          fetch-depth: 2
           persist-credentials: false
 
       - name: Evidence directory (outside the checkout, so no build or test globs see it)
@@ -161,8 +162,6 @@ jobs:
           shots="$EVIDENCE_DIR/shots"
           clips="$EVIDENCE_DIR/walkthrough"
           if ! ls "$shots"/*.jpg "$clips"/*.mp4 "$clips"/*.webm >/dev/null 2>&1; then echo "nothing to publish"; exit 0; fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           wt="$RUNNER_TEMP/pr-previews"
           dest="pr$PR/${PR_HEAD_SHA:0:7}"
           # one-shot auth for every pr-previews fetch and push (the checkout persists no token);
@@ -170,13 +169,18 @@ jobs:
           # fresh orphan branch whose push is then rejected
           auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)"
           echo "::add-mask::$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)"
-          # full fetch: the checkout is complete history, and a shallow fetch would graft it
-          if git -c "http.https://github.com/.extraheader=$auth" fetch -q origin pr-previews; then
-            git worktree add --detach "$wt" FETCH_HEAD
+          # A scratch repo, not a worktree of the checkout: a blobless fetch of pr-previews (every
+          # commit and tree, no file contents) and a sparse checkout of this PR's folder only, so the
+          # runner writes this PR's media and never the other PRs' ~12 GB (which filled the disk).
+          git init -q "$wt"
+          git -C "$wt" remote add origin "https://github.com/${{ github.repository }}"
+          git -C "$wt" config user.name "github-actions[bot]"
+          git -C "$wt" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$wt" sparse-checkout set --no-cone "/pr$PR/"
+          if git -C "$wt" -c "http.https://github.com/.extraheader=$auth" fetch -q --filter=blob:none origin pr-previews; then
+            git -C "$wt" -c "http.https://github.com/.extraheader=$auth" checkout -q --detach FETCH_HEAD
           else
-            git worktree add --detach "$wt" HEAD
-            git -C "$wt" checkout --orphan pr-previews
-            git -C "$wt" rm -rfq .
+            git -C "$wt" checkout -q --orphan pr-previews
           fi
           mkdir -p "$wt/$dest"
           cp "$shots"/*.jpg "$wt/$dest/" 2>/dev/null || true
@@ -192,8 +196,8 @@ jobs:
             # other PRs push here concurrently; their paths never overlap, so rebase and retry
             for attempt in 1 2 3 4 5; do
               git -C "$wt" -c "http.https://github.com/.extraheader=$auth" push -q origin HEAD:refs/heads/pr-previews && break
-              git -C "$wt" -c "http.https://github.com/.extraheader=$auth" fetch -q origin pr-previews
-              git -C "$wt" rebase -q FETCH_HEAD
+              git -C "$wt" -c "http.https://github.com/.extraheader=$auth" fetch -q --filter=blob:none origin pr-previews
+              git -C "$wt" -c "http.https://github.com/.extraheader=$auth" rebase -q FETCH_HEAD
               [ "$attempt" = 5 ] && exit 1
             done
           fi
