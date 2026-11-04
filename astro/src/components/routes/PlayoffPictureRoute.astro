@@ -19,6 +19,7 @@ import { generateMarginalString, roundNumber } from '../../utils/misc';
 import { LEAGUES, leaguePath, teamLogoUrl } from '../../utils/league';
 import { BASKETBALL, seasonLabelFor } from '../../basketball/config';
 import { teamHrefFromEspn, withParams } from '../../nba/links';
+import { isFeatureEnabled } from '../../utils/features';
 
 interface Props { data: PlayoffPictureParams }
 const { league, seasons, current, pick, data, view } = Astro.props.data;
@@ -105,6 +106,9 @@ const shownIds = teams.map(key);
     )}
     {pick.snapshot && !pick.fallback && (
       <p class="small text-muted">As of {day}: games before that day count. {n.toLocaleString()} simulated seasons.{pick.season === current && seasons.includes(current - 1) && (<Fragment> Last season: <a href={url({ season: String(current - 1) })}>{seasonLabelFor(league, current - 1)}'s final snapshot</a>.</Fragment>)}</p>
+    )}
+    {nba && isFeatureEnabled('bball-nba-cup', Astro.locals) && (
+      <p class="small" id="standings-cup-link"><a href={lp('/cup')}>The NBA Cup: groups, the wild-card race, the knockout and the odds</a></p>
     )}
 
     {data && view === 'standings' && conferences.map((c) => (
