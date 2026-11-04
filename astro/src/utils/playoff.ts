@@ -58,3 +58,15 @@ export function pct(p: number): string {
     if (p > 0 && p < 0.005) return '<1%';
     return `${Math.round(p * 100)}%`;
 }
+
+/**
+ * The page's odds shading: green at 90% and up, fading to clear under 1% (the site's
+ * `hulk-bg-level-6..9` greens; a probability has no "bad" end, so no purple).
+ */
+export function oddsShade(p: number): string | null {
+    if (p >= 0.9) return 'hulk-bg-level-9';
+    if (p >= 0.5) return 'hulk-bg-level-8';
+    if (p >= 0.1) return 'hulk-bg-level-7';
+    if (p >= 0.01) return 'hulk-bg-level-6';
+    return null;
+}

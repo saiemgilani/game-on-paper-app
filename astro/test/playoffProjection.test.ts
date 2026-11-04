@@ -4,7 +4,7 @@ import { gunzipSync } from 'node:zlib';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import PlayoffBracket from '../src/components/PlayoffBracket.astro';
 import type { PlayoffProjection } from '../src/resources/playoff';
-import { buildBracket, pct } from '../src/utils/playoff';
+import { buildBracket, oddsShade, pct } from '../src/utils/playoff';
 import { calculatePredictedPointMargin, calculatePredictedWinProb } from '../src/resources/sdv';
 
 // the API's real answer for 2026 on the 11-02 Data API (python/playoff_projection.py, 1000 sims)
@@ -74,12 +74,30 @@ describe('PlayoffBracket', () => {
         const p = fixture();
         const { rounds, champion } = buildBracket(p.field, beatsFrom(p));
         const names = Object.fromEntries(p.teams.map((t) => [t.team_id, t.name]));
-        const html = await (await AstroContainer.create()).renderToString(PlayoffBracket, { props: { rounds, champion, names } });
-        expect([...html.matchAll(/bracket-round-name[^>]*>([^<]+)</g)].map((m) => m[1])).toEqual(
+        const abbrs = Object.fromEntries(p.teams.map((t) => [t.team_id, `A${t.team_id}`]));
+        const html = await (await AstroContainer.create()).renderToString(PlayoffBracket, { props: { rounds, champion, names, abbrs } });
+        const [graphic, table] = html.split('bracket-table');
+        expect([...graphic.matchAll(/bracket-round-name[^>]*>([^<]+)</g)].map((m) => m[1])).toEqual(
             ['First Round', 'Quarterfinals', 'Semifinals', 'National Championship', 'Champion']);
-        expect(html.match(/class="bracket-slot"/g)).toHaveLength(8 + 8 + 4 + 2 + 1);
+        // md and up: one bordered table per game (11 games + the champion), one row per team
+        expect(graphic.match(/table-bordered/g)).toHaveLength(4 + 4 + 2 + 1 + 1);
+        expect(graphic.match(/class="bracket-slot"/g)).toHaveLength(8 + 8 + 4 + 2 + 1);
+        expect(graphic).toContain(names[champion.teamId]);
+        expect(graphic).not.toContain(abbrs[champion.teamId]);
+        // mobile: one table, a heading row per round, one row per game, by abbreviation
+        expect([...table.matchAll(/gt_group_heading[^>]*>([^<]+)</g)].map((m) => m[1])).toEqual(
+            ['First Round', 'Quarterfinals', 'Semifinals', 'National Championship', 'Champion']);
+        expect(table.match(/class="bracket-slot"/g)).toHaveLength(4 + 4 + 2 + 1 + 1);
+        expect(table).toContain(abbrs[champion.teamId]);
+        expect(table).not.toContain(`>${names[champion.teamId]}<`);
         expect(html).toContain(`href="/team/${champion.teamId}"`);
-        expect(html).toContain(names[champion.teamId]);
+    });
+});
+
+describe('oddsShade', () => {
+    test('green from 90% up, fading to clear under 1%', () => {
+        expect([0.95, 0.9, 0.6, 0.2, 0.05, 0.009, 0].map(oddsShade)).toEqual(
+            ['hulk-bg-level-9', 'hulk-bg-level-9', 'hulk-bg-level-8', 'hulk-bg-level-7', 'hulk-bg-level-6', null, null]);
     });
 });
 
