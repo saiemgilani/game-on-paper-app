@@ -12,6 +12,7 @@
  */
 import GenericPage from '../../layouts/GenericPage.astro';
 import ProNav from '../../components/pro/ProNav.astro';
+import { PRO_SEASON } from '../../resources/pro';
 ---
 <GenericPage title="Methodology | Game on Paper Pro" subtitle="How the Pro numbers are made" slug="/pro/methodology"
     breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Methodology', active: true }]} heading="Game on Paper Pro methodology">
@@ -24,7 +25,7 @@ import ProNav from '../../components/pro/ProNav.astro';
                     Pro profiles start from the same play-by-play numbers as the free site (EPA, success rate and the rest are in
                     the <a href="/glossary">glossary</a>) and add three things: small samples shrunk toward the position average,
                     a percentile band instead of a single rank, and a note on everything the data can't support.
-                    None of it is a valuation.
+                    Valuation (below) turns the same numbers into model dollar values.
                 </p>
 
                 <h2 class="fs-4 mt-4">Percentile bands</h2>
@@ -99,8 +100,32 @@ import ProNav from '../../components/pro/ProNav.astro';
                     </li>
                 </ul>
 
+                <h2 class="fs-4 mt-4" id="valuation">Valuation</h2>
+                <p>
+                    Every player gets two numbers. <strong>Production value</strong> is what his play this season is worth to a program:
+                    his value above a typical backup, in EPA, at a full-season pace. <strong>Projected value</strong> is next season's
+                    expected value as a starter, with an 80% range. The gap between them is regression risk.
+                </p>
+                <ul>
+                    <li><strong>Positional value</strong>: team EPA per play regressed on each unit's quality (2023-26), each coefficient
+                        pulled toward its side's average by its standard error. The offensive line also gets its team's run-blocking
+                        environment from our rushing-over-expected model.</li>
+                    <li><strong>Dollars</strong>: a P4 program's revenue-share pool for football (the House settlement cap, growing 4% a
+                        year, 75% to football), split half by on-field value and half by starting slots, then within a unit by each
+                        player's share of its value. Model estimates, not reported deals, and no third-party NIL.</li>
+                    <li><strong>Projection</strong>: next season's percentile from this season's, a talent prior (position, star rating,
+                        year in college) and years in college. Checked out of sample, it beats "same as this year", but the ranges are wide.</li>
+                    <li><strong>Age</strong>: a recruiting-class proxy, within a year of the birth date for 94% of players who have one.</li>
+                    <li><strong>Scarcity and replace odds</strong>: P4 starting jobs opened per starter-caliber portal entrant last cycle,
+                        and the chance a program lands an equal entrant, from its share of portal commits at that recruiting tier.</li>
+                    <li><strong>Rushing over expected</strong>: the play-by-play analogue of RYOE (no tracking data), net of down, distance,
+                        field position, opponent and the rusher's own line. It describes a season well and projects poorly, so
+                        projections do not use it.</li>
+                </ul>
+                <p>Every fitted number is in the <a href={`/pro/file/pro/${PRO_SEASON}/valuation/valuation.pdf`}>valuation methodology PDF</a>.</p>
+
                 <h2 class="fs-4 mt-4">What this doesn't cover</h2>
-                <p>Athletic testing, injury history, and NIL or market data. Nothing here is a valuation.</p>
+                <p>Athletic testing, injury history and third-party NIL deals. Dollar values are model estimates, not reported deals.</p>
             </div>
         </div>
     </div>

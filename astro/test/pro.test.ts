@@ -17,8 +17,8 @@ import { SESSION } from './helpers/memKV';
 import { onRequest } from '../src/middleware';
 import { mintPreviewCookie, PREVIEW_COOKIE } from '../src/utils/preview';
 import {
-    describeFilters, digestEntrants, digestText, filterBoard, formatPffValue, formatProDelta, formatProMetric,
-    mintProCookie, parseBoardFilters, PRO_COOKIE, PRO_TOKEN_TTL_S, proAllows, sortBoard, verifyProCookie, type BoardEntrant,
+    describeFilters, digestEntrants, digestText, filterBoard, formatOdds, formatPffValue, formatProDelta, formatProMetric,
+    formatUsd, mintProCookie, parseBoardFilters, PRO_COOKIE, PRO_TOKEN_TTL_S, proAllows, sortBoard, verifyProCookie, type BoardEntrant,
 } from '../src/utils/pro';
 import { claimDownload, claimLoginSend, createLoginToken, isProKey, latestBoard, redeemLoginToken, runProDigest } from '../src/resources/pro';
 
@@ -308,24 +308,76 @@ describe('the pages', () => {
     test('pricing: the tiers, "Contact us" with no payment link set, and the plain statements', async () => {
         const html = await render('../src/pages/pricing.astro', '/pricing');
         for (const s of ['$29/mo', '$249/yr', '$179/mo', '$1,499/yr', 'P4 $7,500', '$1,995/yr', '$350', '$2,500 / $7,500', 'From $3,500']) expect(html, s).toContain(s);
-        expect(html).toContain('Not a valuation');
+        expect(html).toContain('never reported NIL deals');
         expect(html).toContain('href="/pro/methodology"');
         expect(html).toContain('Contact us');
         expect(html).not.toContain('Subscribe</a>');
     }, 60_000);
+
+    test('the profile valuation panel: tiles, routes, rushing over expected, labelled as a model', async () => {
+        const html = await render('../src/pages/pro/players/[id].astro', '/pro/players/1', { id: '1' });
+        const panel = html.split('id="pro-value"')[1].split('id="pro-efficiency"')[0];
+        for (const s of ['$2.50M', '$1.40M', '42.5 EPA over a backup', '31%', '12 equal entrants', 'class-year proxy']) {
+            expect(panel, s).toContain(s);
+        }
+        expect(html).toContain('Model estimates at revenue-share rates, not reported deals.');
+        expect(panel).toContain('HS 4★ by year 3: 12% hit, ~8 signees');
+        expect(panel).toContain('61 carries');
+        // a profile without a value block has no panel
+        const wr = await render('../src/pages/pro/players/[id].astro', '/pro/players/2', { id: '2' });
+        expect(wr).not.toContain('id="pro-value"');
+    }, 60_000);
+
+    test('the roster report: headlines first, units with strengths, departing, PDF and limits', async () => {
+        const html = await render('../src/pages/pro/rosters/[id].astro', '/pro/rosters/1', { id: '1' });
+        expect(html.indexOf('id="pro-headlines"')).toBeLessThan(html.indexOf('id="pro-units-table"'));
+        expect(html).toContain('Fixture State: $4.24M');
+        expect(html).toContain('href="/pro/file/pro/2026/rosters/1.pdf"');
+        expect(html.split('data-unit="QB"')[1].split('</tr>')[0]).toContain('text-success');
+        expect(html.split('data-unit="WR"')[1].split('</tr>')[0]).toContain('45%');
+        expect(html).toContain('id="pro-departing-table"');
+        expect(html).toContain('Fixture limit two.');
+        const index = await render('../src/pages/pro/rosters/index.astro', '/pro/rosters');
+        expect(index).toContain('href="/pro/rosters/1"');
+    }, 60_000);
+
+    test('the position and market reports render; an unknown unit is a 404', async () => {
+        const qb = await render('../src/pages/pro/positions/[unit].astro', '/pro/positions/QB', { unit: 'QB' });
+        for (const s of ['Quarterbacks: fixture headline one.', '$5.09M', '+3.6 pts', 'href="/pro/file/pro/2026/positions/QB.pdf"']) expect(qb, s).toContain(s);
+        const market = await render('../src/pages/pro/market.astro', '/pro/market');
+        for (const s of ['Tightest markets', 'Fixture Mover', '4.8%', 'href="/pro/file/pro/2026/market/market.pdf"']) expect(market, s).toContain(s);
+        const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
+        const { default: Page } = await import('../src/pages/pro/positions/[unit].astro');
+        const res = await container.renderToResponse(Page, { params: { unit: 'K' }, request: new Request('https://gameonpaper.com/pro/positions/K'), locals: { preview: true, pro } as any }).catch(() => null);
+        expect(res ? await res.text() : '').not.toContain('Download PDF');
+    }, 60_000);
+});
+
+describe('valuation formatting', () => {
+    test('model dollars and odds print like the PDFs', () => {
+        expect(formatUsd(2_500_000)).toBe('$2.50M');
+        expect(formatUsd(456_400)).toBe('$456K');
+        expect(formatUsd(null)).toBe('—');
+        expect(formatOdds(0.312)).toBe('31%');
+        expect(formatOdds(undefined)).toBe('—');
+    });
 });
 
 describe('Pro pages refuse to render without an entitlement on their own', () => {
-    test.each(['index', 'players/[id]', 'portal'])('/pro/%s redirects to /pricing when locals.pro is null', async (page) => {
+    test.each(['index', 'players/[id]', 'portal', 'rosters/index', 'rosters/[id]', 'positions/[unit]', 'market'])('/pro/%s redirects to /pricing when locals.pro is null', async (page) => {
         const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
         const pages: Record<string, () => Promise<any>> = {
             index: () => import('../src/pages/pro/index.astro'),
             'players/[id]': () => import('../src/pages/pro/players/[id].astro'),
             portal: () => import('../src/pages/pro/portal.astro'),
+            'rosters/index': () => import('../src/pages/pro/rosters/index.astro'),
+            'rosters/[id]': () => import('../src/pages/pro/rosters/[id].astro'),
+            'positions/[unit]': () => import('../src/pages/pro/positions/[unit].astro'),
+            market: () => import('../src/pages/pro/market.astro'),
         };
         const Page = (await pages[page]()).default;
         const res = await container.renderToResponse(Page, {
-            params: { id: '1' }, request: new Request('https://gameonpaper.com/pro/x'), locals: { preview: true, pro: null } as any,
+            params: { id: '1', unit: 'QB' }, request: new Request('https://gameonpaper.com/pro/x'), locals: { preview: true, pro: null } as any,
         });
         expect(res.status).toBe(302);
         expect(res.headers.get('Location')).toBe('/pricing');
@@ -353,6 +405,13 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         expect(proAllows(pro, '/pro/file/pro/2026/teams/52.pdf')).toBe(true);
         expect(proAllows(pro, '/pro/file/pro/coaches/kirk-ferentz.pdf')).toBe(false);
         expect(proAllows({ ...pro, addons: ['dossier'] }, '/pro/file/pro/coaches/kirk-ferentz.pdf')).toBe(true);
+        // valuation reports: above Analyst; the methodology PDF and profile values are for every tier
+        for (const path of ['/pro/rosters', '/pro/rosters/194', '/pro/positions/QB', '/pro/market', '/pro/file/pro/2026/rosters/194.pdf', '/pro/file/pro/2026/market/market.pdf']) {
+            expect(proAllows(a, path), path).toBe(false);
+            expect(proAllows(pro, path), path).toBe(true);
+        }
+        expect(proAllows(a, '/pro/file/pro/2026/valuation/valuation.pdf')).toBe(true);
+        expect(proAllows(a, '/pro/rostersx')).toBe(true);
     });
 
     test('the middleware enforces them: pages to /pricing, files and board posts 403', async () => {

@@ -1,0 +1,157 @@
+{
+ "schema": 1,
+ "season": 2026,
+ "snapshot": "20261103T082146Z",
+ "model": "market_fixture",
+ "rendered": "2026-11-04",
+ "kind": "position",
+ "unit": "QB",
+ "name": "Quarterbacks",
+ "headlines": [
+  "Quarterbacks: fixture headline one.",
+  "Scarcity index 1.00 (fixture)."
+ ],
+ "kpi": {
+  "beta": 2.18,
+  "beta_rank": 1,
+  "budget": 2200000,
+  "starter_median": 1340000,
+  "scarcity": 1.0,
+  "jobs_opened": 42,
+  "entrants": 22,
+  "replacement_pct": 38.0,
+  "reliability": 0.27,
+  "proj_sd": 24.2,
+  "rmse_model": 23.0,
+  "rmse_persist": 29.7
+ },
+ "price_curve": [
+  {
+   "pctile": 10,
+   "usd": 0
+  },
+  {
+   "pctile": 50,
+   "usd": 1340000
+  },
+  {
+   "pctile": 90,
+   "usd": 5090000
+  }
+ ],
+ "aging": [
+  {
+   "yb": 0,
+   "delta": 3.6,
+   "n": 80,
+   "p_still": 0.5
+  },
+  {
+   "yb": 1,
+   "delta": -1.2,
+   "n": 90,
+   "p_still": 0.6
+  }
+ ],
+ "level_by_year": [
+  {
+   "yb": 0,
+   "pct": 40.0
+  }
+ ],
+ "age_vs_class": [
+  {
+   "class": "SO",
+   "age_for_class": "old",
+   "n": 40,
+   "p_play": 0.2,
+   "p_start": 0.1,
+   "pct": 45.0
+  }
+ ],
+ "sources": [
+  {
+   "group": "P4",
+   "source": "Portal",
+   "players": 50,
+   "starters": 30,
+   "starter_share": 0.56,
+   "usd_per_starter": 2000000,
+   "pct": 60.0
+  }
+ ],
+ "routes": [
+  {
+   "route": "HS",
+   "stars": 5,
+   "y0": 0.05,
+   "y1": 0.3,
+   "y2": 0.5,
+   "y3": null
+  }
+ ],
+ "top": [
+  {
+   "espn_id": 1,
+   "name": "Fixture Player",
+   "team": "Fixture State",
+   "unit": "QB",
+   "class": "JR",
+   "source": "Portal",
+   "stars": 4,
+   "age": 20.7,
+   "pct": 88.0,
+   "proj": 70,
+   "proj_lo": 40,
+   "proj_hi": 100,
+   "prod_usd": 2500000,
+   "proj_usd": 1250000.0,
+   "started": true,
+   "departing": false
+  }
+ ],
+ "next_season": [
+  {
+   "espn_id": 1,
+   "name": "Fixture Player",
+   "team": "Fixture State",
+   "unit": "QB",
+   "class": "JR",
+   "source": "Portal",
+   "stars": 4,
+   "age": 20.7,
+   "pct": 88.0,
+   "proj": 70,
+   "proj_lo": 40,
+   "proj_hi": 100,
+   "prod_usd": 2500000,
+   "proj_usd": 1250000.0,
+   "started": true,
+   "departing": false
+  }
+ ],
+ "young": [
+  {
+   "espn_id": 2,
+   "name": "Fixture Receiver",
+   "team": "Fixture State",
+   "unit": "WR",
+   "class": "JR",
+   "source": "HS",
+   "stars": 4,
+   "age": 20.7,
+   "pct": 71.0,
+   "proj": 60,
+   "proj_lo": 30,
+   "proj_hi": 90,
+   "prod_usd": 640000,
+   "proj_usd": 320000.0,
+   "started": true,
+   "departing": true
+  }
+ ],
+ "limits": [
+  "Dollar figures are a fixture model, not reported deals.",
+  "Fixture limit two."
+ ]
+}

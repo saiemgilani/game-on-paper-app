@@ -1,0 +1,201 @@
+{
+ "schema": 1,
+ "season": 2026,
+ "snapshot": "20261103T082146Z",
+ "model": "market_fixture",
+ "rendered": "2026-11-04",
+ "kind": "roster",
+ "team": {
+  "team_id": 1,
+  "team": "Fixture State",
+  "conference": "Fixture Conference",
+  "group": "P4"
+ },
+ "headlines": [
+  "Fixture State: $4.24M of on-field value (fixture headline one).",
+  "Strongest units: quarterbacks (5 of 136)."
+ ],
+ "kpi": {
+  "prod_usd": 4240000,
+  "rank": 7,
+  "of": 68,
+  "proj_usd": 2000000,
+  "departing_usd": 640000,
+  "roster": 24,
+  "starters": 9,
+  "age": 20.4,
+  "usd_per_spot": 176000,
+  "usd_per_spot_peer": 124000
+ },
+ "units": [
+  {
+   "unit": "QB",
+   "name": "Quarterbacks",
+   "roster": 8,
+   "starters": 1,
+   "unit_pct": 88.0,
+   "fbs_rank": 5,
+   "fbs_n": 136,
+   "prod_usd": 2500000,
+   "peer_median": 900000,
+   "conf_median": 950000,
+   "proj_usd": 1250000.0,
+   "departing_usd": 0,
+   "departing_starters": 0,
+   "scarcity": 1.0,
+   "replace_odds": null
+  },
+  {
+   "unit": "WR",
+   "name": "Wide receivers",
+   "roster": 8,
+   "starters": 3,
+   "unit_pct": 40.0,
+   "fbs_rank": 120,
+   "fbs_n": 136,
+   "prod_usd": 640000,
+   "peer_median": 900000,
+   "conf_median": 950000,
+   "proj_usd": 320000.0,
+   "departing_usd": 640000,
+   "departing_starters": 1,
+   "scarcity": 0.88,
+   "replace_odds": 0.45
+  },
+  {
+   "unit": "OL",
+   "name": "Offensive line",
+   "roster": 8,
+   "starters": 5,
+   "unit_pct": 60.0,
+   "fbs_rank": 50,
+   "fbs_n": 136,
+   "prod_usd": 1100000,
+   "peer_median": 900000,
+   "conf_median": 950000,
+   "proj_usd": 550000.0,
+   "departing_usd": 0,
+   "departing_starters": 0,
+   "scarcity": 1.6,
+   "replace_odds": null
+  }
+ ],
+ "strengths": [
+  "QB"
+ ],
+ "weaknesses": [
+  "WR"
+ ],
+ "by_source": [
+  {
+   "key": "HS",
+   "players": 14,
+   "starters": 4,
+   "prod_usd": 1700000,
+   "vs_talent": 3.5,
+   "age": 19.9
+  },
+  {
+   "key": "Portal",
+   "players": 10,
+   "starters": 5,
+   "prod_usd": 2540000,
+   "vs_talent": -1.2,
+   "age": 21.3
+  }
+ ],
+ "by_class": [
+  {
+   "key": "JR",
+   "players": 24,
+   "starters": 9,
+   "prod_usd": 4240000,
+   "vs_talent": 1.0,
+   "age": 20.4
+  }
+ ],
+ "top": [
+  {
+   "espn_id": 1,
+   "name": "Fixture Player",
+   "team": "Fixture State",
+   "unit": "QB",
+   "class": "JR",
+   "source": "Portal",
+   "stars": 4,
+   "age": 20.7,
+   "pct": 88.0,
+   "proj": 70,
+   "proj_lo": 40,
+   "proj_hi": 100,
+   "prod_usd": 2500000,
+   "proj_usd": 1250000.0,
+   "started": true,
+   "departing": false
+  },
+  {
+   "espn_id": 2,
+   "name": "Fixture Receiver",
+   "team": "Fixture State",
+   "unit": "WR",
+   "class": "JR",
+   "source": "HS",
+   "stars": 4,
+   "age": 20.7,
+   "pct": 71.0,
+   "proj": 60,
+   "proj_lo": 30,
+   "proj_hi": 90,
+   "prod_usd": 640000,
+   "proj_usd": 320000.0,
+   "started": true,
+   "departing": true
+  }
+ ],
+ "next_core": [
+  {
+   "espn_id": 1,
+   "name": "Fixture Player",
+   "team": "Fixture State",
+   "unit": "QB",
+   "class": "JR",
+   "source": "Portal",
+   "stars": 4,
+   "age": 20.7,
+   "pct": 88.0,
+   "proj": 70,
+   "proj_lo": 40,
+   "proj_hi": 100,
+   "prod_usd": 2500000,
+   "proj_usd": 1250000.0,
+   "started": true,
+   "departing": false
+  }
+ ],
+ "departing": [
+  {
+   "espn_id": 2,
+   "name": "Fixture Receiver",
+   "team": "Fixture State",
+   "unit": "WR",
+   "class": "JR",
+   "source": "HS",
+   "stars": 4,
+   "age": 20.7,
+   "pct": 71.0,
+   "proj": 60,
+   "proj_lo": 30,
+   "proj_hi": 90,
+   "prod_usd": 640000,
+   "proj_usd": 320000.0,
+   "started": true,
+   "departing": true,
+   "equiv_entrants": 30,
+   "p_land": 0.45
+  }
+ ],
+ "limits": [
+  "Dollar figures are a fixture model, not reported deals.",
+  "Fixture limit two."
+ ]
+}

@@ -36,6 +36,9 @@ export function proRequirement(path: string): { tiers?: ProTier[]; addon?: ProAd
     if (/^\/pro\/(portal|board)(\/|$)/.test(path) || /^\/pro\/file\/pro\/\d{4}\/portal\//.test(path)) return { addon: 'portal' };
     if (/^\/pro\/file\/pro\/\d{4}\/teams\//.test(path)) return { tiers: ['pro', 'program'] };
     if (/^\/pro\/file\/pro\/coaches\//.test(path)) return { addon: 'dossier' };
+    // the valuation reports (roster, position market, talent market): every tier above Analyst
+    if (/^\/pro\/(rosters|positions|market)(\/|$)/.test(path)
+        || /^\/pro\/file\/pro\/\d{4}\/(rosters|positions|market)\//.test(path)) return { tiers: ['pro', 'program', 'agency'] };
     return null;
 }
 
@@ -150,6 +153,31 @@ export function formatProDelta(key: string, v: unknown): string {
 export function formatPffValue(key: string, v: unknown): string {
     if (!isNum(v)) return '—';
     return key.endsWith('rate') ? `${roundNumber(v, 1, 1)}%` : roundNumber(v, 1, 1);
+}
+
+// ---- valuation (contract schema 2 `value`, and the rosters/positions/market reports) ----
+
+/** Model dollars as the PDFs print them: $1.23M, $456K; a model estimate, never a deal. */
+export function formatUsd(v: unknown): string {
+    if (!isNum(v)) return '—';
+    return Math.abs(v) >= 1e6 ? `$${roundNumber(v / 1e6, 2, 2)}M` : `$${roundNumber(v / 1e3, 0, 0)}K`;
+}
+
+/** A 0-1 probability as a whole percent. */
+export function formatOdds(v: unknown): string {
+    return isNum(v) ? `${Math.round(v * 100)}%` : '—';
+}
+
+export const VALUE_UNITS: Record<string, string> = {
+    QB: 'Quarterbacks', RB: 'Running backs', WR: 'Wide receivers', TE: 'Tight ends', OL: 'Offensive line',
+    IDL: 'Interior defensive line', EDGE: 'Edge rushers', LB: 'Linebackers', CB: 'Cornerbacks', S: 'Safeties',
+};
+
+/** One player row in a valuation report (reports.py player_row). */
+export interface ValuePlayer {
+    espn_id: number; name: string; team: string; unit: string; class: string | null; source: string
+    stars: number | null; age: number | null; pct: number | null; proj: number | null; proj_lo: number | null
+    proj_hi: number | null; prod_usd: number | null; proj_usd: number | null; started: boolean; departing: boolean
 }
 
 // ---- the portal board (pro/<season>/portal/board.json) ----
