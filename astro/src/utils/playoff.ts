@@ -1,4 +1,5 @@
 import type { PlayoffSeed } from "../resources/playoff";
+import type { ESPNRankingsResponse } from "../resources/espn";
 
 export interface BracketSlot {
     seed: number
@@ -70,4 +71,19 @@ export function oddsShade(p: number): string | null {
     if (p >= 0.095) return 'hulk-bg-level-7';
     if (p >= 0.005) return 'hulk-bg-level-6';
     return null;
+}
+
+/**
+ * The playoff committee's current ranking from ESPN's rankings feed: team ids, No. 1 first,
+ * and the date it was published. null before the committee's first ranking of the season
+ * (the feed then carries only the AP and coaches polls).
+ */
+export function committeeRanking(r: ESPNRankingsResponse | null): { date: string, ids: string[] } | null {
+    const cfp = r?.rankings?.find((x) => x.type === 'cfp');
+    const ids = [...(cfp?.ranks ?? [])]
+        .sort((a, b) => (a.current ?? 99) - (b.current ?? 99))
+        .map((x) => x.team?.id)
+        .filter((id): id is string => !!id)
+        .map(String);
+    return cfp && ids.length ? { date: cfp.date ?? '', ids } : null;
 }

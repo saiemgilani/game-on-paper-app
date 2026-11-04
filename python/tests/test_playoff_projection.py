@@ -253,3 +253,36 @@ def test_a_simulated_game_is_won_at_the_model_s_odds():
     res = out["games"]["result"]
     assert (res == 0).sum() == 0
     assert abs((res > 0).mean() - MODEL.win_prob(0.005, 0.0, True)) < 0.006
+
+
+# --- the committee's field: its ranking, if the season ended today ---------------------------
+def _team(t, conf, rating=0.0, losses=0):
+    return {"team_id": t, "conference": conf, "rating": rating, "record": [8 - losses, losses]}
+
+
+def test_committee_rows_follow_the_ranking_and_crown_each_conference_s_highest_ranked():
+    teams = [_team("a", "SEC", 0.1), _team("b", "SEC", 0.3), _team("c", "Big Ten"),
+             _team("d", "Sun Belt", 0.2), _team("e", "Sun Belt", 0.25, losses=2)]
+    rows = pp.committee_rows(["b", "a", "c"], teams)
+    # ranked teams outrank every unranked one, in the committee's order
+    assert sorted(rows, key=lambda t: -rows[t][0])[:3] == ["b", "a", "c"]
+    assert rows["b"][2] and not rows["a"][2] and rows["c"][2]
+    # no Sun Belt team is ranked: the stand-in (rating - penalty x losses) picks its champion
+    assert rows["d"][2] and not rows["e"][2]
+    assert rows["d"][0] < rows["c"][0]
+
+
+def test_project_adds_the_committee_field_only_when_given_a_ranking():
+    league = _league()
+    assert pp.project(league)["committee"] is None
+    order = [str(t["team_id"]) for t in league["teams"]][::-1]
+    out = pp.project({**league, "committee": [*order, 999, "unknown"]})
+    c = out["committee"]
+    assert c["ranking"] == order  # the FCS opponent and an unknown id are dropped
+    assert [f["seed"] for f in c["field"]] == list(range(1, 13))
+    assert sum(f["reach"]["champion"] for f in c["field"]) == pytest.approx(1)
+    # the same rules as the projection's own field, on the committee's order
+    field, last_out, auto = pp.select_field(pp.committee_rows(order, out["teams"]))
+    assert [f["team_id"] for f in c["field"]] == field
+    assert c["last_out"] == last_out
+    assert {f["team_id"] for f in c["field"] if f["auto"]} == auto

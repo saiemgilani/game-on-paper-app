@@ -1,6 +1,8 @@
 import { getSecret } from "astro:env/server";
 import { env } from "cloudflare:workers";
 import { retrieveRows, sdvIngestStamp, SDV_RATINGS_PREDICTION_CONFIG } from "./sdv";
+import { retrieveRankings } from "./espn";
+import { committeeRanking } from "../utils/playoff";
 import { PROCESSOR_VERSION } from "./python";
 import { safeCachePut } from "../utils/misc";
 import { wrappedFetch } from "../utils/telemetry";
@@ -55,6 +57,14 @@ export interface PlayoffProjection {
     field: PlayoffSeed[]
     last_out: string[]
     teams: PlayoffTeam[]
+    /** the committee's field, if the season ended today; null before its first ranking */
+    committee?: {
+        /** the committee's ranking (FBS ids, No. 1 first) and when it was published */
+        ranking: string[]
+        date: string
+        field: PlayoffSeed[]
+        last_out: string[]
+    } | null
 }
 
 /**
@@ -68,9 +78,14 @@ export async function retrievePlayoffProjection(season: number): Promise<Playoff
     if (!PYTHON_HTTP_TOKEN || !model) return null;
     const constants = { scale: model.net_points_scale, hfa: model.hfa_points, sd: model.margin_sd };
     try {
-        const [scheduleStamp, summaryStamp] = await Promise.all([sdvIngestStamp('cfb', 'schedule'), sdvIngestStamp('cfb', 'team_summaries')]);
-        // a refit model is a new projection too
-        const key = `playoff-projection:${season}:${scheduleStamp ?? '-'}:${summaryStamp ?? '-'}:${PROCESSOR_VERSION}:${Object.values(constants).join(',')}`;
+        const [scheduleStamp, summaryStamp, rankings] = await Promise.all([
+            sdvIngestStamp('cfb', 'schedule'), sdvIngestStamp('cfb', 'team_summaries'),
+            // a failed rankings fetch only drops the committee's bracket, never the projection
+            retrieveRankings().catch(() => null),
+        ]);
+        const committee = committeeRanking(rankings);
+        // a refit model is a new projection too, and a new committee ranking is a new bracket
+        const key = `playoff-projection:${season}:${scheduleStamp ?? '-'}:${summaryStamp ?? '-'}:${PROCESSOR_VERSION}:${Object.values(constants).join(',')}:${committee?.date ?? '-'}`;
         const cached = await env.SDV_API_CACHE.get<PlayoffProjection>(key, 'json');
         if (cached) return cached;
         const [games, teams] = await Promise.all([
@@ -88,11 +103,13 @@ export async function retrievePlayoffProjection(season: number): Promise<Playoff
                 games,
                 teams,
                 model: constants,
+                committee: committee?.ids ?? null,
             }),
             signal: AbortSignal.timeout(PROJECTION_TIMEOUT_MS),
         });
         if (!req.ok) throw new Error(`HTTP ${req.status}`);
         const projection = await req.json() as PlayoffProjection;
+        if (projection.committee && committee) projection.committee.date = committee.date;
         if (!Array.isArray(projection?.field) || projection.field.length !== 12) throw new Error('no 12-team field in the answer');
         await safeCachePut(env.SDV_API_CACHE, key, JSON.stringify(projection), PROJECTION_TTL);
         return projection;
