@@ -202,7 +202,8 @@ describe('NbaCupRoute', () => {
     });
     test('the wild-card race: runners-up first, the holder marked in each conference', async () => {
         const html = await render(params({ view: 'wildcard' }));
-        expect(html.match(/>WC<\/span>/g)).toHaveLength(2);
+        // bg-secondary, not text-bg-secondary: the vendored Bootstrap has no text-bg-* (white on the white sticky column)
+        expect(html.match(/<span class="badge bg-secondary ms-1"[^>]*>WC<\/span>/g)).toHaveLength(2);
         expect(html.match(/Group runners-up/g)).toHaveLength(2);
         const east = html.split('Western Conference')[0];
         const firstTeam = cellsOf(east.split('<tbody>')[1].split('</tr>')[1])[0];

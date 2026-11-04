@@ -176,7 +176,7 @@ const shownIds = teams.map(key);
                         <tr><td colspan="9" class="gt_group_heading fw-bold">{s.label}</td></tr>
                         {s.rows.map((t) => (
                           <tr class:list={[t.standing!.holds_wild_card && 'fw-bold']}>
-                            <td class="text-left text-nowrap"><span class="text-muted numeral me-1">{t.standing!.conference_rank}</span><a href={href(key(t))}><img class={`team-logo-${key(t)} me-1`} width="18" height="18" src={logo(key(t))} alt="" loading="lazy" /><span class="d-md-none">{abbrs[key(t)]}</span><span class="d-none d-md-inline">{names[key(t)]}</span></a>{t.standing!.holds_wild_card && (<span class="badge text-bg-secondary ms-1" title="Holds the wild card on the current table">WC</span>)}</td>
+                            <td class="text-left text-nowrap"><span class="text-muted numeral me-1">{t.standing!.conference_rank}</span><a href={href(key(t))}><img class={`team-logo-${key(t)} me-1`} width="18" height="18" src={logo(key(t))} alt="" loading="lazy" /><span class="d-md-none">{abbrs[key(t)]}</span><span class="d-none d-md-inline">{names[key(t)]}</span></a>{t.standing!.holds_wild_card && (<span class="badge bg-secondary ms-1" title="Holds the wild card on the current table">WC</span>)}</td>
                             <td class="text-center text-nowrap">{groupShort(t.sim.cup_group)}</td>
                             <td class="text-center numeral">{t.standing!.group_rank}</td>
                             <td class="text-center text-nowrap">{record(t.sim.wins, t.sim.losses)}</td>
