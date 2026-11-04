@@ -18,7 +18,7 @@ export interface SeasonSimRow {
     team_id: number;
     team: string;
     conference_id: number;
-    conference: string;
+    conference: string | null;
     wins: number;
     losses: number;
     conf_wins: number;
@@ -28,11 +28,11 @@ export interface SeasonSimRow {
     proj_conf_wins: number;
     proj_conf_losses: number;
     proj_conf_win_pct_rank: number | null;
-    reg_season_title_prob: number;
-    conf_tourney_title_prob: number;
-    auto_bid_prob: number;
-    at_large_prob: number;
-    bid_prob: number;
+    reg_season_title_prob: number | null;
+    conf_tourney_title_prob: number | null;
+    auto_bid_prob: number | null;
+    at_large_prob: number | null;
+    bid_prob: number | null;
     seed_mean: number | null;
     n_sims: number;
     /** seed_1_prob .. seed_16_prob */
@@ -42,7 +42,7 @@ export interface SeasonSimRow {
 export interface BracketologyRow {
     team_id: number;
     team: string;
-    conference: string;
+    conference: string | null;
     wins: number;
     losses: number;
     net_estimate_rank: number | null;
@@ -63,7 +63,7 @@ export interface TeamResumeRow {
     team_id: number;
     team: string;
     conference_id: number;
-    conference: string;
+    conference: string | null;
     wins: number;
     losses: number;
     wab: number | null;

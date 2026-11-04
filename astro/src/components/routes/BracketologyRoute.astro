@@ -51,12 +51,12 @@ const rounds = field ? [
 ] : [];
 const bubble = bubbleGroups(data?.bracket ?? []);
 const CONTENDER_FLOOR = 0.05;
-const contenders = sims.filter((r) => r.bid_prob > CONTENDER_FLOOR).sort((a, b) => (a.seed_mean ?? 99) - (b.seed_mean ?? 99));
+const contenders = sims.filter((r) => (r.bid_prob ?? 0) > CONTENDER_FLOOR).sort((a, b) => (a.seed_mean ?? 99) - (b.seed_mean ?? 99));
 const SEEDS = Array.from({ length: 16 }, (_, i) => i + 1);
 const seedProb = (r: SeasonSimRow, s: number) => r[`seed_${s}_prob`] ?? 0;
 
 // standings and team sheets: one conference or all
-const confs = [...new Map(sims.map((r) => [String(r.conference_id), r.conference])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+const confs = [...new Map(sims.map((r) => [String(r.conference_id), r.conference ?? 'Other'])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
 const inConf = (r: { conference_id: number }) => !conference || String(r.conference_id) === conference;
 const standings = confs
     .filter(([id]) => !conference || id === conference)
@@ -64,6 +64,9 @@ const standings = confs
 const sheets = (data?.resume ?? []).filter(inConf).sort((a, b) => (a.net_estimate_rank ?? 999) - (b.net_estimate_rank ?? 999));
 const rk = (x: number | null) => (x == null ? '—' : roundNumber(x, 0, 0));
 const shade = (p: number | null) => generateColorRampValue(p, 100);
+// a probability the producer left null (a team with no conference schedule has no title chance) prints a dash, unshaded
+const prob = (p: number | null) => (p == null ? '—' : pct(p));
+const probShade = (p: number | null) => (p == null ? null : oddsShade(p));
 const q = (r: TeamResumeRow, k: 1 | 2 | 3 | 4) => record(r[`quad${k}_w`], r[`quad${k}_l`]);
 
 const shownIds = view === 'bracket'
@@ -136,7 +139,7 @@ const shownIds = view === 'bracket'
                             <td class="text-center numeral">{rk(r.rpi_rank)}</td>
                             <td class="text-center numeral">{r.wab == null ? '—' : generateMarginalString(r.wab, 1, 1)}</td>
                             <td class="text-center">{record(r.quad1_w, r.quad1_l)}</td>
-                            <td class:list={['text-center', 'numeral', r.at_large_prob == null ? null : oddsShade(r.at_large_prob)]}>{r.at_large_prob == null ? '—' : pct(r.at_large_prob)}</td>
+                            <td class:list={['text-center', 'numeral', probShade(r.at_large_prob)]}>{prob(r.at_large_prob)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -164,7 +167,7 @@ const shownIds = view === 'bracket'
               {contenders.map((r) => (
                 <tr>
                   <td class="text-left text-nowrap"><a href={href(r.team_id)}><img class={`team-logo-${r.team_id} me-1`} width="18" height="18" src={logo(r.team_id)} alt="" /><span class="d-md-none">{abbrs[r.team_id]}</span><span class="d-none d-md-inline">{r.team}</span></a></td>
-                  <td class:list={['text-center', 'numeral', 'fw-bold', oddsShade(r.bid_prob)]}>{pct(r.bid_prob)}</td>
+                  <td class:list={['text-center', 'numeral', 'fw-bold', probShade(r.bid_prob)]}>{prob(r.bid_prob)}</td>
                   <td class="text-center numeral">{r.seed_mean == null ? '—' : roundNumber(r.seed_mean, 1, 1)}</td>
                   {SEEDS.map((s) => (<td class:list={['text-center', 'numeral', oddsShade(seedProb(r, s))]}>{seedProb(r, s) > 0 ? pct(seedProb(r, s)) : ''}</td>))}
                 </tr>
@@ -202,11 +205,11 @@ const shownIds = view === 'bracket'
                   <td class="text-center">{record(r.wins, r.losses)}</td>
                   <td class="text-center text-muted">{roundNumber(r.proj_conf_wins, 1, 1)}-{roundNumber(r.proj_conf_losses, 1, 1)}</td>
                   <td class="text-center text-muted">{roundNumber(r.proj_wins, 1, 1)}-{roundNumber(r.proj_losses, 1, 1)}</td>
-                  <td class:list={['text-center', 'numeral', oddsShade(r.reg_season_title_prob)]}>{pct(r.reg_season_title_prob)}</td>
-                  <td class:list={['text-center', 'numeral', oddsShade(r.conf_tourney_title_prob)]}>{pct(r.conf_tourney_title_prob)}</td>
-                  <td class:list={['text-center', 'numeral', oddsShade(r.auto_bid_prob)]}>{pct(r.auto_bid_prob)}</td>
-                  <td class:list={['text-center', 'numeral', oddsShade(r.at_large_prob)]}>{pct(r.at_large_prob)}</td>
-                  <td class:list={['text-center', 'numeral', 'fw-bold', oddsShade(r.bid_prob)]}>{pct(r.bid_prob)}</td>
+                  <td class:list={['text-center', 'numeral', probShade(r.reg_season_title_prob)]}>{prob(r.reg_season_title_prob)}</td>
+                  <td class:list={['text-center', 'numeral', probShade(r.conf_tourney_title_prob)]}>{prob(r.conf_tourney_title_prob)}</td>
+                  <td class:list={['text-center', 'numeral', probShade(r.auto_bid_prob)]}>{prob(r.auto_bid_prob)}</td>
+                  <td class:list={['text-center', 'numeral', probShade(r.at_large_prob)]}>{prob(r.at_large_prob)}</td>
+                  <td class:list={['text-center', 'numeral', 'fw-bold', probShade(r.bid_prob)]}>{prob(r.bid_prob)}</td>
                 </tr>
               ))}
             </tbody>
@@ -237,7 +240,7 @@ const shownIds = view === 'bracket'
             {sheets.map((r) => (
               <tr>
                 <td class="text-left text-nowrap"><a href={href(r.team_id)}><img class={`team-logo-${r.team_id} me-1`} width="18" height="18" src={logo(r.team_id)} alt="" loading="lazy" /><span class="d-md-none">{abbrs[r.team_id]}</span><span class="d-none d-md-inline">{r.team}</span></a></td>
-                {!conference && (<td class="text-left text-muted small">{r.conference}</td>)}
+                {!conference && (<td class="text-left text-muted small">{r.conference ?? '—'}</td>)}
                 <td class="text-center">{record(r.wins, r.losses)}</td>
                 <td class:list={['text-center', 'numeral', shade(r.net_estimate_pct)]}>{rk(r.net_estimate_rank)}</td>
                 <td class:list={['text-center', 'numeral', shade(r.rpi_pct)]}>{rk(r.rpi_rank)}</td>

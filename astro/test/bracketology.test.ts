@@ -158,6 +158,15 @@ describe('BracketologyRoute', () => {
         const cells = [...firstRow.matchAll(/<td[^>]*>(.*?)<\/td>/g)].map((m) => m[1].replace(/<[^>]+>/g, ''));
         expect(cells.slice(3, 7).every((c) => /^[+-]?\d+(\.\d)?$|^—$/.test(c))).toBe(true);
     });
+    test("an old season's nulls (2004-05: 35 teams with no conference name and no title chance) render as dashes", async () => {
+        // the shape of /v1/mbb/season_sims?season=2005: conference null, reg_season_title_prob null (a 500 before this)
+        const f = fixture();
+        const sims = f.sims.map((r, i) => (i < 3 ? { ...r, conference: null, reg_season_title_prob: null, proj_conf_win_pct_rank: null } : r));
+        const html = await render(params({ view: 'standings', data: { ...f, sims } }));
+        expect(html).toContain('>Other</option>');
+        expect(html).not.toContain('NaN');
+        expect(html).toMatch(/<td class="text-center numeral">—<\/td>/);
+    });
     test('no snapshot: the empty state names the season, with no tables', async () => {
         const html = await render(params({ pick: { snapshot: null, season: 2005, fallback: false }, data: null }));
         expect(html).toContain('There are no projections for 2004-05.');
