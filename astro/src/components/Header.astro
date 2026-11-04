@@ -92,6 +92,7 @@ const lp = (p: string) => leaguePath(league, p);
                     {!football && (
                         <Fragment>
                             {basketball(league).headerMenu.map((m) => (<li><a href={lp(m.path)} class="nav-link px-2 link-secondary">{m.label}</a></li>))}
+                            {isFeatureEnabled("bball-gei", Astro.locals) && (<li><a href={lp("/best-games")} class="nav-link px-2 link-secondary">Best Games</a></li>)}
                             {(league === 'mbb' || league === 'wbb') && isFeatureEnabled("bball-bracketology", Astro.locals) && (<li><a href={lp("/bracketology")} class="nav-link px-2 link-secondary">Bracketology</a></li>)}
                             {(league === 'nba' || league === 'wnba') && isFeatureEnabled("bball-playoff-picture", Astro.locals) && (<li><a href={lp("/standings")} class="nav-link px-2 link-secondary">Standings</a></li>)}
                         </Fragment>

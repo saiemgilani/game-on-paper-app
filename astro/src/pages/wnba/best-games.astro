@@ -1,0 +1,17 @@
+---
+// src/pages/wnba/best-games.astro
+import BestGamesRoute from '../../components/routes/BestGamesRoute.astro';
+import { prepareBestGames } from '../../routes/basketball/bestGames';
+import { unavailable } from '../../routes/basketball/cache';
+import { isFeatureEnabled } from '../../utils/features';
+
+if (!isFeatureEnabled('bball-gei', Astro.locals)) {
+    return Astro.rewrite('/404');
+}
+const r = await prepareBestGames(Astro, 'wnba');
+if ('unavailable' in r) {
+    return unavailable('wnba', 'The best games are temporarily unavailable. Please try again shortly.');
+}
+---
+
+<BestGamesRoute data={r} />

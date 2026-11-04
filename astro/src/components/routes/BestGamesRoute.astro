@@ -1,0 +1,128 @@
+---
+// src/components/routes/BestGamesRoute.astro
+// /<league>/best-games (BB-G29): the season's most exciting games by the game excitement index, from sdv-db's
+// game_excitement (sdv-py season_game_excitement), with each game's day, teams and score from the season's schedule.
+// Every number is the producer's; this template orders and formats them, and each row links to its game page.
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import DarkModeLogos from '../DarkModeLogos.astro';
+import type { BestGamesParams } from '../../routes/basketball/bestGames';
+import type { BestGame, BestGameTeam } from '../../utils/bestGames';
+import { snapshotDay } from '../../utils/bracketology';
+import { roundNumber } from '../../utils/misc';
+import { LEAGUES, leaguePath, teamLogoUrl } from '../../utils/league';
+import { seasonLabelFor } from '../../basketball/config';
+import { gameHref, withParams } from '../../nba/links';
+
+interface Props { data: BestGamesParams }
+const { league, seasons, current, season, fallback, filter, teams, games, matched, total, days } = Astro.props.data;
+const lp = (p: string) => leaguePath(league, p);
+const path = lp('/best-games');
+const label = seasonLabelFor(league, season);
+const name = LEAGUES[league].name;
+const title = `${name} Best Games, ${label}`;
+const description = `The most exciting ${name} games of ${label} by the game excitement index: how far the win probability swung, play by play.`;
+const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: lp('/'), active: false }, { title: 'Best Games', active: true }];
+const canonical = withParams(path, { season: String(season) }, { season: String(current) });
+
+const filtered = !!(filter.from || filter.to || filter.team);
+const teamName = filter.team ? teams.find((t) => t.id === filter.team)?.name : null;
+const logo = (id: string) => teamLogoUrl(league, id, false, season);
+const shortDay = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+const won = (g: BestGame, t: BestGameTeam) => t.score != null && t.score > ((t === g.home ? g.away.score : g.home.score) ?? Infinity);
+const shownIds = [...new Set(games.flatMap((g) => [g.home.id, g.away.id]).filter(Boolean))];
+---
+<GenericPage title={`${title} | Game on Paper`} subtitle={description} slug={path} breadcrumbs={breadcrumbs} description={description} canonicalPath={canonical}>
+  <link href="/assets/css/sticky-table.css" rel="stylesheet">
+  <div class="container my-4">
+    <div class="row mb-2">
+      <div class="col-12 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h1 class="fs-3 m-0">{title}</h1>
+        {/* a GET form on the page's own path, so it stays on the uncacheable /preview surface; empty fields are left out of the URL */}
+        <form id="best-games-filters" method="get" action="" class="d-flex flex-wrap align-items-center gap-2" onsubmit="const off = [...this.elements].filter((e) => e.name && !e.value); off.forEach((e) => (e.disabled = true)); setTimeout(() => off.forEach((e) => (e.disabled = false)))">
+          <label class="visually-hidden" for="best-games-season">Season</label>
+          <select id="best-games-season" name="season" class="form-select form-select-sm w-auto" onchange="this.form.from.value = ''; this.form.to.value = ''; this.form.requestSubmit()">
+            {[...seasons].reverse().map((s) => (<option value={s === current ? '' : String(s)} selected={s === season}>{seasonLabelFor(league, s)}</option>))}
+          </select>
+          <label class="small text-muted" for="best-games-from">From</label>
+          <input id="best-games-from" type="date" name="from" class="form-control form-control-sm w-auto" value={filter.from ?? undefined} min={days?.first} max={days?.last} />
+          <label class="small text-muted" for="best-games-to">to</label>
+          <input id="best-games-to" type="date" name="to" class="form-control form-control-sm w-auto" value={filter.to ?? undefined} min={days?.first} max={days?.last} />
+          <label class="visually-hidden" for="best-games-team">Team</label>
+          <select id="best-games-team" name="team" class="form-select form-select-sm w-auto">
+            <option value="" selected={!filter.team}>All teams</option>
+            {teams.map((t) => (<option value={t.id} selected={t.id === filter.team}>{t.name}</option>))}
+          </select>
+          <button type="submit" class="btn btn-sm btn-outline-primary">Apply</button>
+          {filtered && (<a class="btn btn-sm btn-link" href={canonical} id="best-games-clear">Clear</a>)}
+        </form>
+      </div>
+    </div>
+    {fallback && (
+      <p class="text-muted" id="best-games-fallback">The {seasonLabelFor(league, current)} season has no completed games yet. These are {label}'s best games.</p>
+    )}
+    {total === 0 && (
+      <p class="text-muted" id="best-games-empty">There are no ranked games for {label}.</p>
+    )}
+    {matched > 0 && (
+      <p class="small text-muted" id="best-games-scope">
+        {filtered
+          ? `The top ${games.length} of ${matched.toLocaleString()} completed games${teamName ? ` involving ${teamName}` : ''}${filter.from || filter.to ? `, ${filter.from ? shortDay(filter.from) : 'the start'} to ${filter.to ? shortDay(filter.to) : 'the end'}` : ''} (${total.toLocaleString()} in the season).`
+          : `The top ${games.length} of ${total.toLocaleString()} completed games.`}
+        {!fallback && season === current && seasons.includes(current - 1) && (<Fragment> Last season: <a href={withParams(path, { season: String(current - 1) })}>{seasonLabelFor(league, current - 1)}</a>.</Fragment>)}
+      </p>
+    )}
+    {total > 0 && matched === 0 && (
+      <p class="text-muted" id="best-games-none">No games match these filters.</p>
+    )}
+
+    {games.length > 0 && (
+      <div class="table-responsive">
+        <table class="table table-sm align-middle table-fix-first-col" id="best-games-table">
+          <thead>
+            <tr>
+              <th title="Place on this board and the game">Game</th>
+              <th class="text-center">Date</th>
+              <th class="text-center" title="Game excitement index: the win probability's total movement, scaled to a game of average length">GEI</th>
+              <th class="text-center" title="How often the leader changed (a tie is not a lead)">Lead Changes</th>
+              <th class="text-center" title="The largest single-play change in win probability, in percentage points">Biggest Swing</th>
+              <th class="text-center" title="Rank among the season's completed games">Season Rank</th>
+            </tr>
+          </thead>
+          <tbody>
+            {games.map((g, i) => (
+              <tr>
+                <td class="text-left text-nowrap">
+                  {/* the place rides in the sticky first column with the game, as the standings' seed does */}
+                  <span class="text-muted numeral me-1">{i + 1}</span>
+                  <a href={gameHref(league, g.gameId)}>
+                    {[g.away, g.home].map((t, j) => (
+                      <Fragment>
+                        {j === 1 && (<span class="text-muted mx-1">@</span>)}
+                        <img class={`team-logo-${t.id} me-1`} width="18" height="18" src={logo(t.id)} alt="" loading="lazy" />
+                        <span class="d-md-none">{t.abbr}</span><span class="d-none d-md-inline">{t.name}</span>
+                        <span class:list={['numeral', 'ms-1', won(g, t) && 'fw-bold']}>{t.score ?? '—'}</span>
+                      </Fragment>
+                    ))}
+                  </a>
+                  {g.note && (<div class="small text-muted">{g.note}</div>)}
+                </td>
+                <td class="text-center text-nowrap" title={snapshotDay(g.date)}>{shortDay(g.date)}</td>
+                <td class="text-center numeral fw-bold">{roundNumber(g.gei, 2, 2)}</td>
+                <td class="text-center numeral">{g.leadChanges ?? '—'}</td>
+                <td class="text-center numeral">{g.maxSwingPts == null ? '—' : roundNumber(g.maxSwingPts, 1, 1)}</td>
+                <td class="text-center text-muted numeral" title={g.n == null ? undefined : `of ${g.n.toLocaleString()} completed games`}>{g.rank ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+
+    {total > 0 && (
+      <p class="small text-muted mt-3">
+        How this works: sportsdataverse-py adds up how far the home team's win probability moved on every play, taking the last play to the final result, and scales the sum to a game of average length, as Game on Paper's football pages do. The biggest swing is the largest of those single-play moves. Hover a season rank for the season's number of completed games.
+      </p>
+    )}
+  </div>
+  <DarkModeLogos teamIds={shownIds} />
+</GenericPage>
