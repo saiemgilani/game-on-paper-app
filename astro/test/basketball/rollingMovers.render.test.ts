@@ -33,6 +33,9 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
     retrieveCoverageRows: async (lg: string) => FIX[lg].coverage(),
 }));
 
+import { BASKETBALL } from '../../src/basketball/config';
+import { seasonLinesFromRows, seasonPlayerGamesFromRows } from '../../src/nba/adapters';
+import { activeSince, activeSinceByTeam, LEADER_WINDOWS, leaderboard, topRows } from '../../src/nba/data/leaders';
 import { prepareBasketballLeaders } from '../../src/routes/basketball/leaders';
 
 const LEAGUES: BasketballLeague[] = ['nba', 'wnba', 'mbb', 'wbb'];
@@ -59,8 +62,22 @@ describe.each(LEAGUES)('/%s/leaders, Most declined', (lg) => {
         const r = await prepareBasketballLeaders(fakeAstro(lg, true), lg);
         if ('unavailable' in r) throw new Error('unavailable');
         expect(r.movers).toBe(true);
-        for (const [n, b] of Object.entries(r.boards!)) {
+        const lr = BASKETBALL[lg].leadersRead;
+        const windows = lr?.windows ?? LEADER_WINDOWS;
+        expect(Object.keys(r.boards!).map(Number)).toEqual([...windows]); // no configured window goes missing (Sourcery on #399)
+        // the full rankings, from the same rows and cuts the route uses: both boards rank exactly the same players
+        const placed = seasonPlayerGamesFromRows(FIX[lg].games(), FIX[lg].players());
+        const since = lr ? activeSinceByTeam(placed) : activeSince(placed);
+        const lines = lr ? seasonLinesFromRows(FIX[lg].players()) : undefined;
+        const bars = BASKETBALL[lg].leaderBars(2026);
+        for (const n of windows) {
+            const b = r.boards![n];
             const down = b.declined!;
+            const fullDown = leaderboard(placed, n, 'declined', since, bars, lines);
+            const fullUp = leaderboard(placed, n, 'improved', since, bars, lines);
+            expect(fullDown.map((x) => x.person_id).sort()).toEqual(fullUp.map((x) => x.person_id).sort());
+            expect(down.rows).toEqual(topRows(fullDown, 15));
+            expect(b.improved.rows).toEqual(topRows(fullUp, 15));
             expect(down.rows.length, `${lg} ${n}`).toBeGreaterThan(0);
             expect(down.eligible).toBe(b.improved.eligible);
             const v = down.rows.map((row) => row.value);
