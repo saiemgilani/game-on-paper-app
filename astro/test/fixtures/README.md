@@ -765,3 +765,20 @@ children). 2026 season, captured 2026-10-18 with the `requestESPN` Safari UA. No
 
 **To regenerate:** re-fetch both URLs and gzip; the test pins the group ids, names and team counts, so a realignment
 change will need the assertion updated too.
+
+## `best-games-wnba-2025.json.gz`
+`{ game_excitement, schedule }` for the 2025 WNBA season, in the columns the Best Games board reads (BB-G29,
+`resources/bestGames.ts`): 312 `game_excitement` rows (every one completed and ranked) and the season's 312 schedule
+rows, 24 of them postseason, plus the All-Star Game.
+
+**Provenance (2026-11-04):** real producer output. `sportsdataverse.nba.nba_game_page.season_game_excitement(load_wnba_pbp([2025]),
+league="wnba", schedule=load_wnba_schedule([2025]))`, from sdv-py eb420747 (sdv-db main's lock; `nba_game_page.py` and the
+WP model are unchanged since #185's 353e42b2), and the same `load_wnba_schedule([2025])` release, projected to the schedule read's
+columns. No hand edits. The Data API was not answering on the capture day, so these are the rows sdv-db writes, not a
+capture of `/v1/wnba/game_excitement` itself.
+
+**Used by:** `test/bestGames.test.ts`.
+
+**To regenerate:** rerun the two calls above (or read `/v1/wnba/game_excitement?season=2025&completed=true` and
+`/v1/wnba/schedule?season=2025` with the reads' `select`) and gzip. The test pins the 312 games, the top game
+(401736289, GEI 11.18) and the 24 postseason games.
