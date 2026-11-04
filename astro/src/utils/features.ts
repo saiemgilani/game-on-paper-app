@@ -63,6 +63,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // for a final. Off: the chart island's props are today's. A Data API-served game has no GEI until the Data API
     // serves `{lg}.game_excitement` (resources/nbaGame.ts fromDataApi), and the Best Games board waits on it too.
     'bball-gei': 'preview',
+    // College bracketology (BB-G22): /mbb/bracketology and /wbb/bracketology and their Header entry, inside each league's
+    // flag. sdv-db's daily college snapshots (season_sims, bracketology, team_resume): the projected field on the CFP
+    // page's bracket component, the bubble, conference standings with projections and the team sheets. Off: the pages
+    // are the site's 404 and the Header is today's.
+    'bball-bracketology': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

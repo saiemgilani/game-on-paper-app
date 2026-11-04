@@ -1,43 +1,67 @@
 ---
-import type { BracketRound, BracketSlot } from '../utils/playoff';
+import type { BracketSlot } from '../utils/playoff';
 import { pct } from '../utils/playoff';
-import { teamLogoUrl } from '../utils/league';
+import { leaguePath, teamLogoUrl, type League } from '../utils/league';
+
+/** A team's slot, or (college) a First Four slot: its label names the pair whose winner takes it, with no number. */
+type Slot = BracketSlot | { seed: number; label: string };
 
 interface Props {
-    rounds: BracketRound[]
-    champion: BracketSlot
+    rounds: { name: string; games: [Slot, Slot][] }[]
+    /** the CFP's champion box; a bracket without one (college bracketology) leaves it out */
+    champion?: BracketSlot | null
     /** cleaned full names (md and up) and abbreviations (mobile), by team id */
     names: Record<string, string>
     abbrs: Record<string, string>
+    /** the league of the logos and team links (the CFP's 'cfb' by default) */
+    league?: League
+    /** a team's link, null for plain text (a college non-member); default the league's /team/<id> */
+    href?: (teamId: string) => string | null
+    /** what each slot's number is */
+    pctTitle?: string
+    label?: string
 }
-const { rounds, champion, names, abbrs } = Astro.props;
+const {
+    rounds, champion = null, names, abbrs, league = 'cfb',
+    href = (id: string) => leaguePath(league, `/team/${id}`),
+    pctTitle = 'Chance to beat this opponent', label = 'Projected College Football Playoff bracket',
+} = Astro.props;
 const name = (id: string) => names[id] ?? id;
 const abbr = (id: string) => abbrs[id] ?? name(id);
-const BEAT = 'Chance to beat this opponent';
+const isTeam = (s: Slot): s is BracketSlot => !('label' in s);
 const TITLE = 'Chance to win the title, if the projected field holds';
+// the CFP's four rounds keep the stylesheet's column count; any other bracket sets its own
+const cols = rounds.length === 4 ? undefined : `--bracket-rounds: ${rounds.length}`;
 ---
 <!-- md and up: the bracket graphic, each game a bordered two-row table -->
-<div class="playoff-bracket d-none d-md-grid" role="group" aria-label="Projected College Football Playoff bracket">
+<div class="playoff-bracket d-none d-md-grid" role="group" aria-label={label} style={cols}>
     {rounds.map((round, r) => (
         <div class="bracket-round">
             <h2 class="bracket-round-name">{round.name}</h2>
-            <div class={`bracket-games${r === rounds.length - 1 ? ' bracket-final' : ''}`}>
+            <div class={`bracket-games${champion && r === rounds.length - 1 ? ' bracket-final' : ''}`}>
                 {round.games.map((game) => (
                     <table class="table table-sm table-bordered align-middle mb-0 bracket-game">
                         <tbody>
-                            {game.map((s) => (
+                            {game.map((s) => isTeam(s) ? (
                                 <tr class="bracket-slot">
                                     <td class="text-center text-muted numeral bracket-seed">{s.seed}</td>
                                     <td class="text-left text-nowrap bracket-team">
-                                        <a href={`/team/${s.teamId}`}><img class={`team-logo-${s.teamId} me-2`} width="20" height="20" src={teamLogoUrl('cfb', s.teamId, false)} alt="" />{name(s.teamId)}</a>
+                                        {href(s.teamId)
+                                            ? <a href={href(s.teamId)}><img class={`team-logo-${s.teamId} me-2`} width="20" height="20" src={teamLogoUrl(league, s.teamId, false)} alt="" />{name(s.teamId)}</a>
+                                            : <Fragment><img class={`team-logo-${s.teamId} me-2`} width="20" height="20" src={teamLogoUrl(league, s.teamId, false)} alt="" />{name(s.teamId)}</Fragment>}
                                     </td>
-                                    <td class="text-center numeral bracket-pct" title={BEAT}>{pct(s.pct)}</td>
+                                    <td class="text-center numeral bracket-pct" title={pctTitle}>{pct(s.pct)}</td>
+                                </tr>
+                            ) : (
+                                <tr class="bracket-slot">
+                                    <td class="text-center text-muted numeral bracket-seed">{s.seed}</td>
+                                    <td class="text-left text-nowrap text-muted bracket-team" colspan="2">{s.label}</td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 ))}
-                {r === rounds.length - 1 && (
+                {champion && r === rounds.length - 1 && (
                     <div>
                         <h2 class="bracket-round-name">Champion</h2>
                         <table class="table table-sm table-bordered align-middle mb-0 bracket-game bracket-champion outline-championship">
@@ -45,7 +69,7 @@ const TITLE = 'Chance to win the title, if the projected field holds';
                                 <tr class="bracket-slot">
                                     <td class="text-center text-muted numeral bracket-seed outline-championship">{champion.seed}</td>
                                     <td class="text-left text-nowrap bracket-team outline-championship fw-bold">
-                                        <a href={`/team/${champion.teamId}`}><img class={`team-logo-${champion.teamId} me-2`} width="20" height="20" src={teamLogoUrl('cfb', champion.teamId, false)} alt="" />{name(champion.teamId)}</a>
+                                        <a href={href(champion.teamId)}><img class={`team-logo-${champion.teamId} me-2`} width="20" height="20" src={teamLogoUrl(league, champion.teamId, false)} alt="" />{name(champion.teamId)}</a>
                                     </td>
                                     <td class="text-center numeral bracket-pct outline-championship text-championship fw-bold" title={TITLE}>{pct(champion.pct)}</td>
                                 </tr>
@@ -60,26 +84,36 @@ const TITLE = 'Chance to win the title, if the projected field holds';
 
 <!-- mobile: the same games as one table, grouped by round, by abbreviation -->
 <div class="table-responsive d-md-none">
-    <table class="table table-sm align-middle bracket-table" aria-label="Projected College Football Playoff bracket">
+    <table class="table table-sm align-middle bracket-table" aria-label={label}>
         <tbody>
             {rounds.map((round) => (
                 <>
                     <tr><td colspan="4" class="gt_group_heading fw-bold">{round.name}</td></tr>
-                    {round.games.map(([a, b]) => (
+                    {round.games.map((game) => (
                         <tr class="bracket-slot">
-                            <td class="text-left text-nowrap"><span class="text-muted numeral me-1">{a.seed}</span><a href={`/team/${a.teamId}`}><img class={`team-logo-${a.teamId} me-1`} width="18" height="18" src={teamLogoUrl('cfb', a.teamId, false)} alt="" />{abbr(a.teamId)}</a></td>
-                            <td class="text-center numeral" title={BEAT}>{pct(a.pct)}</td>
-                            <td class="text-left text-nowrap"><span class="text-muted numeral me-1">{b.seed}</span><a href={`/team/${b.teamId}`}><img class={`team-logo-${b.teamId} me-1`} width="18" height="18" src={teamLogoUrl('cfb', b.teamId, false)} alt="" />{abbr(b.teamId)}</a></td>
-                            <td class="text-center numeral" title={BEAT}>{pct(b.pct)}</td>
+                            {game.map((s) => isTeam(s) ? (
+                                <>
+                                    <td class="text-left text-nowrap"><span class="text-muted numeral me-1">{s.seed}</span>{href(s.teamId)
+                                        ? <a href={href(s.teamId)}><img class={`team-logo-${s.teamId} me-1`} width="18" height="18" src={teamLogoUrl(league, s.teamId, false)} alt="" />{abbr(s.teamId)}</a>
+                                        : <Fragment><img class={`team-logo-${s.teamId} me-1`} width="18" height="18" src={teamLogoUrl(league, s.teamId, false)} alt="" />{abbr(s.teamId)}</Fragment>}</td>
+                                    <td class="text-center numeral" title={pctTitle}>{pct(s.pct)}</td>
+                                </>
+                            ) : (
+                                <td class="text-left text-nowrap text-muted" colspan="2"><span class="numeral me-1">{s.seed}</span>{s.label}</td>
+                            ))}
                         </tr>
                     ))}
                 </>
             ))}
-            <tr><td colspan="4" class="gt_group_heading fw-bold text-championship">Champion</td></tr>
-            <tr class="bracket-slot">
-                <td class="text-left text-nowrap fw-bold" colspan="3"><span class="text-muted numeral me-1">{champion.seed}</span><a href={`/team/${champion.teamId}`}><img class={`team-logo-${champion.teamId} me-1`} width="18" height="18" src={teamLogoUrl('cfb', champion.teamId, false)} alt="" />{abbr(champion.teamId)}</a></td>
-                <td class="text-center numeral text-championship fw-bold" title={TITLE}>{pct(champion.pct)}</td>
-            </tr>
+            {champion && (
+                <>
+                    <tr><td colspan="4" class="gt_group_heading fw-bold text-championship">Champion</td></tr>
+                    <tr class="bracket-slot">
+                        <td class="text-left text-nowrap fw-bold" colspan="3"><span class="text-muted numeral me-1">{champion.seed}</span><a href={href(champion.teamId)}><img class={`team-logo-${champion.teamId} me-1`} width="18" height="18" src={teamLogoUrl(league, champion.teamId, false)} alt="" />{abbr(champion.teamId)}</a></td>
+                        <td class="text-center numeral text-championship fw-bold" title={TITLE}>{pct(champion.pct)}</td>
+                    </tr>
+                </>
+            )}
         </tbody>
     </table>
 </div>
@@ -87,7 +121,7 @@ const TITLE = 'Chance to win the title, if the projected field holds';
 <style>
     /* each column spaces its games evenly, so a later game sits between the two that feed it */
     .playoff-bracket {
-        grid-template-columns: repeat(4, minmax(11rem, 1fr));
+        grid-template-columns: repeat(var(--bracket-rounds, 4), minmax(11rem, 1fr));
         gap: 0.75rem;
         overflow-x: auto;
         padding-bottom: 0.5rem;

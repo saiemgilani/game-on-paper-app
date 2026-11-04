@@ -1,0 +1,265 @@
+---
+// src/components/routes/BracketologyRoute.astro
+// /<mbb|wbb>/bracketology (BB-G22): the projected field on the CFP page's bracket component, the bubble, the seed
+// distribution, conference standings with projections and the team sheets, from sdv-db's daily college snapshots.
+// Every rank, percentile and probability is the producer's; this template orders and formats them.
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import DarkModeLogos from '../DarkModeLogos.astro';
+import PlayoffBracket from '../PlayoffBracket.astro';
+import { VIEWS, type BracketologyParams } from '../../routes/basketball/bracketology';
+import type { BracketologyRow, SeasonSimRow, TeamResumeRow } from '../../resources/bracketology';
+import { bubbleGroups, projectedField, record, snapshotDay, type FieldUnit } from '../../utils/bracketology';
+import { oddsShade, pct, type BracketSlot } from '../../utils/playoff';
+import { generateColorRampValue, generateMarginalString, roundNumber } from '../../utils/misc';
+import { LEAGUES, leaguePath, teamLogoUrl } from '../../utils/league';
+import { BASKETBALL, seasonLabelFor } from '../../basketball/config';
+import { teamHrefFromEspn, withParams } from '../../nba/links';
+
+interface Props { data: BracketologyParams }
+const { league, seasons, current, pick, data, view, conference } = Astro.props.data;
+const lp = (p: string) => leaguePath(league, p);
+const path = lp('/bracketology');
+const label = seasonLabelFor(league, pick.season);
+const name = LEAGUES[league].name;
+const title = `${name} Bracketology, ${label}`;
+const description = `The projected NCAA tournament field, the bubble, conference standings with projected records and title chances, and team sheets for ${name.toLowerCase()}.`;
+const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: lp('/'), active: false }, { title: 'Bracketology', active: true }];
+
+// every select keeps the other parameters; a default value leaves its parameter out (the canonical URL)
+const params = { season: String(pick.season), view, ...(conference ? { conference } : {}) };
+const defaults = { season: String(current), view: 'bracket' };
+const url = (p: Record<string, string>) => withParams(path, Object.fromEntries(Object.entries({ ...params, ...p }).filter(([, v]) => v !== '')), defaults);
+
+const sims = data?.sims ?? [];
+const simById = new Map(sims.map((r) => [r.team_id, r]));
+const n = sims[0]?.n_sims ?? 0;
+const day = pick.snapshot ? snapshotDay(pick.snapshot.as_of_date) : '';
+const team = BASKETBALL[league].teams;
+const names: Record<string, string> = Object.fromEntries(sims.map((r) => [String(r.team_id), r.team]));
+const abbrs: Record<string, string> = Object.fromEntries(sims.map((r) => [String(r.team_id), team.byEspnId(r.team_id)?.tricode ?? r.team]));
+const href = (id: string | number) => teamHrefFromEspn({ id }, league, pick.season);
+const logo = (id: number) => teamLogoUrl(league, id, false);
+const bid = (id: number) => simById.get(id)?.bid_prob ?? 0;
+
+// the bracket: the First Four, then each region's eight first-round games
+const field = projectedField(data?.bracket ?? []);
+const teamSlot = (r: BracketologyRow): BracketSlot => ({ seed: r.projected_seed!, teamId: String(r.team_id), pct: bid(r.team_id) });
+const unitSlot = (u: FieldUnit<BracketologyRow>) => (u.teams.length === 1 ? teamSlot(u.teams[0]) : { seed: u.seed, label: u.teams.map((t) => abbrs[t.team_id]).join(' / ') });
+const rounds = field ? [
+    { name: 'First Four', games: field.firstFour.map(([a, b]) => [teamSlot(a), teamSlot(b)] as [BracketSlot, BracketSlot]) },
+    ...field.regions.map((games, i) => ({ name: `Region ${i + 1}`, games: games.map(([a, b]) => [unitSlot(a), unitSlot(b)] as [ReturnType<typeof unitSlot>, ReturnType<typeof unitSlot>]) })),
+] : [];
+const bubble = bubbleGroups(data?.bracket ?? []);
+const CONTENDER_FLOOR = 0.05;
+const contenders = sims.filter((r) => r.bid_prob > CONTENDER_FLOOR).sort((a, b) => (a.seed_mean ?? 99) - (b.seed_mean ?? 99));
+const SEEDS = Array.from({ length: 16 }, (_, i) => i + 1);
+const seedProb = (r: SeasonSimRow, s: number) => r[`seed_${s}_prob`] ?? 0;
+
+// standings and team sheets: one conference or all
+const confs = [...new Map(sims.map((r) => [String(r.conference_id), r.conference])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+const inConf = (r: { conference_id: number }) => !conference || String(r.conference_id) === conference;
+const standings = confs
+    .filter(([id]) => !conference || id === conference)
+    .map(([id, conf]) => ({ id, conf, rows: sims.filter((r) => String(r.conference_id) === id).sort((a, b) => (a.proj_conf_win_pct_rank ?? 999) - (b.proj_conf_win_pct_rank ?? 999)) }));
+const sheets = (data?.resume ?? []).filter(inConf).sort((a, b) => (a.net_estimate_rank ?? 999) - (b.net_estimate_rank ?? 999));
+const rk = (x: number | null) => (x == null ? '—' : roundNumber(x, 0, 0));
+const shade = (p: number | null) => generateColorRampValue(p, 100);
+const q = (r: TeamResumeRow, k: 1 | 2 | 3 | 4) => record(r[`quad${k}_w`], r[`quad${k}_l`]);
+
+const shownIds = view === 'bracket'
+    ? [...new Set([...(data?.bracket ?? []).filter((r) => r.bid || r.bubble).map((r) => r.team_id), ...contenders.map((r) => r.team_id)])]
+    : view === 'standings' ? standings.flatMap((c) => c.rows.map((r) => r.team_id)) : sheets.map((r) => r.team_id);
+---
+<GenericPage title={`${title} | Game on Paper`} subtitle={description} slug={path} breadcrumbs={breadcrumbs} description={description} canonicalPath={url({})}>
+  <link href="/assets/css/sticky-table.css" rel="stylesheet">
+  <div class="container my-4">
+    <div class="row mb-2">
+      <div class="col-12 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h1 class="fs-3 m-0">{title}</h1>
+        <div class="d-flex flex-wrap gap-2">
+          <label class="visually-hidden" for="bracketology-view">View</label>
+          <select id="bracketology-view" class="form-select w-auto" onchange="window.location.href = this.value">
+            {VIEWS.map((v) => (<option value={url({ view: v.key })} selected={v.key === view}>{v.label}</option>))}
+          </select>
+          {view !== 'bracket' && confs.length > 1 && (
+            <Fragment>
+              <label class="visually-hidden" for="bracketology-conference">Conference</label>
+              <select id="bracketology-conference" class="form-select w-auto" onchange="window.location.href = this.value">
+                <option value={url({ conference: '' })} selected={!conference}>All conferences</option>
+                {confs.map(([id, conf]) => (<option value={url({ conference: id })} selected={id === conference}>{conf}</option>))}
+              </select>
+            </Fragment>
+          )}
+          <label class="visually-hidden" for="bracketology-season">Season</label>
+          <select id="bracketology-season" class="form-select w-auto" onchange="window.location.href = this.value">
+            {[...seasons].reverse().map((s) => (<option value={url({ season: String(s), conference: '' })} selected={s === pick.season}>{seasonLabelFor(league, s)}</option>))}
+          </select>
+        </div>
+      </div>
+    </div>
+    {pick.fallback && (
+      <p class="text-muted" id="bracketology-fallback">The {seasonLabelFor(league, current)} season has no projections yet. This is the {label} season's last snapshot, from {day}.</p>
+    )}
+    {!pick.snapshot && (
+      <p class="text-muted">There are no projections for {label}.</p>
+    )}
+    {pick.snapshot && !pick.fallback && (
+      <p class="small text-muted">As of {day}: games before that day count. {n.toLocaleString()} simulated seasons.</p>
+    )}
+
+    {data && view === 'bracket' && (
+      <Fragment>
+        <h2 class="fs-5 mt-4">Projected field</h2>
+        <p class="small text-muted">The field and seeds if the season ended today, from each team's résumé. Each number is the team's chance to make the field on Selection Sunday. Regions follow the S-curve; the committee's bracketing rules are not applied.</p>
+        {field
+          ? <PlayoffBracket rounds={rounds} names={names} abbrs={abbrs} league={league} href={href} pctTitle="Chance to make the field on Selection Sunday" label="Projected NCAA tournament bracket" />
+          : <p class="text-muted">The projected field does not fill a 68-team bracket on this day.</p>}
+
+        {bubble.length > 0 && (
+          <Fragment>
+            <h2 class="fs-5 mt-4">The bubble</h2>
+            <div class="row">
+              {bubble.map((g) => (
+                <div class="col-lg-6 col-12 mb-3">
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <caption class="caption-top fw-bold text-body">{g.label}</caption>
+                      <thead>
+                        <tr><th>Team</th><th class="text-center">Record</th><th class="text-center" title="NET-style estimate rank">Est. NET</th><th class="text-center">RPI</th><th class="text-center" title="Wins Above Bubble">WAB</th><th class="text-center">Q1</th><th class="text-center" title="Chance of an at-large bid if the season ended today">At-Large</th></tr>
+                      </thead>
+                      <tbody>
+                        {g.rows.map((r) => (
+                          <tr>
+                            <td class="text-left text-nowrap"><a href={href(r.team_id)}><img class={`team-logo-${r.team_id} me-1`} width="18" height="18" src={logo(r.team_id)} alt="" /><span class="d-md-none">{abbrs[r.team_id]}</span><span class="d-none d-md-inline">{r.team}</span></a></td>
+                            <td class="text-center text-muted">{record(r.wins, r.losses)}</td>
+                            <td class="text-center numeral">{rk(r.net_estimate_rank)}</td>
+                            <td class="text-center numeral">{rk(r.rpi_rank)}</td>
+                            <td class="text-center numeral">{r.wab == null ? '—' : generateMarginalString(r.wab, 1, 1)}</td>
+                            <td class="text-center">{record(r.quad1_w, r.quad1_l)}</td>
+                            <td class:list={['text-center', 'numeral', r.at_large_prob == null ? null : oddsShade(r.at_large_prob)]}>{r.at_large_prob == null ? '—' : pct(r.at_large_prob)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Fragment>
+        )}
+
+        <h2 class="fs-5 mt-4">Seed distribution</h2>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle table-fix-first-col">
+            <caption class="caption-top">Teams with better than a {pct(CONTENDER_FLOOR)} chance to make the field, by average seed. {sims.length - contenders.length} other teams are at {pct(CONTENDER_FLOOR)} or less.</caption>
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th class="text-center" title="Chance to make the field on Selection Sunday">Bid</th>
+                <th class="text-center" title="Average seed when in the field">Avg Seed</th>
+                {SEEDS.map((s) => (<th class="text-center">{s}</th>))}
+              </tr>
+            </thead>
+            <tbody>
+              {contenders.map((r) => (
+                <tr>
+                  <td class="text-left text-nowrap"><a href={href(r.team_id)}><img class={`team-logo-${r.team_id} me-1`} width="18" height="18" src={logo(r.team_id)} alt="" /><span class="d-md-none">{abbrs[r.team_id]}</span><span class="d-none d-md-inline">{r.team}</span></a></td>
+                  <td class:list={['text-center', 'numeral', 'fw-bold', oddsShade(r.bid_prob)]}>{pct(r.bid_prob)}</td>
+                  <td class="text-center numeral">{r.seed_mean == null ? '—' : roundNumber(r.seed_mean, 1, 1)}</td>
+                  {SEEDS.map((s) => (<td class:list={['text-center', 'numeral', oddsShade(seedProb(r, s))]}>{seedProb(r, s) > 0 ? pct(seedProb(r, s)) : ''}</td>))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Fragment>
+    )}
+
+    {data && view === 'standings' && standings.map((c) => (
+      <Fragment>
+        {standings.length > 1 && (<h2 class="fs-5 mt-4 mb-2">{c.conf}</h2>)}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle table-fix-first-col">
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th class="text-center">Conf</th>
+                <th class="text-center">Overall</th>
+                <th class="text-center" title="Mean simulated final conference record">Proj. Conf</th>
+                <th class="text-center" title="Mean simulated final record">Proj. Overall</th>
+                <th class="text-center" title="Chance to win or share the regular-season title">Reg. Season Title</th>
+                <th class="text-center" title="Chance to win the conference tournament">Conf. Tourney</th>
+                <th class="text-center" title="Chance of the conference's automatic bid">Auto Bid</th>
+                <th class="text-center" title="Chance of an at-large bid">At-Large</th>
+                <th class="text-center" title="Chance to make the field on Selection Sunday">Bid</th>
+              </tr>
+            </thead>
+            <tbody>
+              {c.rows.map((r) => (
+                <tr>
+                  <td class="text-left text-nowrap"><a href={href(r.team_id)}><img class={`team-logo-${r.team_id} me-1`} width="18" height="18" src={logo(r.team_id)} alt="" loading="lazy" /><span class="d-md-none">{abbrs[r.team_id]}</span><span class="d-none d-md-inline">{r.team}</span></a></td>
+                  <td class="text-center">{record(r.conf_wins, r.conf_losses)}</td>
+                  <td class="text-center">{record(r.wins, r.losses)}</td>
+                  <td class="text-center text-muted">{roundNumber(r.proj_conf_wins, 1, 1)}-{roundNumber(r.proj_conf_losses, 1, 1)}</td>
+                  <td class="text-center text-muted">{roundNumber(r.proj_wins, 1, 1)}-{roundNumber(r.proj_losses, 1, 1)}</td>
+                  <td class:list={['text-center', 'numeral', oddsShade(r.reg_season_title_prob)]}>{pct(r.reg_season_title_prob)}</td>
+                  <td class:list={['text-center', 'numeral', oddsShade(r.conf_tourney_title_prob)]}>{pct(r.conf_tourney_title_prob)}</td>
+                  <td class:list={['text-center', 'numeral', oddsShade(r.auto_bid_prob)]}>{pct(r.auto_bid_prob)}</td>
+                  <td class:list={['text-center', 'numeral', oddsShade(r.at_large_prob)]}>{pct(r.at_large_prob)}</td>
+                  <td class:list={['text-center', 'numeral', 'fw-bold', oddsShade(r.bid_prob)]}>{pct(r.bid_prob)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Fragment>
+    ))}
+
+    {data && view === 'resume' && (
+      <div class="table-responsive mt-3">
+        <table class="table table-sm align-middle table-fix-first-col">
+          <thead>
+            <tr>
+              <th>Team</th>
+              {!conference && (<th class="text-left">Conf</th>)}
+              <th class="text-center">Record</th>
+              <th class="text-center" title="NET-style estimate rank">Est. NET</th>
+              <th class="text-center">RPI</th>
+              <th class="text-center" title="Strength of schedule rank">SOS</th>
+              <th class="text-center" title="Wins Above Bubble">WAB</th>
+              <th class="text-center">Q1</th>
+              <th class="text-center">Q2</th>
+              <th class="text-center">Q3</th>
+              <th class="text-center">Q4</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sheets.map((r) => (
+              <tr>
+                <td class="text-left text-nowrap"><a href={href(r.team_id)}><img class={`team-logo-${r.team_id} me-1`} width="18" height="18" src={logo(r.team_id)} alt="" loading="lazy" /><span class="d-md-none">{abbrs[r.team_id]}</span><span class="d-none d-md-inline">{r.team}</span></a></td>
+                {!conference && (<td class="text-left text-muted small">{r.conference}</td>)}
+                <td class="text-center">{record(r.wins, r.losses)}</td>
+                <td class:list={['text-center', 'numeral', shade(r.net_estimate_pct)]}>{rk(r.net_estimate_rank)}</td>
+                <td class:list={['text-center', 'numeral', shade(r.rpi_pct)]}>{rk(r.rpi_rank)}</td>
+                <td class:list={['text-center', 'numeral', shade(r.sos_pct)]}>{rk(r.sos_rank)}</td>
+                <td class:list={['text-center', 'numeral', shade(r.wab_pct)]}>{r.wab == null ? '—' : generateMarginalString(r.wab, 1, 1)}</td>
+                <td class="text-center">{q(r, 1)}</td>
+                <td class="text-center">{q(r, 2)}</td>
+                <td class="text-center">{q(r, 3)}</td>
+                <td class="text-center">{q(r, 4)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+
+    {data && (
+      <p class="small text-muted mt-3">
+        How this works: sportsdataverse-py rates every team on the games played so far, then simulates the rest of the season {n.toLocaleString()} times, conference tournaments included, and fills each simulated field from the résumé.
+        Est. NET is a NET-style estimate, not the NCAA's. Quadrants use the NCAA's thresholds by the opponent's Est. NET rank and the site. Team sheet shading is each team's percentile among Division I.
+      </p>
+    )}
+  </div>
+  <DarkModeLogos teamIds={shownIds} />
+</GenericPage>
