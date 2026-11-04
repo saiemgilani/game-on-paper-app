@@ -45,6 +45,11 @@ export async function prepareNbaCup(Astro: AstroGlobal, today = new Date()): Pro
     try {
         pick = await pickSnapshot(requested, current, retrieveLatestCupSnapshot);
         if (pick.snapshot) data = await retrieveCupSnapshot(pick.snapshot);
+        // a picked day whose rows are gone (re-run mid-write): the empty state, not "0 simulated Cups" over no tables
+        if (data && data.sims.length === 0) {
+            data = null;
+            pick = { snapshot: null, season: pick.season, fallback: false };
+        }
     } catch (e: any) {
         console.error(`ERROR while loading the NBA Cup snapshot: ${e}, ${e?.stack}`);
         failed = true;

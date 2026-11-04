@@ -156,6 +156,13 @@ describe('prepareNbaCup', () => {
         expect(r).toMatchObject({ failed: false, data: null, pick: { snapshot: null, season: 2027, fallback: false }, view: 'groups' });
         expect(A.response.headers.get('Cache-Control')).toBe('no-store');
     });
+    test('a picked day with no sim rows is the empty state, not an "As of" line over no tables', async () => {
+        rows.fn = (_table, q) => (q.limit === '1' ? [f.snapshot] : []);
+        const A = astroFor('https://gameonpaper.com/nba/cup');
+        const r = await prepareNbaCup(A, new Date('2026-11-04T12:00:00Z'));
+        expect(r).toMatchObject({ failed: false, data: null, pick: { snapshot: null, season: 2027, fallback: false } });
+        expect(A.response.headers.get('Cache-Control')).toBe('no-store');
+    });
     test("next August: 2027-28 has no Cup yet, so 2026-27's last day, flagged as a fallback", async () => {
         rows.fn = live;
         const r = await prepareNbaCup(astroFor('https://gameonpaper.com/nba/cup'), new Date('2027-08-02T12:00:00Z'));
