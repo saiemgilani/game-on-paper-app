@@ -150,6 +150,9 @@ describe('PlayoffPictureRoute', () => {
         expect(html).toContain('src="https://a.espncdn.com/i/teamlogos/nba/500/8.png"');
         expect(html).toContain('href="/nba/team/1610612765"');
         expect(html).toContain('>Detroit Pistons<');
+        // its dark logo by ESPN's abbreviation: nba/500-dark/<id>.png is a 404 for every team
+        expect(html).toContain("img.team-logo-8 {\n        content: url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500-dark/det.png&h=120&w=120')");
+        expect(html).not.toMatch(/nba\/500-dark\/\d+\.png/);
         expect(html).not.toMatch(/hulk-bg-level-[0-5]\b/); // probabilities are green only
         const firstRow = html.split('<tbody>')[1].split('</tr>')[1];
         const cells = cellsOf(firstRow);

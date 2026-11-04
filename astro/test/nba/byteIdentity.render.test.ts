@@ -9,6 +9,8 @@
 // pregame's Players to Watch card (with DarkModeLogos' CSS for its two team logos).
 // home, leaders, player, players, scatter, team and teams .html were re-captured on feat/basketball-2026-27: the NBA lists
 // 2026-27, so each season picker gains it and the 2025-26 pages these captures load carry ?season=2026 in canonical and links.
+// pregame.html was re-captured on feat/basketball-playoff-picture: its watch card's two dark logos move from nba/500-dark/<id>.png
+// (a 404 for every NBA team) to ESPN's abbreviation (utils/league.ts NBA_LOGO_ABBR), nothing else.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
