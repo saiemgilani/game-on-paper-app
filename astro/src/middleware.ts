@@ -237,14 +237,22 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
+  // The visitor rides on the collector whether or not this Worker ships telemetry: the API
+  // logs its own request rows, and callerHeaders() attributes them from here.
+  const collector = createCollector();
+  collector.game_id = (url.pathname.match(GAME_ID_RE) || [])[1] ?? null;
+  collector.client = {
+    ip: clientIp(context.request.headers, safeClientAddress(context)),
+    ua: context.request.headers.get('user-agent') ?? '',
+    page: url.pathname,
+  };
+
   const key = getSecret('GOP_INGEST_KEY') ?? '';
   const enabled = (getSecret('TELEMETRY_ENABLED') ?? '1') !== '0' && !!key;
   if (!enabled || url.pathname.startsWith('/api/client-log')) {
-    return withPreviewCacheGuard(context, await next(previewRewrite as any));
+    return withPreviewCacheGuard(context, await gopStorage.run(collector, () => next(previewRewrite as any)));
   }
 
-  const collector = createCollector();
-  collector.game_id = (url.pathname.match(GAME_ID_RE) || [])[1] ?? null;
   const t0 = Date.now();
   let response: Response;
   try {
