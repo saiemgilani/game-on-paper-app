@@ -89,8 +89,10 @@ export interface CommitteeRanking {
 export function committeeRanking(r: ESPNRankingsResponse | null, season: number): CommitteeRanking | null {
     const polls = Array.isArray(r?.rankings) ? r.rankings : [];
     const cfp = polls.find((x) => x?.type === 'cfp');
-    // the poll's own season, else the feed's; a poll that names another season is never this one
-    if (!cfp || (cfp.season?.year ?? r?.latestSeason?.year) !== season) return null;
+    // the poll's own season, else the year it was published (CFP rankings run November-December of
+    // their season), never the feed-wide latestSeason, which says nothing about a retained old poll
+    const published = cfp?.date ? new Date(cfp.date).getUTCFullYear() : undefined;
+    if (!cfp || (cfp.season?.year ?? published) !== season) return null;
     const ranked = (Array.isArray(cfp.ranks) ? cfp.ranks : [])
         .filter((x) => x?.team?.id && Number.isFinite(x.current))
         .sort((a, b) => a.current - b.current);

@@ -419,13 +419,23 @@ def project(payload):
 
 # --- one simulation per payload per worker -----------------------------------------------------
 # The site caches the answer in KV, but a new ingest or committee ranking changes its key, and the
-# cold renders that follow all miss together. Concurrent identical payloads share one run here, and
-# the last few answers are reused, so a burst costs at most one simulation per worker process.
+# cold renders that follow all miss together. Concurrent identical payloads share one run here (its
+# answer or its error), and the last few answers are reused, so a burst costs at most one simulation
+# per worker process, even when that one fails.
 _MEMO_SIZE = 4
-PROJECT_WAIT_S = 120
+# the site gives up after 60 s (astro/src/resources/playoff.ts PROJECTION_TIMEOUT_MS): a waiter
+# never outlives its caller
+PROJECT_WAIT_S = 60
 _memo_lock = threading.Lock()
 _memo = OrderedDict()
 _running = {}
+
+
+class _Flight:
+    def __init__(self):
+        self.done = threading.Event()
+        self.result = None
+        self.error = None
 
 
 def project_once(payload):
@@ -437,24 +447,27 @@ def project_once(payload):
         if key in _memo:
             _memo.move_to_end(key)
             return _memo[key]
-        event = _running.get(key)
-        owner = event is None
+        flight = _running.get(key)
+        owner = flight is None
         if owner:
-            event = _running[key] = threading.Event()
+            flight = _running[key] = _Flight()
     if not owner:
-        event.wait(PROJECT_WAIT_S)
-        with _memo_lock:
-            if key in _memo:
-                return _memo[key]
-        return project(payload)  # the run it waited on failed or stalled: answer itself
+        if not flight.done.wait(PROJECT_WAIT_S):
+            raise TimeoutError("the identical projection in flight is still running")
+        if flight.error is not None:
+            raise flight.error
+        return flight.result
     try:
-        out = project(payload)
+        flight.result = project(payload)
         with _memo_lock:
-            _memo[key] = out
+            _memo[key] = flight.result
             while len(_memo) > _MEMO_SIZE:
                 _memo.popitem(last=False)
-        return out
+        return flight.result
+    except Exception as e:  # shared with every waiter, never retried by each of them
+        flight.error = e
+        raise
     finally:
         with _memo_lock:
             _running.pop(key, None)
-        event.set()
+        flight.done.set()

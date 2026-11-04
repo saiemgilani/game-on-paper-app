@@ -320,6 +320,39 @@ def test_concurrent_identical_payloads_share_one_run_and_repeats_hit_the_memo(co
     assert pp.project_once({"n": 2}) == {"answer": 2} and calls == [1, 2]
 
 
+def test_waiters_share_the_owner_s_failure_instead_of_each_retrying(monkeypatch):
+    import threading as _t
+    monkeypatch.setattr(pp, "_memo", type(pp._memo)())
+    monkeypatch.setattr(pp, "_running", {})
+    calls, gate = [], _t.Event()
+
+    def failing(payload):
+        calls.append(1)
+        gate.wait(5)
+        raise ValueError("bad payload")
+
+    monkeypatch.setattr(pp, "project", failing)
+    errors = []
+
+    def call():
+        try:
+            pp.project_once({"n": 4})
+        except ValueError as e:
+            errors.append(e)
+
+    threads = [_t.Thread(target=call) for _ in range(4)]
+    for t in threads:
+        t.start()
+    while not pp._running:
+        pass
+    import time as _time
+    _time.sleep(0.3)  # every caller is waiting on the owner before it fails
+    gate.set()
+    for t in threads:
+        t.join(5)
+    assert calls == [1] and len(errors) == 4
+
+
 def test_a_failed_run_is_not_memoized_and_the_next_call_retries(monkeypatch):
     monkeypatch.setattr(pp, "_memo", type(pp._memo)())
     monkeypatch.setattr(pp, "_running", {})
