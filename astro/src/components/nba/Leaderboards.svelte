@@ -2,17 +2,22 @@
 <script lang="ts">
     // blazing-the-nets' Leaderboards.tsx on runes: pick the window and the board; a featured team (the NBA's Nets) is
     // highlighted, shown below the top rows and the rest behind a <details>; with none (netsTeamId null) those parts never render.
-    import { ACTIVE_DAYS, LEADER_LABELS, LEADER_METRICS, LEADER_WINDOWS, minAttempts, minThrees, NBA_LEADER_BARS, type Boards, type LeaderBars, type LeaderMetric, type LeaderRow, type LeaderWindow } from '../../nba/data/leaders';
+    import { ACTIVE_DAYS, LEADER_LABELS, LEADER_METRICS, LEADER_WINDOWS, minAttempts, MOVER_METRIC, minThrees, NBA_LEADER_BARS, type Boards, type LeaderBars, type LeaderMetric, type LeaderRow, type LeaderWindow } from '../../nba/data/leaders';
     import { fmtDate, fmtInt, fmtPct, fmtPts } from '../../nba/format';
     import { playerHref } from '../../nba/hrefs';
     import type { BasketballLeague } from '../../utils/league';
-    let { boards, netsTeamId, seasonQuery, pronoun = 'his', bars = NBA_LEADER_BARS, league = 'nba', windows = LEADER_WINDOWS, windowNote = '', activeByTeam = false }: { boards: Boards; netsTeamId: number | null; seasonQuery: string; pronoun?: 'his' | 'her'; bars?: LeaderBars; league?: BasketballLeague; windows?: readonly LeaderWindow[]; windowNote?: string; activeByTeam?: boolean } = $props();
+    let { boards, netsTeamId, seasonQuery, pronoun = 'his', bars = NBA_LEADER_BARS, league = 'nba', windows = LEADER_WINDOWS, windowNote = '', activeByTeam = false, movers = false }: { boards: Boards; netsTeamId: number | null; seasonQuery: string; pronoun?: 'his' | 'her'; bars?: LeaderBars; league?: BasketballLeague; windows?: readonly LeaderWindow[]; windowNote?: string; activeByTeam?: boolean; movers?: boolean } = $props();
     /** Nets rows shown below the top 15; the rest sit in a <details>. */
     const NETS_SHOWN = 5;
     let n = $state<LeaderWindow>(10);
     let metric = $state<LeaderMetric>('efgPct');
-    const board = $derived(boards[n][metric]);
-    const value = (r: LeaderRow) => (metric === 'improved' ? `${fmtPts(r.value)} pts` : fmtPct(r.value));
+    // BB-G11: with movers the boards carry "declined" (the route builds it only then)
+    const metrics: readonly LeaderMetric[] = $derived(movers ? [...LEADER_METRICS, MOVER_METRIC] : LEADER_METRICS);
+    const board = $derived(boards[n][metric]!);
+    /** A board ranked on the change (window eFG% minus season eFG%) rather than a rate. */
+    const change = $derived(metric === 'improved' || metric === 'declined');
+    const value = (r: LeaderRow) => (change ? `${fmtPts(r.value)} pts` : fmtPct(r.value));
+    const valueHead = $derived(metric === 'improved' ? 'eFG% gain' : metric === 'declined' ? 'eFG% change' : LEADER_LABELS[metric]);
     const detail = (r: LeaderRow) => (metric === 'fg3Pct' ? `${r.window.fg3m}/${r.window.fg3a} 3P` : `${fmtInt(r.window.makes)}/${fmtInt(r.window.attempts)} FG`);
     const nets = $derived(board.also.slice(0, NETS_SHOWN));
     const moreNets = $derived(board.also.slice(NETS_SHOWN));
@@ -28,7 +33,7 @@
         <td class="text-muted">{r.team}</td>
         <td class="text-end numeral">{value(r)}</td>
         <td class="text-end numeral d-none d-sm-table-cell">{detail(r)}</td>
-        {#if metric === 'improved'}<td class="text-end numeral d-none d-sm-table-cell">{fmtPct(r.seasonEfg)}</td>{/if}
+        {#if change}<td class="text-end numeral d-none d-sm-table-cell">{fmtPct(r.seasonEfg)}</td>{/if}
         <td class="text-end numeral text-muted d-none d-md-table-cell">{fmtDate(r.window.from)} to {fmtDate(r.window.to)}</td>
     </tr>
 {/snippet}
@@ -40,13 +45,15 @@
     {/each}
 </div>
 <div class="d-flex flex-wrap gap-2 mb-2" role="group" aria-label="Board">
-    {#each LEADER_METRICS as m (m)}
+    {#each metrics as m (m)}
         <button type="button" class="btn btn-sm btn-outline-secondary" class:active={metric === m} aria-pressed={metric === m} onclick={() => (metric = m)}>{LEADER_LABELS[m]}</button>
     {/each}
 </div>
 <p class="small text-muted">
     Each player's last {n} games with a field-goal attempt (a full {n}-game window), {minAttempts(n, bars)}+ FGA in it{metric === 'fg3Pct' ? ` and ${minThrees(n, bars)}+ threes` : ''}.
-    {metric === 'improved' ? `Most improved: window eFG% minus ${pronoun} season eFG%. ` : ''}
+    {movers
+        ? `The change: the window's eFG% minus ${pronoun} season eFG% to date (the window's games included). Most improved ranks the largest rise first, Most declined the largest drop. `
+        : metric === 'improved' ? `Most improved: window eFG% minus ${pronoun} season eFG%. ` : ''}
     Active shooters only: last game within {ACTIVE_DAYS} days of {activeByTeam ? `${pronoun} team's` : "the season's"} latest game. {board.eligible} players qualify.{windowNote}
 </p>
 <div class="table-responsive">
@@ -57,9 +64,9 @@
                 <th scope="col">#</th>
                 <th scope="col">Player</th>
                 <th scope="col">Team</th>
-                <th scope="col" class="text-end">{metric === 'improved' ? 'eFG% gain' : LEADER_LABELS[metric]}</th>
+                <th scope="col" class="text-end">{valueHead}</th>
                 <th scope="col" class="text-end d-none d-sm-table-cell">{metric === 'fg3Pct' ? '3PM/3PA' : 'FGM/FGA'}</th>
-                {#if metric === 'improved'}<th scope="col" class="text-end d-none d-sm-table-cell">Season eFG%</th>{/if}
+                {#if change}<th scope="col" class="text-end d-none d-sm-table-cell">Season eFG%</th>{/if}
                 <th scope="col" class="text-end d-none d-md-table-cell">Window</th>
             </tr>
         </thead>
@@ -68,7 +75,7 @@
         </tbody>
         {#if nets.length > 0}
             <tbody>
-                <tr><th scope="rowgroup" colspan={metric === 'improved' ? 7 : 6} class="small fw-normal text-muted pt-3">Nets further down</th></tr>
+                <tr><th scope="rowgroup" colspan={change ? 7 : 6} class="small fw-normal text-muted pt-3">Nets further down</th></tr>
                 {#each nets as r (r.person_id)}{@render row(r)}{/each}
             </tbody>
         {/if}
@@ -83,9 +90,9 @@
                 <thead class="visually-hidden">
                     <tr>
                         <th scope="col">#</th><th scope="col">Player</th><th scope="col">Team</th>
-                        <th scope="col">{metric === 'improved' ? 'eFG% gain' : LEADER_LABELS[metric]}</th>
+                        <th scope="col">{valueHead}</th>
                         <th scope="col">{metric === 'fg3Pct' ? '3PM/3PA' : 'FGM/FGA'}</th>
-                        {#if metric === 'improved'}<th scope="col">Season eFG%</th>{/if}
+                        {#if change}<th scope="col">Season eFG%</th>{/if}
                         <th scope="col">Window</th>
                     </tr>
                 </thead>

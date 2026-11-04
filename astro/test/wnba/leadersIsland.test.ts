@@ -26,4 +26,20 @@ describe('Leaderboards without a featured team', () => {
         unmount(c);
         target.remove();
     });
+    test('BB-G11 movers: a Most declined button, the change ranked from the largest drop, the definition always shown', () => {
+        const boards = leaderBoards(seasonPlayerGamesFromRows(playerGames2026(), seasonPlayers(2026)), null, 15, { fga: 4, fg3a: 2 }, { movers: true });
+        const target = document.createElement('div');
+        document.body.appendChild(target);
+        const c = mount(Leaderboards, { target, props: { boards, netsTeamId: null, seasonQuery: '', pronoun: 'her', bars: { fga: 4, fg3a: 2 }, league: 'wnba', movers: true } });
+        expect(target.textContent).toContain("The change: the window's eFG% minus her season eFG% to date");
+        [...target.querySelectorAll('button')].find((b) => b.textContent === 'Most declined')!.click();
+        flushSync();
+        const heads = [...target.querySelectorAll('#nba-leaders thead th')].map((th) => th.textContent);
+        expect(heads).toEqual(['#', 'Player', 'Team', 'eFG% change', 'FGM/FGA', 'Season eFG%', 'Window']);
+        const first = target.querySelector('#nba-leaders tbody tr')!;
+        expect(first.querySelectorAll('td')[3].textContent).toMatch(/^−\d+\.\d pts$/);
+        expect(first.querySelectorAll('td')[3].textContent).toBe(`−${Math.abs(boards[10].declined!.rows[0].value * 100).toFixed(1)} pts`);
+        unmount(c);
+        target.remove();
+    });
 });

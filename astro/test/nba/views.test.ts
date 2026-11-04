@@ -122,6 +122,22 @@ test("most improved: window eFG% minus season eFG%, ties share a rank", () => {
   assert.deepEqual(boards[20].fgPct.rows, [], "15 games cannot fill a 20-game window");
 });
 
+test("most declined (BB-G11): the improved change ranked ascending, built only with movers", () => {
+  const hot = Array.from({ length: 10 }, () => game(10, 7));
+  const cold = Array.from({ length: 5 }, () => game(10, 2));
+  const faller = player(3, [...hot, ...cold]);
+  const steady = player(2, Array.from({ length: 15 }, () => game(10, 5)));
+  const riser = player(4, [...cold.map(() => game(10, 2)), ...hot.slice(0, 5).map(() => game(10, 7))]);
+  const down = leaderboard([riser, steady, faller], 5, "declined");
+  const up = leaderboard([riser, steady, faller], 5, "improved");
+  assert.deepEqual(down.map((r) => r.person_id), [3, 2, 4]);
+  assert.deepEqual(down.map((r) => r.person_id), up.map((r) => r.person_id).reverse());
+  assert.ok(Math.abs(down[0].value - (0.2 - 80 / 150)) < 1e-12, "window eFG% 20% minus season eFG% 60%");
+  assert.deepEqual(down.map((r) => r.rank), [1, 2, 3]);
+  assert.equal(leaderBoards([faller, steady], 1610612751, 1)[5].declined, undefined, "no board without movers");
+  assert.equal(leaderBoards([faller, steady], 1610612751, 1, undefined, { movers: true })[5].declined?.rows[0].person_id, 3);
+});
+
 test("roster table: click sorts (same column flips), j/k/h/l move and clamp, s sorts the focused column", () => {
   const start: TableState = { sortKey: "fga", sortDir: "desc", row: 0, col: 2 };
   const keys = ["gp", "min", "fga", "fgPct"];
