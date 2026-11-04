@@ -487,7 +487,7 @@ if (document.readyState !== 'loading') {
             Odds: {printSpread()}, O/U {roundNumber(parseFloat(overUnder), 2, 1)}
             {:else if showGei && !gameInProgress}
             <!-- basketball ('bball-gei'): the GEI alone; no season percentiles to ramp it against yet -->
-            <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/" title="Measures 'game excitement' by absolute changes in win probability. May not match eye-test in games with heavy favorites.">Game Excitement Index:</a> <span class="px-1">{ geiVal.toFixed(2) }</span>
+            <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/" title="Measures 'game excitement' by absolute changes in win probability. May not match eye-test in games with heavy favorites.">Game Excitement Index:</a> <span class="px-1">{ roundNumber(geiVal, 2, 2) }</span>
             {/if}
             {#if gameInProgress}
                 {#if (lastPlay.winProbability.before >= 0.5) }

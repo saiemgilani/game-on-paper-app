@@ -21,8 +21,10 @@ const home = cleanAbbreviation(game.home.team);
 const away = cleanAbbreviation(game.away.team);
 const hasOt = game.plays.some((p) => p.wpRegime === 'ot');
 const cfg = basketball(Astro.locals.league); // the season only keys WNBA logos (wnbaLogoId); the NBA island's props stay as they were
-// 'bball-gei' (preview): the processor's GEI on the chart's line (final games, as football); off, gei stays null and showGei is not sent
-const gei = isFeatureEnabled('bball-gei', Astro.locals) ? game.excitement?.gei ?? null : null;
+// 'bball-gei' (preview): the processor's GEI on the chart's line for a final (as football), only once sdv-py took the last
+// play to the result -- never a partial index on a suspended or not-yet-called game; off, gei stays null and showGei is not sent
+const ex = game.excitement;
+const gei = isFeatureEnabled('bball-gei', Astro.locals) && game.status.completed && ex?.completed ? ex.gei : null;
 ---
 <div id="wp-section" class="mb-3">
     {plays.length > 1

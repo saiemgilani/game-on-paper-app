@@ -6,6 +6,8 @@ import importlib
 import json
 import pathlib
 
+import pytest
+
 FIX = pathlib.Path(__file__).parent / "fixtures" / "nba_summary_401585607.json.gz"
 AUTH = {"Authorization": "Bearer " + base64.b64encode(b"secret").decode()}
 
@@ -59,7 +61,9 @@ def test_nba_payload_carries_the_game_excitement_of_its_own_wp(monkeypatch):
     body = _app(monkeypatch, _summary()).app.test_client().get("/nba/401585607/process", headers=AUTH).get_json()
     ex = body["excitement"]
     assert set(ex) == {"gei", "lead_changes", "max_swing_pts", "completed"}
-    assert ex["completed"] is True and ex["gei"] > 0  # a final: the last play swings to the result
+    assert ex["completed"] is True  # a final: the last play swings to the result
+    # sdv-py game_excitement on this capture at the pinned lock (353e42b2); a WP refit moves these with the PR 0 snapshot
+    assert ex["gei"] == pytest.approx(3.5370793861546774) and ex["max_swing_pts"] == pytest.approx(9.34339165687561)
     # the leader flips the payload's own plays show (a tie is not a lead)
     signs = [s for s in ((p["home_score"] or 0) - (p["away_score"] or 0) for p in body["plays"]) if s]
     assert ex["lead_changes"] == sum((a > 0) != (b > 0) for a, b in zip(signs, signs[1:]))

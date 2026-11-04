@@ -222,6 +222,13 @@ describe('/nba/game/[id] render', () => {
         prep.mockResolvedValueOnce({ game: fromProcessor(read('game_401766458_processor'), 'nba') });
         expect(wpProps(await render())).not.toContain('showGei');
         expect(fromDataApi(read('game_401766458_api'), 'nba').excitement).toBeUndefined();
+        // a partial index (sdv-py did not take the last play to the result), or a game the status does not call final: no GEI
+        for (const game of [fromProcessor({ ...j, excitement: { ...j.excitement, completed: false } }, 'nba'), { ...fromProcessor(j, 'nba'), status: { ...fromProcessor(j, 'nba').status, completed: false, name: 'STATUS_SUSPENDED' } }]) {
+            prep.mockResolvedValueOnce({ game });
+            const props = wpProps(await render());
+            expect(props).toContain('"gei":[0,null]');
+            expect(props).not.toContain('showGei');
+        }
     });
     test('win probability with no prior: footnote says so, nothing crashes', async () => {
         prep.mockResolvedValueOnce({ game: { ...fromProcessor(read('game_401766458_processor'), 'nba'), prior: null } });
