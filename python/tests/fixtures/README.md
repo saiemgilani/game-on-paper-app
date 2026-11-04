@@ -110,3 +110,7 @@ carries both runs.
   `test_nba_process_parity._body`: sdv-py plan #1's 17 rebuilt running-score rows (`away_score` / `home_win_prob`,
   `wp_delta` on them and the row after; first at sequence 128, 26-24) and 9 `start_game_seconds_remaining` values that lost a
   Float32 tail (2213.1001 -> 2213.1, the Float64 clock dtype). No other field moved.
+- `nba_process_401585607.payload.json` moved with the sportsdataverse lock 353e42b2 (GOP BB-G29), patched cell by cell through
+  `test_nba_process_parity._body`: sdv-py #1075 refit the NBA/WNBA in-game WP, so `home_win_prob` moved on 448 of 450 rows and
+  `wp_delta` on 160; the last row still settles at 1.0. No other field moved. The payload's new `excitement` key is additive
+  (`ADDED_IN_PR0`), checked in `test_basketball_route`.

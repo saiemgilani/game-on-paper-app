@@ -21,7 +21,8 @@ const ISLAND = /<astro-island(?:\s+[\w-]+(?:="[^"]*")?)*\s*>/g;
 const noScripts = (h: string) => h.replace(/<script[\s\S]*?<\/script>/g, '').replace(ISLAND, ''); // layout scripts and island props legitimately contain null/undefined
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
-const render = () => container.renderToString(Page, { request: new Request('https://gameonpaper.com/nba/game/401766458'), params: { id: '401766458' }, locals: { preview: true, league: 'nba' } as App.Locals });
+const render = (flagOverrides?: Record<string, boolean>) => container.renderToString(Page, { request: new Request('https://gameonpaper.com/nba/game/401766458'), params: { id: '401766458' }, locals: { preview: true, league: 'nba', ...(flagOverrides ? { flagOverrides } : {}) } as App.Locals });
+const wpProps = (html: string) => ([...html.matchAll(ISLAND)].map((m) => m[0]).find((t) => t.includes('/WinProbabilityChart.svelte"')) ?? '').replace(/&quot;/g, '"');
 
 describe('/nba/game/[id] render', () => {
     test('a final game: title with scores, linescore, prior line once, six panels with bodies, breadcrumb', async () => {
@@ -205,6 +206,29 @@ describe('/nba/game/[id] render', () => {
         const body = noScripts(html);
         expect(body).not.toMatch(/NaN|undefined/);
         expect(body).not.toContain(' · ');
+    });
+    test("'bball-gei': the processor's GEI reaches the chart island on, and nothing of it off", async () => {
+        const j = { ...read('game_401766458_processor'), excitement: { gei: 3.5370793861546774, lead_changes: 6, max_swing_pts: 9.34, completed: true } };
+        expect(fromProcessor(j, 'nba').excitement).toEqual({ gei: 3.5370793861546774, leadChanges: 6, maxSwingPts: 9.34, completed: true });
+        prep.mockResolvedValueOnce({ game: fromProcessor(j, 'nba') });
+        const on = wpProps(await render());
+        expect(on).toContain('"gei":[0,3.5370793861546774]');
+        expect(on).toContain('"showGei":[0,true]');
+        prep.mockResolvedValueOnce({ game: fromProcessor(j, 'nba') });
+        const off = wpProps(await render({ 'bball-gei': false }));
+        expect(off).toContain('"gei":[0,null]');
+        expect(off).not.toContain('showGei');
+        // no excitement in the payload (the Data API path, or a payload cached before it): on renders as off
+        prep.mockResolvedValueOnce({ game: fromProcessor(read('game_401766458_processor'), 'nba') });
+        expect(wpProps(await render())).not.toContain('showGei');
+        expect(fromDataApi(read('game_401766458_api'), 'nba').excitement).toBeUndefined();
+        // a partial index (sdv-py did not take the last play to the result), or a game the status does not call final: no GEI
+        for (const game of [fromProcessor({ ...j, excitement: { ...j.excitement, completed: false } }, 'nba'), { ...fromProcessor(j, 'nba'), status: { ...fromProcessor(j, 'nba').status, completed: false, name: 'STATUS_SUSPENDED' } }]) {
+            prep.mockResolvedValueOnce({ game });
+            const props = wpProps(await render());
+            expect(props).toContain('"gei":[0,null]');
+            expect(props).not.toContain('showGei');
+        }
     });
     test('win probability with no prior: footnote says so, nothing crashes', async () => {
         prep.mockResolvedValueOnce({ game: { ...fromProcessor(read('game_401766458_processor'), 'nba'), prior: null } });
