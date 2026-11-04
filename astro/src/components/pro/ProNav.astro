@@ -1,0 +1,28 @@
+---
+/** The Pro section's own row of links, under the page header. FilterGroup's pill markup. */
+interface Props {
+    active?: 'players' | 'portal' | 'methodology'
+}
+const { active } = Astro.props;
+const viewer = Astro.locals.pro ?? null;
+const links: [string, string, Props['active']][] = [
+    ['/pro', 'Players', 'players'],
+    ['/pro/portal', 'Portal Board', 'portal'],
+    ['/pro/methodology', 'Methodology', 'methodology'],
+];
+---
+<div class="container mb-3">
+    <div class="d-flex align-items-center flex-wrap gap-1" id="pro-nav">
+        {links.map(([href, title, key]) => (
+            <a href={href} class:list={['btn btn-sm btn-outline-secondary', { active: key === active }]}>{title}</a>
+        ))}
+        {viewer
+            ? (
+            <form method="post" action="/pro/logout" class="ms-auto mb-0 d-flex align-items-center gap-2">
+                <span class="text-muted text-small d-none d-md-inline">{viewer.email}</span>
+                <button class="btn btn-sm btn-outline-secondary" type="submit">Sign out</button>
+            </form>
+            )
+            : <a href="/pro/login" class="btn btn-sm btn-outline-secondary ms-auto">Sign in</a>}
+    </div>
+</div>
