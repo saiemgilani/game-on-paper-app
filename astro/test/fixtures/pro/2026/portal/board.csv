@@ -1,0 +1,21 @@
+espn_id,name,position,from_team,entered,stars,status,pass_EPAplay_band_mid,pass_success_band_mid,pass_comppct_band_mid,rush_EPAplay_band_mid,rush_success_band_mid,rec_EPAplay_band_mid,rec_catchpct_band_mid,pff_grade_pct
+1,"Fixture Player",QB,"Fixture State",2026-12-01,2,entered,0,19,38,,,,,0
+2,"Fixture Receiver",WR,"Fixture Tech",2026-12-02,3,entered,,,,,,78,61,
+1002,"Fixture Entrant 03",WR,"Fixture A&M",2026-12-03,4,entered,,,,,,74,93,
+1003,"Fixture Entrant 04",TE,"Fixture College",2026-12-04,5,committed,,,,,,10,29,
+1004,"Fixture Entrant 05",LB,"Northern Fixture",2026-12-05,2,withdrawn,,,,,,,,52
+1005,"Fixture Entrant 06",CB,"Fixture State",2026-12-06,,entered,,,,,,,,65
+1006,"Fixture Entrant 07",WR,"Fixture Tech",2026-12-07,4,entered,,,,,,20,39,
+,"Fixture Entrant 08",QB,"Fixture A&M",2026-12-08,5,entered,57,76,95,,,,,91
+1008,"Fixture Entrant 09",RB,"Fixture College",2026-12-09,2,committed,,,,94,12,,,
+1009,"Fixture Entrant 10",WR,"Northern Fixture",2026-12-01,3,withdrawn,,,,,,30,49,
+1010,"Fixture Entrant 11",QB,"Fixture State",2026-12-02,4,entered,67,86,4,,,,,30
+1011,"Fixture Entrant 12",RB,"Fixture Tech",2026-12-03,,entered,,,,3,22,,,
+1012,"Fixture Entrant 13",WR,"Fixture A&M",2026-12-04,2,entered,,,,,,40,59,
+1013,"Fixture Entrant 14",TE,"Fixture College",2026-12-05,3,committed,,,,,,77,96,
+,"Fixture Entrant 15",LB,"Northern Fixture",2026-12-06,4,withdrawn,,,,,,,,82
+1015,"Fixture Entrant 16",CB,"Fixture State",2026-12-07,5,entered,,,,,,,,95
+1016,"Fixture Entrant 17",WR,"Fixture Tech",2026-12-08,2,entered,,,,,,87,5,
+1017,"Fixture Entrant 18",QB,"Fixture A&M",2026-12-09,,entered,23,42,61,,,,,21
+1018,"Fixture Entrant 19",RB,"Fixture College",2026-12-01,4,committed,,,,60,79,,,
+1019,"Fixture Entrant 20",WR,"Northern Fixture",2026-12-02,5,withdrawn,,,,,,97,15,

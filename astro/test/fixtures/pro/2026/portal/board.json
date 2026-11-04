@@ -1,0 +1,319 @@
+{
+ "season": 2026,
+ "rendered": "2026-12-10",
+ "window": "2026-27",
+ "entrants": [
+  {
+   "espn_id": 1,
+   "name": "Fixture Player",
+   "position": "QB",
+   "from_team": "Fixture State",
+   "entered": "2026-12-01",
+   "stars": 2,
+   "status": "entered",
+   "band_mid": {
+    "pass_EPAplay": 0,
+    "pass_success": 19,
+    "pass_comppct": 38
+   },
+   "pff_grade": 60,
+   "pff_grade_pct": 0,
+   "has_profile": true
+  },
+  {
+   "espn_id": 2,
+   "name": "Fixture Receiver",
+   "position": "WR",
+   "from_team": "Fixture Tech",
+   "entered": "2026-12-02",
+   "stars": 3,
+   "status": "entered",
+   "band_mid": {
+    "rec_EPAplay": 78,
+    "rec_catchpct": 61
+   },
+   "pff_grade": null,
+   "pff_grade_pct": null,
+   "has_profile": true
+  },
+  {
+   "espn_id": 1002,
+   "name": "Fixture Entrant 03",
+   "position": "WR",
+   "from_team": "Fixture A&M",
+   "entered": "2026-12-03",
+   "stars": 4,
+   "status": "entered",
+   "band_mid": {
+    "rec_EPAplay": 74,
+    "rec_catchpct": 93
+   },
+   "pff_grade": null,
+   "pff_grade_pct": null,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1003,
+   "name": "Fixture Entrant 04",
+   "position": "TE",
+   "from_team": "Fixture College",
+   "entered": "2026-12-04",
+   "stars": 5,
+   "status": "committed",
+   "band_mid": {
+    "rec_EPAplay": 10,
+    "rec_catchpct": 29
+   },
+   "pff_grade": null,
+   "pff_grade_pct": null,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1004,
+   "name": "Fixture Entrant 05",
+   "position": "LB",
+   "from_team": "Northern Fixture",
+   "entered": "2026-12-05",
+   "stars": 2,
+   "status": "withdrawn",
+   "band_mid": {},
+   "pff_grade": 88,
+   "pff_grade_pct": 52,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1005,
+   "name": "Fixture Entrant 06",
+   "position": "CB",
+   "from_team": "Fixture State",
+   "entered": "2026-12-06",
+   "stars": null,
+   "status": "entered",
+   "band_mid": {},
+   "pff_grade": 65,
+   "pff_grade_pct": 65,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1006,
+   "name": "Fixture Entrant 07",
+   "position": "WR",
+   "from_team": "Fixture Tech",
+   "entered": "2026-12-07",
+   "stars": 4,
+   "status": "entered",
+   "band_mid": {
+    "rec_EPAplay": 20,
+    "rec_catchpct": 39
+   },
+   "pff_grade": null,
+   "pff_grade_pct": null,
+   "has_profile": false
+  },
+  {
+   "espn_id": null,
+   "name": "Fixture Entrant 08",
+   "position": "QB",
+   "from_team": "Fixture A&M",
+   "entered": "2026-12-08",
+   "stars": 5,
+   "status": "entered",
+   "band_mid": {
+    "pass_EPAplay": 57,
+    "pass_success": 76,
+    "pass_comppct": 95
+   },
+   "pff_grade": 79,
+   "pff_grade_pct": 91,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1008,
+   "name": "Fixture Entrant 09",
+   "position": "RB",
+   "from_team": "Fixture College",
+   "entered": "2026-12-09",
+   "stars": 2,
+   "status": "committed",
+   "band_mid": {
+    "rush_EPAplay": 94,
+    "rush_success": 12
+   },
+   "pff_grade": null,
+   "pff_grade_pct": null,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1009,
+   "name": "Fixture Entrant 10",
+   "position": "WR",
+   "from_team": "Northern Fixture",
+   "entered": "2026-12-01",
+   "stars": 3,
+   "status": "withdrawn",
+   "band_mid": {
+    "rec_EPAplay": 30,
+    "rec_catchpct": 49
+   },
+   "pff_grade": null,
+   "pff_grade_pct": null,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1010,
+   "name": "Fixture Entrant 11",
+   "position": "QB",
+   "from_team": "Fixture State",
+   "entered": "2026-12-02",
+   "stars": 4,
+   "status": "entered",
+   "band_mid": {
+    "pass_EPAplay": 67,
+    "pass_success": 86,
+    "pass_comppct": 4
+   },
+   "pff_grade": 70,
+   "pff_grade_pct": 30,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1011,
+   "name": "Fixture Entrant 12",
+   "position": "RB",
+   "from_team": "Fixture Tech",
+   "entered": "2026-12-03",
+   "stars": null,
+   "status": "entered",
+   "band_mid": {
+    "rush_EPAplay": 3,
+    "rush_success": 22
+   },
+   "pff_grade": null,
+   "pff_grade_pct": null,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1012,
+   "name": "Fixture Entrant 13",
+   "position": "WR",
+   "from_team": "Fixture A&M",
+   "entered": "2026-12-04",
+   "stars": 2,
+   "status": "entered",
+   "band_mid": {
+    "rec_EPAplay": 40,
+    "rec_catchpct": 59
+   },
+   "pff_grade": null,
+   "pff_grade_pct": null,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1013,
+   "name": "Fixture Entrant 14",
+   "position": "TE",
+   "from_team": "Fixture College",
+   "entered": "2026-12-05",
+   "stars": 3,
+   "status": "committed",
+   "band_mid": {
+    "rec_EPAplay": 77,
+    "rec_catchpct": 96
+   },
+   "pff_grade": null,
+   "pff_grade_pct": null,
+   "has_profile": false
+  },
+  {
+   "espn_id": null,
+   "name": "Fixture Entrant 15",
+   "position": "LB",
+   "from_team": "Northern Fixture",
+   "entered": "2026-12-06",
+   "stars": 4,
+   "status": "withdrawn",
+   "band_mid": {},
+   "pff_grade": 68,
+   "pff_grade_pct": 82,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1015,
+   "name": "Fixture Entrant 16",
+   "position": "CB",
+   "from_team": "Fixture State",
+   "entered": "2026-12-07",
+   "stars": 5,
+   "status": "entered",
+   "band_mid": {},
+   "pff_grade": 75,
+   "pff_grade_pct": 95,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1016,
+   "name": "Fixture Entrant 17",
+   "position": "WR",
+   "from_team": "Fixture Tech",
+   "entered": "2026-12-08",
+   "stars": 2,
+   "status": "entered",
+   "band_mid": {
+    "rec_EPAplay": 87,
+    "rec_catchpct": 5
+   },
+   "pff_grade": null,
+   "pff_grade_pct": null,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1017,
+   "name": "Fixture Entrant 18",
+   "position": "QB",
+   "from_team": "Fixture A&M",
+   "entered": "2026-12-09",
+   "stars": null,
+   "status": "entered",
+   "band_mid": {
+    "pass_EPAplay": 23,
+    "pass_success": 42,
+    "pass_comppct": 61
+   },
+   "pff_grade": 89,
+   "pff_grade_pct": 21,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1018,
+   "name": "Fixture Entrant 19",
+   "position": "RB",
+   "from_team": "Fixture College",
+   "entered": "2026-12-01",
+   "stars": 4,
+   "status": "committed",
+   "band_mid": {
+    "rush_EPAplay": 60,
+    "rush_success": 79
+   },
+   "pff_grade": null,
+   "pff_grade_pct": null,
+   "has_profile": false
+  },
+  {
+   "espn_id": 1019,
+   "name": "Fixture Entrant 20",
+   "position": "WR",
+   "from_team": "Northern Fixture",
+   "entered": "2026-12-02",
+   "stars": 5,
+   "status": "withdrawn",
+   "band_mid": {
+    "rec_EPAplay": 97,
+    "rec_catchpct": 15
+   },
+   "pff_grade": null,
+   "pff_grade_pct": null,
+   "has_profile": false
+  }
+ ]
+}

@@ -1,0 +1,77 @@
+---
+/**
+ * The Pro landing: find a player profile. Searches `pro/<season>/players/index.json`
+ * by name or team through a plain GET form (?q=), so it works with no script and the
+ * result is a shareable URL. ponytail: a substring match over the whole index, fine
+ * at a few thousand players; the site search's index if it ever is not.
+ */
+import GenericPage from '../../layouts/GenericPage.astro';
+import ProNav from '../../components/pro/ProNav.astro';
+import { cleanTextForTeam } from '../../utils/misc';
+import { PRO_SEASON, proObject } from '../../resources/pro';
+
+interface ProIndex {
+    snapshot: string; rendered: string
+    players: { espn_id: number; name: string | null; team: string | null; team_id: number | null; position: string | null }[]
+}
+// Defense in depth: the middleware already sent anyone without a live entitlement to
+// /pricing; this page refuses to render for them on its own too.
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
+const index = await proObject<ProIndex>(`pro/${PRO_SEASON}/players/index.json`);
+const q = (Astro.url.searchParams.get('q') ?? '').trim();
+const needle = q.toLowerCase();
+const LIMIT = 50;
+const hits = !index || needle.length < 2 ? [] : index.players
+    .filter((r) => `${r.name ?? ''} ${r.team ?? ''}`.toLowerCase().includes(needle))
+    .slice(0, LIMIT);
+---
+<GenericPage title="Game on Paper Pro" subtitle={`${PRO_SEASON} player profiles, portal board and reports`} slug="/pro"
+    breadcrumbs={[{ title: 'Pro', active: true }]} heading="Game on Paper Pro">
+    <ProNav active="players" />
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-lg-8 col-12">
+                <h1 class="fs-3">Player profiles</h1>
+                {!index
+                    ? <p class="text-muted" id="pro-index-unavailable">Profiles are unavailable right now.</p>
+                    : (
+                    <Fragment>
+                        <form method="get" action="/pro" class="d-flex gap-2 mb-3" role="search">
+                            <label class="visually-hidden" for="pro-q">Player or team</label>
+                            <input class="form-control" type="search" id="pro-q" name="q" value={q} placeholder="Player or team" minlength="2" />
+                            <button class="btn btn-sm btn-outline-secondary" type="submit">Search</button>
+                        </form>
+                        {needle.length >= 2 && (
+                            hits.length === 0
+                                ? <p class="text-muted" id="pro-no-hits">No {PRO_SEASON} profile matches "{q}".</p>
+                                : (
+                                <div class="table-responsive">
+                                    <table class="table table-sm" id="pro-hits">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-left" colspan="1">Player</th>
+                                                <th class="text-center" colspan="1">Pos</th>
+                                                <th class="text-left" colspan="1">Team</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {hits.map((r) => (
+                                                <tr>
+                                                    <td class="text-left" colspan="1"><a href={`/pro/players/${r.espn_id}`}><strong>{cleanTextForTeam(r.name, r.team_id)}</strong></a></td>
+                                                    <td class="text-center" colspan="1">{r.position}</td>
+                                                    <td class="text-left" colspan="1">{cleanTextForTeam(r.team, r.team_id)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    {hits.length === LIMIT && <p class="text-muted text-small">The first {LIMIT} matches. Narrow the search for more.</p>}
+                                </div>
+                                )
+                        )}
+                        <p class="text-muted text-small">{index.players.length} profiles. Data {index.snapshot}, rendered {index.rendered}.</p>
+                    </Fragment>
+                    )}
+            </div>
+        </div>
+    </div>
+</GenericPage>

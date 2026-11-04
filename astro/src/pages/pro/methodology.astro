@@ -1,0 +1,107 @@
+---
+/**
+ * How Game on Paper Pro's numbers are made (plan 3.5). Readable without signing in
+ * (middleware.ts lets it past the entitlement check), and linked from every PDF
+ * footer. Every statement here is the code's: gop-pro bands.py (shrinkage, bands,
+ * the no-band rule), build.py (snapshots, the receiving-data rule, prior-season
+ * deltas, PFF coverage) and export.py (what a profile shows, PFF families, the
+ * coverage notes). Change those and this page changes with them.
+ *
+ * Not prerendered on purpose: a prerendered page is a static asset, served before
+ * the Worker runs, so the 'pro' flag could not hide it.
+ */
+import GenericPage from '../../layouts/GenericPage.astro';
+import ProNav from '../../components/pro/ProNav.astro';
+---
+<GenericPage title="Methodology | Game on Paper Pro" subtitle="How the Pro numbers are made" slug="/pro/methodology"
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Methodology', active: true }]} heading="Game on Paper Pro methodology">
+    <ProNav active="methodology" />
+    <div class="container mb-4">
+        <div class="row">
+            <div class="col-lg-8 col-12">
+                <h1 class="fs-3">Methodology</h1>
+                <p>
+                    Pro profiles start from the same play-by-play numbers as the free site (EPA, success rate and the rest are in
+                    the <a href="/glossary">glossary</a>) and add three things: small samples shrunk toward the position average,
+                    a percentile band instead of a single rank, and a note on everything the data can't support.
+                    None of it is a valuation.
+                </p>
+
+                <h2 class="fs-4 mt-4">Percentile bands</h2>
+                <p>
+                    A band is an 80% interval: where the player's true rate probably sits, written as percentiles of the
+                    qualifying players at his position. The tick is the middle estimate. The shaded part runs from 1.28
+                    standard deviations below it to 1.28 above, so a player with few plays gets a wide band and a starter
+                    gets a narrow one.
+                </p>
+
+                <h2 class="fs-4 mt-4">Shrinkage toward the position average</h2>
+                <p>
+                    A rate over a handful of plays is mostly noise, so each player's rate is pulled toward the play-weighted
+                    average of his position group, harder the fewer plays he has. The estimate is
+                    <code>(n &times; rate + k &times; average) / (n + k)</code> for <code>n</code> plays: the prior is worth
+                    <code>k</code> plays. <code>k</code> is the play-to-play noise divided by the real spread between players,
+                    and both are fitted each season, per position group and metric, from that season's own players. For a
+                    yes/no rate such as success rate the noise follows from the average itself. Players with fewer than 5
+                    plays stay out of the fit, and a group needs at least 10 players to get one.
+                </p>
+
+                <h2 class="fs-4 mt-4">Among qualifiers</h2>
+                <p>
+                    Percentiles rank a player against the qualifiers at his position only: players with enough plays for
+                    the published leaderboards to rank them. A player below that line still gets a band, read against the
+                    qualifiers, and his profile says the band is wide. Metrics with fewer than 5 plays are not shown at all.
+                </p>
+
+                <h2 class="fs-4 mt-4">When there is no band</h2>
+                <p>
+                    If the prior is worth more plays than even the busiest player at the position ran, the season can't
+                    move anyone off the average, and a band would only restate it. Those metrics say "no band". In 2025
+                    that was running back receiving EPA (no measurable spread between players) and running back rushing EPA
+                    (the prior was worth about 620 carries; the most anyone had was 295).
+                </p>
+
+                <h2 class="fs-4 mt-4">Receiving data, 2021&ndash;24, and comparing seasons</h2>
+                <p>
+                    ESPN's play data names the targeted receiver on 69&ndash;82% of targets for 2021&ndash;24 (53&ndash;89%
+                    earlier) and on 95% or more from 2025. The missing ones are mostly incompletions, so before 2025 targets
+                    are undercounted and catch rate and EPA per target run high. Per-target receiving rates for 2021&ndash;24
+                    are not published, and no profile prints a receiving change across the 2024 to 2025 line: it would
+                    measure the data, not the player.
+                </p>
+                <p>
+                    Other changes compare a player with his own previous season, on any team, so transfers count. For a
+                    mid-season mover that is his busier stint. The change is in the shrunk estimate.
+                </p>
+
+                <h2 class="fs-4 mt-4">PFF figures</h2>
+                <p>
+                    Grades and charting figures are from <a href="https://www.pff.com">PFF</a>, used under license, and are
+                    PFF's own estimates. We rank them, as a percentile among players rated at the same PFF position (100 or
+                    more snaps), but we don't band them. They cover part of the game for some positions: pass blocking for
+                    offensive linemen, the pass rush for defensive linemen, and coverage for linebackers and defensive backs.
+                    Run blocking, run defense and tackling are not included. A player not matched to PFF, or under 100
+                    snaps, has no grade, and his profile says so. We sell analysis, not PFF's data: no raw PFF export
+                    leaves the site, and the portal board's CSV carries derived columns only.
+                </p>
+
+                <h2 class="fs-4 mt-4">Data sources and refresh</h2>
+                <ul>
+                    <li>
+                        <strong>Production and percentiles</strong>: <a href="https://www.sportsdataverse.org">SportsDataverse</a>'s
+                        ESPN college football passing, rushing, receiving, percentile and roster releases, plus its recruiting
+                        and team portal releases.
+                    </li>
+                    <li><strong>PFF season figures</strong>: through the SportsDataverse Data API, matched to ESPN player ids.</li>
+                    <li>
+                        <strong>Refresh</strong>: each build reads one pinned snapshot of those inputs, copied with checksums, so
+                        a report can be rebuilt exactly. Every page and PDF shows its snapshot id and the date it was rendered.
+                    </li>
+                </ul>
+
+                <h2 class="fs-4 mt-4">What this doesn't cover</h2>
+                <p>Athletic testing, injury history, and NIL or market data. Nothing here is a valuation.</p>
+            </div>
+        </div>
+    </div>
+</GenericPage>

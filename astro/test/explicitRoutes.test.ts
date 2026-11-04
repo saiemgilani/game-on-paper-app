@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
@@ -19,7 +20,8 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     retrievePercentiles: async () => [],
 }));
 
-const PAGES = new URL('../src/pages/', import.meta.url).pathname;
+// fileURLToPath, not .pathname: on Windows the latter is "/C:/..." and join() doubles the drive
+const PAGES = fileURLToPath(new URL('../src/pages/', import.meta.url));
 function walk(dir: string, prefix = ''): string[] {
     return readdirSync(dir).flatMap((f) => {
         const p = join(dir, f);
@@ -32,13 +34,14 @@ describe('explicit /nfl pages', () => {
         // pages with no league: admin/api/health/404/sitemap/glossary/changelog,
         // plus the standing explainer pages, which sit alongside the glossary
         // and describe the site rather than a league's slate
-        const leagueless = /^(admin|api|changelog|data-sources|glossary|health|methodology|404|sitemap|nfl|nba)(\/|\.)/;
+        const leagueless = /^(admin|api|changelog|data-sources|glossary|health|methodology|pricing|404|sitemap|nfl|nba)(\/|\.)/;
         // CFB-only, and not the same thing as leagueless: this page IS league
         // -specific, it just has no NFL counterpart -- the AP and Coaches polls
         // have no professional equivalent, and the CFP projection has no NFL
         // version (yet). Standings are NOT in here: the NFL
-        // publishes them per division and /nfl/standings renders them.
-        const cfbOnly = /^(rankings|playoff)\./;
+        // publishes them per division and /nfl/standings renders them. Game on
+        // Paper Pro (pro/**) is college football only.
+        const cfbOnly = /^(rankings\.|playoff\.|pro\/)/;
         const cfb = walk(PAGES).filter((p) => !leagueless.test(p) && !cfbOnly.test(p)).sort();
         const nfl = walk(join(PAGES, 'nfl')).sort();
         expect(nfl).toEqual(cfb);

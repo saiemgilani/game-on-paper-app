@@ -21,6 +21,8 @@ declare namespace App {
         adminActor?: string;
         /** which league this request renders; set by the page (pages/nfl/** set 'nfl'), 'cfb' when absent */
         league?: import('./utils/league').League;
+        /** the Pro entitlement, resolved by the middleware on /pro paths; null = none or expired */
+        pro?: import('./utils/pro').ProViewer | null;
     }
   interface SessionData {
     favorites?: {
