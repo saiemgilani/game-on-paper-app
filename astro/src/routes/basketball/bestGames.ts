@@ -13,11 +13,11 @@ import { proSeasonOf, type ProLeague } from '../../utils/playoffPicture';
 import { seasonCache, setCache, uncacheable } from './cache';
 
 /**
- * The first season the select offers (END years): sdv-db's game-page backfill floor for game_excitement
- * (`SDV_DB_INGEST_SEASONS=2002:2027`, sdv-db #185 deploy step 6), or the league's first season when later. A season the
- * table does not hold renders the empty state.
+ * The first season the select offers (END years): the first season sdv-db's game_excitement holds per league, read off the
+ * live table 2026-11-04 (season-filtered probes: nba and wnba from 2002, the game-page backfill floor; mbb from 2003, 18
+ * games; wbb from 2004). A season the table does not hold renders the empty state.
  */
-export const GEI_FIRST_SEASON = 2002;
+export const GEI_FIRST_SEASON: Record<BasketballLeague, number> = { nba: 2002, wnba: 2002, mbb: 2003, wbb: 2004 };
 
 export interface BestGamesParams {
     league: BasketballLeague;
@@ -48,7 +48,7 @@ export async function prepareBestGames(Astro: AstroGlobal, league: BasketballLea
     Astro.locals.league = league;
     const sp = Astro.url.searchParams;
     const current = seasonOf(league, today);
-    const first = Math.max(GEI_FIRST_SEASON, LEAGUES[league].seasons[0]);
+    const first = GEI_FIRST_SEASON[league];
     const seasons = Array.from({ length: current - first + 1 }, (_, i) => first + i);
     const asked = Number(sp.get('season'));
     let season = seasons.includes(asked) ? asked : current;

@@ -1,7 +1,7 @@
 // BB-G29: /<league>/best-games. The join, filters and order, the loader's season pick and fallback, the reads' queries, the
-// template and the flag, on real producer output: `fixtures/best-games-wnba-2025.json.gz` holds sdv-py
-// season_game_excitement on the 2025 WNBA pbp release (the rows sdv-db loads into wnba.game_excitement) and the same
-// release's schedule, in the reads' columns (see fixtures/README.md).
+// template and the flag, on real Data API rows: `fixtures/best-games-wnba-2025.json.gz` is the board's own two reads of
+// the 2025 WNBA season (wnba.game_excitement and wnba.schedule), which match sdv-py season_game_excitement on that
+// season's release cell for cell (see fixtures/README.md).
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
@@ -154,6 +154,9 @@ describe('the reads and the loader', () => {
         const r = await prepareBestGames(fakeAstro('/nba/best-games').astro, 'nba', nov) as any;
         expect(r.current).toBe(2027);
         expect(r.seasons[0]).toBe(2002);
+        // the first season each league's table holds (live, 2026-11-04)
+        for (const [lg, first] of [['wnba', 2002], ['mbb', 2003], ['wbb', 2004]] as const)
+            expect(((await prepareBestGames(fakeAstro(`/${lg}/best-games`).astro, lg, nov)) as any).seasons[0]).toBe(first);
     });
     test('a failed read: unavailable, uncacheable', async () => {
         reads.mockRejectedValue(new Error('503'));
