@@ -168,6 +168,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // needs a live entitlement (utils/pro.ts, resources/pro.ts) except login,
     // auth, logout and methodology. Promote to 'on' at launch.
     'pro': 'preview',
+    // The NBA Cup (BB-G30): /nba/cup inside 'nba', linked from /nba/standings (no Header entry). sdv-db's daily Cup
+    // snapshots (cup_standings, cup_sims): the six groups in the Cup's tiebreak order, the wild-card race, the knockout
+    // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404 and the
+    // standings page has no link.
+    'bball-nba-cup': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

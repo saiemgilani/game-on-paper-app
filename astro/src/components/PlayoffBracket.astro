@@ -3,8 +3,9 @@ import type { BracketSlot } from '../utils/playoff';
 import { pct } from '../utils/playoff';
 import { leaguePath, teamLogoUrl, type League } from '../utils/league';
 
-/** A team's slot, or (college) a First Four slot: its label names the pair whose winner takes it, with no number. */
-type Slot = BracketSlot | { seed: number; label: string };
+/** A team's slot, or (college) a First Four slot: its label names the pair whose winner takes it, with no number.
+ *  A later-round slot of a game still to be played (the NBA Cup's knockout) has no seed either. */
+type Slot = BracketSlot | { seed?: number; label: string };
 
 interface Props {
     rounds: { name: string; games: [Slot, Slot][] }[]
