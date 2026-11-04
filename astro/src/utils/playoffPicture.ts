@@ -9,8 +9,8 @@ import type { LotteryOddsRow, ProSimRow, ProStandingRow } from '../resources/pla
 
 export type ProLeague = 'nba' | 'wnba';
 
-/** The first season sdv-db holds pro season snapshots for (BB-D18 shipped the 2025-26 NBA and 2026 WNBA backfills). */
-export const PRO_SNAPSHOT_FIRST_SEASON = 2026;
+/** The first season sdv-db holds pro season snapshots for: the 2020-21 NBA and the 2021 WNBA finals (sdv-db #186's backfill, live 2026-11-04). */
+export const PRO_SNAPSHOT_FIRST_SEASON = 2021;
 
 /**
  * The pro season a day belongs to (END year). NBA: August on is next season (the college rule; the Finals end in June).
