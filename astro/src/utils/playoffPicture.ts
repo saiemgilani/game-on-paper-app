@@ -102,11 +102,11 @@ export function projectedBracket(league: ProLeague, rows: ProTeam[]): ProBracket
     return [{ name: 'Play-In', games: [[seat(7), seat(8)], [seat(9), seat(10)]] }, first];
 }
 
-/** The teams with a lottery chance, best projected pick first (mean_pick; the WNBA's null picks by lottery chance). */
+/** The teams with a lottery chance, best projected pick first (mean_pick; the WNBA's null picks by lottery chance, then fewest projected wins). */
 export function lotteryTeams(teams: ProTeam[]): ProTeam[] {
     return teams
         .filter((t) => (t.sim.p_lottery ?? 0) > 0)
-        .sort((a, b) => (a.sim.mean_pick ?? Infinity) - (b.sim.mean_pick ?? Infinity) || (b.sim.p_lottery ?? 0) - (a.sim.p_lottery ?? 0));
+        .sort((a, b) => (a.sim.mean_pick ?? Infinity) - (b.sim.mean_pick ?? Infinity) || (b.sim.p_lottery ?? 0) - (a.sim.p_lottery ?? 0) || a.sim.proj_wins - b.sim.proj_wins);
 }
 
 export interface LotterySlot { slot: number; chances: number | null; byPick: (number | null)[] }

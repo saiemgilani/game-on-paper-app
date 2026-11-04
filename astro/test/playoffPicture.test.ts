@@ -124,6 +124,10 @@ describe('divisions and the lottery', () => {
         const lot = lotteryTeams(teamsOf('wnba'));
         expect(lot).toHaveLength(7);
         expect(lot.every((t) => t.sim.p_pick_1 == null)).toBe(true);
+        // the final day: all seven are in at 100%, so the worst record leads (Seattle, 8-36)
+        const wins = lot.map((t) => t.sim.proj_wins);
+        expect(wins).toEqual([...wins].sort((a, b) => a - b));
+        expect(wins[0]).toBe(8);
     });
 });
 

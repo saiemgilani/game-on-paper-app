@@ -237,7 +237,7 @@ const shownIds = teams.map(key);
         <h2 class="fs-5 mt-4">Lottery chances</h2>
         <div class="table-responsive">
           <table class="table table-sm align-middle table-fix-first-col">
-            <caption class="caption-top">Teams with a chance to miss the playoffs, by average pick.{!picksPublished && (<Fragment> <span id="lottery-picks-unpublished">Pick odds: not published yet. The {name} has not published lottery chances for this many lottery teams.</span></Fragment>)}</caption>
+            <caption class="caption-top">Teams with a chance to miss the playoffs, {picksPublished ? 'by average pick' : 'by lottery chance, then projected record'}.{!picksPublished && (<Fragment> <span id="lottery-picks-unpublished">Pick odds: not published yet. The {name} has not published lottery chances for this many lottery teams.</span></Fragment>)}</caption>
             <thead>
               <tr>
                 <th>Team</th>
