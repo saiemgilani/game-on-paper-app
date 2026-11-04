@@ -44,7 +44,8 @@ const views = !projection ? [] : [
         seedsCaption: 'Committee seeds',
         field: committee.field,
         lastOutIds: committee.last_out,
-        rank: new Map(committee.ranking.map((id, i) => [id, i + 1])),
+        // the committee's printed rank; an older cached answer without it falls back to the order
+        rank: new Map(committee.ranks ? Object.entries(committee.ranks) : committee.ranking.map((id, i) => [id, i + 1])),
     }] : []),
 ].map((v) => ({
     ...v,
