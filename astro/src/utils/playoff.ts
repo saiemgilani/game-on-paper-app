@@ -61,12 +61,13 @@ export function pct(p: number): string {
 
 /**
  * The page's odds shading: green at 90% and up, fading to clear under 1% (the site's
- * `hulk-bg-level-6..9` greens; a probability has no "bad" end, so no purple).
+ * `hulk-bg-level-6..9` greens; a probability has no "bad" end, so no purple). The cutoffs are
+ * on what pct() prints, so every cell that reads "1%" is shaded and every "<1%" / "0%" is clear.
  */
 export function oddsShade(p: number): string | null {
-    if (p >= 0.9) return 'hulk-bg-level-9';
-    if (p >= 0.5) return 'hulk-bg-level-8';
-    if (p >= 0.1) return 'hulk-bg-level-7';
-    if (p >= 0.01) return 'hulk-bg-level-6';
+    if (p >= 0.895) return 'hulk-bg-level-9';
+    if (p >= 0.495) return 'hulk-bg-level-8';
+    if (p >= 0.095) return 'hulk-bg-level-7';
+    if (p >= 0.005) return 'hulk-bg-level-6';
     return null;
 }

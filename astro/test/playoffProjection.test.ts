@@ -97,7 +97,17 @@ describe('PlayoffBracket', () => {
 describe('oddsShade', () => {
     test('green from 90% up, fading to clear under 1%', () => {
         expect([0.95, 0.9, 0.6, 0.2, 0.05, 0.009, 0].map(oddsShade)).toEqual(
-            ['hulk-bg-level-9', 'hulk-bg-level-9', 'hulk-bg-level-8', 'hulk-bg-level-7', 'hulk-bg-level-6', null, null]);
+            ['hulk-bg-level-9', 'hulk-bg-level-9', 'hulk-bg-level-8', 'hulk-bg-level-7', 'hulk-bg-level-6', 'hulk-bg-level-6', null]);
+    });
+
+    test('the cutoffs follow what pct() prints: every "1%" is shaded, every "<1%" is clear', () => {
+        for (let i = 0; i <= 1000; i++) {
+            const p = i / 1000;
+            const shown = pct(p);
+            if (shown === '<1%' || shown === '0%') expect(oddsShade(p)).toBeNull();
+            else expect(oddsShade(p)).not.toBeNull();
+            if (shown === '90%') expect(oddsShade(p)).toBe('hulk-bg-level-9');
+        }
     });
 });
 
