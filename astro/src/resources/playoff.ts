@@ -15,8 +15,10 @@ const PROJECTION_TIMEOUT_MS = 60_000;
 // keyed on both inputs' ingest stamps, so a new ingest is a new key; the TTL only bounds a stamp-less key
 const PROJECTION_TTL = 60 * 60 * 24 * 2;
 const INPUT_TTL = 60 * 60 * 6;
-// the committee publishes weekly: ESPN is asked at most hourly, and never waited on for long
-const COMMITTEE_TTL = 60 * 60;
+// the committee publishes weekly: ESPN is asked at most hourly, and never waited on for long;
+// the last ranking read outlives a week of ESPN trouble
+const COMMITTEE_FRESH_MS = 60 * 60 * 1000;
+const COMMITTEE_KEEP = 60 * 60 * 24 * 8;
 export const RANKINGS_TIMEOUT_MS = 3_000;
 // 888 FBS-participant games in 2026 (11-02); a full page would mean a truncated schedule
 const SCHEDULE_LIMIT = 5000;
@@ -72,23 +74,67 @@ export interface PlayoffProjection {
     } | null
 }
 
+/** What KV keeps per season: the last ranking read (null: no poll yet) and when ESPN was last asked. */
+interface CommitteeCache { at: number, ranking: CommitteeRanking | null }
+// per isolate: the refresh in flight (concurrent misses share it) and the last read, which holds
+// the hourly cooldown and the last ranking even when KV reads or writes fail
+const refreshing = new Map<number, Promise<CommitteeRanking | null>>();
+const lastRead = new Map<number, CommitteeCache>();
+
 /**
- * The committee's ranking for the season: the last one read (KV, an hour), else ESPN's feed
- * under a short timeout. A slow, throttled or failing ESPN only drops the committee's bracket;
- * the page never waits on it for long, and a cached projection never waits on it at all past
- * the first render of the hour.
+ * The committee's ranking for the season. KV holds the last one read for 8 days; ESPN is asked
+ * again only once that read is an hour old, under a short timeout. Every outcome is cached for the
+ * hour: a new poll, no poll yet, or a failed/stalled/malformed feed (which keeps the last ranking).
+ * So a slow or failing ESPN never drops a bracket the page already had, the page waits on ESPN at
+ * most once an hour, and an older poll never replaces a newer one.
  */
 async function currentCommittee(season: number): Promise<CommitteeRanking | null> {
-    const key = `playoff-committee:${season}`;
-    const hit = await env.SDV_API_CACHE.get<CommitteeRanking>(key, 'json').catch(() => null);
-    if (hit) return hit;
+    const fresh = (c: CommitteeCache | null | undefined): c is CommitteeCache => !!c && Date.now() - c.at < COMMITTEE_FRESH_MS;
+    const local = lastRead.get(season);
+    if (fresh(local)) return local.ranking;
+    // a refresh already in flight answers before KV is even read
+    const inflight = refreshing.get(season);
+    if (inflight) return inflight;
+    const key = `playoff-committee:v2:${season}`;
+    let readFailed = false;
+    const cached = await env.SDV_API_CACHE.get<CommitteeCache>(key, 'json').catch(() => { readFailed = true; return null; });
+    if (fresh(cached)) { lastRead.set(season, cached); return cached.ranking; }
+    let pending = refreshing.get(season);
+    if (!pending) {
+        const last = cached?.ranking ?? local?.ranking ?? null;
+        pending = refreshCommittee(season, key, last, readFailed).finally(() => refreshing.delete(season));
+        refreshing.set(season, pending);
+    }
+    return pending;
+}
+
+async function refreshCommittee(season: number, key: string, last: CommitteeRanking | null, readFailed: boolean): Promise<CommitteeRanking | null> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), RANKINGS_TIMEOUT_MS); });
-    const rankings = await Promise.race([retrieveRankings().catch(() => null), timeout]);
+    const feed = await Promise.race([retrieveRankings().catch(() => null), timeout]);
     clearTimeout(timer);
-    const committee = committeeRanking(rankings, season);
-    if (committee) await safeCachePut(env.SDV_API_CACHE, key, JSON.stringify(committee), COMMITTEE_TTL);
-    return committee;
+    let read: CommitteeRanking | null = null;
+    try {
+        if (feed && !Array.isArray(feed.rankings)) throw new Error('rankings is not an array');
+        read = committeeRanking(feed, season);
+    } catch (e) {
+        // a broken feed reads as no poll, but says so: "no poll yet" is silent, this is not
+        console.warn(`ESPN rankings feed malformed for ${season}: ${e}`);
+    }
+    // ESPN down or no poll in the answer: keep the last ranking; an older poll never replaces a newer one
+    const ranking = !read ? last : (last && last.date > read.date ? last : read);
+    const entry: CommitteeCache = { at: Date.now(), ranking };
+    lastRead.set(season, entry);
+    // after a failed KV read the stored ranking is unknown: never overwrite it with less
+    if (!readFailed || read) await safeCachePut(env.SDV_API_CACHE, key, JSON.stringify(entry), COMMITTEE_KEEP);
+    return ranking;
+}
+
+/** FNV-1a, hex: a short, stable digest for the cache key (KV keys cap at 512 bytes). */
+function digest(s: string): string {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
+    return (h >>> 0).toString(16).padStart(8, '0');
 }
 
 /**
@@ -106,8 +152,12 @@ export async function retrievePlayoffProjection(season: number): Promise<Playoff
             sdvIngestStamp('cfb', 'schedule'), sdvIngestStamp('cfb', 'team_summaries'),
             currentCommittee(season).catch(() => null),
         ]);
-        // a refit model is a new projection too, and a new committee ranking is a new bracket
-        const key = `playoff-projection:${season}:${scheduleStamp ?? '-'}:${summaryStamp ?? '-'}:${PROCESSOR_VERSION}:${Object.values(constants).join(',')}:${committee?.date ?? '-'}`;
+        // a refit model is a new projection too, and a new (or corrected, same-date) committee ranking a new
+        // bracket: its date plus a digest of every id and printed rank
+        const committeeKey = committee
+            ? `${committee.date}~${digest(committee.ids.map((id) => `${id}:${committee.ranks?.[id] ?? ''}`).join('.'))}`
+            : '-';
+        const key = `playoff-projection:${season}:${scheduleStamp ?? '-'}:${summaryStamp ?? '-'}:${PROCESSOR_VERSION}:${Object.values(constants).join(',')}:${committeeKey}`;
         const cached = await env.SDV_API_CACHE.get<PlayoffProjection>(key, 'json');
         if (cached) return cached;
         const [games, teams] = await Promise.all([

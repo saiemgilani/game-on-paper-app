@@ -94,6 +94,18 @@ describe('PlayoffBracket', () => {
     });
 });
 
+describe('PlayoffBracket labels', () => {
+    test("the committee's bracket says whose field it is", async () => {
+        const p = fixture();
+        const { rounds, champion } = buildBracket(p.field, beatsFrom(p));
+        const html = await (await AstroContainer.create()).renderToString(PlayoffBracket, { props: {
+            rounds, champion, names: {}, abbrs: {}, label: "The committee's College Football Playoff bracket", field: "the committee's field" } });
+        expect(html.match(/aria-label="The committee's College Football Playoff bracket"/g)).toHaveLength(2);
+        expect(html).toContain(`title="Chance to win the title, if the committee's field holds"`);
+        expect(html).not.toContain('Projected College Football Playoff bracket');
+    });
+});
+
 describe('oddsShade', () => {
     test('green from 90% up, fading to clear under 1%', () => {
         expect([0.95, 0.9, 0.6, 0.2, 0.05, 0.009, 0].map(oddsShade)).toEqual(
@@ -113,6 +125,7 @@ describe('oddsShade', () => {
 
 // --- the resource: what it posts, what it caches -------------------------------------------
 const kv = new Map<string, string>();
+let kvFailReads = false, kvFailWrites = false;
 const posts: { url: string; body: any }[] = [];
 let scheduleRows = 888;
 let python: () => Response;
@@ -130,9 +143,12 @@ vi.mock('../src/resources/espn', async (orig) => ({
 vi.mock('cloudflare:workers', () => ({
     env: new Proxy({}, {
         get: (_, k) => (typeof k === 'string' && k.endsWith('_CACHE') ? {
-            get: async (key: string, type?: string) => (kv.has(key) ? (type === 'json' ? JSON.parse(kv.get(key)!) : kv.get(key)) : null),
+            get: async (key: string, type?: string) => {
+                if (kvFailReads) throw new Error('KV read failed');
+                return kv.has(key) ? (type === 'json' ? JSON.parse(kv.get(key)!) : kv.get(key)) : null;
+            },
             getWithMetadata: async () => ({ value: null, metadata: null }),
-            put: async (key: string, value: string) => { kv.set(key, value); },
+            put: async (key: string, value: string) => { if (kvFailWrites) throw new Error('KV write failed'); kv.set(key, value); },
             delete: async (key: string) => { kv.delete(key); },
         } : undefined),
     }),
@@ -156,6 +172,10 @@ beforeEach(() => {
     python = () => Response.json(fixture());
     rankings = async () => ({ rankings: [{ type: 'ap', ranks: [{ current: 1, team: { id: '1' } }] }] });
     rankingsCalls = 0;
+    kvFailReads = false;
+    kvFailWrites = false;
+    // the committee lookup keeps per-isolate memory: every test is a fresh isolate
+    vi.resetModules();
 });
 
 describe('retrievePlayoffProjection', () => {
@@ -185,7 +205,8 @@ describe('retrievePlayoffProjection', () => {
         python = () => Response.json({ ...fixture(), committee: { ranking: ['2390', '61', '254'], field: fixture().field, last_out: [] } });
         const p = await retrievePlayoffProjection(2026);
         expect(posts[0].body.committee).toEqual(['2390', '61', '254']);
-        expect([...kv.keys()].find((k) => k.startsWith('playoff-projection:'))).toMatch(/:2026-11-03T08:00Z$/);
+        // the date and a digest of the ids and printed ranks: a same-date correction is a new bracket
+        expect([...kv.keys()].find((k) => k.startsWith('playoff-projection:'))).toMatch(/:2026-11-03T08:00Z~[0-9a-f]{8}$/);
         expect(p?.committee?.date).toBe('2026-11-03T08:00Z');
         expect(p?.committee?.ranks).toEqual({ '2390': 1, '61': 2, '254': 3 });
     });
@@ -195,7 +216,7 @@ describe('retrievePlayoffProjection', () => {
         rankings = async () => ({ rankings: [CFP] });
         await retrievePlayoffProjection(2026);
         expect(rankingsCalls).toBe(1);
-        expect(kv.has('playoff-committee:2026')).toBe(true);
+        expect(kv.has('playoff-committee:v2:2026')).toBe(true);
         // a new projection key (the cached answer gone) still takes the ranking from KV, even with ESPN down
         for (const k of [...kv.keys()]) if (k.startsWith('playoff-projection:')) kv.delete(k);
         rankings = async () => { throw new Error('ESPN down'); };
@@ -214,7 +235,8 @@ describe('retrievePlayoffProjection', () => {
             const p = await pending;
             expect(p?.field).toHaveLength(12);
             expect(posts[0].body.committee).toBeNull();
-            expect(kv.has('playoff-committee:2026')).toBe(false);
+            // the stall is cached for the hour too: the next render does not wait on ESPN again
+            expect(JSON.parse(kv.get('playoff-committee:v2:2026')!).ranking).toBeNull();
         } finally {
             vi.useRealTimers();
         }
@@ -228,6 +250,95 @@ describe('retrievePlayoffProjection', () => {
         rankings = async () => { throw new Error('ESPN down'); };
         expect((await retrievePlayoffProjection(2026))?.field).toHaveLength(12);
         expect(posts[1].body.committee).toBeNull();
+    });
+
+    test("ESPN failing after the hour keeps the last ranking: the bracket the page had never drops", async () => {
+        const { retrievePlayoffProjection } = await import('../src/resources/playoff');
+        const last = committeeRanking({ rankings: [CFP as any] }, 2026);
+        kv.set('playoff-committee:v2:2026', JSON.stringify({ at: Date.now() - 2 * 3600_000, ranking: last }));
+        rankings = async () => { throw new Error('ESPN down'); };
+        await retrievePlayoffProjection(2026);
+        expect(rankingsCalls).toBe(1);
+        expect(posts[0].body.committee).toEqual(['2390', '61', '254']);
+        const cached = JSON.parse(kv.get('playoff-committee:v2:2026')!);
+        expect(cached.ranking).toEqual(last);
+        expect(Date.now() - cached.at).toBeLessThan(60_000); // retried again only in an hour
+    });
+
+    test('an older poll never replaces a newer one', async () => {
+        const { retrievePlayoffProjection } = await import('../src/resources/playoff');
+        const newer = { ...committeeRanking({ rankings: [CFP as any] }, 2026)!, date: '2026-11-10T08:00Z' };
+        kv.set('playoff-committee:v2:2026', JSON.stringify({ at: Date.now() - 2 * 3600_000, ranking: newer }));
+        rankings = async () => ({ rankings: [CFP] }); // a lagging edge still serving the 11-03 poll
+        const p = await retrievePlayoffProjection(2026);
+        expect(JSON.parse(kv.get('playoff-committee:v2:2026')!).ranking.date).toBe('2026-11-10T08:00Z');
+        expect(p).not.toBeNull();
+    });
+
+    test('no poll yet is cached for the hour: ESPN is not asked on every render', async () => {
+        const { retrievePlayoffProjection } = await import('../src/resources/playoff');
+        await retrievePlayoffProjection(2026);
+        for (const k of [...kv.keys()]) if (k.startsWith('playoff-projection:')) kv.delete(k);
+        await retrievePlayoffProjection(2026);
+        expect(rankingsCalls).toBe(1);
+    });
+
+    test('concurrent misses share one ESPN request', async () => {
+        const { retrievePlayoffProjection } = await import('../src/resources/playoff');
+        let release!: () => void;
+        const gate = new Promise<void>((r) => { release = r; });
+        rankings = async () => { await gate; return { rankings: [CFP] }; };
+        const both = Promise.all([retrievePlayoffProjection(2026), retrievePlayoffProjection(2026)]);
+        await new Promise((r) => setTimeout(r, 0));
+        release();
+        await both;
+        expect(rankingsCalls).toBe(1);
+    });
+
+    test('a malformed feed reads as no poll, says so in the log, and the projection still answers', async () => {
+        const { retrievePlayoffProjection } = await import('../src/resources/playoff');
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        rankings = async () => ({ rankings: { not: 'an array' } });
+        const p = await retrievePlayoffProjection(2026);
+        expect(p?.field).toHaveLength(12);
+        expect(posts[0].body.committee).toBeNull();
+        expect(warn.mock.calls.some((c) => String(c[0]).includes('malformed'))).toBe(true);
+        warn.mockRestore();
+    });
+
+    test('a corrected poll (same date, same order, new printed ranks) is a new projection key', async () => {
+        const { retrievePlayoffProjection } = await import('../src/resources/playoff');
+        rankings = async () => ({ rankings: [CFP] });
+        await retrievePlayoffProjection(2026);
+        const first = [...kv.keys()].find((k) => k.startsWith('playoff-projection:'))!;
+        vi.resetModules();
+        kv.clear();
+        const corrected = { ...CFP, ranks: CFP.ranks.map((x) => (x.team.id === '254' ? { ...x, current: 4 } : x)) };
+        rankings = async () => ({ rankings: [corrected] });
+        const { retrievePlayoffProjection: again } = await import('../src/resources/playoff');
+        await again(2026);
+        const second = [...kv.keys()].find((k) => k.startsWith('playoff-projection:'))!;
+        expect(second).not.toBe(first);
+    });
+
+    test('a failed KV read never overwrites the stored ranking with less', async () => {
+        const { retrievePlayoffProjection } = await import('../src/resources/playoff');
+        const stored = JSON.stringify({ at: Date.now() - 2 * 3600_000, ranking: committeeRanking({ rankings: [CFP as any] }, 2026) });
+        kv.set('playoff-committee:v2:2026', stored);
+        kvFailReads = true;
+        rankings = async () => { throw new Error('ESPN down'); };
+        await retrievePlayoffProjection(2026);
+        expect(kv.get('playoff-committee:v2:2026')).toBe(stored);
+    });
+
+    test('failed KV writes still hold the hourly cooldown in the isolate', async () => {
+        const { retrievePlayoffProjection } = await import('../src/resources/playoff');
+        kvFailWrites = true;
+        rankings = async () => ({ rankings: [CFP] });
+        await retrievePlayoffProjection(2026);
+        await retrievePlayoffProjection(2026);
+        expect(rankingsCalls).toBe(1);
+        expect(posts.at(-1)!.body.committee).toEqual(['2390', '61', '254']);
     });
 
     test('an API failure is null and never cached', async () => {
@@ -257,6 +368,16 @@ describe('committeeRanking', () => {
 
     test("last season's poll is not this season's ranking", () => {
         expect(committeeRanking({ rankings: [{ ...CFP, season: { year: 2025 } } as any] }, 2026)).toBeNull();
+        // even when the feed itself says 2026: a poll that names another season is never this one
+        expect(committeeRanking({ latestSeason: { year: 2026 }, rankings: [{ ...CFP, season: { year: 2025 } } as any] }, 2026)).toBeNull();
+    });
+
+    test("a poll with no season of its own is dated by when it was published, never by the feed's latestSeason", () => {
+        const { season: _, ...noSeason } = CFP;
+        expect(committeeRanking({ rankings: [noSeason as any] }, 2026)?.ids).toEqual(['2390', '61', '254']);
+        // a retained 2025 poll in a feed that already says 2026 is not this season's ranking
+        const old = { ...noSeason, date: '2025-12-07T17:00Z' };
+        expect(committeeRanking({ latestSeason: { year: 2026 }, rankings: [old as any] }, 2026)).toBeNull();
     });
 
     test('an entry with no team id is skipped without shifting the ranks after it', () => {

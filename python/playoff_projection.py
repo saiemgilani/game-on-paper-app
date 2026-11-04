@@ -16,7 +16,11 @@ summaries' net_adj_epa, so a matchup here reads the same as on the game page. Ra
 stay fixed through a simulated season.
 """
 
+import hashlib
+import json
 import math
+import threading
+from collections import OrderedDict
 
 import numpy as np
 import polars as pl
@@ -411,3 +415,59 @@ def project(payload):
         "teams": teams_out,
         "committee": committee,
     }
+
+
+# --- one simulation per payload per worker -----------------------------------------------------
+# The site caches the answer in KV, but a new ingest or committee ranking changes its key, and the
+# cold renders that follow all miss together. Concurrent identical payloads share one run here (its
+# answer or its error), and the last few answers are reused, so a burst costs at most one simulation
+# per worker process, even when that one fails.
+_MEMO_SIZE = 4
+# the site gives up after 60 s (astro/src/resources/playoff.ts PROJECTION_TIMEOUT_MS): a waiter
+# never outlives its caller
+PROJECT_WAIT_S = 60
+_memo_lock = threading.Lock()
+_memo = OrderedDict()
+_running = {}
+
+
+class _Flight:
+    def __init__(self):
+        self.done = threading.Event()
+        self.result = None
+        self.error = None
+
+
+def project_once(payload):
+    """``project`` with per-worker single-flight and a small memo of recent answers."""
+    key = hashlib.sha256(
+        json.dumps(payload, sort_keys=True, default=str).encode()
+    ).hexdigest()
+    with _memo_lock:
+        if key in _memo:
+            _memo.move_to_end(key)
+            return _memo[key]
+        flight = _running.get(key)
+        owner = flight is None
+        if owner:
+            flight = _running[key] = _Flight()
+    if not owner:
+        if not flight.done.wait(PROJECT_WAIT_S):
+            raise TimeoutError("the identical projection in flight is still running")
+        if flight.error is not None:
+            raise flight.error
+        return flight.result
+    try:
+        flight.result = project(payload)
+        with _memo_lock:
+            _memo[key] = flight.result
+            while len(_memo) > _MEMO_SIZE:
+                _memo.popitem(last=False)
+        return flight.result
+    except Exception as e:  # shared with every waiter, never retried by each of them
+        flight.error = e
+        raise
+    finally:
+        with _memo_lock:
+            _running.pop(key, None)
+        flight.done.set()

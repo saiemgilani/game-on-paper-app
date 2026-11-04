@@ -38,10 +38,12 @@ const committeeDate = committee?.date
     ? new Date(committee.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'America/New_York' })
     : null;
 const views = !projection ? [] : [
-    { heading: null, seedsCaption: 'Projected seeds', field: projection.field, lastOutIds: projection.last_out, rank: null },
+    { heading: null, seedsCaption: 'Projected seeds', label: undefined, fieldName: undefined, field: projection.field, lastOutIds: projection.last_out, rank: null },
     ...(committee ? [{
         heading: "The committee's field",
         seedsCaption: 'Committee seeds',
+        label: "The committee's College Football Playoff bracket",
+        fieldName: "the committee's field",
         field: committee.field,
         lastOutIds: committee.last_out,
         // the committee's printed rank; an older cached answer without it falls back to the order
@@ -93,7 +95,7 @@ const subtitle = "The projected 12-team bracket, with each team's chances to win
                 )}
                 <div class="row g-4">
                     <div class="col-lg-9 col-12">
-                        <PlayoffBracket rounds={v.bracket.rounds} champion={v.bracket.champion} names={names} abbrs={abbrs} />
+                        <PlayoffBracket rounds={v.bracket.rounds} champion={v.bracket.champion} names={names} abbrs={abbrs} label={v.label} field={v.fieldName} />
                     </div>
                     <div class="col-lg-3 col-12">
                         <table class="table table-sm align-middle mb-3">

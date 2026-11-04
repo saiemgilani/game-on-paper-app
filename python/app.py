@@ -953,7 +953,7 @@ def playoff_projection_route():
     # the site posts the season's Data API schedule + team summaries and the pregame
     # model constants it prices games with; the answer is cached on its side
     try:
-        return jsonify(playoff_projection.project(request.get_json(force=True)))
+        return jsonify(playoff_projection.project_once(request.get_json(force=True)))
     except (KeyError, TypeError, ValueError) as e:
         logging.getLogger("root").error(f"playoff projection: bad payload: {e!r}")
         return jsonify({"status": "bad", "message": "bad payload"}), 400
