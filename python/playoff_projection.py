@@ -185,6 +185,40 @@ def select_field(rows):
     return field, rest[FIELD - len(auto) : FIELD - len(auto) + LAST_OUT], set(auto)
 
 
+def committee_rows(ranking, teams_out):
+    """``select_field`` rows from the committee's ranking, as if the season ended today.
+
+    ``ranking``: team ids, the committee's No. 1 first. Its order is the score; each
+    conference's highest-ranked team stands in as its champion (the CFP's own "if the
+    season ended today" convention). Unranked teams sort below every ranked one, by the
+    page's stand-in (rating minus the loss penalty on today's record), which only matters
+    when the committee ranks no champion from the other six conferences.
+    """
+    pos = {t: i for i, t in enumerate(ranking)}
+    score = {
+        r["team_id"]: (
+            len(ranking) - pos[r["team_id"]] + 100.0
+            if r["team_id"] in pos
+            else r["rating"] - LOSS_PENALTY * r["record"][1]
+        )
+        for r in teams_out
+    }
+    conf = {r["team_id"]: r["conference"] for r in teams_out}
+    best = {}
+    for t, v in score.items():
+        if conf[t] in P4 + G6 and v > score.get(best.get(conf[t]), float("-inf")):
+            best[conf[t]] = t
+    champs = set(best.values())
+    return {t: (score[t], conf[t], t in champs) for t in score}
+
+
+def _field_out(field, auto, reach):
+    return [
+        {"seed": i, "team_id": t, "auto": t in auto, "reach": reach[i]}
+        for i, t in enumerate(field, start=1)
+    ]
+
+
 def _bracket_probs(seeds, ratings, model):
     """Per-team round probabilities through a fixed bracket, exactly (no sampling)."""
     r = {s: ratings[t] for s, t in enumerate(seeds, start=1)}
@@ -356,19 +390,24 @@ def project(payload):
     }
     field, last_out, auto = select_field(rows)
     reach = _bracket_probs(field, ratings, model)
+
+    # the committee's field, if the season ended today: its ranking (FBS ids only) through
+    # the same rules, priced by the same model
+    committee = None
+    ranking = [str(t) for t in payload.get("committee") or [] if str(t) in fbs]
+    if ranking:
+        c_field, c_last_out, c_auto = select_field(committee_rows(ranking, teams_out))
+        committee = {
+            "ranking": ranking,
+            "field": _field_out(c_field, c_auto, _bracket_probs(c_field, ratings, model)),
+            "last_out": c_last_out,
+        }
     return {
         "season": int(payload["season"]),
         "sims": sims,
         "loss_penalty": LOSS_PENALTY,
-        "field": [
-            {
-                "seed": i,
-                "team_id": t,
-                "auto": t in auto,
-                "reach": reach[i],
-            }
-            for i, t in enumerate(field, start=1)
-        ],
+        "field": _field_out(field, auto, reach),
         "last_out": last_out,
         "teams": teams_out,
+        "committee": committee,
     }

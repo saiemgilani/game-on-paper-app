@@ -4,7 +4,7 @@ import { gunzipSync } from 'node:zlib';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import PlayoffBracket from '../src/components/PlayoffBracket.astro';
 import type { PlayoffProjection } from '../src/resources/playoff';
-import { buildBracket, oddsShade, pct } from '../src/utils/playoff';
+import { buildBracket, committeeRanking, oddsShade, pct } from '../src/utils/playoff';
 import { calculatePredictedPointMargin, calculatePredictedWinProb } from '../src/resources/sdv';
 
 // the API's real answer for 2026 on the 11-02 Data API (python/playoff_projection.py, 1000 sims)
@@ -116,6 +116,15 @@ const kv = new Map<string, string>();
 const posts: { url: string; body: any }[] = [];
 let scheduleRows = 888;
 let python: () => Response;
+// ESPN's rankings feed: the committee's ranking once it has published one
+const CFP = { type: 'cfp', date: '2026-11-03T08:00Z', ranks: [
+    { current: 2, team: { id: '61' } }, { current: 1, team: { id: '2390' } }, { current: 3, team: { id: '254' } },
+] };
+let rankings: () => Promise<any>;
+vi.mock('../src/resources/espn', async (orig) => ({
+    ...(await orig<typeof import('../src/resources/espn')>()),
+    retrieveRankings: () => rankings(),
+}));
 
 vi.mock('cloudflare:workers', () => ({
     env: new Proxy({}, {
@@ -144,6 +153,7 @@ beforeEach(() => {
     posts.length = 0;
     scheduleRows = 888;
     python = () => Response.json(fixture());
+    rankings = async () => ({ rankings: [{ type: 'ap', ranks: [{ current: 1, team: { id: '1' } }] }] });
 });
 
 describe('retrievePlayoffProjection', () => {
@@ -167,6 +177,26 @@ describe('retrievePlayoffProjection', () => {
         expect(posts).toHaveLength(1);
     });
 
+    test("the committee's ranking rides along: posted in order, its date in the key and on the answer", async () => {
+        const { retrievePlayoffProjection } = await import('../src/resources/playoff');
+        rankings = async () => ({ rankings: [{ type: 'ap', ranks: [] }, CFP] });
+        python = () => Response.json({ ...fixture(), committee: { ranking: ['2390', '61', '254'], field: fixture().field, last_out: [] } });
+        const p = await retrievePlayoffProjection(2026);
+        expect(posts[0].body.committee).toEqual(['2390', '61', '254']);
+        expect([...kv.keys()].find((k) => k.startsWith('playoff-projection:'))).toMatch(/:2026-11-03T08:00Z$/);
+        expect(p?.committee?.date).toBe('2026-11-03T08:00Z');
+    });
+
+    test('no committee ranking yet, or a failed rankings fetch: the projection still answers, with no committee', async () => {
+        const { retrievePlayoffProjection } = await import('../src/resources/playoff');
+        expect((await retrievePlayoffProjection(2026))?.field).toHaveLength(12);
+        expect(posts[0].body.committee).toBeNull();
+        kv.clear();
+        rankings = async () => { throw new Error('ESPN down'); };
+        expect((await retrievePlayoffProjection(2026))?.field).toHaveLength(12);
+        expect(posts[1].body.committee).toBeNull();
+    });
+
     test('an API failure is null and never cached', async () => {
         const { retrievePlayoffProjection } = await import('../src/resources/playoff');
         python = () => new Response('nope', { status: 500 });
@@ -181,5 +211,14 @@ describe('retrievePlayoffProjection', () => {
         scheduleRows = 5000;
         expect(await retrievePlayoffProjection(2026)).toBeNull();
         expect(posts).toHaveLength(0);
+    });
+});
+
+describe('committeeRanking', () => {
+    test("the committee's poll, No. 1 first, with its date; null before its first ranking", () => {
+        expect(committeeRanking({ rankings: [{ type: 'ap', ranks: [] } as any, CFP as any] })).toEqual(
+            { date: '2026-11-03T08:00Z', ids: ['2390', '61', '254'] });
+        expect(committeeRanking({ rankings: [{ type: 'ap', ranks: [{ current: 1, team: { id: '1' } }] } as any] })).toBeNull();
+        expect(committeeRanking(null)).toBeNull();
     });
 });
