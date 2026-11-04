@@ -9,6 +9,7 @@ import Dashboard from '../nba/Dashboard.svelte';
 import NbaNameFilter from '../nba/NbaNameFilter.astro';
 import NbaRosterTable from '../nba/NbaRosterTable.astro';
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
+import TeamSeasonBlock from '../nba/TeamSeasonBlock.astro';
 import { fmtInt, fmtPct } from '../../nba/format';
 import { teamHref, withParams } from '../../nba/links';
 import { placeholderNote } from '../../nba/data/placeholder';
@@ -18,7 +19,7 @@ import { dashboardScope, isNcaaDashboards, NCAA_USAGE_NOTE } from '../../basketb
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaTeamParams }
-const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode, coverage, empty, noPlayers } = Astro.props.data;
+const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode, coverage, empty, noPlayers, seasonBlock } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -50,9 +51,9 @@ const defaults = { season: String(current) };
           {!empty && !noPlayers && (<a href={withParams(lp('/players'), { season: String(season), team: byIdPlayers ? String(team.team_id) : team.tricode }, { season: String(current), team: byIdPlayers ? '' : ft ? ft.tricode(season) : 'ALL' })}>{team.tricode} player list &rarr;</a>)}
         </div>
       </div>
-    </div>
+    </div>{seasonBlock !== undefined && (<TeamSeasonBlock data={seasonBlock} season={season} espnId={team.espn_id || team.team_id} teamName={team.name} />)}
     {empty ? (<p class="text-muted" id="nba-empty">{emptyNote}</p>) : (<Fragment><nav aria-label="On this page" class="small mb-3">
-      <span class="text-muted">On this page:</span>
+      <span class="text-muted">On this page:</span>{seasonBlock !== undefined && (<a href="#season" class="ms-2">Season</a>)}
       <a href="#charts" class="ms-2">Shot charts</a>
       <a href="#roster" class="ms-2">Roster</a>
     </nav>
