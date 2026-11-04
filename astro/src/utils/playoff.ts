@@ -73,17 +73,29 @@ export function oddsShade(p: number): string | null {
     return null;
 }
 
+export interface CommitteeRanking {
+    date: string
+    /** team ids, No. 1 first */
+    ids: string[]
+    /** each team's rank as the committee printed it (a skipped entry never shifts the rest) */
+    ranks: Record<string, number>
+}
+
 /**
- * The playoff committee's current ranking from ESPN's rankings feed: team ids, No. 1 first,
- * and the date it was published. null before the committee's first ranking of the season
- * (the feed then carries only the AP and coaches polls).
+ * The playoff committee's ranking for `season` from ESPN's rankings feed. null before the
+ * committee's first ranking (the feed then carries only the AP and coaches polls) and for a
+ * poll from another season (the preseason feed can still carry last year's final ranking).
  */
-export function committeeRanking(r: ESPNRankingsResponse | null): { date: string, ids: string[] } | null {
+export function committeeRanking(r: ESPNRankingsResponse | null, season: number): CommitteeRanking | null {
     const cfp = r?.rankings?.find((x) => x.type === 'cfp');
-    const ids = [...(cfp?.ranks ?? [])]
-        .sort((a, b) => (a.current ?? 99) - (b.current ?? 99))
-        .map((x) => x.team?.id)
-        .filter((id): id is string => !!id)
-        .map(String);
-    return cfp && ids.length ? { date: cfp.date ?? '', ids } : null;
+    if (!cfp || cfp.season?.year !== season) return null;
+    const ranked = (cfp.ranks ?? [])
+        .filter((x) => x?.team?.id && Number.isFinite(x.current))
+        .sort((a, b) => a.current - b.current);
+    if (!ranked.length) return null;
+    return {
+        date: cfp.date ?? '',
+        ids: ranked.map((x) => String(x.team.id)),
+        ranks: Object.fromEntries(ranked.map((x) => [String(x.team.id), x.current])),
+    };
 }

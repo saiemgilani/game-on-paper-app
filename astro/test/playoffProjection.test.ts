@@ -117,13 +117,14 @@ const posts: { url: string; body: any }[] = [];
 let scheduleRows = 888;
 let python: () => Response;
 // ESPN's rankings feed: the committee's ranking once it has published one
-const CFP = { type: 'cfp', date: '2026-11-03T08:00Z', ranks: [
+const CFP = { type: 'cfp', season: { year: 2026 }, date: '2026-11-03T08:00Z', ranks: [
     { current: 2, team: { id: '61' } }, { current: 1, team: { id: '2390' } }, { current: 3, team: { id: '254' } },
 ] };
 let rankings: () => Promise<any>;
+let rankingsCalls = 0;
 vi.mock('../src/resources/espn', async (orig) => ({
     ...(await orig<typeof import('../src/resources/espn')>()),
-    retrieveRankings: () => rankings(),
+    retrieveRankings: () => { rankingsCalls++; return rankings(); },
 }));
 
 vi.mock('cloudflare:workers', () => ({
@@ -154,6 +155,7 @@ beforeEach(() => {
     scheduleRows = 888;
     python = () => Response.json(fixture());
     rankings = async () => ({ rankings: [{ type: 'ap', ranks: [{ current: 1, team: { id: '1' } }] }] });
+    rankingsCalls = 0;
 });
 
 describe('retrievePlayoffProjection', () => {
@@ -185,6 +187,37 @@ describe('retrievePlayoffProjection', () => {
         expect(posts[0].body.committee).toEqual(['2390', '61', '254']);
         expect([...kv.keys()].find((k) => k.startsWith('playoff-projection:'))).toMatch(/:2026-11-03T08:00Z$/);
         expect(p?.committee?.date).toBe('2026-11-03T08:00Z');
+        expect(p?.committee?.ranks).toEqual({ '2390': 1, '61': 2, '254': 3 });
+    });
+
+    test('the committee ranking is read from ESPN at most hourly: a new ingest reuses it from KV', async () => {
+        const { retrievePlayoffProjection } = await import('../src/resources/playoff');
+        rankings = async () => ({ rankings: [CFP] });
+        await retrievePlayoffProjection(2026);
+        expect(rankingsCalls).toBe(1);
+        expect(kv.has('playoff-committee:2026')).toBe(true);
+        // a new projection key (the cached answer gone) still takes the ranking from KV, even with ESPN down
+        for (const k of [...kv.keys()]) if (k.startsWith('playoff-projection:')) kv.delete(k);
+        rankings = async () => { throw new Error('ESPN down'); };
+        await retrievePlayoffProjection(2026);
+        expect(rankingsCalls).toBe(1);
+        expect(posts[1].body.committee).toEqual(['2390', '61', '254']);
+    });
+
+    test('a stalled ESPN is cut off: the projection answers without the committee', async () => {
+        const { retrievePlayoffProjection, RANKINGS_TIMEOUT_MS } = await import('../src/resources/playoff');
+        vi.useFakeTimers();
+        try {
+            rankings = () => new Promise(() => {});
+            const pending = retrievePlayoffProjection(2026);
+            await vi.advanceTimersByTimeAsync(RANKINGS_TIMEOUT_MS + 1);
+            const p = await pending;
+            expect(p?.field).toHaveLength(12);
+            expect(posts[0].body.committee).toBeNull();
+            expect(kv.has('playoff-committee:2026')).toBe(false);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     test('no committee ranking yet, or a failed rankings fetch: the projection still answers, with no committee', async () => {
@@ -216,9 +249,21 @@ describe('retrievePlayoffProjection', () => {
 
 describe('committeeRanking', () => {
     test("the committee's poll, No. 1 first, with its date; null before its first ranking", () => {
-        expect(committeeRanking({ rankings: [{ type: 'ap', ranks: [] } as any, CFP as any] })).toEqual(
-            { date: '2026-11-03T08:00Z', ids: ['2390', '61', '254'] });
-        expect(committeeRanking({ rankings: [{ type: 'ap', ranks: [{ current: 1, team: { id: '1' } }] } as any] })).toBeNull();
-        expect(committeeRanking(null)).toBeNull();
+        expect(committeeRanking({ rankings: [{ type: 'ap', ranks: [] } as any, CFP as any] }, 2026)).toEqual(
+            { date: '2026-11-03T08:00Z', ids: ['2390', '61', '254'], ranks: { '2390': 1, '61': 2, '254': 3 } });
+        expect(committeeRanking({ rankings: [{ type: 'ap', ranks: [{ current: 1, team: { id: '1' } }] } as any] }, 2026)).toBeNull();
+        expect(committeeRanking(null, 2026)).toBeNull();
+    });
+
+    test("last season's poll is not this season's ranking", () => {
+        expect(committeeRanking({ rankings: [{ ...CFP, season: { year: 2025 } } as any] }, 2026)).toBeNull();
+    });
+
+    test('an entry with no team id is skipped without shifting the ranks after it', () => {
+        const c = committeeRanking({ rankings: [{ ...CFP, ranks: [
+            { current: 1, team: { id: '2390' } }, { current: 2, team: {} }, { current: 3, team: { id: '254' } },
+        ] } as any] }, 2026);
+        expect(c?.ids).toEqual(['2390', '254']);
+        expect(c?.ranks).toEqual({ '2390': 1, '254': 3 });
     });
 });
