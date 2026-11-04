@@ -1,0 +1,158 @@
+---
+import GenericPage from '../layouts/GenericPage.astro';
+import DarkModeLogos from '../components/DarkModeLogos.astro';
+import PlayoffBracket from '../components/PlayoffBracket.astro';
+import { retrievePlayoffProjection } from '../resources/playoff';
+import { buildBracket, oddsShade, pct } from '../utils/playoff';
+import { isFeatureEnabled } from '../utils/features';
+import { teamLogoUrl } from '../utils/league';
+import { CURRENT_YEAR } from '../utils/constants';
+import { cleanTextForTeam, roundNumber } from '../utils/misc';
+import { teamAbbr } from '../utils/teams';
+import { calculatePredictedPointMargin, calculatePredictedWinProb } from '../resources/sdv';
+
+if (!isFeatureEnabled('playoff-projection', Astro.locals)) {
+    return Astro.rewrite("/404");
+}
+Astro.locals.league = 'cfb';
+
+const projection = await retrievePlayoffProjection(CURRENT_YEAR);
+// the projection only moves with a Data API ingest; a failure must not cache the empty page
+if (projection) {
+    Astro.cache.set({ maxAge: 3600, swr: 3600, tags: ["playoff"] });
+} else {
+    Astro.cache.set(false);
+    Astro.response.headers.set("Cache-Control", "no-store");
+}
+
+const byId = new Map((projection?.teams ?? []).map((t) => [t.team_id, t]));
+// every printed name goes through the site's cleaning (cleanTextForTeam); small screens get the abbreviation
+const names = Object.fromEntries((projection?.teams ?? []).map((t) => [t.team_id, cleanTextForTeam(t.name, t.team_id)]));
+const abbrs = Object.fromEntries((projection?.teams ?? []).map((t) => [t.team_id, cleanTextForTeam(teamAbbr('cfb', t.team_id, t.name), t.team_id)]));
+// each bracket game priced head to head by the same pregame model the simulation used
+const beats = (a: string, b: string, home: boolean) =>
+    calculatePredictedWinProb(calculatePredictedPointMargin(byId.get(b)!.rating, byId.get(a)!.rating, !home))!;
+const bracket = projection ? buildBracket(projection.field, beats) : null;
+const lastOut = (projection?.last_out ?? []).map((id) => byId.get(id)).filter((t) => t != null);
+const CONTENDER_FLOOR = 0.05;
+const contenders = (projection?.teams ?? []).filter((t) => t.playoff > CONTENDER_FLOOR);
+const belowFloor = (projection?.teams.length ?? 0) - contenders.length;
+const teamIds = (projection?.teams ?? []).map((t) => t.team_id);
+const record = (r: [number, number]) => `${r[0]}-${r[1]}`;
+
+const title = `${CURRENT_YEAR} College Football Playoff Projection`;
+const subtitle = "The projected 12-team bracket, with each team's chances to win out, win its conference and make the playoff.";
+---
+<GenericPage
+    title={title}
+    subtitle={subtitle}
+    slug="/playoff"
+    heading={title}
+    description={subtitle}
+    breadcrumbs={[
+        { title: 'Home', url: '/', active: false },
+        { title: 'Playoff Projection', url: '/playoff', active: true },
+    ]}
+>
+    <div class="container my-4">
+        <h1 class="fs-3">{title}</h1>
+        {!projection && (
+            <p class="text-muted">The projection is unavailable right now. Try again in a few minutes.</p>
+        )}
+        {projection && bracket && (
+            <>
+                <div class="row g-4">
+                    <div class="col-lg-9 col-12">
+                        <PlayoffBracket rounds={bracket.rounds} champion={bracket.champion} names={names} abbrs={abbrs} />
+                    </div>
+                    <div class="col-lg-3 col-12">
+                        <table class="table table-sm align-middle mb-3">
+                            <caption class="caption-top fw-bold text-body">Projected seeds</caption>
+                            <thead>
+                                <tr><th class="text-center">Seed</th><th>Team</th><th class="text-center">Rec</th><th class="text-center">Playoff</th></tr>
+                            </thead>
+                            <tbody>
+                                {projection.field.map((s) => {
+                                    const t = byId.get(s.team_id)!;
+                                    return (
+                                        <tr>
+                                            <td class="text-center fw-bold numeral">{s.seed}</td>
+                                            <td class="text-left text-nowrap">
+                                                <a href={`/team/${t.team_id}`}><img class={`team-logo-${t.team_id} me-1`} width="18" height="18" src={teamLogoUrl('cfb', t.team_id, false)} alt="" /><span class="d-md-none">{abbrs[t.team_id]}</span><span class="d-none d-md-inline">{names[t.team_id]}</span></a>
+                                                {s.auto && <span class="small text-body-secondary fw-bold ms-1" title="Automatic bid">AQ</span>}
+                                            </td>
+                                            <td class="text-center text-muted">{record(t.record)}</td>
+                                            <td class:list={["text-center", "numeral", oddsShade(t.playoff)]}>{pct(t.playoff)}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                        <table class="table table-sm align-middle">
+                            <caption class="caption-top fw-bold text-body">Last four out</caption>
+                            <tbody>
+                                {lastOut.map((t) => (
+                                    <tr>
+                                        <td class="text-left text-nowrap"><a href={`/team/${t.team_id}`}><img class={`team-logo-${t.team_id} me-1`} width="18" height="18" src={teamLogoUrl('cfb', t.team_id, false)} alt="" /><span class="d-md-none">{abbrs[t.team_id]}</span><span class="d-none d-md-inline">{names[t.team_id]}</span></a></td>
+                                        <td class="text-center text-muted">{record(t.record)}</td>
+                                        <td class:list={["text-center", "numeral", oddsShade(t.playoff)]}>{pct(t.playoff)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <h2 class="fs-5 mt-4">Contenders</h2>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <caption class="caption-top">Teams with better than a {pct(CONTENDER_FLOOR)} chance to make the playoff. {belowFloor} other FBS teams are at {pct(CONTENDER_FLOOR)} or less.</caption>
+                        <thead>
+                            <tr>
+                                <th>Team</th>
+                                <th class="text-left d-none d-md-table-cell">Conf</th>
+                                <th class="text-center">Record</th>
+                                <th class="text-center d-none d-md-table-cell" title="Mean simulated final record, conference title game included">Proj. Record</th>
+                                <th class="text-center">Win Out</th>
+                                <th class="text-center">Conf Title</th>
+                                <th class="text-center">Playoff</th>
+                                <th class="text-center" title="Top-four seed">Bye</th>
+                                <th class="text-center">Title</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {contenders.map((t) => (
+                                <tr>
+                                    <td class="text-left text-nowrap"><a href={`/team/${t.team_id}`}><img class={`team-logo-${t.team_id} me-1`} width="18" height="18" src={teamLogoUrl('cfb', t.team_id, false)} alt="" /><span class="d-md-none">{abbrs[t.team_id]}</span><span class="d-none d-md-inline">{names[t.team_id]}</span></a></td>
+                                    <td class="text-left text-muted small d-none d-md-table-cell">{t.conference}</td>
+                                    <td class="text-center">{record(t.record)}</td>
+                                    <td class="text-center text-muted d-none d-md-table-cell">{roundNumber(t.wins, 1, 1)}-{roundNumber(t.losses, 1, 1)}</td>
+                                    <td class:list={["text-center", "numeral", oddsShade(t.win_out)]}>{pct(t.win_out)}</td>
+                                    {t.conference === 'FBS Independents'
+                                        ? <td class="text-center">—</td>
+                                        : <td class:list={["text-center", "numeral", oddsShade(t.conf_title)]}>{pct(t.conf_title)}</td>}
+                                    <td class:list={["text-center", "numeral", "fw-bold", oddsShade(t.playoff)]}>{pct(t.playoff)}</td>
+                                    <td class:list={["text-center", "numeral", oddsShade(t.bye)]}>{pct(t.bye)}</td>
+                                    <td class:list={["text-center", "numeral", oddsShade(t.champion)]}>{pct(t.champion)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <p class="small text-muted">
+                    How this works: the rest of the regular season and the conference title games are simulated {projection.sims.toLocaleString()} times,
+                    each game priced by the same Adj EPA/Play model as the game page's pregame projection. Each conference's title-game teams come from
+                    its official tiebreakers (sportsdataverse-py's port of cfbseedR). Each simulated season then fills the field by the 2026 rules: the
+                    ACC, Big Ten, Big 12 and SEC champions, the highest-ranked champion from the other six conferences, Notre Dame if it ranks in the top 12,
+                    and at-large teams for the rest (seven, or six when Notre Dame is in), seeded straight by rank with any automatic qualifier outside the top 12 taking the lowest seeds. The committee's
+                    ranking is stood in for by Adj EPA/Play minus {roundNumber(projection.loss_penalty, 2, 2)} per loss. The bracket above applies the same rules to the
+                    average season (each conference's likeliest champion): each number on it is the team's chance of beating the opponent shown,
+                    the favourite advances, and the champion's number is its title chance if that field holds. The Playoff, Bye and Title columns count every simulated season, so they also price the chance of missing the field.
+                    Win Out counts regular-season games only.
+                </p>
+            </>
+        )}
+    </div>
+    <DarkModeLogos teamIds={teamIds} />
+</GenericPage>
