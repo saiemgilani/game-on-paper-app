@@ -1,4 +1,5 @@
-import { SCATTER_METRICS, type ScatterMetric, type ScatterPoint } from "../scatterMetrics";
+import { IMPACT_COLUMNS, IMPACT_METRICS, SCATTER_METRICS, TEAM_COLUMNS, TEAM_METRICS, type ScatterMetric, type ScatterPoint } from "../scatterMetrics";
+import type { Team } from "./teams";
 import { lineOf } from "./aggregate";
 import type { PlayerSeason } from "./players";
 import { RANK_MIN, type RankMins } from "./ranks";
@@ -46,4 +47,42 @@ export function scatterPoints(
         v: SCATTER_METRICS.map((m) => (values[m] === null ? null : Math.round(values[m] * 1e4) / 1e4)),
       };
     });
+}
+
+/** A producer cell as a 4-decimal number; null for a missing or non-numeric one (the Data API may send a number as text). */
+function cell(v: unknown): number | null {
+  const n = typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN;
+  return Number.isFinite(n) ? Math.round(n * 1e4) / 1e4 : null;
+}
+
+/**
+ * BB-G10's player view: the shooting points with each player's `player_impact` values appended (AXIS_METRICS order), so
+ * the impact axes plot the same players as the shooting ones. A player with no impact row has nulls there and drops out of
+ * an impact plot only.
+ */
+export function withImpact(points: ScatterPoint[], rows: readonly Record<string, unknown>[]): ScatterPoint[] {
+  const byId = new Map(rows.map((r) => [Number(r.player_id), r]));
+  return points.map((p) => {
+    const r = byId.get(p.person_id);
+    return { ...p, v: [...p.v, ...IMPACT_METRICS.map((m) => (r ? cell(r[IMPACT_COLUMNS[m]]) : null))] };
+  });
+}
+
+/**
+ * BB-G10's team view: one point per `team_strength` row whose team the league knows that season, its values in the team
+ * slots of AXIS_METRICS (the player slots null). `person_id` carries the team id (the name picker's key).
+ */
+export function teamPoints(
+  rows: readonly Record<string, unknown>[],
+  teamOf: (teamId: number) => Team | undefined,
+  highlightTeamId: number | null,
+  logoOf: (team: Team) => string | null,
+): ScatterPoint[] {
+  const blank = Array<null>(SCATTER_METRICS.length + IMPACT_METRICS.length).fill(null);
+  return rows.flatMap((r) => {
+    const id = Number(r.team_id);
+    const t = teamOf(id);
+    if (!t) return [];
+    return [{ person_id: id, name: t.name, team_id: id, team: t.tricode, color: t.color, nets: id === highlightTeamId, headshot: logoOf(t), v: [...blank, ...TEAM_METRICS.map((m) => cell(r[TEAM_COLUMNS[m]]))] }];
+  });
 }

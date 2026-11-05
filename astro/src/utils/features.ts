@@ -173,6 +173,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404 and the
     // standings page has no link.
     'bball-nba-cup': 'preview',
+    // The scatter's impact and team views (BB-G10) on /nba/scatter and /wnba/scatter, inside each league's flag: the player
+    // view adds player_impact's RAPM and SPM families (O- and D-RAPM, never the offset o_adj_rapm / d_adj_rapm) to the shooting
+    // axes and opens on O-RAPM against D-RAPM with the median crosshair; `?view=teams` plots team_strength's ratings
+    // and four factors. Off: no read and the scatter page is today's, byte for byte. College is unchanged either way.
+    'bball-impact-scatter': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

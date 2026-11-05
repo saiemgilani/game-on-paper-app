@@ -8,9 +8,10 @@ import type { NbaScatterParams } from '../../routes/nba/scatter';
 import { basketball, islandLeagueProps, seasonLabelFor } from '../../basketball/config';
 import { dashboardScope, isNcaaDashboards, NCAA_USAGE_NOTE } from '../../basketball/dashboards';
 import { LEAGUES, leaguePath } from '../../utils/league';
+import { IMPACT_DEFAULT, IMPACT_METRICS, SCATTER_METRICS, TEAM_DEFAULT, TEAM_METRICS } from '../../nba/scatterMetrics';
 
 interface Props { data: NbaScatterParams }
-const { season, seasons, current, q, points, min, coverage } = Astro.props.data;
+const { season, seasons, current, q, points, min, coverage, view } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -23,6 +24,15 @@ const ip = islandLeagueProps(league, season);
 // D42 (college only): the conference filter; a chosen conference rides a season change (the loader falls back to that season's default)
 const conference = 'conference' in Astro.props.data ? Astro.props.data.conference : undefined;
 const keepConference = conference && Astro.url.searchParams.get('conference') === conference.selected ? { conference: conference.selected } : undefined;
+// BB-G10 ('bball-impact-scatter', NBA/WNBA): the team view rides a season change; the player view is the default
+const keepParams = keepConference ?? (view?.kind === 'teams' ? { view: 'teams' } : undefined);
+const viewProps = !view ? {}
+  : view.kind === 'teams'
+    ? { metrics: TEAM_METRICS, initial: TEAM_DEFAULT, noun: 'team', population: 'teams', logos: true, lead: `Every ${name} team's ${label} regular season.`,
+        tail: 'Ratings are points per 100 possessions; the adjusted ratings and strength of schedule account for the opponents. A reversed axis puts the better defense up or to the right.' }
+    : view.failed ? {}
+    : { metrics: [...IMPACT_METRICS, ...SCATTER_METRICS], initial: IMPACT_DEFAULT,
+        tail: 'RAPM and SPM are points per 100 possessions over the regular season; shooting is season stats where the release has them, shots otherwise.' };
 const title = `${name} scatter, ${label} | Game on Paper`;
 const description = `Every ${name} player with ${min.fga}+ field-goal attempts in ${label}, plotted on two shooting or volume numbers${ft ? `, the ${ft.menuLabel} highlighted` : ''}.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Scatter', active: true }];
@@ -32,7 +42,7 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
     <div class="row mb-3">
       <div class="col-12">
         <h1 class="h3">League scatter, {label}</h1>
-        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/scatter')} {...(keepConference ? { params: keepConference } : {})} />{conference && (
+        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/scatter')} {...(keepParams ? { params: keepParams } : {})} />{conference && (
           <form method="get" action={lp('/scatter')} class="mt-2">
             {season !== current && (<input type="hidden" name="season" value={String(season)} />)}
             <label class="visually-hidden" for="nba-conference">Conference</label>
@@ -41,14 +51,23 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
               {conference.options.map((o) => <option value={o.slug} selected={conference.selected === o.slug}>{o.label}</option>)}
             </select>
             <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button></noscript>
-          </form>)}{coverage && (<p class="small text-muted mt-2" id="nba-coverage">{coverage}</p>)}{usageNote && (<p class="small text-muted" id="nba-usage">{usageNote}</p>)}
+          </form>)}{coverage && (<p class="small text-muted mt-2" id="nba-coverage">{coverage}</p>)}{usageNote && (<p class="small text-muted" id="nba-usage">{usageNote}</p>)}{view && (
+          <form method="get" action={lp('/scatter')} class="mt-2">
+            {season !== current && (<input type="hidden" name="season" value={String(season)} />)}
+            <label class="visually-hidden" for="nba-scatter-view">Plot</label>
+            <select id="nba-scatter-view" name="view" class="form-select form-select-sm w-auto d-inline-block" onchange="this.form.submit()">
+              <option value="players" selected={view.kind === 'players'}>Players: impact and shooting</option>
+              <option value="teams" selected={view.kind === 'teams'}>Teams: ratings and four factors</option>
+            </select>
+            <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button></noscript>
+          </form>)}{view?.failed && view.kind === 'players' && (<p class="small text-muted mt-2" id="nba-impact-unavailable">The impact numbers are temporarily unavailable; the shooting axes are shown.</p>)}
       </div>
     </div>
     <div class="row">
       <div class="col-12">
         {points.length === 0
-          ? (<p class="text-muted">No {scope.adj} shots in {label} yet.</p>)
-          : (<ScatterExplorer client:load points={points} subject={`${name} ${label}`} {...('highlight' in ip ? { highlight: ip.highlight } : {})} {...(ip.minFga ? { minFga: ip.minFga } : {})} />)}
+          ? (view?.kind === 'teams' ? (<p class="text-muted" id="nba-teams-empty">{view.failed ? 'The team numbers are temporarily unavailable.' : `No ${name} team is rated for ${label} yet.`}</p>) : (<p class="text-muted">No {scope.adj} shots in {label} yet.</p>))
+          : (<ScatterExplorer client:load points={points} subject={`${name} ${label}`} {...('highlight' in ip ? { highlight: ip.highlight } : {})} {...(ip.minFga ? { minFga: ip.minFga } : {})} {...viewProps} />)}
       </div>
     </div>
   </div>
