@@ -7,9 +7,10 @@
  * the page does not read it. Every number is the producer's (rule B6); a rank or percentile shows only when the row
  * carries the producer's `<m>_rank` / `<m>_pct`, so the read takes every column (no `select`).
  */
-import { retrieveRows, retrieveRowsFrom } from './sdv';
+import { retrieveRowsFrom } from './sdv';
+import { NBA_READ_TIMEOUT_MS } from './nbaGames';
 import { BASKETBALL } from '../basketball/config';
-import { PRO_LEAGUES, type BasketballLeague } from '../utils/league';
+import { leagueSource, PRO_LEAGUES, type BasketballLeague } from '../utils/league';
 
 /** The season products move once a day: the season pages' window. */
 const TTL = 6 * 60 * 60;
@@ -19,11 +20,14 @@ const LIMIT = '5';
 /** One producer row, as read: the panel picks its columns by name (utils/playerImpact.ts). */
 export type PlayerImpactRow = Record<string, unknown>;
 
-/** The player's season rows: the regular season's for the NBA/WNBA (the page's scope), every row in college. */
+/**
+ * The player's season rows: the regular season's for the NBA/WNBA (the page's scope), every row in college. Bounded by
+ * the game page's read timeout, so a stalled request becomes the panel's "unavailable" line instead of holding the page.
+ */
 export function retrievePlayerImpact(league: BasketballLeague, season: number, personId: number): Promise<PlayerImpactRow[]> {
     const q = { season: String(season), player_id: String(personId), limit: LIMIT };
-    if (PRO_LEAGUES.includes(league)) {
-        return retrieveRowsFrom<PlayerImpactRow>(BASKETBALL[league].gamesSource, 'player_impact', { ...q, season_type: 'Regular Season' }, TTL, true);
-    }
-    return retrieveRows<PlayerImpactRow>(league, 'player_value', q, TTL, true);
+    const [source, table, query] = PRO_LEAGUES.includes(league)
+        ? [BASKETBALL[league].gamesSource, 'player_impact', { ...q, season_type: 'Regular Season' }]
+        : [leagueSource(league), 'player_value', q];
+    return retrieveRowsFrom<PlayerImpactRow>(source, table, query, TTL, true, NBA_READ_TIMEOUT_MS);
 }

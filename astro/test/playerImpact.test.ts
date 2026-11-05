@@ -54,6 +54,8 @@ vi.mock('../src/resources/nbaShots', async (orig) => ({
 
 import PlayerImpact from '../src/components/nba/PlayerImpact.astro';
 import { BASKETBALL } from '../src/basketball/config';
+import { NBA_READ_TIMEOUT_MS } from '../src/resources/nbaGames';
+import { leagueSource } from '../src/utils/league';
 import { prepareNbaPlayer } from '../src/routes/nba/player';
 import { FLAGS } from '../src/utils/features';
 import { impactPanel } from '../src/utils/playerImpact';
@@ -149,16 +151,16 @@ describe('the read', () => {
     test("NBA/WNBA: the games schema's player_impact, the regular season, by person id; college: player_value by ESPN id", async () => {
         const { retrievePlayerImpact } = await vi.importActual<typeof import('../src/resources/playerImpact')>('../src/resources/playerImpact');
         sdv.from.mockResolvedValue(PI.nba);
-        sdv.rows.mockResolvedValue(PI.mbbTeam);
         expect(await retrievePlayerImpact('nba', 2026, PID)).toEqual(PI.nba);
-        expect(sdv.from).toHaveBeenCalledWith(BASKETBALL.nba.gamesSource, 'player_impact', { season: '2026', player_id: String(PID), limit: '5', season_type: 'Regular Season' }, 21600, true);
+        // strict and bounded by the game page's read timeout (CodeRabbit on #408): a stall is a rejection, so the panel's null
+        expect(sdv.from).toHaveBeenCalledWith(BASKETBALL.nba.gamesSource, 'player_impact', { season: '2026', player_id: String(PID), limit: '5', season_type: 'Regular Season' }, 21600, true, NBA_READ_TIMEOUT_MS);
         expect(BASKETBALL.nba.gamesSource.schema).toBe('nba');
         await retrievePlayerImpact('wnba', 2025, 1628932);
         expect(sdv.from.mock.calls[1][0].schema).toBe('wnba');
         await retrievePlayerImpact('mbb', 2026, 4848625);
-        expect(sdv.rows).toHaveBeenCalledWith('mbb', 'player_value', { season: '2026', player_id: '4848625', limit: '5' }, 21600, true);
+        expect(sdv.from).toHaveBeenLastCalledWith(leagueSource('mbb'), 'player_value', { season: '2026', player_id: '4848625', limit: '5' }, 21600, true, NBA_READ_TIMEOUT_MS);
         // no select: a producer rank column reaches the page the day it ships
-        for (const call of [...sdv.from.mock.calls, ...sdv.rows.mock.calls]) expect(call[2]).not.toHaveProperty('select');
+        for (const call of sdv.from.mock.calls) expect(call[2]).not.toHaveProperty('select');
     });
 });
 
@@ -200,6 +202,14 @@ describe('the panel', () => {
         expect(html.match(/>Rank</g)).toHaveLength(3);
         expect(html).toMatch(/hulk-bg-level-9[^>]*title="98th percentile"/);
         expect(html).toContain('>3<');
+        expect(html).toContain('Rank among the league’s qualified players. Shading by percentile.');
+    });
+    test('a percentile without a rank still shades its cell, with no Rank column (CodeRabbit on #408)', async () => {
+        const html = await render([{ ...NBA, rapm_pct: 98.4 }], 'nba');
+        expect(html).not.toContain('>Rank<');
+        expect(html).toMatch(/hulk-bg-level-9[^>]*title="98th percentile"/);
+        expect(html).toContain(' Shading by percentile.');
+        expect(html).not.toContain('Rank among');
     });
     test('college: box BPM only, with minutes', async () => {
         const me = top(PI.mbbTeam);

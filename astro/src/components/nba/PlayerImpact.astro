@@ -20,7 +20,9 @@ const panel = rows ? impactPanel(rows, college) : null;
 const ranked = panel?.ranked ?? false;
 const sides = ['off', 'def', 'net'] as const;
 const head = { off: 'Off', def: 'Def', net: 'Net' };
-const shade = (c: ImpactCell | null) => (ranked ? generateColorRampValue(c?.pct ?? null, 100) : null);
+// a cell is shaded by its own producer percentile, whether or not the producer also ships a rank
+const shaded = panel?.measures.some((m) => [m.off, m.def, m.net].some((c) => c?.pct != null)) ?? false;
+const shade = (c: ImpactCell | null) => generateColorRampValue(c?.pct ?? null, 100);
 const tip = (c: ImpactCell | null) => (c?.pct != null ? `${ordinal(Math.round(c.pct))} percentile` : undefined);
 const rank = (c: ImpactCell | null) => (c?.rank == null ? '—' : formatRank(c.rank));
 ---
@@ -34,7 +36,7 @@ const rank = (c: ImpactCell | null) => (c?.rank == null ? '—' : formatRank(c.r
   </p>
   <div class="table-responsive col-lg-6 px-0">
     <table class="table table-sm align-middle mb-0" id="impact-table">
-      <caption class="small text-muted">{college ? 'Box plus-minus per 100 possessions. Positive is better at both ends.' :'Per 100 possessions (WAR in wins), regular season. Positive is better at both ends.'}{ranked && ' Rank among the league’s qualified players; shading by percentile.'}{!college && ' Adjusted RAPM is shown net only.'}</caption>
+      <caption class="small text-muted">{college ? 'Box plus-minus per 100 possessions. Positive is better at both ends.' :'Per 100 possessions (WAR in wins), regular season. Positive is better at both ends.'}{ranked && ' Rank among the league’s qualified players.'}{shaded && ' Shading by percentile.'}{!college && ' Adjusted RAPM is shown net only.'}</caption>
       <thead><tr><th scope="col"></th>{sides.map((s) => (<Fragment><th scope="col" class="text-end">{head[s]}</th>{ranked && (<th scope="col" class="text-end">Rank</th>)}</Fragment>))}</tr></thead>
       <tbody>
         {panel.measures.map((m) => (
