@@ -73,6 +73,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // standings with playoff / play-in / lottery odds, the seed distribution, the NBA's divisions, the first round on the
     // CFP page's bracket component and the draft lottery. Off: the pages are the site's 404 and the Header is today's.
     'bball-playoff-picture': 'preview',
+    // The game page's Impact box and Lineups used (BB-G1) on /<league>/game/[id] for a final, inside each league's flag:
+    // each side's on-court minutes, possessions, +/- and ratings and its five most-used units (sdv-db's game_player_impact
+    // and game_lineups_used, BB-D6). Off: no read and the game page is today's, byte for byte.
+    'bball-impact-box': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

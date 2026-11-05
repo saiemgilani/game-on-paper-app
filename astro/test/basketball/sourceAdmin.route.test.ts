@@ -13,6 +13,8 @@ const sched = vi.fn(), rows = vi.fn(), proc = vi.fn(), espn = vi.fn(), sources =
 vi.mock('../../src/resources/nbaGames', async (orig) => ({ ...(await orig<typeof import('../../src/resources/nbaGames')>()), retrieveNbaSchedule: (...a: unknown[]) => sched(...a), retrieveNbaGameRows: (...a: unknown[]) => rows(...a), retrieveNbaProcessedGame: (...a: unknown[]) => proc(...a) }));
 vi.mock('../../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../../src/resources/espn')>()), retrieveGamePageGuarded: (...a: unknown[]) => espn(...a) }));
 vi.mock('../../src/resources/python', async (orig) => ({ ...(await orig<typeof import('../../src/resources/python')>()), retrieveGameSources: (...a: unknown[]) => sources(...a) }));
+// BB-G1's Impact box reads the Data API for a final with 'bball-impact-box' on (preview): never from a test
+vi.mock('../../src/resources/impactBox', async (orig) => ({ ...(await orig<typeof import('../../src/resources/impactBox')>()), retrieveImpactBox: async () => (await orig<typeof import('../../src/resources/impactBox')>()).EMPTY_IMPACT }));
 
 const api = () => JSON.parse(readFileSync(new URL('../fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
 const ID = '401766458';
