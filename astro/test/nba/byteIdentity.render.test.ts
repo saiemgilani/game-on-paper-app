@@ -53,6 +53,11 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
     retrieveSeasonPlayerGameRows: async () => Object.entries(byPlayer).flatMap(([pid, gs]) => gs.map((g) => gameRow(Number(pid), g))),
     retrievePlayerSeasons: async () => [2025, 2026],
 }));
+// 'bball-poe' is off here, so a shot quality read is a bug: it throws, the page would say "unavailable" and the snapshot breaks
+vi.mock('../../src/resources/shotQuality', () => {
+    const no = async () => { throw new Error('a shot quality read with bball-poe off'); };
+    return { retrieveGameShotQuality: no, retrieveTeamShotQuality: no, retrievePlayerShotQuality: no };
+});
 const games = { schedule: vi.fn(), rows: vi.fn(), proc: vi.fn() };
 vi.mock('../../src/resources/nbaGames', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaGames')>()),
@@ -86,8 +91,9 @@ beforeEach(() => { for (const m of [...Object.values(games), ...Object.values(es
 
 async function page(path: string, url: string, params: Record<string, string> = {}, flagOverrides?: Record<string, boolean>) {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/nba/${path}`);
-    // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture' and BB-G5's team season block behind 'bball-team-season': both off here, so these pages stay byte for byte main's
-    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-playoff-picture': false, 'bball-team-season': false, ...flagOverrides } } as App.Locals }));
+    // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture', BB-G5's team season block behind 'bball-team-season'
+    // and BB-G15's points over expected behind 'bball-poe': all off here, so these pages stay byte for byte main's
+    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false, ...flagOverrides } } as App.Locals }));
 }
 const snap = (name: string) => `./__byte_identity__/${name}.html`;
 const finalPage = { gameId: 401766458, gamepackageJSON: { header: proc.header } };
