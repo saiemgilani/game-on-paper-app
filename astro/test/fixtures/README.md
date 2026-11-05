@@ -816,3 +816,19 @@ player, so one capture covers several players; the page reads one player (`playe
 **Used by:** `test/playerImpact.test.ts`.
 
 **To regenerate:** rerun the four reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `on-off-nba-2025.json.gz`, `lineups-nba-2025.json.gz` (player page)
+The player page's On/Off section (BB-G7, `resources/playerOnOff.ts`) reuses two fixtures from the team-page PRs, copied
+byte for byte (same blob, so the identical adds merge cleanly): `on-off-nba-2025.json.gz` from #407 (BB-G4) and
+`lineups-nba-2025.json.gz` from #402 (BB-G3), whose sections in those PRs give the provenance. In short: sdv-db's committed
+producer output `tests/fixtures/season_products/nba_player_{on_off,wowy}_2025.parquet` (sdv-db #198) for the Minnesota
+Timberwolves 2024-25 (`team_id` 1610612750, 20 players, 190 pairs), and Minnesota's live `shot_season_players` name rows.
+The capture was filtered by `team_id`, so its rows carry no `team_id`; the test adds Minnesota's id, as the API's rows
+would carry it, and applies the API's own filters (`player_id`, `player_id_a`, `player_id_b`, `order`, `limit`). The
+player is Anthony Edwards (1630162). Nothing else is edited.
+
+**Used by:** `test/playerOnOff.test.ts`.
+
+**To regenerate:** as #407's and #402's sections. Once the backfill runs, the live
+`player_on_off?season=2026&player_id=<id>&order=-minutes_on&limit=5` and `player_wowy?season=2026&player_id_a=<id>&limit=100`
+(and `player_id_b=`) reads replace them.

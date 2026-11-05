@@ -86,6 +86,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // their possessions from sdv-db's player_impact (NBA/WNBA), box BPM from player_value (college). Off: no read and the
     // player page is today's, byte for byte.
     'bball-impact': 'preview',
+    // The player page's On/Off section (BB-G7) on /nba and /wnba/players/[id], inside each league's flag: his team on and
+    // off the floor and his top teammates with and without him (sdv-db's player_on_off and player_wowy). College is not
+    // read (its rows are keyed by stats.ncaa.org ids). Off: no read and the player page is today's, byte for byte.
+    'bball-player-on-off': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
