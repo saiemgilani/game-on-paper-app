@@ -789,3 +789,16 @@ exactly that module's queries, as `{rates, strength, home, away, gameRates}` (th
 **Used by:** `test/teamSeason.test.ts`.
 
 **To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `game-set-nba-2026.json.gz`, `game-set-mbb-2026.json.gz`, `game-set-player-nba-2026.json.gz`
+The reads behind the game-set filter (BB-G14, `utils/bballGameSet.ts`), captured live on 2026-11-05, sequentially, the `data`
+array of each response, no edits. The two team files are the five team-season-block reads above for the same teams (the Brooklyn
+Nets, `nba_stats` 1610612751 / ESPN 17; Duke, ESPN 150), as `{rates, strength, home, away, gameRates}`, with the game_team_rates
+select the flag adds: `select=game_id,off_rtg,def_rtg,pace,efg_pct,tov_pct,orb_pct,ft_rate,possessions,game_minutes&limit=200`
+(Nets 82 rows, Duke 38). The player file is `{games, season}` for Michael Porter Jr. (1629008):
+`/v1/nba_stats/shot_player_games?season=2026&person_id=1629008&limit=200` (52 rows, the player page's own read) and
+`/v1/nba_stats/shot_season_players?season=2026&person_id=1629008&limit=5` (1 row, the oracle for "All games").
+
+**Used by:** `test/bballGameSet.test.ts`.
+
+**To regenerate:** rerun the same twelve reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.

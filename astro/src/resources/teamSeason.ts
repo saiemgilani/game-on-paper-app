@@ -76,8 +76,12 @@ export interface GameRateRow {
     tov_pct: number | null;
     orb_pct: number | null;
     ft_rate: number | null;
+    /** BB-G14 ('bball-game-set') only: the counts its summed sets add up (box-score possessions, minutes played) */
+    possessions?: number | null;
+    game_minutes?: number | null;
 }
 const GAME_RATE_SELECT = 'game_id,off_rtg,def_rtg,pace,efg_pct,tov_pct,orb_pct,ft_rate';
+const GAME_COUNT_SELECT = ',possessions,game_minutes';
 
 export interface TeamSeasonReads {
     rates: TeamSeasonRateRow[];
@@ -87,8 +91,12 @@ export interface TeamSeasonReads {
     gameRates: GameRateRow[];
 }
 
-/** The four reads, in parallel, strict. `teamId` keys the season tables; `espnId` the games (the same id in college). */
-export async function retrieveTeamSeason(league: BasketballLeague, season: number, teamId: number, espnId: number): Promise<TeamSeasonReads> {
+/**
+ * The four reads, in parallel, strict. `teamId` keys the season tables; `espnId` the games (the same id in college).
+ * `counts` (BB-G14, 'bball-game-set' on) adds each game's possessions and minutes to the game_team_rates select; off,
+ * the reads are exactly the block's.
+ */
+export async function retrieveTeamSeason(league: BasketballLeague, season: number, teamId: number, espnId: number, counts = false): Promise<TeamSeasonReads> {
     const s = String(season);
     const games = BASKETBALL[league].gamesSource;
     // the rates' scope: the NBA/WNBA regular season (ESPN season_type 2; sdv-py nba_team_season_rates season_type="regular-season"),
@@ -101,7 +109,7 @@ export async function retrieveTeamSeason(league: BasketballLeague, season: numbe
         retrieveRows<TeamStrengthRow>(league, 'team_strength', { season: s, team_id: String(teamId), select: STRENGTH_SELECT, limit: '1' }, TTL, true),
         side('home_id'),
         side('away_id'),
-        retrieveRowsFrom<GameRateRow>(games, 'game_team_rates', { season: s, team_id: String(espnId), select: GAME_RATE_SELECT, limit: GAME_LIMIT }, TTL, true),
+        retrieveRowsFrom<GameRateRow>(games, 'game_team_rates', { season: s, team_id: String(espnId), select: counts ? GAME_RATE_SELECT + GAME_COUNT_SELECT : GAME_RATE_SELECT, limit: GAME_LIMIT }, TTL, true),
     ]);
     return { rates, strength: strength[0] ?? null, games: [...home, ...away], gameRates };
 }

@@ -11,11 +11,13 @@ import { SPLIT_LABEL, scheduleRows, splitRows } from '../../utils/teamSeason';
 import { fmtDate, fmtDec, fmtInt, fmtPct } from '../../nba/format';
 import { gameHref, teamHrefFromEspn } from '../../nba/links';
 import { formatRank, generateColorRampValue, generateMarginalString } from '../../utils/misc';
-import { basketball, seasonLabelFor } from '../../basketball/config';
+import { basketball, regulationFor, seasonLabelFor } from '../../basketball/config';
+import { bbGameSetLabel, gameSetHref, teamGameSet, type BbGameSet } from '../../utils/bballGameSet';
 import { isNcaaDashboards } from '../../basketball/dashboards';
 
-interface Props { data: TeamSeasonReads | null; season: number; espnId: number; teamName: string }
-const { data, season, espnId, teamName } = Astro.props;
+// gameSet: BB-G14 ('bball-game-set'), the ?games= line; absent, the block is BB-G5's byte for byte
+interface Props { data: TeamSeasonReads | null; season: number; espnId: number; teamName: string; gameSet?: BbGameSet }
+const { data, season, espnId, teamName, gameSet } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const college = isNcaaDashboards(league);
@@ -48,6 +50,11 @@ const MEASURES = [
 // the day of the tip where the league keeps its scoreboard (a 10 pm ET tip is the next day in UTC)
 const day = (iso: string) => fmtDate(DateTime.fromISO(iso, { zone: 'utc' }).setZone(cfg.scoreboardTimeZone).toISODate() ?? iso.slice(0, 10));
 const venueMark = { home: 'vs', away: '@', neutral: 'vs' } as const;
+const reg = regulationFor(league, season);
+const view = gameSet && data ? teamGameSet(data.rates, games, gameSet, reg.periods * reg.periodMinutes) : null;
+const viewCaption = view && (view.producer
+  ? `Per possession: the season's ${bbGameSetLabel(view.set)} split (play-by-play possessions). Shading by percentile.`
+  : `Summed over these games: points from each final score, possessions and minutes from each game's box score (the game page's estimate, not the play-by-play count of All, Home and Away), divided once. Pace per ${reg.periods * reg.periodMinutes} minutes.`);
 const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore == null ? null : `${g.teamScore > g.oppScore ? 'W' : g.teamScore < g.oppScore ? 'L' : 'T'} ${g.teamScore}-${g.oppScore}`);
 ---
 <section id="season" aria-label={`${label} season`} class="mb-4">
@@ -103,6 +110,35 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
       </div>
     </div>
   </div>
+  {view && (
+    <div class="mt-3" id="season-game-set">
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <h3 class="h6 mb-0">{view.set === 'all' ? 'Team stats' : 'Team stats (Filtered)'}</h3>
+        <label class="visually-hidden" for="game-set-select">Games</label>
+        {/* each option is this page with ?games=, so the chosen set is a shareable URL */}
+        <select id="game-set-select" class="form-select form-select-sm w-auto" autocomplete="off" onchange="window.location.href = this.value">
+          {view.sets.map((k) => (<option value={gameSetHref(Astro.url, k, 'season-game-set')} selected={k === view.set}>{bbGameSetLabel(k)}</option>))}
+        </select>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0" id="season-game-set-table">
+          <caption class="small text-muted">{viewCaption}</caption>
+          <thead><tr><th scope="col">Games</th><th scope="col" class="text-end">G</th><th scope="col" class="text-end">Poss</th><th scope="col" class="text-end">ORtg</th><th scope="col" class="text-end">DRtg</th><th scope="col" class="text-end">Net</th><th scope="col" class="text-end">Pace</th></tr></thead>
+          <tbody>
+            <tr data-games={view.set}>
+              <th scope="row" class="text-nowrap fw-normal">{bbGameSetLabel(view.set)}</th>
+              <td class="numeral text-end">{fmtInt(view.line.games)}</td>
+              <td class="numeral text-end">{fmtInt(view.line.poss)}</td>
+              <td class:list={['numeral', 'text-end', view.producer && shade(view.line.off_rtg_pct)]}>{rtg(view.line.off_rtg)}</td>
+              <td class:list={['numeral', 'text-end', view.producer && shade(view.line.def_rtg_pct)]}>{rtg(view.line.def_rtg)}</td>
+              <td class:list={['numeral', 'text-end', view.producer && shade(view.line.net_rtg_pct)]}>{net(view.line.net_rtg)}</td>
+              <td class="numeral text-end">{rtg(view.line.pace)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )}
   {games.length > 0 && (
     <details class="mt-3" id="season-schedule-panel">
     <summary class="h6 mb-2">Schedule ({fmtInt(games.length)} games)</summary>
