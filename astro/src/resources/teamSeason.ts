@@ -46,8 +46,18 @@ export interface TeamStrengthRow {
     adj_off_rtg_pct: number | null;
     adj_def_rtg_pct: number | null;
     adj_net_rtg_pct: number | null;
+    /** BB-G24: strength of schedule and of victory, the mean adj_net_rtg of the opponents (of the wins only), on the ratings' scale */
+    sos: number | null;
+    sos_rank: number | null;
+    sos_pct: number | null;
+    /** the games (sos) and wins (sov) against a rated opponent */
+    sos_n: number | null;
+    sov: number | null;
+    sov_rank: number | null;
+    sov_pct: number | null;
+    sov_n: number | null;
 }
-const STRENGTH_SELECT = 'wins,losses,adj_off_rtg,adj_def_rtg,adj_net_rtg,adj_off_rtg_rank,adj_def_rtg_rank,adj_net_rtg_rank,adj_off_rtg_pct,adj_def_rtg_pct,adj_net_rtg_pct';
+const STRENGTH_SELECT = 'wins,losses,adj_off_rtg,adj_def_rtg,adj_net_rtg,adj_off_rtg_rank,adj_def_rtg_rank,adj_net_rtg_rank,adj_off_rtg_pct,adj_def_rtg_pct,adj_net_rtg_pct,sos,sos_rank,sos_pct,sos_n,sov,sov_rank,sov_pct,sov_n';
 
 /** One ESPN schedule row of the team's regular season. */
 export interface ScheduleGameRow {
