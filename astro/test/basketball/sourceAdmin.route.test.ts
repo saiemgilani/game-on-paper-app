@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
-import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { mockLive, procJson } from './liveSource';
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
@@ -13,6 +13,10 @@ const sched = vi.fn(), rows = vi.fn(), proc = vi.fn(), espn = vi.fn(), sources =
 vi.mock('../../src/resources/nbaGames', async (orig) => ({ ...(await orig<typeof import('../../src/resources/nbaGames')>()), retrieveNbaSchedule: (...a: unknown[]) => sched(...a), retrieveNbaGameRows: (...a: unknown[]) => rows(...a), retrieveNbaProcessedGame: (...a: unknown[]) => proc(...a) }));
 vi.mock('../../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../../src/resources/espn')>()), retrieveGamePageGuarded: (...a: unknown[]) => espn(...a) }));
 vi.mock('../../src/resources/python', async (orig) => ({ ...(await orig<typeof import('../../src/resources/python')>()), retrieveGameSources: (...a: unknown[]) => sources(...a) }));
+// no network: an unmocked read would reach the Data API with the dummy SDV_AUTH_TOKEN (a 429 lockout); any fetch fails the file
+const fetched: string[] = [];
+vi.stubGlobal('fetch', async (input: RequestInfo | URL) => { fetched.push(String(input instanceof Request ? input.url : input)); throw new Error('no network in tests'); });
+afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 // BB-G1's Impact box reads the Data API for a final with 'bball-impact-box' on (preview): never from a test
 vi.mock('../../src/resources/impactBox', async (orig) => ({ ...(await orig<typeof import('../../src/resources/impactBox')>()), retrieveImpactBox: async () => (await orig<typeof import('../../src/resources/impactBox')>()).EMPTY_IMPACT }));
 

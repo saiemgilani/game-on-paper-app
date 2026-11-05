@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
-import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 
 interface Capture {
     league: 'nba' | 'wnba' | 'mbb' | 'wbb'; season: number; espnGameId: string
@@ -19,6 +19,12 @@ const CAPTURES = {
     wbb: capture('impact-box-wbb-2026'), // GW 50 at Temple 86 (ESPN 401824983, contest 6387150)
     nonD1: capture('impact-box-wbb-2026-nond1'), // UDC 47 at GW 86 (ESPN 401824982): the non-D1 side has no stats.ncaa.org ids
 };
+
+// an unmocked read would go to the Data API with the vitest config's dummy SDV_AUTH_TOKEN (a 429 lockout for this IP):
+// any fetch at all fails the file instead
+const fetched: string[] = [];
+vi.stubGlobal('fetch', async (input: RequestInfo | URL) => { fetched.push(String(input instanceof Request ? input.url : input)); throw new Error('no network in tests'); });
+afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 
 // the Data API: retrieveRowsFrom answers from the capture by table (and, for the units, by team), recording each query
 const api = vi.hoisted(() => ({ cap: null as any, calls: [] as { schema: string; table: string; query: Record<string, string> }[], fail: false }));
