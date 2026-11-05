@@ -3,7 +3,7 @@
     import { select } from 'd3-selection';
     import type { Court } from '../../basketball/config';
     import { COURT_VIEWBOX } from '../../nba/charts/court';
-    import { renderSquareMultiple, type SquareCell } from '../../nba/charts/hexShotChart';
+    import { MIN_DRAWN_ATTEMPTS, renderSquareMultiple, type SquareCell } from '../../nba/charts/hexShotChart';
     import { chartTheme, drawDiffLegend, SHRINK_NOTE, setViewBox } from '../../nba/charts/theme';
     import { fmtInt, fmtPct } from '../../nba/format';
     import type { Draw } from './chartFrame';
@@ -36,7 +36,7 @@
                     {#if t.cells === null}
                         <p class="small text-muted mb-0">Shots unavailable right now.</p>
                     {:else}
-                        <ChartSvg draw={drawTeam(t.cells)} viewBox={COURT_VIEWBOX} title={`${t.name} shot chart`} desc={`${fmtInt(t.attempts)} attempts; ${t.cells.length} squares with 2 or more.`} />
+                        <ChartSvg draw={drawTeam(t.cells)} viewBox={COURT_VIEWBOX} title={`${t.name} shot chart`} desc={`${fmtInt(t.attempts)} attempts; ${t.cells.length} squares with ${MIN_DRAWN_ATTEMPTS} or more.`} />
                     {/if}
                 </div>
             </div>

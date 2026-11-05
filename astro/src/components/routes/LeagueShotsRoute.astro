@@ -28,7 +28,7 @@ const small = teams.map((t) => ({
     attempts: t.line.attempts, fgPct: t.line.fgPct, cells: t.cells,
 }));
 ---
-<GenericPage title={title} subtitle={subtitle} slug={here} breadcrumbs={breadcrumbs} canonicalPath={`${here}${q}`}>
+<GenericPage title={title} subtitle={subtitle} slug={here} breadcrumbs={breadcrumbs} canonicalPath={`${here}${q}${keep ? `${q ? '&' : '?'}conference=${keep.conference}` : ''}`}>
   <div class="container">
     <div class="row mb-3">
       <div class="col-12">
