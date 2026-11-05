@@ -1,0 +1,173 @@
+---
+// src/components/routes/BasketballCoachesRoute.astro
+// /<nba|wnba>/coaches (BB-G9, behind 'bball-coaches'): the football head-coach boards (components/leaderboards/
+// CoachLeaderboardPage + CoachLeaderboardTable) on sdv-db's coach_seasons / coach_careers. Same layout: a Season select
+// whose first option is Career, a board select, sortable column headings, the cohort ranked and the rest below a
+// divider. Every rank and percentile is the producer's; cells are shaded by its percentile on the green-purple ramp
+// (pace is ranked, never shaded). The coverage notice is required: an ambiguous team-season has no row at all.
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import DarkModeLogos from '../DarkModeLogos.astro';
+import type { BasketballCoachesParams } from '../../routes/basketball/coaches';
+import { formatCoachValue, formatSeasonSpan, numericValue, type CoachRow } from '../../utils/coaches';
+import { BBALL_COACH_BOARDS, BBALL_COACH_BOARD_SLUGS, BBALL_COACH_UNCREDITED, DEFAULT_BBALL_COACH_BOARD, bballCoachBoard, bballCoachSort, splitBballCoachRows } from '../../utils/bballCoaches';
+import { formatRank, generateColorRampValue } from '../../utils/misc';
+import { LEAGUES, leaguePath, teamLogoUrl } from '../../utils/league';
+import { BASKETBALL, seasonLabelFor } from '../../basketball/config';
+import { teamHrefFromEspn, withParams } from '../../nba/links';
+import "bootstrap-icons/font/bootstrap-icons.css";
+
+interface Props { data: BasketballCoachesParams }
+const { league, seasons, season, board, sort, rows } = Astro.props.data;
+const careers = season === null;
+const shortName = LEAGUES[league].shortName;
+const def = bballCoachBoard(board);
+const sortColumn = bballCoachSort(def, sort);
+const path = leaguePath(league, '/coaches');
+const label = season === null ? '' : seasonLabelFor(league, season);
+
+// every select keeps the other parameters; a default leaves its parameter out (the canonical URL)
+const params: Record<string, string> = { season: season === null ? '' : String(season), board, sort };
+const defaults = { season: '', board: DEFAULT_BBALL_COACH_BOARD, sort: def.defaultSort };
+const url = (p: Record<string, string>) => withParams(path, { ...params, ...p }, defaults);
+// on the uncacheable /preview surface (utils/preview.ts keepPreviewSurface) stay on it, as the standings selects do
+const NAV = "window.location.href = (location.pathname.startsWith('/preview/') ? '/preview' : '') + this.value";
+
+const heading = careers ? `${shortName} Head Coach Careers: ${def.title}` : `${label} ${shortName} Head Coaches: ${def.title}`;
+const title = `${heading} | Game on Paper`;
+const description = careers
+    ? `${shortName} head coaches across every season since ${seasons[seasons.length - 1]}: win percentage, offensive, defensive and net rating, pace and the four factors, ranked.`
+    : `${shortName} head coaches in the ${label} season: win percentage, offensive, defensive and net rating, pace and the four factors, ranked.`;
+const breadcrumbs: PageBreadcrumb[] = [
+    { title: shortName, url: leaguePath(league, '/'), active: false },
+    { title: 'Head Coaches', url: path, active: careers },
+    ...(careers ? [] : [{ title: label, active: true }]),
+];
+
+const { qualified, partial } = splitBballCoachRows(rows, sortColumn);
+const shade = (row: CoachRow, key: string) => generateColorRampValue(numericValue(row, `${key}_pct`), 100) ?? '';
+const rank = (row: CoachRow) => { const r = numericValue(row, `${sortColumn.key}_rank`); return r === null ? '—' : formatRank(r); };
+const arrow = sortColumn.lowerIsBetter ? 'up' : 'down';
+const record = (row: CoachRow) => `${numericValue(row, 'wins') ?? '—'}-${numericValue(row, 'losses') ?? '—'}`;
+// stats.nba.com ids to the season's ESPN team (logo, team page), the module the other nba_stats pages use
+const teamOf = (row: CoachRow) => (season === null ? undefined : BASKETBALL[league].teams.inSeason(Number(row.team_id), season));
+const espnIds = careers ? [] : [...new Set(rows.map((r) => teamOf(r)?.espn_id).filter((id): id is number => !!id))];
+const teamsText = (row: CoachRow) => (typeof row.teams === 'string' ? row.teams : '');
+const teamCount = (row: CoachRow) => (teamsText(row) ? teamsText(row).split(',').length : 0);
+// Rk, Head Coach, Team | Teams + Seasons, G, W-L, then the board's metrics
+const totalColumns = (careers ? 6 : 5) + def.columns.length;
+const cutoff = careers ? 'one full season of games' : "half the most games any team played";
+---
+<GenericPage title={title} subtitle={description} slug={path} breadcrumbs={breadcrumbs} description={description} heading={heading} canonicalPath={url({})}>
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-lg-7 col-xs-12 mb-xs-3">
+                <h3>{heading}</h3>
+                <p class="m-0 mb-2 text-muted">Regular season, each coach's own games: a coach who took over mid-season is credited only the games after taking over.</p>
+                <p class="m-0 text-muted text-small">Ranked among coaches with at least {cutoff}; the rest are listed below the divider without a rank. Ratings and the four factors come from the games with play-by-play.</p>
+                <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>; head coaches per the {LEAGUES[league].name} staff lists and ESPN's coaching records. Click a column heading to sort by it.</p>
+                <div class="alert alert-warning small py-2" role="note" id="coach-coverage">
+                    <strong>Partial coverage.</strong> A team-season whose head coach of record cannot be placed game by game is left out rather than guessed: {BBALL_COACH_UNCREDITED[league]} of {shortName} regular-season games have no coach credited, so some teams have no row{careers ? ' and careers count only the credited games' : ' this season'}.
+                </div>
+            </div>
+            <div class="ms-auto col-lg-5 col-xs-12">
+                <form class="mb-3 d-flex justify-content-xs-start justify-content-lg-end coach-board-form" id="coach-board-form">
+                    <div class="row">
+                        <div class="col-auto mb-3">
+                            <label class="visually-hidden" for="coach-season">Season</label>
+                            <select id="coach-season" class="form-select form-select-md" onchange={NAV}>
+                                <option value={url({ season: '' })} selected={careers}>Career</option>
+                                {seasons.map((y) => (
+                                    <option value={url({ season: String(y) })} selected={y === season}>{seasonLabelFor(league, y)}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div class="col-auto mb-3">
+                            <label class="visually-hidden" for="coach-board">Leaderboard option</label>
+                            <select id="coach-board" class="form-select form-select-md" onchange={NAV}>
+                                {BBALL_COACH_BOARD_SLUGS.map((b) => (
+                                    <option value={url({ board: b, sort: BBALL_COACH_BOARDS[b].defaultSort })} selected={b === board}>{BBALL_COACH_BOARDS[b].title}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {!careers && <DarkModeLogos teamIds={espnIds} />}
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-12">
+                {rows.length === 0 && (
+                    <p class="text-muted coach-empty">No head coach data {careers ? 'yet' : `for the ${label} season yet`}. It is published once the season's games have been processed.</p>
+                )}
+                {rows.length > 0 && (
+                <div class="table-responsive">
+                    <table class="table table-sm table-responsive coach-board" data-board={board} data-sort={sortColumn.key}>
+                        <thead>
+                            <tr>
+                                <th class="text-right text-nowrap">Rk</th>
+                                <th class="text-left text-nowrap">Head Coach</th>
+                                {careers ? (
+                                    <Fragment>
+                                        <th class="text-left text-nowrap">Teams</th>
+                                        <th class="text-center"><abbr title="First to last season as head coach, by the year each season ended (seasons)">Seasons</abbr></th>
+                                    </Fragment>
+                                ) : (
+                                    <th class="text-left text-nowrap">Team</th>
+                                )}
+                                <th class="text-center"><abbr title="Games credited as head coach">G</abbr></th>
+                                <th class="text-center"><abbr title="Wins and losses in those games">W-L</abbr></th>
+                                {def.columns.map((c) => (
+                                    <th class="text-center">
+                                        <a class="text-reset text-decoration-none" href={url({ sort: c.key })}><abbr title={c.hover}>{c.label}</abbr></a>
+                                        <i class={`bi bi-arrow-${arrow}`} hidden={c.key !== sortColumn.key}></i>
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {[...qualified, ...partial].map((row, i) => {
+                                const ranked = i < qualified.length;
+                                const team = teamOf(row);
+                                const href = team ? teamHrefFromEspn({ id: team.espn_id }, league, season) : null;
+                                const name = team?.name ?? String(row.team ?? '—');
+                                return (
+                                <Fragment>
+                                    {i === qualified.length && (
+                                        <tr class="table-secondary coach-partial-divider">
+                                            <td colspan={totalColumns} class="text-muted small">Under {cutoff}{careers ? '' : ' this season'} (interim or partial {careers ? 'careers' : 'seasons'}): shown, not ranked.</td>
+                                        </tr>
+                                    )}
+                                    <tr class={ranked ? undefined : 'coach-partial'}>
+                                        <td class:list={['text-right', !ranked && 'text-muted']}>{ranked ? rank(row) : '—'}</td>
+                                        <td class="text-left text-nowrap"><strong>{row.coach ?? 'N/A'}</strong></td>
+                                        {careers ? (
+                                            <Fragment>
+                                                <td class="text-left">{teamCount(row) > 2 ? (<abbr title={teamsText(row)}>{teamCount(row)} teams</abbr>) : (teamsText(row) || '—')}</td>
+                                                <td class="text-center text-nowrap">{formatSeasonSpan(row)}</td>
+                                            </Fragment>
+                                        ) : (
+                                            <td class="text-left text-nowrap">
+                                                {team ? (
+                                                    <a href={href ?? undefined}><img class={`img-fluid team-logo-${team.espn_id} me-2`} width="20" height="20" src={teamLogoUrl(league, team.espn_id, false, season)} alt="" loading="lazy" />{name}</a>
+                                                ) : name}
+                                            </td>
+                                        )}
+                                        <td class="text-center">{numericValue(row, 'games') ?? '—'}</td>
+                                        <td class="text-center text-nowrap">{record(row)}</td>
+                                        {def.columns.map((c) => (
+                                            <td class:list={['text-center', ranked ? (!c.neutral && shade(row, c.key)) : 'text-muted']}>{formatCoachValue(numericValue(row, c.key), c.format)}</td>
+                                        ))}
+                                    </tr>
+                                </Fragment>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+                )}
+            </div>
+        </div>
+    </div>
+</GenericPage>
