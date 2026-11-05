@@ -1,7 +1,7 @@
 ---
 /**
  * The Pro player profile (plan 2.2): the web twin of gop-pro's one-page PDF, read
- * from `pro/<season>/players/<id>.json` (contract.md schema 1) for the current
+ * from `pro/<season>/players/<id>.json` (contract.md schema 2) for the current
  * season. The middleware has already checked the entitlement and keeps the page
  * no-store. Layout follows the free player page (components/player/PlayerPage.astro):
  * the same header card, every section a GenericPanel, tables in its format.
@@ -14,7 +14,7 @@ import BandBar from '../../../components/pro/BandBar.astro';
 import { cleanTextForTeam, roundNumber } from '../../../utils/misc';
 import { formatHeight, playerPath } from '../../../utils/players';
 import { espnLogoLeague } from '../../../utils/league';
-import { formatPffValue, formatProDelta, formatProMetric } from '../../../utils/pro';
+import { formatOdds, formatPffValue, formatProDelta, formatProMetric, formatUsd } from '../../../utils/pro';
 import { PRO_SEASON, proObject } from '../../../resources/pro';
 
 interface ProProfile {
@@ -29,6 +29,17 @@ interface ProProfile {
     pff: { key: string; label: string; value: number | null; pct: number | null }[]
     volume: { label: string; value: number }[]
     notes: { key: string; text: string }[]
+    value?: {
+        unit: string; source: string; stars: number | null; class_year: number | null; age: number | null; age_basis: string
+        age_for_class: number | null; var: number | null; production_usd_pace: number | null
+        projection: { pct: number | null; lo: number | null; hi: number | null }
+        projected_usd: number | null; projected_usd_lo: number | null; projected_usd_hi: number | null
+        p_start_next: number | null; scarcity: number | null
+        replacement: { target_pct: number; equiv_entrants: number | null; p_land: number | null
+            routes: { route: string; stars: number; by_year: number; hit: number; signees_needed: number }[] }
+        rushing: { carries: number; ryoe: number | null; repoe: number | null; repoe_pct: number | null } | null
+        qb_rushing?: { var: number | null; proj_season: number | null } | null
+    } | null
 }
 
 // Defense in depth: the middleware already sent anyone without a live entitlement to
@@ -47,6 +58,17 @@ const bio = [
     p.transferred ? 'Transferred in' : null,
 ].filter(Boolean) as string[];
 const pdfHref = `/pro/file/pro/${doc.season}/players/${p.espn_id}.pdf`;
+const val = doc.value ?? null;
+const r0 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : String(Math.round(v)));
+const ageNote = (v: NonNullable<ProProfile['value']>) =>
+    v.age_basis + (v.age_for_class === null ? '' : ` · ${v.age_for_class >= 0 ? '+' : ''}${v.age_for_class} y vs class`);
+const valueTiles: [string, string, string][] = val ? [
+    ['Production (pace)', formatUsd(val.production_usd_pace), val.var === null ? 'this season' : `this season, ${val.var} EPA over a backup`],
+    ['Projected next season', formatUsd(val.projected_usd), `as a starter · 80%: ${formatUsd(val.projected_usd_lo)}–${formatUsd(val.projected_usd_hi)}`],
+    ['Next-season percentile', r0(val.projection.pct), `80%: ${r0(val.projection.lo)}–${r0(val.projection.hi)} · starts ${formatOdds(val.p_start_next)}`],
+    ['Age', val.age === null ? '—' : String(val.age), ageNote(val)],
+    ['Replace via portal', formatOdds(val.replacement.p_land), `${val.replacement.equiv_entrants ?? '—'} equal entrants last cycle · scarcity ${val.scarcity ?? '—'}`],
+] : [];
 const breadcrumbs = [
     { title: 'Pro', url: '/pro', active: false },
     { title: name, active: true },
@@ -85,6 +107,47 @@ const breadcrumbs = [
     </div>
 
     <div class="container">
+        {val && (
+        <Panel id="pro-value" title="Valuation" show={true} class="mb-md-3">
+            <p slot="panel-subtitle" class="m-0 text-muted text-small">
+                {val.unit} · {val.source}{val.stars ? ` · ${val.stars}★ recruit` : ''}{val.class_year ? ` · class of ${val.class_year}` : ''}.
+                Model estimates at revenue-share rates, not reported deals.
+            </p>
+            <Fragment slot="panel-body">
+                <div class="row g-2 mb-2" id="pro-value-tiles">
+                    {valueTiles.map(([label, v, note]) => (
+                        <div class="col-lg col-md-4 col-6">
+                            <div class="border rounded p-2 h-100">
+                                <div class="text-muted text-small text-uppercase">{label}</div>
+                                <div class="fs-5 fw-bold numeral">{v}</div>
+                                <div class="text-muted text-small">{note}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {val.replacement.routes.length > 0 && (
+                    <p class="text-muted text-small mb-1" id="pro-value-routes">
+                        Other routes to a {val.replacement.target_pct}th-percentile starter: {val.replacement.routes.map((r) =>
+                            `${r.route} ${r.stars}★ by year ${r.by_year + 1}: ${formatOdds(r.hit)} hit, ~${r.signees_needed} signees`).join(' · ')}
+                    </p>
+                )}
+                {val.qb_rushing && val.qb_rushing.var !== null && (
+                    <p class="text-muted text-small mb-1" id="pro-value-qbrun">
+                        QB rushing: {val.qb_rushing.var} EPA over expected on his runs this season; {val.qb_rushing.proj_season ?? '—'} projected
+                        over a full season next year. QB rushing carries over about twice as well as a back's, so it is part of his value.
+                    </p>
+                )}
+                {val.rushing && val.rushing.carries >= 20 && (
+                    <p class="text-muted text-small mb-0" id="pro-value-ryoe">
+                        Rushing over expected (play-by-play, no tracking): {val.rushing.ryoe} yds and {val.rushing.repoe} EPA per carry vs down,
+                        distance, field position, opponent and his own line ({val.rushing.carries} carries{val.rushing.repoe_pct === null ? '' : `; ${Math.round(val.rushing.repoe_pct)}th pct among RBs`}).
+                        It describes this season; it barely carries to the next.
+                    </p>
+                )}
+            </Fragment>
+        </Panel>
+        )}
+
         <Panel id="pro-efficiency" title="Efficiency" show={true} class="mb-md-3">
             <p slot="panel-subtitle" class="m-0 text-muted text-small">Percentile bands are 80% intervals, ranked among qualifying players at the position.</p>
             <Fragment slot="panel-body">
@@ -164,7 +227,7 @@ const breadcrumbs = [
             <p class="fw-bold mb-1">What this page can't tell you</p>
             <ul class="mb-0">
                 {doc.notes.map((n) => <li data-note={n.key}>{n.text}</li>)}
-                <li>No athletic testing, injury history or NIL/market data. Not a valuation.</li>
+                <li>No athletic testing or injury history. Dollar values are model estimates at revenue-share rates, not reported NIL deals.</li>
             </ul>
         </div>
 

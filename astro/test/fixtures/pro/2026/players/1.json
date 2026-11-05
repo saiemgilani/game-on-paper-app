@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "season": 2026,
  "snapshot": "20261103T044249Z",
  "rendered": "2026-11-03",
@@ -180,5 +180,55 @@
    "key": "below_qualifier",
    "text": "Below the qualifying sample for at least one metric: its band is wide."
   }
- ]
+ ],
+ "value": {
+  "unit": "QB",
+  "source": "Portal",
+  "stars": 4,
+  "class_year": 2024,
+  "years_in_college": 2,
+  "age": 20.7,
+  "age_basis": "class-year proxy",
+  "age_for_class": 0.4,
+  "var": 42.5,
+  "var_run": 0.0,
+  "production_usd": 1800000,
+  "production_usd_pace": 2500000,
+  "projection": {
+   "pct": 70.0,
+   "lo": 38.0,
+   "hi": 95.0
+  },
+  "projected_usd": 1400000,
+  "projected_usd_lo": 0,
+  "projected_usd_hi": 2900000,
+  "expected_usd": 800000,
+  "p_start_next": 0.8,
+  "p_back": 0.74,
+  "replacement": {
+   "target_pct": 70,
+   "equiv_entrants": 12,
+   "p_land": 0.31,
+   "routes": [
+    {
+     "route": "HS",
+     "stars": 4,
+     "by_year": 2,
+     "hit": 0.12,
+     "signees_needed": 8
+    }
+   ]
+  },
+  "scarcity": 1.0,
+  "rushing": {
+   "carries": 61,
+   "ryoe": 0.8,
+   "repoe": 0.05,
+   "repoe_pct": null
+  },
+  "qb_rushing": {
+   "var": 12.3,
+   "proj_season": 8.1
+  }
+ }
 }

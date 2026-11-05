@@ -18,7 +18,27 @@
    },
    "pff_grade": 60,
    "pff_grade_pct": 0,
-   "has_profile": true
+   "has_profile": true,
+   "value": {
+    "unit": "QB",
+    "route": "Portal",
+    "age": 20.7,
+    "pct": 80.0,
+    "prod_usd": 2400000,
+    "proj": 66.0,
+    "proj_lo": 36.0,
+    "proj_hi": 96.0,
+    "proj_usd": 1900000,
+    "variant": "base",
+    "at_destination": false,
+    "scarcity": 1.25,
+    "realized": {
+     "team": "Fixture Tech",
+     "pct": 71.0,
+     "prod_usd": 2100000,
+     "started": true
+    }
+   }
   },
   {
    "espn_id": 2,
@@ -34,7 +54,22 @@
    },
    "pff_grade": null,
    "pff_grade_pct": null,
-   "has_profile": true
+   "has_profile": true,
+   "value": {
+    "unit": "WR",
+    "route": "Portal",
+    "age": 20.7,
+    "pct": 80.0,
+    "prod_usd": 640000,
+    "proj": 58.0,
+    "proj_lo": 28.0,
+    "proj_hi": 88.0,
+    "proj_usd": 420000,
+    "variant": "base",
+    "at_destination": false,
+    "scarcity": 0.79,
+    "realized": null
+   }
   },
   {
    "espn_id": 1002,
@@ -50,7 +85,8 @@
    },
    "pff_grade": null,
    "pff_grade_pct": null,
-   "has_profile": false
+   "has_profile": false,
+   "value": null
   },
   {
    "espn_id": 1003,
@@ -314,6 +350,30 @@
    "pff_grade": null,
    "pff_grade_pct": null,
    "has_profile": false
+  }
+ ],
+ "scarcity": [
+  {
+   "unit": "QB",
+   "jobs": 35,
+   "supply": 22,
+   "scarcity": 1.25
+  },
+  {
+   "unit": "WR",
+   "jobs": 84,
+   "supply": 83,
+   "scarcity": 0.79
+  }
+ ],
+ "check": [
+  {
+   "unit": "QB",
+   "n": 90,
+   "rmse": 24.2,
+   "rmse_same": 31.5,
+   "cover80": 0.822,
+   "variant": "base"
   }
  ]
 }

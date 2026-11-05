@@ -36,6 +36,9 @@ export function proRequirement(path: string): { tiers?: ProTier[]; addon?: ProAd
     if (/^\/pro\/(portal|board)(\/|$)/.test(path) || /^\/pro\/file\/pro\/\d{4}\/portal\//.test(path)) return { addon: 'portal' };
     if (/^\/pro\/file\/pro\/\d{4}\/teams\//.test(path)) return { tiers: ['pro', 'program'] };
     if (/^\/pro\/file\/pro\/coaches\//.test(path)) return { addon: 'dossier' };
+    // the valuation reports (roster, position market, talent market): every tier above Analyst
+    if (/^\/pro\/(rosters|positions|market)(\/|$)/.test(path)
+        || /^\/pro\/file\/pro\/\d{4}\/(rosters|positions|market)\//.test(path)) return { tiers: ['pro', 'program', 'agency'] };
     return null;
 }
 
@@ -152,6 +155,31 @@ export function formatPffValue(key: string, v: unknown): string {
     return key.endsWith('rate') ? `${roundNumber(v, 1, 1)}%` : roundNumber(v, 1, 1);
 }
 
+// ---- valuation (contract schema 2 `value`, and the rosters/positions/market reports) ----
+
+/** Model dollars as the PDFs print them: $1.23M, $456K; a model estimate, never a deal. */
+export function formatUsd(v: unknown): string {
+    if (!isNum(v)) return '—';
+    return Math.abs(v) >= 1e6 ? `$${roundNumber(v / 1e6, 2, 2)}M` : `$${roundNumber(v / 1e3, 0, 0)}K`;
+}
+
+/** A 0-1 probability as a whole percent. */
+export function formatOdds(v: unknown): string {
+    return isNum(v) ? `${Math.round(v * 100)}%` : '—';
+}
+
+export const VALUE_UNITS: Record<string, string> = {
+    QB: 'Quarterbacks', RB: 'Running backs', WR: 'Wide receivers', TE: 'Tight ends', OL: 'Offensive line',
+    IDL: 'Interior defensive line', EDGE: 'Edge rushers', LB: 'Linebackers', CB: 'Cornerbacks', S: 'Safeties',
+};
+
+/** One player row in a valuation report (reports.py player_row). */
+export interface ValuePlayer {
+    espn_id: number; name: string; team: string; unit: string; class: string | null; source: string
+    stars: number | null; age: number | null; pct: number | null; proj: number | null; proj_lo: number | null
+    proj_hi: number | null; prod_usd: number | null; proj_usd: number | null; started: boolean; departing: boolean
+}
+
 // ---- the portal board (pro/<season>/portal/board.json) ----
 
 export interface BoardEntrant {
@@ -168,6 +196,16 @@ export interface BoardEntrant {
     pff_grade: number | null
     pff_grade_pct: number | null
     has_profile: boolean
+    /** gop-pro valuation as of the cycle's season (contract: portal board `value`); null when unmatched */
+    value?: BoardValue | null
+}
+
+export interface BoardValue {
+    unit: string; route: string; age: number | null; pct: number | null; prod_usd: number | null
+    proj: number | null; proj_lo: number | null; proj_hi: number | null; proj_usd: number | null
+    variant: string; at_destination: boolean; scarcity: number | null
+    /** what he did the next season, once it exists: the board's own backtest */
+    realized: { team: string; pct: number | null; prod_usd: number | null; started: boolean } | null
 }
 
 export interface BoardFilters {
@@ -179,7 +217,7 @@ export interface BoardFilters {
     min?: number
 }
 
-export const BOARD_SORTS = ['name', 'position', 'from', 'entered', 'stars', 'band', 'pff'] as const;
+export const BOARD_SORTS = ['name', 'position', 'from', 'entered', 'stars', 'band', 'pff', 'prod', 'next', 'projusd'] as const;
 export type BoardSort = typeof BOARD_SORTS[number];
 
 /** A row's identity for "my board": the ESPN id, or name + school for an unmatched entrant. */
@@ -221,6 +259,9 @@ export function sortBoard(rows: BoardEntrant[], sort: BoardSort | undefined, met
             case 'stars': return e.stars;
             case 'band': return e.band_mid?.[metric!] ?? null;
             case 'pff': return e.pff_grade;
+            case 'prod': return e.value?.prod_usd ?? null;
+            case 'next': return e.value?.proj ?? null;
+            case 'projusd': return e.value?.proj_usd ?? null;
         }
     };
     const asc = s === 'name' || s === 'position' || s === 'from';

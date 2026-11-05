@@ -11,6 +11,7 @@ import GenericPage from '../../layouts/GenericPage.astro';
 import Panel from '../../layouts/panel/GenericPanel.astro';
 import ProNav from '../../components/pro/ProNav.astro';
 import { roundNumber } from '../../utils/misc';
+import { formatOdds, formatUsd } from '../../utils/pro';
 import {
     BOARD_SORTS, describeFilters, entrantKey, filterBoard, parseBoardFilters, PRO_METRIC_LABELS, sortBoard,
     type BoardEntrant, type BoardSort,
@@ -50,6 +51,8 @@ const bandOf = (e: BoardEntrant): { v: number; label: string } | null => {
     const best = Object.entries(e.band_mid ?? {}).sort((a, b) => b[1] - a[1])[0];
     return best ? { v: best[1], label: PRO_METRIC_LABELS[best[0]] ?? best[0] } : null;
 };
+const showRealized = all.some((e) => e.value?.realized);
+const r0 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : String(Math.round(v)));
 const columns: [BoardSort | null, string, string][] = [
     ['name', 'Player', 'text-left'],
     ['position', 'Pos', 'text-center'],
@@ -59,6 +62,10 @@ const columns: [BoardSort | null, string, string][] = [
     [null, 'Status', 'text-center d-none d-md-table-cell'],
     ['band', f.metric ? 'Band' : 'Best band', 'text-center'],
     ['pff', 'PFF grade', 'text-center'],
+    ['prod', 'Prod. $', 'text-center d-none d-md-table-cell'],
+    ['next', 'Next yr', 'text-center'],
+    ['projusd', 'Proj. $', 'text-center'],
+    ...(showRealized ? [[null, 'Next season, actual', 'text-center d-none d-lg-table-cell'] as [null, string, string]] : []),
     [null, '', 'text-center'],
 ];
 ---
@@ -71,7 +78,7 @@ const columns: [BoardSort | null, string, string][] = [
             : (
         <Fragment>
         <Panel id="pro-board" title="Portal Board" show={true} class="mb-3">
-            <p slot="panel-subtitle" class="m-0 text-muted text-small" id="pro-board-cycle">{cycle} cycle{boardSeason < PRO_SEASON ? ` (the ${PRO_SEASON} window has not opened yet)` : ''}. Band is the percentile band's midpoint, among qualifiers at the position. Updated {board.rendered}.</p>
+            <p slot="panel-subtitle" class="m-0 text-muted text-small" id="pro-board-cycle">{cycle} cycle{boardSeason < PRO_SEASON ? ` (the ${PRO_SEASON} window has not opened yet)` : ''}. Band is the percentile band's midpoint, among qualifiers at the position. Next yr: projected percentile with its 80% range (wider for players who change teams). Dollar values are model estimates at revenue-share rates, not deals. Updated {board.rendered}.</p>
             <Fragment slot="panel-body">
                 <form method="get" action="/pro/portal" class="d-flex flex-wrap align-items-end gap-2 mb-3" id="pro-board-filters">
                     <div>
@@ -96,6 +103,14 @@ const columns: [BoardSort | null, string, string][] = [
                     <button class="btn btn-sm btn-outline-secondary" type="submit">Apply</button>
                     <a class="btn btn-sm btn-outline-secondary" href={`/pro/file/pro/${boardSeason}/portal/board.csv`} id="pro-board-csv">Download CSV</a>
                 </form>
+                {board.scarcity && board.scarcity.length > 0 && (
+                    <div class="d-flex flex-wrap gap-1 mb-2 align-items-center" id="pro-board-scarcity">
+                        <span class="text-muted text-small me-1"><abbr title="P4 starting jobs opening (final-season starters and starters in the portal) per starter-caliber entrant this cycle; 1.0 = the average position">Scarcity this cycle</abbr>:</span>
+                        {board.scarcity.map((s) => (
+                            <span class:list={['badge', (s.scarcity ?? 0) > 1 ? 'text-bg-danger' : 'text-bg-light border']}>{s.unit} {s.scarcity === null ? '—' : s.scarcity.toFixed(2)}</span>
+                        ))}
+                    </div>
+                )}
                 <div class="table-responsive" id="pro-board-table">
                     <table class="table table-sm">
                         <thead>
@@ -123,6 +138,10 @@ const columns: [BoardSort | null, string, string][] = [
                                     <td class="text-center d-none d-md-table-cell" colspan="1">{e.status}</td>
                                     <td class="text-center numeral" colspan="1">{band ? <abbr title={band.label}>{roundNumber(band.v, 0, 0)}</abbr> : '—'}</td>
                                     <td class="text-center numeral" colspan="1">{e.pff_grade == null ? '—' : roundNumber(e.pff_grade, 1, 1)}</td>
+                                    <td class="text-center numeral d-none d-md-table-cell" colspan="1">{formatUsd(e.value?.prod_usd)}</td>
+                                    <td class="text-center numeral text-nowrap" colspan="1">{e.value ? <span>{r0(e.value.proj)} <span class="text-muted text-small">({r0(e.value.proj_lo)}–{r0(e.value.proj_hi)})</span></span> : '—'}</td>
+                                    <td class="text-center numeral" colspan="1">{e.value ? <abbr title={e.value.at_destination ? 'Projected at his destination' : 'Projected at an average destination'}>{formatUsd(e.value.proj_usd)}</abbr> : '—'}</td>
+                                    {showRealized && <td class="text-center numeral text-nowrap d-none d-lg-table-cell" colspan="1">{e.value?.realized ? <span>{r0(e.value.realized.pct)} · {formatUsd(e.value.realized.prod_usd)}</span> : '—'}</td>}
                                     <td class="text-center" colspan="1">
                                         <form method="post" action="/pro/board" class="mb-0">
                                             <input type="hidden" name="key" value={key} />
@@ -152,6 +171,22 @@ const columns: [BoardSort | null, string, string][] = [
             </Fragment>
         </Panel>
 
+        {board.check && board.check.length > 0 && (
+        <Panel id="pro-board-check" title="How this cycle's projections held up" show={true} class="mb-md-3">
+            <p slot="panel-subtitle" class="m-0 text-muted text-small">Projections made when the window opened vs the percentile each entrant posted the next season. The 80% range should hold about 80%.</p>
+            <Fragment slot="panel-body">
+                <div class="table-responsive">
+                    <table class="table table-sm" id="pro-board-check-table">
+                        <thead><tr><th class="text-left">Unit</th><th class="text-center">Entrants</th><th class="text-center">Error (RMSE)</th><th class="text-center">"Same as last year" error</th><th class="text-center">Inside 80% range</th><th class="text-left">Model</th></tr></thead>
+                        <tbody>{board.check.map((c) => (
+                            <tr><td class="text-left">{c.unit}</td><td class="text-center numeral">{c.n}</td><td class="text-center numeral">{c.rmse}</td><td class="text-center numeral">{c.rmse_same}</td><td class="text-center numeral">{formatOdds(c.cover80)}</td><td class="text-left text-small">{c.variant}</td></tr>
+                        ))}</tbody>
+                    </table>
+                </div>
+            </Fragment>
+        </Panel>
+        )}
+
         <Panel id="pro-my-board" title="My Board" show={true} class="mb-md-3">
             <Fragment slot="panel-body">
                 {mine.length === 0
@@ -169,6 +204,6 @@ const columns: [BoardSort | null, string, string][] = [
         </Panel>
         </Fragment>
             )}
-        <p class="text-muted text-small">Derived figures only. Not a valuation. How every number is made: <a href="/pro/methodology">methodology</a>.</p>
+        <p class="text-muted text-small">Derived figures only; player values are on each profile. How every number is made: <a href="/pro/methodology">methodology</a>.</p>
     </div>
 </GenericPage>

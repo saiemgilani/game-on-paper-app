@@ -1,0 +1,50 @@
+---
+/**
+ * Roster Valuation index: every FBS program with a report, by conference, from
+ * `pro/<season>/rosters/index.json` (gop-pro reports.py).
+ */
+import GenericPage from '../../../layouts/GenericPage.astro';
+import ProNav from '../../../components/pro/ProNav.astro';
+import { cleanTextForTeam } from '../../../utils/misc';
+import { PRO_SEASON, proObject } from '../../../resources/pro';
+
+interface RosterIndex {
+    snapshot: string; rendered: string
+    teams: { team_id: number; team: string; conference: string | null; group: string }[]
+}
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
+const index = await proObject<RosterIndex>(`pro/${PRO_SEASON}/rosters/index.json`);
+const byConf = new Map<string, RosterIndex['teams']>();
+for (const t of index?.teams ?? []) {
+    const k = t.conference ?? 'Other';
+    byConf.set(k, [...(byConf.get(k) ?? []), t]);
+}
+const confs = [...byConf.keys()].sort();
+---
+<GenericPage title="Roster Valuation | Game on Paper Pro" subtitle={`${PRO_SEASON} roster valuation`} slug="/pro/rosters"
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Rosters', active: true }]} heading="Roster Valuation">
+    <ProNav active="rosters" />
+    <div class="container mb-4">
+        <h1 class="fs-3">Roster Valuation</h1>
+        <p>
+            Every FBS roster priced the same way: what each position group produces this season at revenue-share rates, where it
+            ranks, how it was built (high school, portal, JUCO, walk-on), who is likely leaving, and the odds of replacing them.
+        </p>
+        {!index
+            ? <p class="text-muted" id="pro-rosters-unavailable">Roster reports are unavailable right now.</p>
+            : (
+            <div class="row" id="pro-rosters">
+                {confs.map((c) => (
+                    <div class="col-lg-3 col-md-4 col-6 mb-3">
+                        <p class="fw-bold mb-1">{c}</p>
+                        <ul class="list-unstyled mb-0">
+                            {(byConf.get(c) ?? []).sort((a, b) => a.team.localeCompare(b.team)).map((t) => (
+                                <li><a href={`/pro/rosters/${t.team_id}`}>{cleanTextForTeam(t.team, t.team_id)}</a></li>
+                            ))}
+                        </ul>
+                    </div>
+                ))}
+            </div>
+            )}
+    </div>
+</GenericPage>

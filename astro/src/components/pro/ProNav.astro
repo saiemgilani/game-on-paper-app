@@ -1,13 +1,16 @@
 ---
 /** The Pro section's own row of links, under the page header. FilterGroup's pill markup. */
 interface Props {
-    active?: 'players' | 'portal' | 'methodology'
+    active?: 'players' | 'portal' | 'rosters' | 'positions' | 'market' | 'methodology'
 }
 const { active } = Astro.props;
 const viewer = Astro.locals.pro ?? null;
 const links: [string, string, Props['active']][] = [
     ['/pro', 'Players', 'players'],
     ['/pro/portal', 'Portal Board', 'portal'],
+    ['/pro/rosters', 'Rosters', 'rosters'],
+    ['/pro/positions', 'Positions', 'positions'],
+    ['/pro/market', 'Market', 'market'],
     ['/pro/methodology', 'Methodology', 'methodology'],
 ];
 ---
