@@ -1,0 +1,42 @@
+---
+// src/components/nba/PlayerGameSet.astro
+// BB-G14, behind 'bball-game-set': his shooting over a set of his games (?games=), summed from the page's per-game shot
+// rows (shot_player_games) and divided once. "All games" is the season line in the page header.
+import type { PlayerGame } from '../../nba/data/aggregate';
+import { fmtInt, fmtPct } from '../../nba/format';
+import { GAME_SET_NAV, bbGameSetLabel, gameSetHref, playerGameSet, type BbGameSet } from '../../utils/bballGameSet';
+
+interface Props { games: PlayerGame[]; set: BbGameSet }
+const { games, set } = Astro.props;
+const view = playerGameSet(games, set);
+const pct = (v: number | null) => (v === null ? '—' : fmtPct(v));
+---
+{view && (
+<div class="mb-3" id="player-game-set">
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+    <h2 class="h6 mb-0">{view.set === 'all' ? 'Shooting' : 'Shooting (Filtered)'}</h2>
+    <label class="visually-hidden" for="game-set-select">Games</label>
+    {/* each option is this page with ?games=, so the chosen set is a shareable URL */}
+    <select id="game-set-select" class="form-select form-select-sm w-auto" autocomplete="off" onchange={GAME_SET_NAV}>
+      {view.sets.map((k) => (<option value={gameSetHref(Astro.url, k, 'player-game-set')} selected={k === view.set}>{bbGameSetLabel(k)}</option>))}
+    </select>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0" id="player-game-set-table">
+      <caption class="small text-muted">Makes, attempts and threes summed over the games in this set, then divided once. Home and Away leave out neutral sites.</caption>
+      <thead><tr><th scope="col">Games</th><th scope="col" class="text-end">G</th><th scope="col" class="text-end">FG</th><th scope="col" class="text-end">FG%</th><th scope="col" class="text-end">eFG%</th><th scope="col" class="text-end">3P</th><th scope="col" class="text-end">3P%</th></tr></thead>
+      <tbody>
+        <tr data-games={view.set}>
+          <th scope="row" class="text-nowrap fw-normal">{bbGameSetLabel(view.set)}</th>
+          <td class="numeral text-end">{fmtInt(view.games)}</td>
+          <td class="numeral text-end">{fmtInt(view.line.makes)}/{fmtInt(view.line.attempts)}</td>
+          <td class="numeral text-end">{pct(view.line.fgPct)}</td>
+          <td class="numeral text-end">{pct(view.line.efgPct)}</td>
+          <td class="numeral text-end">{fmtInt(view.line.fg3m)}/{fmtInt(view.line.fg3a)}</td>
+          <td class="numeral text-end">{pct(view.line.fg3Pct)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+)}

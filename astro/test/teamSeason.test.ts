@@ -111,7 +111,8 @@ describe('prepareNbaTeam with the flag', () => {
         expect('seasonBlock' in r).toBe(false);
     });
     test('on: one read keyed by the stats id (season tables) and the ESPN id (games), the page cached as before', async () => {
-        const { astro, cache } = fakeAstro({ preview: true });
+        // BB-G14's 'bball-game-set' (also preview) adds a fifth argument; off here, this is BB-G5's read exactly
+        const { astro, cache } = fakeAstro({ preview: true, flagOverrides: { 'bball-game-set': false } });
         const r = ok(await prepareNbaTeam(astro));
         expect(block.fn).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, NETS_ESPN);
         expect(r.seasonBlock).toEqual(asReads(NBA));

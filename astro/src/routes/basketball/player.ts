@@ -16,6 +16,8 @@ import { placeholderSplit } from '../../nba/data/placeholder';
 import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
+import { bbGameSetOf, type BbGameSet } from '../../utils/bballGameSet';
+import { isFeatureEnabled } from '../../utils/features';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
@@ -42,6 +44,8 @@ export interface BasketballPlayerParams {
     unlocated?: { count: number; total: number };
     /** a college season's shot_coverage sentence (D24); absent for the NBA/WNBA */
     coverage?: string | null;
+    /** BB-G14, only with 'bball-game-set' on: the `?games=` set his game-set line shows (no extra read) */
+    gameSet?: BbGameSet;
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -137,5 +141,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         hisSeasons,
         ...(n > 0 ? { unlocated: { count: n, total: shots.length } } : {}),
         ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
+        // off: ?games= is never read and the params are BB-G5's
+        ...(isFeatureEnabled('bball-game-set', Astro.locals) ? { gameSet: bbGameSetOf(Astro.url.searchParams.get('games')) } : {}),
     };
 }
