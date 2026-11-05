@@ -5,6 +5,7 @@
 // four factors; college adds adjusted efficiency margin and tempo. Every rate, rank and percentile is the producer's
 // (sdv-db team_season_rates / team_strength / game_team_rates): cells are shaded by the producer's percentile on the
 // site's green-to-purple ramp, one number per cell. Pace is ranked but not shaded: fast is not better.
+// BB-G24, behind 'bball-team-strength' too: a team strength table (adjusted net, SOS, SOV, pace) under the season line.
 import { DateTime } from 'luxon';
 import type { TeamSeasonRateRow, TeamSeasonReads } from '../../resources/teamSeason';
 import { SPLIT_LABEL, scheduleRows, splitRows } from '../../utils/teamSeason';
@@ -13,6 +14,7 @@ import { gameHref, teamHrefFromEspn } from '../../nba/links';
 import { formatRank, generateColorRampValue, generateMarginalString } from '../../utils/misc';
 import { basketball, seasonLabelFor } from '../../basketball/config';
 import { isNcaaDashboards } from '../../basketball/dashboards';
+import { isFeatureEnabled } from '../../utils/features';
 
 interface Props { data: TeamSeasonReads | null; season: number; espnId: number; teamName: string }
 const { data, season, espnId, teamName } = Astro.props;
@@ -26,6 +28,9 @@ const splits = splitRows(data?.rates ?? []);
 const games = data ? scheduleRows(data.games, data.gameRates, espnId) : [];
 const st = data?.strength ?? null;
 const record = st?.wins != null && st?.losses != null ? `${st.wins}-${st.losses}` : null;
+// BB-G24: the strength table needs a team_strength row; in college it carries the adjusted line's EM and tempo
+const strength = isFeatureEnabled('bball-team-strength', Astro.locals) && st !== null;
+const minutes = league === 'nba' ? 48 : 40;
 
 const dash = '—';
 const shade = (pct: number | null | undefined) => generateColorRampValue(pct ?? null, 100);
@@ -58,8 +63,32 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
   </p>
   {college && st?.adj_net_rtg != null && (
     <p class="numeral mb-2" id="season-adjusted">
-      Adj. EM {net(st.adj_net_rtg)} <span class="text-muted">(#{rank(st.adj_net_rtg_rank)})</span> &middot; Adj. O {rtg(st.adj_off_rtg)} <span class="text-muted">(#{rank(st.adj_off_rtg_rank)})</span> &middot; Adj. D {rtg(st.adj_def_rtg)} <span class="text-muted">(#{rank(st.adj_def_rtg_rank)})</span> &middot; Tempo {rtg(all.pace)} <span class="text-muted">(#{rank(all.pace_rank)})</span>
+      {!strength && (<Fragment>Adj. EM {net(st.adj_net_rtg)}{' '}<span class="text-muted">(#{rank(st.adj_net_rtg_rank)})</span> &middot; </Fragment>)}Adj. O {rtg(st.adj_off_rtg)} <span class="text-muted">(#{rank(st.adj_off_rtg_rank)})</span> &middot; Adj. D {rtg(st.adj_def_rtg)} <span class="text-muted">(#{rank(st.adj_def_rtg_rank)})</span>{!strength && (<Fragment> &middot; Tempo {rtg(all.pace)}{' '}<span class="text-muted">(#{rank(all.pace_rank)})</span></Fragment>)}
     </p>
+  )}
+  {strength && st && (
+    <div class="table-responsive mb-3">
+      <table class="table table-sm align-middle mb-0 w-auto" id="season-strength">
+        <caption class="small text-muted">{college ? 'The published adjusted ratings, every game.' : 'Adjusted for opponent and venue, regular season.'} SOS and SOV are on the same scale: the mean adjusted net rating of the opponents. Rank 1 is the best rating, the hardest schedule, the strongest wins and the fastest pace.</caption>
+        <thead><tr><th scope="col"></th><th scope="col" class="text-center"><abbr title={college ? 'Adjusted efficiency margin: points per 100 possessions better than an average opponent on a neutral court' : 'Adjusted net rating: points per 100 possessions better than an average opponent on a neutral court'}>{college ? 'Adj. EM' : 'Adj. net'}</abbr></th><th scope="col" class="text-center"><abbr title={`Strength of schedule: the mean adjusted net rating of the opponents, one weight per game (${fmtInt(st.sos_n ?? 0)} games against a rated opponent)`}>SOS</abbr></th><th scope="col" class="text-center"><abbr title={`Strength of victory: the mean adjusted net rating of the teams beaten (${fmtInt(st.sov_n ?? 0)} wins against a rated opponent)`}>SOV</abbr></th><th scope="col" class="text-center"><abbr title={`Possessions per ${minutes} minutes`}>{college ? 'Tempo' : 'Pace'}</abbr></th></tr></thead>
+        <tbody>
+          <tr>
+            <th scope="row" class="fw-normal">Value</th>
+            <td class:list={['numeral', 'text-center', shade(st.adj_net_rtg_pct)]}>{net(st.adj_net_rtg)}</td>
+            <td class:list={['numeral', 'text-center', shade(st.sos_pct)]}>{net(st.sos)}</td>
+            <td class:list={['numeral', 'text-center', shade(st.sov_pct)]}>{net(st.sov)}</td>
+            <td class="numeral text-center">{rtg(all.pace)}</td>
+          </tr>
+          <tr>
+            <th scope="row" class="fw-normal">Rank</th>
+            <td class="numeral text-center text-muted small">{rank(st.adj_net_rtg_rank)}</td>
+            <td class="numeral text-center text-muted small">{rank(st.sos_rank)}</td>
+            <td class="numeral text-center text-muted small">{rank(st.sov_rank)}</td>
+            <td class="numeral text-center text-muted small">{rank(all.pace_rank)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   )}
   <div class="row g-3">
     <div class="col-lg-5">
