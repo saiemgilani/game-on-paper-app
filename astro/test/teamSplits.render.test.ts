@@ -38,6 +38,7 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         feed.calls.push(req);
         return feed.override ?? rows[req.league];
     },
+    retrieveTeamOpponentSplits: async () => null, // the Results by Opponent panel: no rows
 }));
 
 let container: AstroContainer;

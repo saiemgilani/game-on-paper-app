@@ -107,6 +107,9 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     retrieveNflEspnGameIds: async () => ({}),
     retrieveTeamSummaries: async () => [],
     resolveEspnAthleteId: async () => null,
+    // no percentile distribution for the season (the route's 404): the tables render unshaded
+    retrievePlayerGamePercentiles: async () => ({}),
+    retrievePlayerSplitPercentiles: async () => ({}),
 }));
 const scoreboardCalls: unknown[][] = [];
 vi.mock('../src/resources/espn', async (orig) => ({

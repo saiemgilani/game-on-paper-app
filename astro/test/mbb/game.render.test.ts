@@ -9,6 +9,9 @@ const prep = vi.fn();
 vi.mock('../../src/routes/basketball/game', async (orig) => ({ ...(await orig<typeof import('../../src/routes/basketball/game')>()), prepareBasketballGame: (...a: unknown[]) => prep(...a) }));
 const summary = vi.fn();
 vi.mock('../../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../../src/resources/espn')>()), retrieveGameSummary: (...a: unknown[]) => summary(...a) }));
+// the pregame's Players to Watch card reads the season's shot_season_players rows (#379): none, so no card,
+// which is what these renders always showed (the unmocked read was a failed-auth Data API call)
+vi.mock('../../src/resources/nbaShots', async (orig) => ({ ...(await orig<typeof import('../../src/resources/nbaShots')>()), retrieveSeasonPlayerRows: async () => [] }));
 import Page from '../../src/pages/mbb/game/[id].astro';
 import { fromDataApi, fromProcessor } from '../../src/resources/nbaGame';
 

@@ -96,6 +96,7 @@ describe('the teams loader (plan #9\'s, on WBB)', () => {
             retrieveCoverageRows: async () => coverage(),
             retrieveConferenceRows: async () => { if (fail) throw new Error('down'); return { teams: conferences(2026), groups: conferenceNames(2026) }; },
             retrieveScheduleTeamRows: async () => scheduleTeams(2026),
+            retrieveTeamShots: async () => [], // the members without a season-player line: no shots, so they keep the dash
         }));
         const { prepareBasketballTeams } = await import('../../src/routes/basketball/teams');
         const astro = () => ({ params: {}, url: new URL('https://gameonpaper.com/wbb/teams'), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } } as any);

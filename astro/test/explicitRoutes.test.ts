@@ -18,6 +18,7 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     retrieveTeamSummaries: async () => fx.team_summaries,
     retrievePlayerSummaries: async () => fx.passing,
     retrievePercentiles: async () => [],
+    sdvIngestStamp: async () => undefined, // the board's "Last updated" stamp: unknown, no stamp
 }));
 
 // fileURLToPath, not .pathname: on Windows the latter is "/C:/..." and join() doubles the drive
