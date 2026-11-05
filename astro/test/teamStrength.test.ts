@@ -25,9 +25,10 @@ const reads = (c: any, st: any) => ({ rates: c.rates, strength: st, games: [...c
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create(); });
 const normalize = (html: string) => html.replace(/data-astro-cid-[a-z0-9]+/g, 'data-astro-cid-x');
-const render = async (data: unknown, league: string, espnId: number, on: boolean) => normalize(await container.renderToString(TeamSeasonBlock, {
+// `on`: an admin's per-request override; { preview }: no override, the flag's own state for a (non-)preview viewer
+const render = async (data: unknown, league: string, espnId: number, on: boolean | { preview: boolean }) => normalize(await container.renderToString(TeamSeasonBlock, {
     props: { data, season: 2026, espnId, teamName: 'Team' },
-    locals: { league, preview: true, flagOverrides: { 'bball-team-strength': on } } as unknown as App.Locals,
+    locals: (typeof on === 'boolean' ? { league, preview: true, flagOverrides: { 'bball-team-strength': on } } : { league, ...on }) as unknown as App.Locals,
 }));
 const table = (html: string) => html.split('id="season-strength"')[1].split('</table>')[0];
 const cells = (row: string) => [...row.matchAll(/<td[^>]*>([^<]*)<\/td>/g)].map((m) => m[1]);
@@ -58,6 +59,10 @@ describe('the captures', () => {
 
 describe("'bball-team-strength'", () => {
     test('is a preview flag', () => { expect(FLAGS['bball-team-strength']).toBe('preview'); });
+    test('with no override: a preview viewer sees the table, a public viewer does not', async () => {
+        expect(await render(reads(NBA, STRENGTH.nba[0]), 'nba', 17, { preview: true })).toContain('id="season-strength"');
+        expect(await render(reads(NBA, STRENGTH.nba[0]), 'nba', 17, { preview: false })).not.toContain('season-strength');
+    });
     test("off: BB-G5's block, byte for byte (NBA and college)", async () => {
         await expect(await render(reads(NBA, STRENGTH.nba[0]), 'nba', 17, false)).toMatchFileSnapshot('./__team_strength__/block-off-nba.html');
         await expect(await render(reads(MBB, STRENGTH.mbb[0]), 'mbb', 150, false)).toMatchFileSnapshot('./__team_strength__/block-off-mbb.html');
