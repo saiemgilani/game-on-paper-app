@@ -27,6 +27,8 @@ vi.mock('../src/resources/shotQuality', () => ({
 }));
 // BB-G6's Impact panel reads the Data API with 'bball-impact' on (preview): never from a test
 vi.mock('../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => [] }));
+// BB-G7's On/Off section reads the Data API with 'bball-player-on-off' on (preview): never from a test
+vi.mock('../src/resources/playerOnOff', () => ({ retrievePlayerOnOff: async () => ({ teams: [], pairs: [] }) }));
 // the pages' other reads, as teamSeason.test.ts and byteIdentity.render.test.ts mock them
 vi.mock('../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../src/resources/teamSeason')>()),

@@ -15,11 +15,13 @@ import { COURT } from '../../nba/data/court';
 import { placeholderSplit } from '../../nba/data/placeholder';
 import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
-import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
+import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows, type SeasonPlayerRow } from '../../resources/nbaShots';
 import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/playerImpact';
+import { retrievePlayerOnOff } from '../../resources/playerOnOff';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { isFeatureEnabled } from '../../utils/features';
-import type { BasketballLeague } from '../../utils/league';
+import { PRO_LEAGUES, type BasketballLeague } from '../../utils/league';
+import { topPartners, type PlayerOnOff } from '../../utils/playerOnOff';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
 
@@ -49,6 +51,8 @@ export interface BasketballPlayerParams {
     poe?: ShotQualityRow[] | null;
     /** BB-G6, only with 'bball-impact' on: his impact rows (player_impact, college player_value); null when the read failed */
     impact?: PlayerImpactRow[] | null;
+    /** BB-G7, only with 'bball-player-on-off' on, NBA/WNBA only: his on/off rows and top partners; `teams` null when a read failed */
+    onOff?: PlayerOnOff;
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -125,11 +129,15 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
 
     // BB-G6: the same rule as BB-G15's below, started first so the two reads run together
     const impactP = isFeatureEnabled('bball-impact', Astro.locals) ? readPlayerImpact(league, season, personId) : undefined;
+    // BB-G7: the same rule; college's on/off rows are keyed by stats.ncaa.org ids the page's ESPN id cannot reach
+    const onOffP = isFeatureEnabled('bball-player-on-off', Astro.locals) && PRO_LEAGUES.includes(league) ? readPlayerOnOff(league, season, personId, rows) : undefined;
     // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
     const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
     if (poe.poe === null) degraded = true;
     const impact = impactP ? { impact: await impactP } : {};
     if (impact.impact === null) degraded = true;
+    const onOff = onOffP ? { onOff: await onOffP } : {};
+    if (onOff.onOff?.teams === null) degraded = true;
 
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
@@ -154,6 +162,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
         ...poe,
         ...impact,
+        ...onOff,
     };
 }
 
@@ -164,6 +173,19 @@ async function readPlayerImpact(league: BasketballLeague, season: number, person
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} impact for player ${personId}: ${e}, ${e?.stack}`);
         return null;
+    }
+}
+
+/** BB-G7's reads, his top partners and the names and tricodes from the page's season rows; `teams` null when a read failed. */
+async function readPlayerOnOff(league: BasketballLeague, season: number, personId: number, rows: SeasonPlayerRow[]): Promise<PlayerOnOff> {
+    const names = new Map(rows.map((r) => [String(r.person_id), r.player_name]));
+    const tricodes = new Map(rows.map((r) => [String(r.team_id), r.team_tricode]));
+    try {
+        const { teams, pairs } = await retrievePlayerOnOff(league, season, personId);
+        return { teams, partners: topPartners(pairs, String(personId)), names, tricodes };
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} on/off for player ${personId}: ${e}, ${e?.stack}`);
+        return { teams: null, partners: [], names, tricodes };
     }
 }
 
