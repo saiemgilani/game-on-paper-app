@@ -31,12 +31,12 @@ const ORD = ['1st', '2nd', '3rd', '4th'];
 /** The control's options: All, Clutch, the season's periods and overtime, Leading, Trailing, Garbage time out, vs top N. */
 export function situationsFor(league: BasketballLeague, season: number): Situation[] {
     const reg = regulationFor(league, season);
-    const period = (key: string, label: string): Situation => ({ key, family: 'period', split: key, label, group: 'By period', note: `Possessions that start in the ${label.toLowerCase()}.` });
+    const period = (key: string, label: string, where = `the ${label}`): Situation => ({ key, family: 'period', split: key, label, group: 'By period', note: `Possessions that start in ${where}.` });
     return [
         { key: 'all', family: 'all', split: 'all', label: 'All', note: 'Every possession.' },
         { key: 'clutch', family: 'clutch', split: 'clutch', label: 'Clutch', note: 'The last 5:00 of regulation or overtime with the score within 5.' },
         ...Array.from({ length: reg.periods }, (_, i) => period(`p${i + 1}`, `${ORD[i]} ${reg.kind}`)),
-        period('ot', 'Overtime'),
+        period('ot', 'Overtime', 'overtime'),
         { key: 'leading', family: 'score', split: 'leading', label: 'Leading', note: 'Possessions that start with the team ahead.' },
         { key: 'trailing', family: 'score', split: 'trailing', label: 'Trailing', note: 'Possessions that start with the team behind.' },
         { key: 'not_garbage_time', family: 'garbage', split: 'not_garbage_time', label: 'Garbage time out', note: 'Every possession outside garbage time.' },

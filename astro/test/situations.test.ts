@@ -123,6 +123,7 @@ describe('the control', () => {
         const o = situationsFor('nba', 2024);
         expect(keys(o)).toEqual(['all', 'clutch', 'p1', 'p2', 'p3', 'p4', 'ot', 'leading', 'trailing', 'not_garbage_time', 'vs_top']);
         expect(o.map((s) => s.label)).toEqual(['All', 'Clutch', '1st quarter', '2nd quarter', '3rd quarter', '4th quarter', 'Overtime', 'Leading', 'Trailing', 'Garbage time out', 'vs top 10']);
+        expect(o.find((s) => s.key === 'ot')!.note).toBe('Possessions that start in overtime.');
         // every option is a (family, split) the producer writes
         for (const s of o) expect(NBA.team.some((r) => r.family === s.family && r.split === s.split)).toBe(true);
     });
