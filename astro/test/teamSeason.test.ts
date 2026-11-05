@@ -20,6 +20,11 @@ vi.mock('../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../src/resources/teamSeason')>()),
     retrieveTeamSeason: (...a: unknown[]) => block.fn(...a),
 }));
+// BB-G3's Lineups tab reads the Data API with 'bball-lineups' on (preview): never from a test
+vi.mock('../src/resources/lineups', async (orig) => ({
+    ...(await orig<typeof import('../src/resources/lineups')>()),
+    retrieveLineups: async () => ({ units: [], names: [] }),
+}));
 const oracle = JSON.parse(readFileSync(new URL('./fixtures/nba/league_context.json', import.meta.url)).toString());
 const shots = JSON.parse(readFileSync(new URL('./fixtures/nba/shots.json', import.meta.url)).toString()) as any[];
 vi.mock('../src/resources/nbaShots', async (orig) => ({
