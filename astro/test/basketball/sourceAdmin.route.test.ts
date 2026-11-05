@@ -19,6 +19,8 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL) => { fetched.push(String
 afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 // BB-G1's Impact box reads the Data API for a final with 'bball-impact-box' on (preview): never from a test
 vi.mock('../../src/resources/impactBox', async (orig) => ({ ...(await orig<typeof import('../../src/resources/impactBox')>()), retrieveImpactBox: async () => (await orig<typeof import('../../src/resources/impactBox')>()).EMPTY_IMPACT }));
+// BB-G28's Game flow likewise ('bball-game-flow', preview): no rows, never a read
+vi.mock('../../src/resources/gameFlow', async (orig) => ({ ...(await orig<typeof import('../../src/resources/gameFlow')>()), retrieveGameFlow: async () => (await orig<typeof import('../../src/resources/gameFlow')>()).EMPTY_FLOW }));
 
 const api = () => JSON.parse(readFileSync(new URL('../fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
 const ID = '401766458';
