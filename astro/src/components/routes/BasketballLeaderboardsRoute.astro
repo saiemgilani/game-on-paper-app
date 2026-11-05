@@ -185,7 +185,7 @@ const scope = board === 'impact' ? (pro ? 'Regular season.' : 'Every game.') : b
                   {board === 'teams' ? (() => { const t = teamCell(r.team_id); return (
                     <td class="text-left text-nowrap">{t.href ? (<a href={t.href}>{t.name}</a>) : t.name}</td>); })()
                   : board === 'lineups' ? (() => { const ps = unitPlayers(r).map(fullName); const t = teamCell(r.team_id); return (
-                    <td class="text-left text-nowrap" title={ps.join(', ')}>{ps.map((n) => short.get(n) ?? n).join(' · ')} <span class="text-muted small">{t.abbr}</span></td>); })()
+                    <td class="text-left" style="min-width: 10rem; max-width: 14rem" title={ps.join(', ')}>{ps.map((n) => short.get(n) ?? n).join(' · ')} <span class="text-muted small">{t.abbr}</span></td>); })()
                   : pro ? (
                     <td class="text-left text-nowrap"><a href={playerHref(Number(r.player_id), q, league)}>{String(r.player_name ?? `#${r.player_id}`)}</a> <span class="text-muted small">{String(r.teams ?? r.team_abbreviation ?? '')}</span></td>)
                   : (
