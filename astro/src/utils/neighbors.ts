@@ -41,7 +41,7 @@ export function neighborWindow(rows: Row[], keyOf: (r: Row) => string, selfKey: 
  * so rank 1 is green and the last ranked row purple. The denominator is every row
  * ranked on this metric, the same count the team leaderboard shades against.
  */
-function metricShade(rows: Row[], metric: string): (rank: number) => string | null {
+export function metricShade(rows: Row[], metric: string): (rank: number) => string | null {
     const ranked = rows.filter((r) => numberOrNull(r[`${metric}_rank`]) !== null && numberOrNull(r[metric]) !== null).length;
     return (rank) => generateColorRampValue(rank, ranked, true);
 }

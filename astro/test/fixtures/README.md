@@ -789,3 +789,19 @@ exactly that module's queries, as `{rates, strength, home, away, gameRates}` (th
 **Used by:** `test/teamSeason.test.ts`.
 
 **To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## BB-G12 nearby ranks (`nba/rank_neighbors_*_2026.json`, `mbb/rank_neighbors_teams_2026_top12.json`)
+
+Live Data API reads, 2026-11-05, each filtered by season, `select`ed to the columns the lists use, and unedited.
+
+- `nba/rank_neighbors_teams_2026.json`: `GET /v1/nba_stats/team_strength?season=2026&limit=40`, all 30 teams.
+- `mbb/rank_neighbors_teams_2026_top12.json`: `GET /v1/mbb/team_strength?season=2026&net_rtg_rank__lte=12&limit=20`,
+  D-I's top 12 by net rating (Duke, 150, is 1st), enough for Duke's net-rating window.
+- `nba/rank_neighbors_players_2026.json`: `GET /v1/nba_stats/player_stats_advanced?season=2026&season_type=Regular Season`
+  four times, one per measure, each the rank window around Michael Porter Jr. (1629008: net rating 412th, TS% 205th,
+  USG% 23rd, PIE 48th), e.g. `net_rating_rank__gte=407&net_rating_rank__lte=417&limit=25`. Eleven rows each, merged on
+  `player_id` (41 players). Every row is whole, so each window is exactly the producer's.
+
+**Used by:** `test/bballNeighbors.test.ts`.
+
+**To regenerate:** repeat the reads above and write each response's `data` array (the players merged by `player_id`).
