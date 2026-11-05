@@ -86,8 +86,9 @@ beforeEach(() => { for (const m of [...Object.values(games), ...Object.values(es
 
 async function page(path: string, url: string, params: Record<string, string> = {}, flagOverrides?: Record<string, boolean>) {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/nba/${path}`);
-    // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture' and BB-G5's team season block behind 'bball-team-season': both off here, so these pages stay byte for byte main's
-    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-playoff-picture': false, 'bball-team-season': false, ...flagOverrides } } as App.Locals }));
+    // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture', BB-G5's team season block behind 'bball-team-season' and
+    // BB-G12's nearby ranks behind 'bball-rank-neighbors': all off here, so these pages stay byte for byte main's
+    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-rank-neighbors': false, ...flagOverrides } } as App.Locals }));
 }
 const snap = (name: string) => `./__byte_identity__/${name}.html`;
 const finalPage = { gameId: 401766458, gamepackageJSON: { header: proc.header } };

@@ -16,6 +16,9 @@ import type { SortDir } from '../../nba/table';
 import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterRows, teamsFromSeasonRows, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
 import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
 import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
+import { retrieveTeamRankRows } from '../../resources/bballNeighbors';
+import { bballTeamNeighborLists } from '../../utils/bballNeighbors';
+import type { NeighborList } from '../../utils/neighbors';
 import { isFeatureEnabled } from '../../utils/features';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
@@ -42,6 +45,8 @@ export interface BasketballTeamParams {
     noPlayers?: true;
     /** BB-G5, only with 'bball-team-season' on: the season block's reads; null when one failed (the block says so) */
     seasonBlock?: TeamSeasonReads | null;
+    /** BB-G12, only with 'bball-rank-neighbors' on: the nearby-rank lists; null when the read failed (the section says so) */
+    neighbors?: NeighborList[] | null;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -105,10 +110,13 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     if (coverage === undefined) uncacheable(Astro);
     // read only once the page will render: a 404 or 503 never spends the five reads
     const flagged = isFeatureEnabled('bball-team-season', Astro.locals);
+    const nearby = isFeatureEnabled('bball-rank-neighbors', Astro.locals);
+    const neighborsP = nearby ? readTeamNeighbors(league, season, teamId, resolved.q) : undefined;
     const seasonBlock = flagged ? await readSeasonBlock(league, season, teamId) : undefined;
-    // the block is decorative: a failed read renders the rest of the page, never cached
-    if (seasonBlock === null) uncacheable(Astro);
-    const block = flagged ? { seasonBlock } : {};
+    const neighbors = await neighborsP;
+    // the block and the lists are decorative: a failed read renders the rest of the page, never cached
+    if (seasonBlock === null || neighbors === null) uncacheable(Astro);
+    const block = { ...(flagged ? { seasonBlock } : {}), ...(nearby ? { neighbors } : {}) };
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);
@@ -129,6 +137,16 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
         ...(team ? {} : { noPlayers: true as const }),
         ...block,
     };
+}
+
+/** BB-G12's lists from the season's one team_strength read; null when it failed. */
+async function readTeamNeighbors(league: BasketballLeague, season: number, teamId: number, q: string): Promise<NeighborList[] | null> {
+    try {
+        return bballTeamNeighborLists(await retrieveTeamRankRows(league, season), teamId, league, season, q);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} nearby ranks for team ${teamId}: ${e}, ${e?.stack}`);
+        return null;
+    }
 }
 
 /** The season block's reads (BB-G5); null when any failed. The NBA/WNBA season tables are keyed by the stats id, the games by ESPN's. */

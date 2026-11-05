@@ -10,6 +10,7 @@ import NbaNameFilter from '../nba/NbaNameFilter.astro';
 import NbaRosterTable from '../nba/NbaRosterTable.astro';
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import TeamSeasonBlock from '../nba/TeamSeasonBlock.astro';
+import NeighborRanks from '../leaderboards/NeighborRanks.astro';
 import { fmtInt, fmtPct } from '../../nba/format';
 import { teamHref, withParams } from '../../nba/links';
 import { placeholderNote } from '../../nba/data/placeholder';
@@ -19,7 +20,7 @@ import { dashboardScope, isNcaaDashboards, NCAA_USAGE_NOTE } from '../../basketb
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaTeamParams }
-const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode, coverage, empty, noPlayers, seasonBlock } = Astro.props.data;
+const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode, coverage, empty, noPlayers, seasonBlock, neighbors } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -51,9 +52,15 @@ const defaults = { season: String(current) };
           {!empty && !noPlayers && (<a href={withParams(lp('/players'), { season: String(season), team: byIdPlayers ? String(team.team_id) : team.tricode }, { season: String(current), team: byIdPlayers ? '' : ft ? ft.tricode(season) : 'ALL' })}>{team.tricode} player list &rarr;</a>)}
         </div>
       </div>
-    </div>{seasonBlock !== undefined && (<TeamSeasonBlock data={seasonBlock} season={season} espnId={team.espn_id || team.team_id} teamName={team.name} />)}
+    </div>{seasonBlock !== undefined && (<TeamSeasonBlock data={seasonBlock} season={season} espnId={team.espn_id || team.team_id} teamName={team.name} />)}{neighbors !== undefined && (<section id="nearby-ranks" aria-label="Nearby ranks" class="mb-4">
+      <h2 class="h5">Nearby ranks</h2>
+      {neighbors === null ? (<p class="text-muted" id="nearby-unavailable">The nearby ranks are temporarily unavailable.</p>)
+        : neighbors.length === 0 ? (<p class="text-muted" id="nearby-empty">{team.name} has no {label} ranks yet.</p>)
+        : (<Fragment><p class="small text-muted">The teams ranked within five places of {team.name} on each measure, {label}; 1 is best (the lowest defensive rating).</p>
+      <NeighborRanks lists={neighbors} kind="team" /></Fragment>)}
+    </section>)}
     {empty ? (<p class="text-muted" id="nba-empty">{emptyNote}</p>) : (<Fragment><nav aria-label="On this page" class="small mb-3">
-      <span class="text-muted">On this page:</span>{seasonBlock !== undefined && (<a href="#season" class="ms-2">Season</a>)}
+      <span class="text-muted">On this page:</span>{seasonBlock !== undefined && (<a href="#season" class="ms-2">Season</a>)}{neighbors !== undefined && (<a href="#nearby-ranks" class="ms-2">Nearby ranks</a>)}
       <a href="#charts" class="ms-2">Shot charts</a>
       <a href="#roster" class="ms-2">Roster</a>
     </nav>

@@ -4,6 +4,7 @@
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import NbaHeadshot from '../nba/NbaHeadshot.astro';
 import NbaRankLists from '../nba/NbaRankLists.astro';
+import NeighborRanks from '../leaderboards/NeighborRanks.astro';
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import PlayerExplorer from '../nba/PlayerExplorer.svelte';
 import { fmtDec, fmtInt, fmtPct } from '../../nba/format';
@@ -15,7 +16,7 @@ import { dashboardScope, isNcaaDashboards, NCAA_USAGE_NOTE } from '../../basketb
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaPlayerParams }
-const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons, min, unlocated, coverage } = Astro.props.data;
+const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons, min, unlocated, coverage, neighbors } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -30,7 +31,7 @@ const title = `${player.player_name}, ${label} shooting | Game on Paper`;
 const description = `${player.player_name} (${teams.join(', ')}) ${label}: ${fmtInt(line.makes)}/${fmtInt(line.attempts)} FG, ${fmtPct(line.fgPct)} FG%, ${fmtPct(line.efgPct)} eFG%. Hex shot chart, shooting signature and distance and side splits against the league.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Players', url: `${lp('/players')}${q}`, active: false }, { title: player.player_name, active: true }];
 const subject = `${player.player_name} ${label}`;
-const sections = [['#ranks', 'League ranks'], ...(explorer.games ? [['#nba-games-panel', 'Games']] : []), ['#charts', 'Shot charts'], ...(explorer.games ? [['#nba-rolling-panel', 'Rolling shooting'], ['#nba-versus-panel', 'Versus each opponent']] : [])];
+const sections = [['#ranks', 'League ranks'], ...(neighbors !== undefined ? [['#nearby-ranks', 'Nearby ranks']] : []), ...(explorer.games ? [['#nba-games-panel', 'Games']] : []), ['#charts', 'Shot charts'], ...(explorer.games ? [['#nba-rolling-panel', 'Rolling shooting'], ['#nba-versus-panel', 'Versus each opponent']] : [])];
 ---
 <GenericPage title={title} subtitle={description} slug={lp(`/players/${player.person_id}`)} breadcrumbs={breadcrumbs} description={description} canonicalPath={playerHref(player.person_id, q, league)}>
   <div class="container">
@@ -51,7 +52,13 @@ const sections = [['#ranks', 'League ranks'], ...(explorer.games ? [['#nba-games
       <span class="text-muted">On this page:</span>
       {sections.map(([href, text]) => (<a href={href} class="ms-2">{text}</a>))}
     </nav>
-    <NbaRankLists ranks={ranks} personId={player.person_id} seasonQuery={q} min={min} {...(scope.noun === 'regular season' ? {} : { scope: scope.noun })} />
+    <NbaRankLists ranks={ranks} personId={player.person_id} seasonQuery={q} min={min} {...(scope.noun === 'regular season' ? {} : { scope: scope.noun })} />{neighbors !== undefined && (<section id="nearby-ranks" aria-label="Nearby ranks" class="mb-3">
+      <h2 class="h5">Nearby ranks</h2>
+      {neighbors === null ? (<p class="text-muted" id="nearby-unavailable">The nearby ranks are temporarily unavailable.</p>)
+        : neighbors.length === 0 ? (<p class="text-muted" id="nearby-empty">{player.player_name} has no {label} regular-season ranks.</p>)
+        : (<Fragment><p class="small text-muted">The players ranked within five places of {player.player_name} on each measure, {label} regular season, in {name}.com's own ranks over every player who appeared; 1 is best.</p>
+      <NeighborRanks lists={neighbors} kind="player" /></Fragment>)}
+    </section>)}
     {unlocated && <p class="small text-muted">{placeholderNote(unlocated.count, unlocated.total, 'season')}</p>}
     <PlayerExplorer client:load data={explorer} subject={subject} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} {...(scope.leagueLines === 'full regular season' ? {} : { leagueLines: scope.leagueLines })} />
     <nav aria-label={`${player.team_tricode} players`} class="d-flex justify-content-between small mt-3">
