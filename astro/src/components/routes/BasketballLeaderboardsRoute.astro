@@ -6,7 +6,7 @@
 // and the headers are grouped two rows deep (spec §4.2). Every select is a select of URLs (the Cup page's pattern).
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import type { LeaderboardsParams } from '../../routes/basketball/leaderboards';
-import { BASIS_LABEL, BOARD_LABEL, BOARDS, TEAM_GROUP_LABEL, TEAM_GROUPS, UNIT_SIZES, IMPACT_QUALIFIED_POSS, cellOf, labelFor, ncaaName, offeredBases, type Col } from '../../utils/leaderboards';
+import { BASIS_LABEL, BOARD_LABEL, BOARDS, TEAM_GROUP_LABEL, TEAM_GROUPS, UNIT_SIZES, IMPACT_QUALIFIED_POSS, cellOf, labelFor, shown, ncaaName, offeredBases, type Col } from '../../utils/leaderboards';
 import { IMPACT_FLOOR, LINEUP_FLOOR, BOARD_CAP } from '../../resources/leaderboards';
 import { fmtDec, fmtInt, fmtPct } from '../../nba/format';
 import { playerHref, seasonQuery, teamHrefFromEspn, withParams } from '../../nba/links';
@@ -55,7 +55,7 @@ const fmt = (c: Col, v: number | null): string => {
 };
 const cell = (r: Record<string, unknown>, c: Col) => {
     const x = cellOf(r, c, basis);
-    const v = view === 'percentiles' ? x.pct : x.value;
+    const v = shown(r, c, basis, view); // the number sortRows orders by (spec §4.3)
     const cls = c.noShade ? null : generateColorRampValue(x.pct, 100);
     const hint = x.rank == null ? undefined : `Rank ${formatRank(x.rank)}${x.pct == null ? '' : `, percentile ${fmtDec(x.pct, 0)}`}`;
     return { text: fmt(c, v), cls, hint };
