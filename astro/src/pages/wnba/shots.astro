@@ -1,0 +1,17 @@
+---
+// src/pages/wnba/shots.astro
+import LeagueShotsRoute from '../../components/routes/LeagueShotsRoute.astro';
+import { prepareLeagueShots } from '../../routes/basketball/leagueShots';
+import { unavailable } from '../../routes/basketball/cache';
+import { isFeatureEnabled } from '../../utils/features';
+
+if (!isFeatureEnabled('bball-league-shots', Astro.locals)) {
+    return Astro.rewrite('/404');
+}
+const r = await prepareLeagueShots(Astro, 'wnba');
+if ('unavailable' in r) {
+    return unavailable('wnba');
+}
+---
+
+<LeagueShotsRoute data={r} />

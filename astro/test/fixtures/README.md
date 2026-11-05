@@ -777,3 +777,14 @@ and `nba_cup_overtime_2027.parquet`), which sdv-db pins equal to the live call. 
 **Used by:** `test/nbaCup.test.ts`.
 
 **To regenerate:** rerun both producers on sdv-db main's fixtures, write the rows as JSON (dates as ISO strings) and gzip.
+
+## `nba/league_context_squares_2026.json` / `mbb/dashboards/league_squares_2026.json`
+Real Data API reads of 2025-26 `shot_league_context` captured 2026-11-05, after sdv-db #191's Nov 4 rebuild (BB-D1):
+`/v1/nba_stats/shot_league_context?season=2026&kind=zone&limit=10` (6 rows) followed by `?season=2026&kind=square&limit=1500`
+(376 rows; attempts sum to 219,159, the zone rows' sum and the season-player rows' sum), and
+`/v1/mbb/shot_league_context?season=2026&kind=square&limit=1500` (468 rows, 707,869 attempts). Each read is one page
+(`next: null`). The response's `data` arrays, concatenated, no edits.
+
+**Used by:** `test/basketball/leagueShots.test.ts`.
+
+**To regenerate:** re-fetch the URLs with a read key and write the `data` arrays (zone rows first for the NBA file).

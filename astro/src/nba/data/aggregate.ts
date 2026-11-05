@@ -229,15 +229,25 @@ export function leagueSquares(index: LeagueHexIndex, sideTenths: number): League
 }
 
 const squareKeys = new WeakMap<LeagueHexIndex, Map<number, Map<string, LeagueHex>>>();
+const cellKeys = new WeakMap<readonly LeagueHex[], Map<string, LeagueHex>>();
 
-/** Player squares with the league FG% of the same square, falling back to the zone as `hexesVsLeague` does. */
-export function squaresVsLeague(player: ShotLite[], league: LeagueHexIndex, sideTenths: number, minLeague = LEAGUE_PRIOR_ATTEMPTS, court: Court = COURT): HexVsLeague[] {
-  let bySide = squareKeys.get(league);
-  if (!bySide) squareKeys.set(league, (bySide = new Map()));
-  let squares = bySide.get(sideTenths);
-  if (!squares) bySide.set(sideTenths, (squares = new Map(leagueSquares(league, sideTenths).map((c) => [`${c.x},${c.y}`, c]))));
+/**
+ * Player squares with the league FG% of the same square, falling back to the zone as `hexesVsLeague` does. `cells` are the
+ * league's exact squares at `sideTenths` (sdv-db's `kind='square'` rows, `leagueSquaresFromRows`); without them the squares
+ * are rebuilt from the hexes (`leagueSquares`).
+ */
+export function squaresVsLeague(player: ShotLite[], league: LeagueHexIndex, sideTenths: number, minLeague = LEAGUE_PRIOR_ATTEMPTS, court: Court = COURT, cells?: readonly LeagueHex[]): HexVsLeague[] {
+  let squares = cells && cellKeys.get(cells);
+  if (cells && !squares) cellKeys.set(cells, (squares = new Map(cells.map((c) => [`${c.x},${c.y}`, c]))));
+  if (!squares) {
+    let bySide = squareKeys.get(league);
+    if (!bySide) squareKeys.set(league, (bySide = new Map()));
+    squares = bySide.get(sideTenths);
+    if (!squares) bySide.set(sideTenths, (squares = new Map(leagueSquares(league, sideTenths).map((c) => [`${c.x},${c.y}`, c]))));
+  }
+  const bySquare = squares;
   return squarebinShots(player, sideTenths, court).map((h) => {
-    const l = squares.get(`${h.x},${h.y}`);
+    const l = bySquare.get(`${h.x},${h.y}`);
     return { ...h, leagueFgPct: l && l.attempts >= minLeague ? l.fgPct : league.zones[h.zone].fgPct };
   });
 }

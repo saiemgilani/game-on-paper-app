@@ -1,0 +1,53 @@
+---
+// src/components/routes/LeagueShotsRoute.astro
+// BB-G16 ('bball-league-shots'): every team's square shot chart on one page. routes/basketball/leagueShots.ts reads the data.
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import LeagueShots from '../nba/LeagueShots.svelte';
+import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
+import { teamHref } from '../../nba/links';
+import type { LeagueShotsParams } from '../../routes/basketball/leagueShots';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+import { dashboardScope } from '../../basketball/dashboards';
+import { LEAGUES, leaguePath } from '../../utils/league';
+
+interface Props { data: LeagueShotsParams }
+const { season, seasons, current, q, teams, side, cap, court, conferences, conference, coverage, noLeagueSquares } = Astro.props.data;
+const league = basketball(Astro.locals.league).league;
+const name = LEAGUES[league].shortName;
+const lp = (p: string) => leaguePath(league, p);
+const label = seasonLabelFor(league, season);
+const scope = dashboardScope(league, season);
+const confLabel = conferences?.find((o) => o.slug === conference)?.label;
+const here = lp('/shots');
+const title = `${name} shot charts, ${confLabel ? `${confLabel}, ` : ''}${label} | Game on Paper`;
+const subtitle = `Every ${confLabel ? `${confLabel} ` : ''}team's ${label} ${scope.adj} shot chart, from ${scope.source}: 2.5 ft squares sized by attempts, coloured by FG% against the league from the same square.`;
+const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Shot charts', active: true }];
+const keep = conference && Astro.url.searchParams.get('conference') === conference ? { conference } : undefined;
+const small = teams.map((t) => ({
+    id: t.team.team_id, tricode: t.team.tricode, name: t.team.name, href: teamHref(t.team.team_id, q, league),
+    attempts: t.line.attempts, fgPct: t.line.fgPct, cells: t.cells,
+}));
+---
+<GenericPage title={title} subtitle={subtitle} slug={here} breadcrumbs={breadcrumbs} canonicalPath={`${here}${q}`}>
+  <div class="container">
+    <div class="row mb-3">
+      <div class="col-12">
+        <h1 class="h3">Shot charts, {confLabel ? `${confLabel}, ` : ''}{label}</h1>
+        <p class="text-muted">{subtitle}</p>
+        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={here} {...(keep ? { params: keep } : {})} />{conferences && conferences.length > 0 && (
+          <form method="get" action={here} class="mt-2">
+            {season !== current && (<input type="hidden" name="season" value={String(season)} />)}
+            <label class="visually-hidden" for="league-shots-conference">Conference</label>
+            <select id="league-shots-conference" name="conference" class="form-select form-select-sm w-auto d-inline-block" onchange="this.form.submit()">
+              {conferences.map((o) => <option value={o.slug} selected={conference === o.slug}>{o.label}</option>)}
+            </select>
+            <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button></noscript>
+          </form>)}{coverage && (<p class="small text-muted mt-2" id="nba-coverage">{coverage}</p>)}
+        {noLeagueSquares && (<p class="small text-muted mt-2">The league's square rates are not published for {label} yet, so every square is coloured against its zone's rate.</p>)}
+      </div>
+    </div>
+    {teams.length === 0
+      ? (<p class="text-muted">No {scope.adj} shots in {label} yet.</p>)
+      : (<LeagueShots client:load teams={small} side={side} cap={cap} {...(court ? { court } : {})} />)}
+  </div>
+</GenericPage>
