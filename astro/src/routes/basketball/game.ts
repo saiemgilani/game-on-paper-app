@@ -14,6 +14,7 @@ import { gopStorage } from '../../utils/telemetry';
 import type { BasketballLeague } from '../../utils/league';
 import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBox';
 import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
+import { hasEpv, retrieveEpvBox, type EpvBoxReads } from '../../resources/epvBox';
 import { seasonCache, setCache, uncacheable } from './cache';
 
 /** The admin source tool's data (components/nba/game/NbaAdminSourceTools.astro); only an admin on the 'source-switch' path gets it. */
@@ -29,7 +30,8 @@ export interface BasketballSourceTools {
 export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { pregame: true; espnGame: ESPNPlayByPlayResponse }
     /** `impact`: BB-G1, only with 'bball-impact-box' on and a final; null when a read failed (the panel says so) */
     /** `flow`: BB-G28, only with 'bball-game-flow' on and a final; null when its read failed (the lead chart still draws) */
-    | { game: NbaGame; sourceTools?: BasketballSourceTools; impact?: ImpactBoxReads | null; flow?: GameFlowReads | null };
+    /** `epv`: BB-G26, only with 'bball-epv' on and an NBA final from 2021-22; null when a read failed (the panel says so) */
+    | { game: NbaGame; sourceTools?: BasketballSourceTools; impact?: ImpactBoxReads | null; flow?: GameFlowReads | null; epv?: EpvBoxReads | null };
 
 /**
  * The registry and, for a non-ESPN selection, the ESPN side of the compare -- the ordinary no-`source` processor request,
@@ -85,19 +87,21 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     if (!('game' in r) || !r.game.status.completed || r.game.season == null) return r;
     const withImpact = isFeatureEnabled('bball-impact-box', Astro.locals);
     const withFlow = isFeatureEnabled('bball-game-flow', Astro.locals);
-    if (!withImpact && !withFlow) return r;
-    const [impact, flow] = await Promise.all([
+    const withEpv = isFeatureEnabled('bball-epv', Astro.locals) && hasEpv(league, r.game.season);
+    if (!withImpact && !withFlow && !withEpv) return r;
+    const [impact, flow, epv] = await Promise.all([
         withImpact ? readPanel('impact box', league, r.game, r.game.season, retrieveImpactBox) : undefined,
         withFlow ? readPanel('game flow', league, r.game, r.game.season, retrieveGameFlow) : undefined,
+        withEpv ? readPanel('EPV box', league, r.game, r.game.season, retrieveEpvBox) : undefined,
     ]);
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
-    if (impact === null || flow === null) uncacheable(Astro);
-    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away))) setCache(Astro, seasonCache(league));
-    return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}) };
+    if (impact === null || flow === null || epv === null) uncacheable(Astro);
+    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || epv?.players.length === 0)) setCache(Astro, seasonCache(league));
+    return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}), ...(epv !== undefined ? { epv } : {}) };
 }
 
-/** A game panel's reads (BB-G1's Impact box, BB-G28's Game flow) by the season and the ESPN ids; null when any failed. */
+/** A game panel's reads (BB-G1's Impact box, BB-G28's Game flow, BB-G26's EPV box) by the season and the ESPN ids; null when any failed. */
 async function readPanel<T>(what: string, league: BasketballLeague, game: NbaGame, season: number,
     read: (league: BasketballLeague, season: number, espnGameId: string, homeId: number, awayId: number) => Promise<T>): Promise<T | null> {
     try {
