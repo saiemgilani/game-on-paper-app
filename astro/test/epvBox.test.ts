@@ -28,8 +28,9 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         const c = api.cap;
         if (table === 'schedule_crosswalk') return c.crosswalk;
         if (table === 'player_box') return c.names;
-        if (table === 'epv_player_games') return c.players;
-        if (table === 'epv_team_games') return c.teams;
+        // the cap applies, so a lowered limit would drop rows and fail the tests below
+        if (table === 'epv_player_games') return c.players.slice(0, Number(query.limit));
+        if (table === 'epv_team_games') return c.teams.slice(0, Number(query.limit));
         throw new Error(`unexpected table ${table}`);
     },
 }));
@@ -89,9 +90,10 @@ describe('retrieveEpvBox', () => {
         for (const c of rest) {
             expect(c.schema).toBe('nba_stats');
             expect(c.query).toMatchObject({ season: '2025', game_id: '0022400003' });
-            expect(Number(c.query.limit)).toBeLessThanOrEqual(80);
         }
-        expect(rest.find((c) => c.table === 'epv_team_games')!.query.limit).toBe('2');
+        expect(Object.fromEntries(rest.map((c) => [c.table, c.query.limit]))).toEqual({ epv_player_games: '80', epv_team_games: '2', player_box: '80' });
+        expect(r.players).toHaveLength(CAP.players.length);
+        expect(r.team).toHaveLength(2);
         expect(r.gameId).toBe('0022400003');
         expect(r.teams).toEqual({ home: HOME, away: AWAY });
     });
@@ -172,6 +174,13 @@ describe('prepareBasketballGame with the flag', () => {
         expect('epv' in r && r.epv?.players).toEqual([]);
         expect((cache.at(-1) as any).maxAge).toBe(6 * 60 * 60);
     });
+    test('on, player rows but a team row missing: held for the season window too', async () => {
+        const pre = await reads();
+        box.fn = async () => ({ ...pre, team: pre.team.slice(0, 1) }); ingested();
+        const { astro, cache } = fakeAstro({ preview: true });
+        await prepareBasketballGame(astro, 'nba');
+        expect((cache.at(-1) as any).maxAge).toBe(6 * 60 * 60);
+    });
     test('on, a failed read: the page renders, the epv is null, nothing is cached', async () => {
         box.fn = async () => { throw new Error('down'); }; ingested();
         const { astro, cache, headers } = fakeAstro({ preview: true });
@@ -209,6 +218,12 @@ describe('NbaEpvBox', () => {
         expect(html).not.toContain('undefined');
         expect(html).not.toContain('NaN');
         expect(html).not.toContain('>#');
+    });
+    test('a value that rounds to zero has no sign', async () => {
+        const pre = await reads();
+        const html = await render({ ...pre, team: pre.team.map((t) => ({ ...t, off_epv_per_poss: -0.004 })) });
+        expect(table(html, 'Team EPV')).not.toContain('−0.00');
+        expect(table(html, 'Team EPV')).toContain('>0.00<');
     });
     test('a failed read says unavailable; an unbuilt game says so', async () => {
         expect(await render(null)).toContain('id="epv-unavailable"');

@@ -12,7 +12,8 @@ interface Props { game: NbaGame; epv: EpvBoxReads | null }
 const { game, epv } = Astro.props;
 const dash = '—';
 const minus = '−';
-const signed = (v: number | null | undefined, digits = 1) => (v == null ? dash : v > 0 ? `+${v.toFixed(digits)}` : v < 0 ? `${minus}${Math.abs(v).toFixed(digits)}` : (0).toFixed(digits));
+// the sign of the rounded value, so -0.04 reads 0.0, not −0.0
+const signed = (v: number | null | undefined, digits = 1) => { if (v == null) return dash; const r = Number(v.toFixed(digits)); return r > 0 ? `+${r.toFixed(digits)}` : r < 0 ? `${minus}${Math.abs(r).toFixed(digits)}` : (0).toFixed(digits); };
 const int = (v: number | null | undefined) => (v == null ? dash : fmtInt(v));
 const perPoss = (v: number | null | undefined) => (v == null ? dash : signed(v, 2));
 const built = epv && epv.players.length > 0;
