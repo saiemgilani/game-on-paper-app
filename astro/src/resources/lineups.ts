@@ -66,14 +66,17 @@ export interface LineupReads {
     names: NcaaNameRow[];
 }
 
+/** College: the names of a team-season's stats.ncaa.org player ids (ESPN team id); [] for the NBA/WNBA. Strict. */
+export async function retrieveNcaaNames(league: BasketballLeague, season: number, teamId: number): Promise<NcaaNameRow[]> {
+    if (!isNcaaDashboards(league)) return [];
+    return retrieveRows<NcaaNameRow>(league, 'ncaa_player_box', { season: String(season), team_espn_team_id: String(teamId), select: 'player_id,clean_name', limit: NAME_LIMIT }, TTL, true);
+}
+
 /** One unit size of one team-season, most possessions first, over the gate; college adds its players' names. */
 export async function retrieveLineups(league: BasketballLeague, season: number, teamId: number, size: UnitSize): Promise<LineupReads> {
-    const s = String(season);
     const [units, names] = await Promise.all([
-        retrieveRows<LineupRow>(league, 'lineup_seasons', { season: s, team_id: String(teamId), n_players: String(size), poss__gte: String(MIN_POSS[league]), order: '-poss', select: SELECT, limit: String(UNIT_LIMIT) }, TTL, true),
-        isNcaaDashboards(league)
-            ? retrieveRows<NcaaNameRow>(league, 'ncaa_player_box', { season: s, team_espn_team_id: String(teamId), select: 'player_id,clean_name', limit: NAME_LIMIT }, TTL, true)
-            : Promise.resolve([]),
+        retrieveRows<LineupRow>(league, 'lineup_seasons', { season: String(season), team_id: String(teamId), n_players: String(size), poss__gte: String(MIN_POSS[league]), order: '-poss', select: SELECT, limit: String(UNIT_LIMIT) }, TTL, true),
+        retrieveNcaaNames(league, season, teamId),
     ]);
     return { units, names };
 }

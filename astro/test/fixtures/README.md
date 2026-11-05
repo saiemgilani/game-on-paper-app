@@ -807,3 +807,23 @@ reads were captured live on 2026-11-05; nothing is edited. The tests apply the A
 **To regenerate:** read the two parquets from sdv-db main, filter `team_id`, select the columns above, write the rows as
 JSON with the two name reads (season filter and limit as above, never unfiltered) and gzip. Once the backfill runs, the
 live `lineup_seasons?season=2026&team_id=<id>&n_players=<n>&poss__gte=<gate>&order=-poss&limit=100` reads replace them.
+
+## `situations-nba-2024.json.gz`, `situations-mbb-2025.json.gz`
+The Situations section's reads (BB-G25, `resources/situational.ts`) before sdv-db's situational backfill: sdv-db's committed
+producer fixtures `tests/fixtures/season_products/{nba_situational_*_2024,mbb_situational_*_2025}.parquet` (sportsdataverse-py
+#1111's `nba_situational_team/_player/_lineup(2024)` and `mbb_situational_*(2025)` over the real games of sdv-py's
+`tests/fixtures/bb_situational`), filtered to one team and projected to the module's `select` columns (plus `team_id`), as
+`{team, players, lineups, names}`. NBA: the Minnesota Timberwolves 2023-24 (`team_id` 1610612750, every regular-season
+game): its 24 split rows, 393 player rows and the 1,293 rows of its 66 five-man units that pass the product's gate (50
+possessions, offense plus defense, in the `all` split; sdv-db #199 keeps every split of each), with `names` the `data` of
+`/v1/nba_stats/shot_season_players?season=2024&team_id=1610612750&select=person_id,player_name,team_id&limit=60`. MBB:
+Michigan State 2024-25 (ESPN 127, every game): 21 split rows, 247 player rows, the 472 rows of its 27 gated units, with
+`names` the `data` of `/v1/mbb/ncaa_player_box?season=2025&team_espn_team_id=127&select=player_id,clean_name&limit=2000`.
+The name reads were captured live on 2026-11-05; nothing is edited. The tests apply the API's own filter (`family`,
+`split`, `order=-poss`, `limit`) to `players` and `lineups`.
+
+**Used by:** `test/situations.test.ts`.
+
+**To regenerate:** read the six parquets from sdv-db main, filter `team_id`, apply the lineup gate above, select the columns,
+write the rows as JSON with the two name reads (season filter and limit as above, never unfiltered) and gzip. Once the
+backfill runs, the live `situational_{team,player,lineup}?season=<s>&team_id=<id>[&family=&split=&order=-poss]` reads replace them.
