@@ -816,3 +816,17 @@ player, so one capture covers several players; the page reads one player (`playe
 **Used by:** `test/playerImpact.test.ts`.
 
 **To regenerate:** rerun the four reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `play-styles.json.gz`
+The play-style tables behind BB-G17's chips (`resources/playStyles.ts`), before their Data API backfill: sdv-db #200's
+committed producer output (`tests/fixtures/season_products/` on `feat/bb-d20-play-styles` at ba0df024, from
+sportsdataverse-py #1112 reading the published releases; nothing synthetic or edited), as `{nbaPlayers, nbaTeams, mbbPlayers}`
+(every row and column of each parquet, `json.dumps` of polars' `to_dicts()`):
+`nba_player_play_styles_2025.parquet` (318 rows, 2024-25), `nba_team_play_styles_2025.parquet` (30) and
+`mbb_player_play_styles_2026.parquet` (42 rows of 2025-26, the six smallest ESPN team ids). In the database college `team_id`
+is a bigint; the parquet carries it as text, and the page never reads it.
+
+**Used by:** `test/playStyles.test.ts`.
+
+**To regenerate:** once the backfill has run, capture the module's three reads live (season filter and limit as in
+`resources/playStyles.ts`, never unfiltered) in place of these rows, wrap them as above and gzip.

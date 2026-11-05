@@ -11,6 +11,7 @@ import NbaRosterTable from '../nba/NbaRosterTable.astro';
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import TeamSeasonBlock from '../nba/TeamSeasonBlock.astro';
 import TeamShotQuality from '../nba/TeamShotQuality.astro';
+import PlayStyleChips from '../nba/PlayStyleChips.astro';
 import { fmtInt, fmtPct } from '../../nba/format';
 import { teamHref, withParams } from '../../nba/links';
 import { placeholderNote } from '../../nba/data/placeholder';
@@ -20,7 +21,7 @@ import { dashboardScope, isNcaaDashboards, NCAA_USAGE_NOTE } from '../../basketb
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaTeamParams }
-const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode, coverage, empty, noPlayers, seasonBlock, poe } = Astro.props.data;
+const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode, coverage, empty, noPlayers, seasonBlock, poe, playStyles } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -48,7 +49,7 @@ const poeShown = poe === null || (poe !== undefined && poe.some((r) => r.level =
       <div class="col">
         <h1 class="h3 mb-1">{team.tricode} <span class="fw-normal">{team.name}</span></h1>
         <p class="text-muted mb-1">{label} {scope.noun}</p>
-        {!empty && (<p class="numeral mb-2" id="nba-line">{fmtInt(line.makes)}/{fmtInt(line.attempts)} FG &middot; {fmtPct(line.fgPct)} FG% &middot; {fmtPct(line.efgPct)} eFG% &middot; {fmtPct(line.fg3Pct)} 3P%</p>)}{coverage && (<p class="small text-muted mb-2" id="nba-coverage">{coverage}</p>)}
+        {!empty && (<p class="numeral mb-2" id="nba-line">{fmtInt(line.makes)}/{fmtInt(line.attempts)} FG &middot; {fmtPct(line.fgPct)} FG% &middot; {fmtPct(line.efgPct)} eFG% &middot; {fmtPct(line.fg3Pct)} 3P%</p>)}{coverage && (<p class="small text-muted mb-2" id="nba-coverage">{coverage}</p>)}{playStyles !== undefined && <PlayStyleChips chips={playStyles} detail />}
         <div class="d-flex flex-wrap align-items-center gap-3">
           <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={basePath} />
           {!empty && !noPlayers && (<a href={withParams(lp('/players'), { season: String(season), team: byIdPlayers ? String(team.team_id) : team.tricode }, { season: String(current), team: byIdPlayers ? '' : ft ? ft.tricode(season) : 'ALL' })}>{team.tricode} player list &rarr;</a>)}

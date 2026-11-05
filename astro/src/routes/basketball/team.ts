@@ -15,10 +15,12 @@ import type { Team } from '../../nba/data/teams';
 import type { SortDir } from '../../nba/table';
 import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterRows, teamsFromSeasonRows, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
 import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
+import { retrieveTeamPlayStyle } from '../../resources/playStyles';
 import { retrieveTeamShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
 import { isFeatureEnabled } from '../../utils/features';
 import type { BasketballLeague } from '../../utils/league';
+import { teamPlayStyles, type PlayStyleChip } from '../../utils/playStyles';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
 
@@ -45,6 +47,8 @@ export interface BasketballTeamParams {
     seasonBlock?: TeamSeasonReads | null;
     /** BB-G15, only with 'bball-poe' on: the team-season's shot quality rows (team and shooters); null when the read failed */
     poe?: ShotQualityRow[] | null;
+    /** BB-G17, only with 'bball-play-styles' on, NBA only: the team's defensive play-style chip; null when the read failed */
+    playStyles?: PlayStyleChip[] | null;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -109,10 +113,15 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     // read only once the page will render: a 404 or 503 never spends the five reads
     const flagged = isFeatureEnabled('bball-team-season', Astro.locals);
     const poeOn = isFeatureEnabled('bball-poe', Astro.locals); // BB-G15
-    const [seasonBlock, poe] = await Promise.all([flagged ? readSeasonBlock(league, season, teamId) : undefined, poeOn ? readTeamPoe(league, season, teamId) : undefined]);
-    // both are decorative: a failed read renders the rest of the page, never cached
-    if (seasonBlock === null || poe === null) uncacheable(Astro);
-    const block = { ...(flagged ? { seasonBlock } : {}), ...(poeOn ? { poe } : {}) };
+    const stylesOn = isFeatureEnabled('bball-play-styles', Astro.locals) && league === 'nba'; // BB-G17: only the NBA has team styles
+    const [seasonBlock, poe, playStyles] = await Promise.all([
+        flagged ? readSeasonBlock(league, season, teamId) : undefined,
+        poeOn ? readTeamPoe(league, season, teamId) : undefined,
+        stylesOn ? readTeamPlayStyles(season, teamId) : undefined,
+    ]);
+    // all decorative: a failed read renders the rest of the page, never cached
+    if (seasonBlock === null || poe === null || playStyles === null) uncacheable(Astro);
+    const block = { ...(flagged ? { seasonBlock } : {}), ...(poeOn ? { poe } : {}), ...(stylesOn ? { playStyles } : {}) };
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);
@@ -143,6 +152,16 @@ async function readSeasonBlock(league: BasketballLeague, season: number, teamId:
         return await retrieveTeamSeason(league, season, teamId, espnId);
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} season block for team ${teamId}: ${e}, ${e?.stack}`);
+        return null;
+    }
+}
+
+/** BB-G17's read (the stats.nba.com team id, the page's) as the defensive chip; null when it failed. */
+async function readTeamPlayStyles(season: number, teamId: number): Promise<PlayStyleChip[] | null> {
+    try {
+        return teamPlayStyles(await retrieveTeamPlayStyle(season, teamId));
+    } catch (e: any) {
+        console.error(`ERROR while loading the nba ${season} play style for team ${teamId}: ${e}, ${e?.stack}`);
         return null;
     }
 }
