@@ -14,9 +14,11 @@ import { shootingLine, type ShootingLine } from '../../nba/data/aggregate';
 import type { Team } from '../../nba/data/teams';
 import type { SortDir } from '../../nba/table';
 import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterRows, teamsFromSeasonRows, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
-import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
+import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots, type SeasonPlayerRow } from '../../resources/nbaShots';
+import { retrieveLineups } from '../../resources/lineups';
 import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
 import { isFeatureEnabled } from '../../utils/features';
+import { parseBasis, parseUnit, playerNames, unitLabels, type LineupsTab } from '../../utils/lineups';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
@@ -42,6 +44,8 @@ export interface BasketballTeamParams {
     noPlayers?: true;
     /** BB-G5, only with 'bball-team-season' on: the season block's reads; null when one failed (the block says so) */
     seasonBlock?: TeamSeasonReads | null;
+    /** BB-G3, only with 'bball-lineups' on: the Lineups tab's controls and units; `units` null when a read failed */
+    lineups?: LineupsTab;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -105,10 +109,14 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     if (coverage === undefined) uncacheable(Astro);
     // read only once the page will render: a 404 or 503 never spends the five reads
     const flagged = isFeatureEnabled('bball-team-season', Astro.locals);
-    const seasonBlock = flagged ? await readSeasonBlock(league, season, teamId) : undefined;
-    // the block is decorative: a failed read renders the rest of the page, never cached
-    if (seasonBlock === null) uncacheable(Astro);
-    const block = flagged ? { seasonBlock } : {};
+    const lineupsOn = isFeatureEnabled('bball-lineups', Astro.locals);
+    const [seasonBlock, lineups] = await Promise.all([
+        flagged ? readSeasonBlock(league, season, teamId) : undefined,
+        lineupsOn ? readLineups(Astro, league, season, teamId, rows) : undefined,
+    ]);
+    // the block and the tab are decorative: a failed read renders the rest of the page, never cached
+    if (seasonBlock === null || lineups?.units === null) uncacheable(Astro);
+    const block = { ...(flagged ? { seasonBlock } : {}), ...(lineupsOn ? { lineups } : {}) };
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);
@@ -140,5 +148,19 @@ async function readSeasonBlock(league: BasketballLeague, season: number, teamId:
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} season block for team ${teamId}: ${e}, ${e?.stack}`);
         return null;
+    }
+}
+
+/** The Lineups tab (BB-G3): ?unit= and ?basis=, the unit size's read, each unit's names; `units` null when a read failed. */
+async function readLineups(Astro: AstroGlobal, league: BasketballLeague, season: number, teamId: number, rows: SeasonPlayerRow[]): Promise<LineupsTab> {
+    const unit = parseUnit(Astro.url.searchParams.get('unit'));
+    const basis = parseBasis(Astro.url.searchParams.get('basis'));
+    try {
+        const { units, names } = await retrieveLineups(league, season, teamId, unit);
+        // the season rows are ESPN-keyed in college: never mix them with the units' stats.ncaa.org ids
+        return { unit, basis, units, labels: unitLabels(units, playerNames(isNcaaDashboards(league) ? [] : rows, names)) };
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} ${unit}-man lineups for team ${teamId}: ${e}, ${e?.stack}`);
+        return { unit, basis, units: null, labels: [] };
     }
 }

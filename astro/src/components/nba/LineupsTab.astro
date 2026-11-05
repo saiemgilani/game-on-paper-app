@@ -1,0 +1,90 @@
+---
+// src/components/nba/LineupsTab.astro
+// BB-G3, behind 'bball-lineups': the team page's Lineups tab. The team's 5-, 3- or 2-man units over the possession gate,
+// most possessions first, per 100 possessions (ratings and the four factors for and against) or in totals. The unit
+// size and the basis are two plain <select>s of URLs (NbaSeasonSelect's pattern: no JS island). Every number and
+// percentile is the producer's (sdv-db lineup_seasons): a cell is shaded by its league percentile on the site's
+// green-to-purple ramp where the producer ranked the unit, and left plain below its rank gate.
+import { MIN_POSS, UNIT_LIMIT, UNIT_SIZES, type LineupRow, type Rated } from '../../resources/lineups';
+import { BASES, BASIS_LABEL, DEFAULT_BASIS, DEFAULT_UNIT, type LineupsTab } from '../../utils/lineups';
+import { fmtDec, fmtInt, fmtPct } from '../../nba/format';
+import { withParams } from '../../nba/links';
+import { generateColorRampValue, generateMarginalString } from '../../utils/misc';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+
+interface Props { data: LineupsTab; season: number; current: number; basePath: string; teamName: string }
+const { data, season, current, basePath, teamName } = Astro.props;
+const league = basketball(Astro.locals.league).league;
+const label = seasonLabelFor(league, season);
+const gate = MIN_POSS[league];
+const { unit, basis, units, labels } = data;
+
+const href = (u: number, b: string) =>
+    `${withParams(basePath, { season: String(season), unit: String(u), basis: b }, { season: String(current), unit: String(DEFAULT_UNIT), basis: DEFAULT_BASIS })}#lineups`;
+
+const dash = '—';
+const shade = (pct: number | null | undefined) => generateColorRampValue(pct ?? null, 100);
+const int = (v: number | null | undefined) => (v == null ? dash : fmtInt(v));
+const rtg = (v: number | null | undefined) => (v == null ? dash : fmtDec(v, 1));
+const net = (v: number | null | undefined) => (v == null ? dash : generateMarginalString(v, 1, 1));
+const pct = (v: number | null | undefined) => (v == null ? dash : fmtPct(v));
+const rate = (v: number | null | undefined) => (v == null ? dash : fmtDec(v, 3));
+
+// per 100 possessions: the ratings, then the four factors for and against (the season block's measures)
+const PER100: { key: Rated; label: string; hover: string; fmt: (v: number | null) => string }[] = [
+    { key: 'off_rtg', label: 'ORtg', hover: 'Points scored per 100 possessions', fmt: rtg },
+    { key: 'def_rtg', label: 'DRtg', hover: 'Points allowed per 100 possessions', fmt: rtg },
+    { key: 'net_rtg', label: 'Net', hover: 'ORtg minus DRtg', fmt: net },
+    { key: 'efg_pct', label: 'eFG%', hover: 'Effective field-goal percentage: (FGM + 0.5 × 3PM) / FGA', fmt: pct },
+    { key: 'tov_pct', label: 'TOV%', hover: 'Turnovers per possession', fmt: pct },
+    { key: 'orb_pct', label: 'ORB%', hover: 'Offensive rebounds over offensive-rebound chances', fmt: pct },
+    { key: 'ft_rate', label: 'FT rate', hover: 'Free-throw attempts per field-goal attempt', fmt: rate },
+    { key: 'opp_efg_pct', label: 'Opp eFG%', hover: "The opponents' effective field-goal percentage", fmt: pct },
+    { key: 'opp_tov_pct', label: 'Opp TOV%', hover: "The opponents' turnovers per possession", fmt: pct },
+    { key: 'opp_orb_pct', label: 'Opp ORB%', hover: "The opponents' offensive rebounds over their chances", fmt: pct },
+    { key: 'opp_ft_rate', label: 'Opp FT rate', hover: "The opponents' free-throw attempts per field-goal attempt", fmt: rate },
+];
+const TOTALS: { key: keyof LineupRow; label: string; hover: string; fmt: (v: number | null) => string }[] = [
+    { key: 'opp_poss', label: 'Opp poss', hover: "The opponents' possessions against the unit", fmt: int },
+    { key: 'pts', label: 'Pts', hover: 'Points scored', fmt: int },
+    { key: 'opp_pts', label: 'Opp pts', hover: 'Points allowed', fmt: int },
+    { key: 'plus_minus', label: '+/-', hover: 'Points scored minus points allowed', fmt: (v) => (v == null ? dash : `${v > 0 ? '+' : ''}${fmtInt(v)}`) },
+];
+const capped = units !== null && units.length >= UNIT_LIMIT;
+---
+<section id="lineups" aria-label={`${label} lineups`} class="mb-4">
+  <h2 class="h5">Lineups</h2>
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+    <label class="visually-hidden" for="lineups-unit">Unit size</label>
+    <select id="lineups-unit" class="form-select form-select-sm w-auto" onchange="window.location.href = this.value">
+      {UNIT_SIZES.map((u) => (<option value={href(u, basis)} selected={u === unit}>{u}-man units</option>))}
+    </select>
+    <label class="visually-hidden" for="lineups-basis">Basis</label>
+    <select id="lineups-basis" class="form-select form-select-sm w-auto" onchange="window.location.href = this.value">
+      {BASES.map((b) => (<option value={href(unit, b)} selected={b === basis}>{BASIS_LABEL[b]}</option>))}
+    </select>
+  </div>
+  {units === null ? (<p class="text-muted" id="lineups-unavailable">The {label} lineups are temporarily unavailable.</p>) : units.length === 0 ? (<p class="text-muted" id="lineups-empty">No {teamName} {unit}-man unit has {gate} possessions in {label} yet.</p>) : (
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0" id="lineups-table">
+        <caption class="small text-muted">{capped ? `The ${fmtInt(UNIT_LIMIT)} ${unit}-man units with the most possessions` : `${fmtInt(units.length)} ${unit}-man units`}, each with at least {gate} on offense. {basis === 'per100' ? 'Shading by league percentile where the unit is ranked; a plain cell is below the rank gate.' : 'Each possession counts for the unit on the floor when it starts.'}</caption>
+        <thead><tr>
+          <th scope="col">Unit</th><th scope="col" class="text-end">Min</th><th scope="col" class="text-end">Poss</th>
+          {(basis === 'per100' ? PER100 : TOTALS).map((c) => (<th scope="col" class="text-end text-nowrap"><abbr title={c.hover}>{c.label}</abbr></th>))}
+        </tr></thead>
+        <tbody>
+          {units.map((u, i) => (
+            <tr>
+              <th scope="row" class="fw-normal text-nowrap"><span title={labels[i]?.full}>{labels[i]?.short}</span></th>
+              <td class="numeral text-end">{int(u.minutes)}</td>
+              <td class="numeral text-end">{int(u.poss)}</td>
+              {basis === 'per100'
+                ? PER100.map((c) => (<td class:list={['numeral', 'text-end', shade(u[`${c.key}_pct`])]}>{c.fmt(u[c.key])}</td>))
+                : TOTALS.map((c) => (<td class="numeral text-end">{c.fmt(u[c.key] as number | null)}</td>))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</section>
