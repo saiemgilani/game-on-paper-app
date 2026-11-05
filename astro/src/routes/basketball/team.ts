@@ -157,7 +157,8 @@ async function readLineups(Astro: AstroGlobal, league: BasketballLeague, season:
     const basis = parseBasis(Astro.url.searchParams.get('basis'));
     try {
         const { units, names } = await retrieveLineups(league, season, teamId, unit);
-        return { unit, basis, units, labels: unitLabels(units, playerNames(rows, names)) };
+        // the season rows are ESPN-keyed in college: never mix them with the units' stats.ncaa.org ids
+        return { unit, basis, units, labels: unitLabels(units, playerNames(isNcaaDashboards(league) ? [] : rows, names)) };
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} ${unit}-man lineups for team ${teamId}: ${e}, ${e?.stack}`);
         return { unit, basis, units: null, labels: [] };
