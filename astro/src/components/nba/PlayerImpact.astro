@@ -32,7 +32,7 @@ const rank = (c: ImpactCell | null) => (c?.rank == null ? '—' : formatRank(c.r
       ? (<Fragment>{fmtInt(panel.min)} MIN{panel.qualified === false && (<Fragment> &middot; below the qualifying minutes</Fragment>)}</Fragment>)
       : (<Fragment>{fmtInt(panel.offPoss)} offensive and {fmtInt(panel.defPoss)} defensive possessions &middot; {fmtInt(panel.gp)} GP &middot; {fmtInt(panel.min)} MIN</Fragment>)}
   </p>
-  <div class="table-responsive">
+  <div class="table-responsive col-lg-6 px-0">
     <table class="table table-sm align-middle mb-0" id="impact-table">
       <caption class="small text-muted">{college ? 'Box plus-minus per 100 possessions. Positive is better at both ends.' :'Per 100 possessions (WAR in wins), regular season. Positive is better at both ends.'}{ranked && ' Rank among the league’s qualified players; shading by percentile.'}{!college && ' Adjusted RAPM is shown net only.'}</caption>
       <thead><tr><th scope="col"></th>{sides.map((s) => (<Fragment><th scope="col" class="text-end">{head[s]}</th>{ranked && (<th scope="col" class="text-end">Rank</th>)}</Fragment>))}</tr></thead>
