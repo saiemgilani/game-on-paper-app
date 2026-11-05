@@ -48,7 +48,7 @@ export interface UnitLabel {
 }
 
 /** Each unit's players, named; an id with no name reads as `#<id>`. */
-export function unitLabels(units: LineupRow[], names: Map<string, string>): UnitLabel[] {
+export function unitLabels(units: Pick<LineupRow, 'player_1' | 'player_2' | 'player_3' | 'player_4' | 'player_5'>[], names: Map<string, string>): UnitLabel[] {
     const ids = units.map((u) => [u.player_1, u.player_2, u.player_3, u.player_4, u.player_5].filter((p) => p != null).map(String));
     const full = (id: string) => names.get(id) ?? `#${id}`;
     const short = dotLabels([...new Set(ids.flat().map(full))]);

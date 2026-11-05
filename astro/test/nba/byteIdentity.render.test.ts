@@ -53,6 +53,11 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
     retrieveSeasonPlayerGameRows: async () => Object.entries(byPlayer).flatMap(([pid, gs]) => gs.map((g) => gameRow(Number(pid), g))),
     retrievePlayerSeasons: async () => [2025, 2026],
 }));
+// BB-G25's Situations section is forced off below; mocked anyway, so a run with the flag flipped on (the mutation check) never reads the Data API
+vi.mock('../../src/resources/situational', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/situational')>()),
+    retrieveSituational: async () => ({ team: [], players: [], units: [], names: [] }),
+}));
 const games = { schedule: vi.fn(), rows: vi.fn(), proc: vi.fn() };
 vi.mock('../../src/resources/nbaGames', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaGames')>()),
@@ -86,8 +91,8 @@ beforeEach(() => { for (const m of [...Object.values(games), ...Object.values(es
 
 async function page(path: string, url: string, params: Record<string, string> = {}, flagOverrides?: Record<string, boolean>) {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/nba/${path}`);
-    // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture', BB-G5's team season block behind 'bball-team-season' and BB-G3's Lineups tab behind 'bball-lineups': all off here, so these pages stay byte for byte main's
-    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-lineups': false, ...flagOverrides } } as App.Locals }));
+    // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture', BB-G5's team season block behind 'bball-team-season' and BB-G3's Lineups tab behind 'bball-lineups' and BB-G25's Situations behind 'bball-situational': all off here, so these pages stay byte for byte main's
+    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-lineups': false, 'bball-situational': false, ...flagOverrides } } as App.Locals }));
 }
 const snap = (name: string) => `./__byte_identity__/${name}.html`;
 const finalPage = { gameId: 401766458, gamepackageJSON: { header: proc.header } };
