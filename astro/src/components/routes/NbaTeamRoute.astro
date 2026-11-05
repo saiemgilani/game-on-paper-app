@@ -10,6 +10,7 @@ import NbaNameFilter from '../nba/NbaNameFilter.astro';
 import NbaRosterTable from '../nba/NbaRosterTable.astro';
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import TeamSeasonBlock from '../nba/TeamSeasonBlock.astro';
+import TeamShotQuality from '../nba/TeamShotQuality.astro';
 import { fmtInt, fmtPct } from '../../nba/format';
 import { teamHref, withParams } from '../../nba/links';
 import { placeholderNote } from '../../nba/data/placeholder';
@@ -19,7 +20,7 @@ import { dashboardScope, isNcaaDashboards, NCAA_USAGE_NOTE } from '../../basketb
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaTeamParams }
-const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode, coverage, empty, noPlayers, seasonBlock } = Astro.props.data;
+const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode, coverage, empty, noPlayers, seasonBlock, poe } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -36,6 +37,8 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
 const basePath = lp(`/team/${team.team_id}`);
 const params = { season: String(season) };
 const defaults = { season: String(current) };
+// BB-G15 ('bball-poe'): the section shows for a failed read (it says so) or a season with a team row
+const poeShown = poe === null || (poe !== undefined && poe.some((r) => r.level === 'team'));
 ---
 <GenericPage title={title} subtitle={description} slug={basePath} breadcrumbs={breadcrumbs} description={description} canonicalPath={teamHref(team.team_id, q, league)}>
   <link href="/assets/css/sticky-table.css" rel="stylesheet">
@@ -51,9 +54,9 @@ const defaults = { season: String(current) };
           {!empty && !noPlayers && (<a href={withParams(lp('/players'), { season: String(season), team: byIdPlayers ? String(team.team_id) : team.tricode }, { season: String(current), team: byIdPlayers ? '' : ft ? ft.tricode(season) : 'ALL' })}>{team.tricode} player list &rarr;</a>)}
         </div>
       </div>
-    </div>{seasonBlock !== undefined && (<TeamSeasonBlock data={seasonBlock} season={season} espnId={team.espn_id || team.team_id} teamName={team.name} />)}
+    </div>{seasonBlock !== undefined && (<TeamSeasonBlock data={seasonBlock} season={season} espnId={team.espn_id || team.team_id} teamName={team.name} />)}{poeShown && (<TeamShotQuality rows={poe ?? null} season={season} seasonQuery={q} names={new Map(roster.map((r) => [r.person_id, r.name]))} />)}
     {empty ? (<p class="text-muted" id="nba-empty">{emptyNote}</p>) : (<Fragment><nav aria-label="On this page" class="small mb-3">
-      <span class="text-muted">On this page:</span>{seasonBlock !== undefined && (<a href="#season" class="ms-2">Season</a>)}
+      <span class="text-muted">On this page:</span>{seasonBlock !== undefined && (<a href="#season" class="ms-2">Season</a>)}{poeShown && (<a href="#poe" class="ms-2">Points over expected</a>)}
       <a href="#charts" class="ms-2">Shot charts</a>
       <a href="#roster" class="ms-2">Roster</a>
     </nav>

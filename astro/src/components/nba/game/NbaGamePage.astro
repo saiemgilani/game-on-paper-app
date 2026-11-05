@@ -10,6 +10,7 @@ import NbaPlayerBox from './NbaPlayerBox.astro';
 import NbaWinProbability from './NbaWinProbability.astro';
 import NbaGameShotCharts from './NbaGameShotCharts.astro';
 import NbaPlaysTable from './NbaPlaysTable.astro';
+import NbaShotQuality from './NbaShotQuality.astro';
 import { isFeatureEnabled } from '../../../utils/features';
 import { cleanAbbreviation, pickGameColors } from '../../../utils/misc';
 import { gameHref, scoreboardDayHref, teamHrefFromEspn } from '../../../nba/links';
@@ -18,9 +19,10 @@ import { LEAGUES, leaguePath } from '../../../utils/league';
 import { basketball } from '../../../basketball/config';
 import type { NbaGame } from '../../../resources/nbaGame';
 import type { BasketballSourceTools } from '../../../routes/basketball/game';
+import type { GameShotQuality } from '../../../utils/shotQuality';
 
-interface Props { game: NbaGame; /** admin + 'source-switch' only (routes/basketball/game.ts) */ sourceTools?: BasketballSourceTools }
-const { game, sourceTools } = Astro.props;
+interface Props { game: NbaGame; /** admin + 'source-switch' only (routes/basketball/game.ts) */ sourceTools?: BasketballSourceTools; /** BB-G15, 'bball-poe' only */ poe?: GameShotQuality | null }
+const { game, sourceTools, poe } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const title = `${game.away.team.displayName} ${game.away.score ?? ''} at ${game.home.team.displayName} ${game.home.score ?? ''} | Game on Paper`.replace(/\s+/g, ' ');
@@ -37,7 +39,7 @@ const colors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(g
     <NbaGameHeader game={game} />{sourceTools && <NbaAdminSourceTools game={game} tools={sourceTools} />}
     <div class="game-nav-sticky py-1 mb-3 border-top border-bottom"><NavScroller items={items} /></div>
     <Panel id="wp" title="Win probability" show={true}><div slot="panel-body"><NbaWinProbability game={game} colors={colors} /></div></Panel>
-    <Panel id="factors" title="Four factors" show={true}><div slot="panel-body"><NbaFourFactors game={game} /></div></Panel>
+    <Panel id="factors" title="Four factors" show={true}><div slot="panel-body"><NbaFourFactors game={game} />{poe !== undefined && <NbaShotQuality game={game} poe={poe} />}</div></Panel>
     <Panel id="teambox" title="Team box" show={true}><div slot="panel-body"><NbaTeamBox game={game} /></div></Panel>
     <Panel id="players" title="Players" show={true}><div slot="panel-body"><div class="row"><div class="col-12 col-xl-6"><NbaPlayerBox side={game.away} id="box-away" league={league} /></div><div class="col-12 col-xl-6"><NbaPlayerBox side={game.home} id="box-home" league={league} /></div></div></div></Panel>
     <Panel id="shots" title="Shot charts" show={true}><div slot="panel-body"><NbaGameShotCharts game={game} /></div></Panel>

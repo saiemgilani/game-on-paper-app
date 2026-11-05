@@ -1,0 +1,57 @@
+---
+// src/components/nba/TeamShotQuality.astro
+// BB-G15, behind 'bball-poe': the team page's points over expected, laid out as the season block beside it (BB-G5): the
+// team's season line, then each shooter, most points over expected first. Every number is sdv-db's shot_quality_season
+// (BB-D9); the names are the roster's. No team row (the model's warm-up season), no section.
+import type { ShotQualityRow } from '../../resources/shotQuality';
+import { fmtDec, fmtInt, fmtPts } from '../../nba/format';
+import { playerHref } from '../../nba/links';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+import { signed1, teamShooters, XPTS_NOTE } from '../../utils/shotQuality';
+
+interface Props { rows: ShotQualityRow[] | null; season: number; seasonQuery: string; names: ReadonlyMap<number, string> }
+const { rows, season, seasonQuery, names } = Astro.props;
+const league = basketball(Astro.locals.league).league;
+const label = seasonLabelFor(league, season);
+const { team, players } = teamShooters(rows ?? []);
+const dash = '—';
+// grouped like fmtInt's counts beside it (7,680.8 expected on 7,215 points)
+const dec = (v: number | null, d: number) => (v == null ? dash : v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
+const se = (r: ShotQualityRow) => (r.poe_se == null ? dash : `± ${fmtDec(r.poe_se, 1)}`);
+const oe = (v: number | null) => (v == null ? dash : fmtPts(v));
+---
+{(rows === null || team) && (
+<section id="poe" aria-label="Points over expected" class="mb-4">
+  <h2 class="h5">Points over expected</h2>
+  {rows === null || !team ? (<p class="text-muted" id="poe-unavailable">The {label} points over expected are temporarily unavailable.</p>) : (<Fragment>
+  <p class="numeral mb-2" id="poe-line">
+    <span class="fw-bold">{signed1(team.poe)}</span> {se(team)} points over expected &middot; {fmtInt(team.pts)} FG points on {fmtInt(team.attempts)} FGA, {dec(team.xpts, 1)} expected &middot; {dec(team.xpps, 2)} xPTS per shot &middot; {oe(team.fg_pct_oe)} FG% over expected
+  </p>
+  {players.length > 0 && (
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0" id="poe-players">
+        <caption class="small text-muted">Each shooter, most points over expected first. {XPTS_NOTE}</caption>
+        <thead><tr class="text-nowrap"><th scope="col">Player</th><th scope="col" class="text-end">FGA</th><th scope="col" class="text-end">FG pts</th><th scope="col" class="text-end">xPTS</th><th scope="col" class="text-end">POE</th><th scope="col" class="text-end">±</th><th scope="col" class="text-end"><abbr title="Shot quality: expected points per shot">xPTS/shot</abbr></th><th scope="col" class="text-end"><abbr title="Shot making: makes over expected makes, per shot, in percentage points">FG% OE</abbr></th></tr></thead>
+        <tbody>
+          {players.map((p) => {
+            const name = names.get(p.person_id!);
+            return (
+              <tr>
+                <th scope="row" class="text-nowrap fw-normal">{name ? (<a href={playerHref(p.person_id!, seasonQuery, league)}>{name}</a>) : (<span class="text-muted">Unnamed shooter</span>)}</th>
+                <td class="numeral text-end">{fmtInt(p.attempts)}</td>
+                <td class="numeral text-end">{fmtInt(p.pts)}</td>
+                <td class="numeral text-end">{dec(p.xpts, 1)}</td>
+                <td class="numeral text-end fw-bold">{signed1(p.poe)}</td>
+                <td class="numeral text-end text-muted small text-nowrap">{se(p)}</td>
+                <td class="numeral text-end">{dec(p.xpps, 2)}</td>
+                <td class="numeral text-end">{oe(p.fg_pct_oe)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  )}
+  </Fragment>)}
+</section>
+)}

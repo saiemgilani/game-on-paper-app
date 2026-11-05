@@ -789,3 +789,17 @@ exactly that module's queries, as `{rates, strength, home, away, gameRates}` (th
 **Used by:** `test/teamSeason.test.ts`.
 
 **To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `shot-quality.json.gz`
+The Data API reads behind points over expected (BB-G15, `resources/shotQuality.ts`), captured live on 2026-11-05 with
+exactly that module's queries and `select=` lists, as `{nbaTeam, mbbTeam, nbaPlayer, wnbaGameDay, mbbGame}` (the `data` array of each
+response, no edits): `/v1/nba_stats/shot_quality_season?season=2026&team_id=1610612751&limit=60` (the Brooklyn Nets 2025-26, team
+row and shooters), `/v1/mbb/shot_quality_season?season=2026&team_id=150&limit=60` (Duke 2025-26),
+`/v1/nba_stats/shot_quality_season?season=2026&level=player&person_id=1629008&limit=10`,
+`/v1/wnba_stats/shot_quality_game?season=2025&game_date=2025-08-01&level=team&limit=40` (every WNBA game of Aug 1 2025 ET, so
+`wnba/game_401736289_api.json`, LA at Seattle, tipped 2025-08-02T02:00Z) and
+`/v1/mbb/shot_quality_game?season=2026&game_id=401808271&level=team&limit=40` (`mbb/game_401808271_api.json`).
+
+**Used by:** `test/shotQuality.test.ts`.
+
+**To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.

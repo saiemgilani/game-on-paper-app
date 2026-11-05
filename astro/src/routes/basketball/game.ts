@@ -1,15 +1,18 @@
 // /<league>/game/[id], topology B: the Data API first (an ingested final never touches ESPN), then
 // ESPN's cdn for status and header, then the processor for a live or un-ingested game.
 import type { AstroGlobal } from 'astro';
+import { DateTime } from 'luxon';
 import { BASKETBALL } from '../../basketball/config';
 import { gameHref } from '../../nba/links';
 import { retrieveNbaGameRows, retrieveNbaProcessedGame, retrieveNbaSchedule } from '../../resources/nbaGames';
 import { fromDataApi, fromProcessor, isTrue, requiredPeriods, scheduleRegulation, type DataApiGameRows, type NbaGame } from '../../resources/nbaGame';
 import { ESPN_INVALID_GAME_STATUS_NAMES, retrieveGamePageGuarded, type ESPNPlayByPlayResponse } from '../../resources/espn';
 import { ProcessorError, retrieveGameSources } from '../../resources/python';
+import { retrieveGameShotQuality } from '../../resources/shotQuality';
 import { getBasketballGameCacheConfig } from '../../utils/config';
 import { isFeatureEnabled } from '../../utils/features';
 import { SOURCE_PARAM } from '../../utils/adminView';
+import { gameTeams, type GameShotQuality } from '../../utils/shotQuality';
 import { gopStorage } from '../../utils/telemetry';
 import type { BasketballLeague } from '../../utils/league';
 import { setCache, uncacheable } from './cache';
@@ -24,7 +27,7 @@ export interface BasketballSourceTools {
     espn: NbaGame | null
 }
 
-export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { pregame: true; espnGame: ESPNPlayByPlayResponse } | { game: NbaGame; sourceTools?: BasketballSourceTools };
+export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { pregame: true; espnGame: ESPNPlayByPlayResponse } | { game: NbaGame; sourceTools?: BasketballSourceTools; /** BB-G15, 'bball-poe' on and an ingested final only; null: the read failed */ poe?: GameShotQuality | null };
 
 /**
  * The registry and, for a non-ESPN selection, the ESPN side of the compare -- the ordinary no-`source` processor request,
@@ -101,7 +104,10 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
                 try {
                     const game = fromDataApi(rows, league); // before setCache: an adapter throw falls through like a gate failure
                     setCache(Astro, finalCache(league));
-                    return sourceSwitch ? { game, sourceTools: await sourceTools(id, league, 0, undefined) } : { game };
+                    // BB-G15: shot quality is built at the ingest tail, so only an ingested final reads it; flag off, no read
+                    const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readGamePoe(id, game, league) } : {};
+                    if (poe.poe === null) uncacheable(Astro); // decorative: a failed read keeps the page, never cached
+                    return sourceSwitch ? { game, sourceTools: await sourceTools(id, league, 0, undefined), ...poe } : { game, ...poe };
                 } catch (e: any) { bad = `adapter: ${e?.message ?? e}`; }
             }
             fellThrough = true;
@@ -158,5 +164,19 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
         console.error(`${league} game ${id}: processor failed: ${e?.message ?? e}`);
         uncacheable(Astro);
         return { unavailable: true };
+    }
+}
+
+/** BB-G15: the game's two team rows. No pair (a playoff game, the model's warm-up season) is `{}`; a failed read is null. */
+async function readGamePoe(id: string, game: NbaGame, league: BasketballLeague): Promise<GameShotQuality | null> {
+    const cfg = BASKETBALL[league];
+    if (game.season == null) return {};
+    // college keys the tables by ESPN's game id; the NBA/WNBA by the stats id, so the read is the game's day in the league's zone
+    const by = cfg.currentMembers ? { gameId: id } : { date: DateTime.fromISO(game.date, { zone: 'utc' }).setZone(cfg.scoreboardTimeZone).toISODate() ?? game.date.slice(0, 10) };
+    try {
+        return gameTeams(await retrieveGameShotQuality(league, game.season, by), league, Number(game.home.team.id), Number(game.away.team.id)) ?? {};
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} game ${id} shot quality: ${e}, ${e?.stack}`);
+        return null;
     }
 }
