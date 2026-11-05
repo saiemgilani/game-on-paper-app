@@ -39,7 +39,7 @@ const description = careers
     : `${shortName} head coaches in the ${label} season: win percentage, offensive, defensive and net rating, pace and the four factors, ranked.`;
 const breadcrumbs: PageBreadcrumb[] = [
     { title: shortName, url: leaguePath(league, '/'), active: false },
-    { title: 'Head Coaches', url: path, active: careers },
+    careers ? { title: 'Head Coaches', active: true } : { title: 'Head Coaches', url: path, active: false },
     ...(careers ? [] : [{ title: label, active: true }]),
 ];
 
