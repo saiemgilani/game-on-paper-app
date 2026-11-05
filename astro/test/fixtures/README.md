@@ -803,3 +803,16 @@ row and shooters), `/v1/mbb/shot_quality_season?season=2026&team_id=150&limit=60
 **Used by:** `test/shotQuality.test.ts`.
 
 **To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `player-impact.json.gz`
+The Data API reads behind the player page's Impact panel (BB-G6, `resources/playerImpact.ts`), captured live on 2026-11-05
+with that module's queries (no `select=`, so every column comes back), as `{nba, wnba, mbbTeam, wbbTeam}` (the `data` array of
+each response, no edits): `/v1/nba/player_impact?season=2026&season_type=Regular%20Season&player_id=1629008&limit=5` (Michael
+Porter Jr., the Nets 2025-26, the player of `nba/player_games.json`), `/v1/wnba/player_impact?season=2025&season_type=Regular%20Season&player_id=1628932&limit=5`
+(A'ja Wilson 2025), `/v1/mbb/player_value?season=2026&team_id=251&limit=40` (Texas 2025-26) and
+`/v1/wbb/player_value?season=2026&team_id=2579&limit=40` (South Carolina 2025-26). The college reads are by team, not by
+player, so one capture covers several players; the page reads one player (`player_id`).
+
+**Used by:** `test/playerImpact.test.ts`.
+
+**To regenerate:** rerun the four reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
