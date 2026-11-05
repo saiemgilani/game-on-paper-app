@@ -176,3 +176,13 @@ describe('/nba/scatter render, BB-G10', () => {
         expect(views.impact).not.toHaveBeenCalled();
     });
 });
+
+describe('/nba/scatter head, BB-G10', () => {
+    test("the team view's canonical keeps ?view=teams; its description names teams", async () => {
+        const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
+        const { default: Page } = await import('../../src/pages/nba/scatter.astro');
+        const html = await container.renderToString(Page, { request: new Request('https://gameonpaper.com/nba/scatter?season=2026&view=teams'), locals: { flagOverrides: { nba: true, ...ON } } as App.Locals });
+        expect(html).toMatch(/rel="canonical" href="[^"]*\/nba\/scatter\?season=2026&(amp;)?view=teams"/);
+        expect(html).toContain('Every NBA team in 2025-26, plotted on two ratings or four factors');
+    });
+});

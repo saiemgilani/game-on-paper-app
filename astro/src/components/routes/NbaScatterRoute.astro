@@ -34,10 +34,14 @@ const viewProps = !view ? {}
     : { metrics: [...IMPACT_METRICS, ...SCATTER_METRICS], initial: IMPACT_DEFAULT,
         tail: 'RAPM and SPM are points per 100 possessions over the regular season; shooting is season stats where the release has them, shots otherwise.' };
 const title = `${name} scatter, ${label} | Game on Paper`;
-const description = `Every ${name} player with ${min.fga}+ field-goal attempts in ${label}, plotted on two shooting or volume numbers${ft ? `, the ${ft.menuLabel} highlighted` : ''}.`;
+const description = view?.kind === 'teams'
+  ? `Every ${name} team in ${label}, plotted on two ratings or four factors${ft ? `, the ${ft.menuLabel} highlighted` : ''}.`
+  : `Every ${name} player with ${min.fga}+ field-goal attempts in ${label}, plotted on two ${view ? 'impact, shooting' : 'shooting'} or volume numbers${ft ? `, the ${ft.menuLabel} highlighted` : ''}.`;
+// the team view is its own page: its canonical keeps ?view=teams
+const canonicalQ = view?.kind === 'teams' ? `${q}${q ? '&' : '?'}view=teams` : q;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Scatter', active: true }];
 ---
-<GenericPage title={title} subtitle={description} slug={lp('/scatter')} breadcrumbs={breadcrumbs} description={description} canonicalPath={`${lp('/scatter')}${q}`}>
+<GenericPage title={title} subtitle={description} slug={lp('/scatter')} breadcrumbs={breadcrumbs} description={description} canonicalPath={`${lp('/scatter')}${canonicalQ}`}>
   <div class="container">
     <div class="row mb-3">
       <div class="col-12">

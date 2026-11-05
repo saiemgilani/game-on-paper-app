@@ -3,13 +3,14 @@
  * (the games schema, `nba` / `wnba`, keyed by the stats.nba.com / stats.wnba.com person id) for the player view's impact
  * axes, and the season's `team_strength` rows (`nba_stats` / `wnba_stats`, keyed by the stats team id) for the team view.
  * One season-wide read each, the same URL for every viewer of a season, so one cache entry. Every number is the
- * producer's; the page plots it as read. Reads are strict, so an outage is never drawn as an empty league.
+ * producer's; the page plots it as read. Reads are strict and bounded by the game page's read timeout, so an outage or a
+ * stalled request is the view's "unavailable" line, never an empty league or a held page.
  */
-import { retrieveRows, retrieveRowsFrom } from './sdv';
+import { retrieveRowsFrom } from './sdv';
 import { NBA_READ_TIMEOUT_MS } from './nbaGames';
 import { BASKETBALL } from '../basketball/config';
 import { IMPACT_COLUMNS, TEAM_COLUMNS } from '../nba/scatterMetrics';
-import type { BasketballLeague } from '../utils/league';
+import { leagueSource, type BasketballLeague } from '../utils/league';
 
 /** The season products move once a day: the season pages' window. */
 const TTL = 6 * 60 * 60;
@@ -27,5 +28,5 @@ export function retrieveSeasonImpact(league: BasketballLeague, season: number): 
 
 export function retrieveSeasonTeamStrength(league: BasketballLeague, season: number): Promise<ScatterRow[]> {
     const select = ['team_id', ...Object.values(TEAM_COLUMNS)].join(',');
-    return retrieveRows<ScatterRow>(league, 'team_strength', { season: String(season), select, limit: TEAM_LIMIT }, TTL, true);
+    return retrieveRowsFrom<ScatterRow>(leagueSource(league), 'team_strength', { season: String(season), select, limit: TEAM_LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS);
 }
