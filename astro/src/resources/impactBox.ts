@@ -85,6 +85,16 @@ export async function retrieveProGame(league: BasketballLeague, season: number, 
 }
 
 /**
+ * A pro game's player names from the stats box, keyed by the stats person id: one capped read, shared (same query, same
+ * cache entry) by the Impact box and BB-G26's EPV box.
+ */
+export async function retrieveProNames(league: BasketballLeague, season: number, gameId: string): Promise<ImpactName[]> {
+    const rows = await retrieveRowsFrom<ProName>(leagueSource(league), 'player_box',
+        { season: String(season), game_id: gameId, select: 'person_id,first_name,family_name,name_i', limit: PLAYER_LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS);
+    return rows.map((r) => ({ player_id: String(r.person_id), name: [r.first_name, r.family_name].filter(Boolean).join(' ') || String(r.name_i ?? r.person_id) }));
+}
+
+/**
  * The reads for one ESPN game, two rounds, strict. `homeId` / `awayId` are the ESPN team ids. The pros: the crosswalk,
  * then the impact rows, the stats box's names and each side's top units; college: the stats.ncaa.org box (contest id and
  * names), then the impact rows and each side's top units.
@@ -100,8 +110,7 @@ export async function retrieveImpactBox(league: BasketballLeague, season: number
         const x = await retrieveProGame(league, season, espnGameId);
         if (!x) return EMPTY_IMPACT;
         ({ gameId, teams } = x);
-        namesRead = read<ProName>('player_box', { game_id: gameId, select: 'person_id,first_name,family_name,name_i', limit: PLAYER_LIMIT })
-            .then((rows) => rows.map((r) => ({ player_id: String(r.person_id), name: [r.first_name, r.family_name].filter(Boolean).join(' ') || String(r.name_i ?? r.person_id) })));
+        namesRead = retrieveProNames(league, season, gameId);
     } else {
         const box = await read<NcaaName>('ncaa_player_box', { espn_game_id: espnGameId, select: 'contest_id,player_id,clean_name,player', limit: PLAYER_LIMIT });
         if (!box[0]?.contest_id) return EMPTY_IMPACT;

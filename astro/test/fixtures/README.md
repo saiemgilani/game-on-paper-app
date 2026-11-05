@@ -809,3 +809,19 @@ changes), BOS 113 at DET 121 (401909088), MIN 88 at PHX 84 (401856902), Sam Hous
 **Used by:** `test/gameFlow.test.ts`.
 
 **To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `epv-box-nba-2025.json.gz`
+The reads behind BB-G26's EPV box (`resources/epvBox.ts`) for CHA 89 at ORL 114, 2024-11-12 (ESPN 401703372, stats
+0022400003), as `{league, season, espnGameId, schedule, crosswalk, names, players, teams}`. `crosswalk`, `names` and
+`schedule` were captured live on 2026-11-05 with that module's queries (`/v1/nba/schedule_crosswalk?season=2025&nba_game_id=0022400003&limit=1`,
+its four id columns kept; `/v1/nba_stats/player_box?season=2025&game_id=0022400003&select=person_id,first_name,family_name,name_i&limit=80`;
+`/v1/nba/schedule?season=2025&id=401703372&limit=1` with the score columns), the `data` array of each, no edits. The
+Data API's `epv_player_games` / `epv_team_games` were not built yet (the endpoint answered 404 "unknown table" on
+2026-11-05), so `players` and `teams` are that game's rows of sdv-db's own producer fixtures
+(`tests/fixtures/season_products/nba_epv_{player,team}_games_2025.parquet` on sdv-db main: sdv-py #1113's
+`nba_epv_*` on the published releases, scored by its bundled booster), `season` and `game_id` dropped, no other edits.
+
+**Used by:** `test/epvBox.test.ts`.
+
+**To regenerate:** once the backfill has run, rerun the reads (`epv_player_games` / `epv_team_games?season=2025&game_id=0022400003`,
+limits 80 and 2), wrap them as above and gzip.
