@@ -173,6 +173,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404 and the
     // standings page has no link.
     'bball-nba-cup': 'preview',
+    // The basketball leaderboards (BB-G8): /<league>/leaderboards inside each league's flag, with the Impact, Teams and
+    // Lineups boards; basis, qualified and Values/Percentiles selects. sdv-db's player_impact / ncaa_rapm, team_season_rates,
+    // team_strength, team_season_flow and lineup_seasons: every value, rank and percentile is the producer's. Off: the page
+    // is the site's 404, and no other page links to it.
+    'bball-leaderboards-v2': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

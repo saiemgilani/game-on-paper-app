@@ -777,3 +777,24 @@ and `nba_cup_overtime_2027.parquet`), which sdv-db pins equal to the live call. 
 **Used by:** `test/nbaCup.test.ts`.
 
 **To regenerate:** rerun both producers on sdv-db main's fixtures, write the rows as JSON (dates as ISO strings) and gzip.
+
+## `leaderboards-v2-2026.json.gz`
+The basketball leaderboards' reads (BB-G8, `resources/leaderboards.ts`), captured live from the Data API on 2026-11-05.
+Every read is season-filtered with a small limit; nothing is edited except that the two name reads keep only the ids
+the captured lineups use. `reads` lists each query and its row count:
+- `nbaImpact`: `/v1/nba/player_impact?season=2026&season_type=Regular Season&off_poss__gte=100&order=-off_poss&limit=40`
+  with the impact columns as `select`;
+- `mbbImpact`: `/v1/mbb/ncaa_rapm?season=2026&estimand=league&off_poss__gte=200&order=-off_poss&limit=30`;
+- `wnbaRates`, `wnbaStrength`, `wnbaFlow`: `/v1/wnba_stats/{team_season_rates?split=all,team_strength,team_season_flow}`
+  `?season=2026&limit=20` (all 15 teams, every column);
+- `mbbRates`: `/v1/mbb/team_season_rates?season=2026&split=all&limit=30` (an unsorted window of 30 teams);
+- `nbaLineups`: `/v1/nba_stats/lineup_seasons?season=2026&n_players=5&poss__gte=200&order=-poss&limit=30`, and `nbaNames`
+  the rows of `/v1/nba_stats/shot_season_players?season=2026&select=person_id,player_name&limit=800` for those units' ids;
+- `mbbLineups`: `/v1/mbb/lineup_seasons?season=2026&n_players=5&poss__gte=100&order=-poss&limit=20`, and `mbbNames` the
+  rows of `/v1/mbb/ncaa_rapm?season=2026&estimand=league&off_poss__gte=100&select=player_id,player&limit=6000` for those ids.
+
+**Used by:** `test/leaderboardsV2.test.ts`.
+
+**To regenerate:** rerun the reads above (season filter and limit as listed, never unfiltered), filter the two name reads to
+the lineups' player ids, write `{nbaImpact, mbbImpact, wnbaRates, wnbaStrength, wnbaFlow, mbbRates, nbaLineups, nbaNames,
+mbbLineups, mbbNames, reads, captured}` as JSON and gzip.
