@@ -15,7 +15,13 @@ globalThis.fetch = async function networkGuard(input: RequestInfo | URL, init?: 
     const url = input instanceof Request ? input.url : String(input);
     let host = '';
     try { host = new URL(url).hostname; } catch { /* a relative or malformed URL is blocked too */ }
-    if (LOCAL_HOSTS.has(host)) return realFetch(input, init);
+    if (LOCAL_HOSTS.has(host)) {
+        // redirects come back through the guard, so a local server cannot bounce a request to a real host
+        // ponytail: no hop limit or 303-to-GET rewrite; a test needing either mocks fetch itself
+        const res = await realFetch(input, { ...init, redirect: 'manual' });
+        const to = res.status >= 300 && res.status < 400 ? res.headers.get('location') : null;
+        return to ? networkGuard(new URL(to, url).href, init) : res;
+    }
     const { currentTestName, testPath } = expect.getState();
     const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
     const msg = `unmocked request: ${method} ${url} in ${currentTestName ? `"${currentTestName}"` : 'no test (file setup)'} (${testPath ?? 'unknown file'})`;
