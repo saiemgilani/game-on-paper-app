@@ -188,6 +188,13 @@ describe('the player page step', () => {
         expect(ok(await prepareBasketballPlayer(b.astro, 'nba')).playStyles).toBeNull();
         expect(b.cache.at(-1)).toBe(false);
     });
+    test("college: the read keyed by the page's (ESPN) id, read as one Style chip", async () => {
+        const [me] = PS.mbbPlayers;
+        styles.player.mockResolvedValueOnce([me]);
+        const r = ok(await prepareBasketballPlayer(fakeAstro(true, '/mbb/players', PID).astro, 'mbb'));
+        expect(styles.player).toHaveBeenCalledWith('mbb', 2026, PID);
+        expect(r.playStyles).toEqual([{ side: 'style', archetype: me.archetype, second: me.second_archetype, margin: me.margin }]);
+    });
     test('WNBA: no table, so no read and no key, flag on', async () => {
         const r = ok(await prepareBasketballPlayer(fakeAstro(true, '/wnba/players', PID).astro, 'wnba'));
         expect(styles.player).not.toHaveBeenCalled();
