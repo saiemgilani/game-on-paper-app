@@ -78,9 +78,10 @@ function degraded(id: string, message: string, league: BasketballLeague): void {
 
 export async function prepareBasketballGame(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballGamePrep> {
     const r = await prepareGame(Astro, league);
-    // read only once a final will render: a 404, 503, pregame or live page never spends the reads, and flag off is today's page
-    if (!('game' in r) || !r.game.status.completed || !isFeatureEnabled('bball-impact-box', Astro.locals)) return r;
-    const impact = await readImpact(league, r.game);
+    // read only once a final will render: a 404, 503, pregame or live page never spends the reads, and flag off is today's page.
+    // The producer's tables are per season, so a game with no season has nothing to read (no panel, not "unavailable").
+    if (!('game' in r) || !r.game.status.completed || r.game.season == null || !isFeatureEnabled('bball-impact-box', Astro.locals)) return r;
+    const impact = await readImpact(league, r.game, r.game.season);
     // the panel is decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
     if (impact === null) uncacheable(Astro);
@@ -89,10 +90,9 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
 }
 
 /** The Impact box's reads (BB-G1); null when any failed. */
-async function readImpact(league: BasketballLeague, game: NbaGame): Promise<ImpactBoxReads | null> {
+async function readImpact(league: BasketballLeague, game: NbaGame, season: number): Promise<ImpactBoxReads | null> {
     try {
-        if (game.season == null) throw new Error('no season on the game');
-        return await retrieveImpactBox(league, game.season, game.id, Number(game.home.team.id), Number(game.away.team.id));
+        return await retrieveImpactBox(league, season, game.id, Number(game.home.team.id), Number(game.away.team.id));
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} impact box for game ${game.id}: ${e}, ${e?.stack}`);
         return null;

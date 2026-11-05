@@ -222,6 +222,15 @@ describe('prepareBasketballGame with the flag', () => {
         expect(cache.at(-1)).toBe(false);
         expect(headers.get('Cache-Control')).toBe('no-store');
     });
+    test('on, a final with no season (the tables are per season): no read and no panel', async () => {
+        const fn = vi.fn(); box.fn = fn;
+        const noSeason = gameApi(); noSeason.schedule[0].season = null;
+        sched.mockResolvedValueOnce(noSeason.schedule[0]); rows.mockResolvedValueOnce(noSeason);
+        const r = await prepareBasketballGame(fakeAstro({ preview: true }).astro, 'nba');
+        expect('game' in r && r.game.season).toBeNull();
+        expect('impact' in r).toBe(false);
+        expect(fn).not.toHaveBeenCalled();
+    });
     test('on, a live game or a pregame spends no read', async () => {
         const fn = vi.fn(); box.fn = fn;
         sched.mockResolvedValueOnce(null);
