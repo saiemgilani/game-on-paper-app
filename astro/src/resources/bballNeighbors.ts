@@ -6,10 +6,12 @@
  *   `<m>_rank` columns are sdv-py's (1 = best);
  * - players (NBA/WNBA only): `player_stats_advanced`, the regular season's row per player, whose `<m>_rank` columns are
  *   stats.nba.com's / stats.wnba.com's own. `player_impact` carries no ranks and the college tables none the site can key.
- * Ranks are never recomputed here. Reads are strict, so an outage is never shown as an empty list.
+ * Ranks are never recomputed here. Reads are strict and bounded by the game page's read timeout, so an outage or a stalled
+ * request is the section's "unavailable" line, never an empty list or a held page.
  */
-import { retrieveRows } from './sdv';
-import type { BasketballLeague } from '../utils/league';
+import { retrieveRowsFrom } from './sdv';
+import { NBA_READ_TIMEOUT_MS } from './nbaGames';
+import { leagueSource, type BasketballLeague } from '../utils/league';
 
 /** The season products move once a day: the season pages' window. */
 const TTL = 6 * 60 * 60;
@@ -28,11 +30,11 @@ const ranked = (cols: readonly string[]) => cols.flatMap((c) => [c, `${c}_rank`]
 
 export function retrieveTeamRankRows(league: BasketballLeague, season: number): Promise<RankRow[]> {
     const select = ['team_id', ...ranked(TEAM_RANKED)].join(',');
-    return retrieveRows<RankRow>(league, 'team_strength', { season: String(season), select, limit: TEAM_LIMIT }, TTL, true);
+    return retrieveRowsFrom<RankRow>(leagueSource(league), 'team_strength', { season: String(season), select, limit: TEAM_LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS);
 }
 
 export function retrievePlayerRankRows(league: BasketballLeague, season: number): Promise<RankRow[]> {
     const select = ['player_id', 'player_name', 'team_id', 'team_abbreviation', ...ranked(PLAYER_RANKED)].join(',');
     const query = { season: String(season), season_type: 'Regular Season', select, limit: PLAYER_LIMIT };
-    return retrieveRows<RankRow>(league, 'player_stats_advanced', query, TTL, true);
+    return retrieveRowsFrom<RankRow>(leagueSource(league), 'player_stats_advanced', query, TTL, true, NBA_READ_TIMEOUT_MS);
 }

@@ -55,7 +55,7 @@ const defaults = { season: String(current) };
     </div>{seasonBlock !== undefined && (<TeamSeasonBlock data={seasonBlock} season={season} espnId={team.espn_id || team.team_id} teamName={team.name} />)}{neighbors !== undefined && (<section id="nearby-ranks" aria-label="Nearby ranks" class="mb-4">
       <h2 class="h5">Nearby ranks</h2>
       {neighbors === null ? (<p class="text-muted" id="nearby-unavailable">The nearby ranks are temporarily unavailable.</p>)
-        : neighbors.length === 0 ? (<p class="text-muted" id="nearby-empty">{team.name} has no {label} ranks yet.</p>)
+        : neighbors.length === 0 ? (<p class="text-muted" id="nearby-empty">There are no {label} ranks for {team.name}.</p>)
         : (<Fragment><p class="small text-muted">The teams ranked within five places of {team.name} on each measure, {label}; 1 is best (the lowest defensive rating).</p>
       <NeighborRanks lists={neighbors} kind="team" /></Fragment>)}
     </section>)}

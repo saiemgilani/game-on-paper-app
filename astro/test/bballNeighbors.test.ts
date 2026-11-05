@@ -192,3 +192,15 @@ describe('rendered', () => {
         expect(html).not.toContain('nearby-ranks');
     });
 });
+
+describe('rendered, empty', () => {
+    test('a team the producer did not rank that season: the empty line, no tables', async () => {
+        reads.teams.mockResolvedValue([]);
+        const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
+        const { default: Page } = await import('../src/pages/nba/team/[id].astro');
+        const html = await container.renderToString(Page, { params: { id: String(NETS) }, request: new Request(`https://gameonpaper.com/nba/team/${NETS}?season=2026`), locals: { flagOverrides: { nba: true, ...ON } } as App.Locals });
+        const section = html.split('id="nearby-ranks"')[1].split('</section>')[0];
+        expect(section).toContain('There are no 2025-26 ranks for Brooklyn Nets.');
+        expect(section).not.toContain('<table');
+    });
+});
