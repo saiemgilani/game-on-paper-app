@@ -25,6 +25,8 @@ vi.mock('../src/resources/shotQuality', () => ({
     retrieveTeamShotQuality: (...a: unknown[]) => sq.team(...a),
     retrievePlayerShotQuality: (...a: unknown[]) => sq.player(...a),
 }));
+// BB-G6's Impact panel reads the Data API with 'bball-impact' on (preview): never from a test
+vi.mock('../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => [] }));
 // the pages' other reads, as teamSeason.test.ts and byteIdentity.render.test.ts mock them
 vi.mock('../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../src/resources/teamSeason')>()),

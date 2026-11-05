@@ -6,6 +6,8 @@ import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/containe
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 // BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
 vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
+// BB-G6's Impact panel reads the Data API with 'bball-impact' on (preview): never from a test
+vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => [] }));
 import { BASKETBALL, courtFor } from '../../src/basketball/config';
 import { NCAA_USAGE_NOTE, defaultScatterConference, withSeasonMembers } from '../../src/basketball/dashboards';
 import { leagueContextFromRows, shotsFromRows } from '../../src/nba/adapters';
