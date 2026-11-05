@@ -807,3 +807,20 @@ reads were captured live on 2026-11-05; nothing is edited. The tests apply the A
 **To regenerate:** read the two parquets from sdv-db main, filter `team_id`, select the columns above, write the rows as
 JSON with the two name reads (season filter and limit as above, never unfiltered) and gzip. Once the backfill runs, the
 live `lineup_seasons?season=2026&team_id=<id>&n_players=<n>&poss__gte=<gate>&order=-poss&limit=100` reads replace them.
+
+## `on-off-nba-2025.json.gz`, `on-off-mbb-2025.json.gz`
+The On/Off and WOWY section's reads (BB-G4, `resources/onOff.ts`) before sdv-db's `player_on_off` / `player_wowy`
+backfill: sdv-db's committed producer fixtures `tests/fixtures/season_products/{nba,mbb}_player_{on_off,wowy}_2025.parquet`
+(sdv-db #198, from sdv-py #1110's `nba_player_on_off(2025)` / `nba_player_wowy(2025)` and the `mbb_` twins over real
+games), filtered to one team and projected to the module's `select` columns, as `{players, pairs}`. NBA: the Minnesota
+Timberwolves 2024-25 (`team_id` 1610612750, its 20 players over all 82 regular-season games and their 190 pairs). The
+producer ranked the fixture's three NBA teams' players together, so a percentile here is within those 70 players, not the
+league. MBB: Xavier 2024-25 (ESPN 2752, its 14 players over the fixture's two games and their 91 pairs, none ranked). The
+names are the `names` of `lineups-{nba,mbb}-2025.json.gz` above; Minnesota's 1642399 has no shot, so no
+`shot_season_players` row, and reads as `#1642399`. Nothing is edited; `players` keeps the producer's `-minutes_on` order.
+
+**Used by:** `test/onOff.test.ts`.
+
+**To regenerate:** read the four parquets from sdv-db main, filter `team_id`, select the columns above, write the rows as
+JSON and gzip. Once the backfill runs, the live `player_on_off?season=2026&team_id=<id>&order=-minutes_on&limit=100` and
+`player_wowy?season=2026&team_id=<id>&limit=1225` reads replace them.
