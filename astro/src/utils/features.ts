@@ -86,6 +86,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // their possessions from sdv-db's player_impact (NBA/WNBA), box BPM from player_value (college). Off: no read and the
     // player page is today's, byte for byte.
     'bball-impact': 'preview',
+    // Play-style archetype chips (BB-G17) inside each league's flag, from sdv-db's player_play_styles / team_play_styles
+    // (BB-D20): offense and defense on /nba/players/[id], one box-based style on the college player pages, defense with its
+    // runner-up on /nba/team/[id]. No WNBA table and no team offense archetype. Off: no read and both pages are today's, byte
+    // for byte.
+    'bball-play-styles': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
