@@ -589,13 +589,16 @@ const SDV_META_TTL = 60 * 5;
 // 2024-10-14; ours is later). fetchSDVDatasets never rejects: a failure resolves to
 // null, which holds for the window, then retries -- no per-request retry storm on a down API.
 let sdvMeta: { at: number, datasets: Promise<Record<string, string> | null> } | undefined;
+export const SDV_META_TIMEOUT_MS = 5_000;
 
 // `fresh` skips the shared KV copy (a pinned read's post-fetch check; see requestSDV).
 async function fetchSDVDatasets(fresh = false): Promise<Record<string, string> | null> {
     try {
         const cached = fresh ? null : await env.SDV_API_CACHE.get(SDV_META_KEY, "json");
         if (cached) return cached as Record<string, string>;
-        const req = await wrappedFetch(SDV_META_URL, { headers: { "Authorization": `Bearer ${SDV_AUTH_TOKEN}` } });
+        // every Data API read awaits this first (and the isolate memoises the promise), so a
+        // stalled /v1/meta must give up rather than hold every read behind it
+        const req = await wrappedFetch(SDV_META_URL, { headers: { "Authorization": `Bearer ${SDV_AUTH_TOKEN}` }, signal: AbortSignal.timeout(SDV_META_TIMEOUT_MS) });
         if (!req.ok) throw new Error(`status ${req.status}`);
         const datasets = (await req.json() as any)?.datasets;
         if (!datasets || typeof datasets !== 'object') throw new Error('no datasets in the response');
@@ -1481,10 +1484,14 @@ export interface SDVPlayerSplit {
     success_rate: number | null
 }
 
-/** A 404 is "no such player"; anything else is a real failure and is rethrown. */
+//: Player and compare pages await these reads; a stalled Data API used to hold the
+//: render open until the Worker was killed. A timeout is an SDVRequestError 504.
+export const PLAYER_READ_TIMEOUT_MS = 10_000;
+
+/** A 404 is "no such player"; anything else (a timeout included) is a real failure and is rethrown. */
 async function requestPlayer(league: League, path: string, query: Record<string, string>, ttl: number): Promise<any | null> {
     try {
-        return await requestSDV(path, new URLSearchParams(query), undefined, ttl, true, leagueSource(league), true);
+        return await requestSDV(path, new URLSearchParams(query), undefined, ttl, true, leagueSource(league), true, PLAYER_READ_TIMEOUT_MS);
     } catch (e) {
         if (e instanceof SDVRequestError && e.status === 404) return null;
         throw e;
