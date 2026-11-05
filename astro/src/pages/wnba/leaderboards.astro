@@ -1,0 +1,13 @@
+---
+// src/pages/wnba/leaderboards.astro
+import BasketballLeaderboardsRoute from '../../components/routes/BasketballLeaderboardsRoute.astro';
+import { prepareLeaderboards } from '../../routes/basketball/leaderboards';
+import { isFeatureEnabled } from '../../utils/features';
+
+if (!isFeatureEnabled('bball-leaderboards-v2', Astro.locals)) {
+    return Astro.rewrite('/404');
+}
+const r = await prepareLeaderboards(Astro, 'wnba');
+---
+
+<BasketballLeaderboardsRoute data={r} />

@@ -1,0 +1,202 @@
+---
+// src/components/routes/BasketballLeaderboardsRoute.astro
+// /<league>/leaderboards (BB-G8, behind 'bball-leaderboards-v2'): the Impact, Teams and Lineups boards. One number per
+// cell: the producer's value, or in the Percentiles view its percentile among qualifiers; cells are shaded by that same
+// column's percentile on the site's green-to-purple ramp. GP / minutes / possessions lead, the identity column is frozen
+// and the headers are grouped two rows deep (spec §4.2). Every select is a select of URLs (the Cup page's pattern).
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import type { LeaderboardsParams } from '../../routes/basketball/leaderboards';
+import { BASIS_LABEL, BOARD_LABEL, BOARDS, TEAM_GROUP_LABEL, TEAM_GROUPS, UNIT_SIZES, IMPACT_QUALIFIED_POSS, cellOf, labelFor, ncaaName, offeredBases, type Col } from '../../utils/leaderboards';
+import { IMPACT_FLOOR, LINEUP_FLOOR, BOARD_CAP } from '../../resources/leaderboards';
+import { fmtDec, fmtInt, fmtPct } from '../../nba/format';
+import { playerHref, seasonQuery, teamHrefFromEspn, withParams } from '../../nba/links';
+import { dotLabels } from '../../nba/scatterMetrics';
+import { formatRank, generateColorRampValue, generateMarginalString } from '../../utils/misc';
+import { BASKETBALL, seasonLabelFor } from '../../basketball/config';
+import { LEAGUES, PRO_LEAGUES, leaguePath } from '../../utils/league';
+
+interface Props { data: LeaderboardsParams }
+const { league, season, seasons, current, controls, spec, rows, read, capped, pctAvailable, names } = Astro.props.data;
+const { board, group, unit, basis, view, qualified, sort, basisFallback, viewFallback } = controls;
+const pro = PRO_LEAGUES.includes(league);
+const lname = LEAGUES[league].shortName;
+const lp = (p: string) => leaguePath(league, p);
+const path = lp('/leaderboards');
+const label = seasonLabelFor(league, season);
+const boardTitle = board === 'teams' ? `Teams: ${TEAM_GROUP_LABEL[group]}` : board === 'lineups' ? `${unit}-man lineups` : BOARD_LABEL.impact;
+const title = `${lname} leaderboards: ${boardTitle}, ${label}`;
+const description = `${lname} ${label} leaderboards: player impact (RAPM, SPM, BPM, WAR), team ratings, four factors, strength and game flow, and lineups, with league ranks and percentiles.`;
+const breadcrumbs: PageBreadcrumb[] = [{ title: lname, url: lp('/'), active: false }, { title: 'Leaderboards', active: true }];
+
+// every select keeps the other parameters; a default leaves its parameter out (the canonical URL). A new board or group
+// starts from its own default sort and basis.
+const params: Record<string, string> = { season: String(season), board, group, unit: String(unit), basis, view, qualified: qualified ? 'yes' : 'all', sort };
+const defaults: Record<string, string> = { season: String(current), board: 'impact', group: 'ratings', unit: '5', basis: spec.defaultBasis, view: 'values', qualified: 'yes', sort: spec.defaultSort };
+const url = (p: Record<string, string>) => withParams(path, { ...params, ...p }, defaults);
+const fresh = (p: Record<string, string>) => withParams(path, { season: String(season), ...p }, { season: String(current), board: 'impact', group: 'ratings', unit: '5' });
+// stay on the uncacheable /preview surface (utils/preview.ts keepPreviewSurface), as on /nba/cup
+const NAV = "window.location.href = (location.pathname.startsWith('/preview/') ? '/preview' : '') + this.value";
+const bases = offeredBases(spec);
+
+const dash = '—';
+const fmt = (c: Col, v: number | null): string => {
+    if (v == null) return dash;
+    if (view === 'percentiles') return fmtInt(v);
+    switch (c.fmt) {
+        case 'int': return fmtInt(v);
+        case 'dec1': return fmtDec(v, 1);
+        case 'dec2': return fmtDec(v, 2);
+        case 'signed1': return generateMarginalString(v, 1, 1);
+        case 'signed2': return generateMarginalString(v, 2, 2);
+        case 'pct': return fmtPct(v);
+        case 'rate3': return fmtDec(v, 3);
+        case 'secs': return `${fmtDec(v, 0)}s`;
+    }
+};
+const cell = (r: Record<string, unknown>, c: Col) => {
+    const x = cellOf(r, c, basis);
+    const v = view === 'percentiles' ? x.pct : x.value;
+    const cls = c.noShade ? null : generateColorRampValue(x.pct, 100);
+    const hint = x.rank == null ? undefined : `Rank ${formatRank(x.rank)}${x.pct == null ? '' : `, percentile ${fmtDec(x.pct, 0)}`}`;
+    return { text: fmt(c, v), cls, hint };
+};
+
+// the header's first row: one cell per run of columns sharing a group
+const groups: { name: string; span: number }[] = [];
+for (const c of spec.cols) {
+    const g = c.group ?? '';
+    const last = groups.at(-1);
+    if (last && last.name === g && g !== '') last.span++;
+    else groups.push({ name: g, span: 1 });
+}
+const sortedCol = spec.cols.find((c) => c.key === sort)!;
+const ascending = view === 'values' && sortedCol.lowerBetter === true;
+
+// identity cells
+const q = seasonQuery(season, current);
+const teamOf = (id: unknown) => BASKETBALL[league].teams.inSeason(Number(id), season);
+const teamCell = (id: unknown) => {
+    const t = teamOf(id);
+    return { name: t?.name ?? `#${id}`, abbr: t?.tricode ?? `#${id}`, href: t ? teamHrefFromEspn({ id: t.espn_id }, league, season) : null };
+};
+const fullName = (id: unknown) => names.get(String(id)) ?? `#${id}`;
+const unitPlayers = (r: Record<string, unknown>) => [r.player_1, r.player_2, r.player_3, r.player_4, r.player_5].filter((p) => p != null);
+const short = board === 'lineups' && rows ? dotLabels([...new Set(rows.flatMap((r) => unitPlayers(r).map(fullName)))]) : new Map<string, string>();
+
+const sample = board === 'impact'
+    ? `Players with at least ${fmtInt(qualified ? IMPACT_QUALIFIED_POSS[league] : IMPACT_FLOOR[league])} offensive possessions${qualified ? ' (the board’s qualifier: the producer ranks no player yet)' : ''}.`
+    : board === 'lineups'
+        ? (qualified ? 'Units the producer ranks: at least ' + (league === 'nba' ? '400' : '200') + ' offensive plus defensive possessions.' : `Units with at least ${fmtInt(LINEUP_FLOOR[league])} offensive possessions.`)
+        : (qualified ? 'Teams the producer ranks.' : 'Every team the producer rates.');
+const scope = board === 'impact' ? (pro ? 'Regular season.' : 'Every game.') : board === 'teams' && pro ? 'Regular season.' : '';
+---
+<GenericPage title={`${title} | Game on Paper`} subtitle={description} slug={path} breadcrumbs={breadcrumbs} description={description} canonicalPath={url({})}>
+  <link href="/assets/css/sticky-table.css" rel="stylesheet">
+  <div class="container my-4" id="leaderboards">
+    <div class="row mb-2">
+      <div class="col-12 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h1 class="fs-3 m-0">{title}</h1>
+        <div class="d-flex flex-wrap gap-2">
+          <label class="visually-hidden" for="lb-board">Board</label>
+          <select id="lb-board" class="form-select w-auto" onchange={NAV}>
+            {BOARDS.map((b) => (<option value={fresh({ board: b })} selected={b === board}>{BOARD_LABEL[b]}</option>))}
+            <option value={`${lp('/leaders')}${q}`}>Players: Shooting (rolling)</option>
+          </select>
+          {board === 'teams' && (
+            <Fragment>
+              <label class="visually-hidden" for="lb-group">Columns</label>
+              <select id="lb-group" class="form-select w-auto" onchange={NAV}>
+                {TEAM_GROUPS.map((g) => (<option value={fresh({ board, group: g })} selected={g === group}>{TEAM_GROUP_LABEL[g]}</option>))}
+              </select>
+            </Fragment>
+          )}
+          {board === 'lineups' && (
+            <Fragment>
+              <label class="visually-hidden" for="lb-unit">Unit</label>
+              <select id="lb-unit" class="form-select w-auto" onchange={NAV}>
+                {UNIT_SIZES.map((u) => (<option value={url({ unit: String(u) })} selected={u === unit}>{u}-man</option>))}
+              </select>
+            </Fragment>
+          )}
+          {bases.length > 1 && (
+            <Fragment>
+              <label class="visually-hidden" for="lb-basis">Basis</label>
+              <select id="lb-basis" class="form-select w-auto" onchange={NAV}>
+                {bases.map((b) => (<option value={url({ basis: b })} selected={b === basis}>{BASIS_LABEL[b]}</option>))}
+              </select>
+            </Fragment>
+          )}
+          {pctAvailable && (
+            <Fragment>
+              <label class="visually-hidden" for="lb-view">Values or percentiles</label>
+              <select id="lb-view" class="form-select w-auto" onchange={NAV}>
+                <option value={url({ view: 'values' })} selected={view === 'values'}>Values</option>
+                <option value={url({ view: 'percentiles' })} selected={view === 'percentiles'}>Percentiles</option>
+              </select>
+            </Fragment>
+          )}
+          <label class="visually-hidden" for="lb-qualified">Qualified</label>
+          <select id="lb-qualified" class="form-select w-auto" onchange={NAV}>
+            <option value={url({ qualified: 'yes' })} selected={qualified}>Qualified only</option>
+            <option value={url({ qualified: 'all' })} selected={!qualified}>All {board === 'teams' ? 'teams' : board === 'lineups' ? 'units' : 'players'}</option>
+          </select>
+          {seasons.length > 1 && (
+            <Fragment>
+              <label class="visually-hidden" for="lb-season">Season</label>
+              <select id="lb-season" class="form-select w-auto" onchange={NAV}>
+                {[...seasons].reverse().map((s) => (<option value={url({ season: String(s) })} selected={s === season}>{seasonLabelFor(league, s)}</option>))}
+              </select>
+            </Fragment>
+          )}
+        </div>
+      </div>
+    </div>
+    {basisFallback && (
+      <p class="small text-muted" id="lb-basis-fallback">{basisFallback === 'unknown' ? 'That basis is not one of per game, per 75, per 100 or totals' : `This board has no ${BASIS_LABEL[basisFallback].toLowerCase()} columns yet`}, so it shows {BASIS_LABEL[basis].toLowerCase()}.</p>
+    )}
+    {viewFallback && (
+      <p class="small text-muted" id="lb-view-fallback">{board === 'impact' ? 'The producer publishes no player percentiles yet, so this board shows values.' : `There are no percentiles for ${BASIS_LABEL[basis].toLowerCase()}, so this board shows values.`}</p>
+    )}
+    {rows === null ? (
+      <p class="text-muted" id="lb-unavailable">The {label} leaderboard is temporarily unavailable. Please try again shortly.</p>
+    ) : rows.length === 0 ? (
+      <p class="text-muted" id="lb-empty">{read === 0 ? `There are no ${label} rows for this board yet.` : 'No row qualifies yet. Choose "All" to see every row.'}</p>
+    ) : (
+      <Fragment>
+        <p class="small text-muted mb-2" id="lb-caption">{sample} {scope} {capped && `The ${fmtInt(BOARD_CAP)} with the most possessions are read.`} {!pctAvailable ? 'Unshaded: the producer publishes no percentiles for this board yet.' : view === 'percentiles' ? 'Each cell is the producer’s percentile among qualifiers.' : 'Shading is the producer’s percentile among qualifiers.'} {board === 'impact' && 'Per 100 possessions, WAR in wins.'}</p>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle table-fix-first-col" id="lb-table" data-board={board} data-basis={basis} data-view={view} data-sort={sort}>
+            <thead>
+              <tr>
+                <th rowspan="2" class="text-left align-bottom">{board === 'teams' ? 'Team' : board === 'lineups' ? 'Unit' : 'Player'}</th>
+                {groups.map((g) => (<th colspan={g.span} class="text-center small text-muted border-bottom-0">{g.name}</th>))}
+              </tr>
+              <tr>
+                {spec.cols.map((c) => (
+                  <th class="text-center text-nowrap" aria-sort={c.key === sort ? (ascending ? 'ascending' : 'descending') : undefined}>
+                    <a href={url({ sort: c.key })} title={c.hover} data-col={c.key}>{labelFor(c, basis)}</a>{c.key === sort && (<span aria-hidden="true">{ascending ? ' ▲' : ' ▼'}</span>)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr>
+                  {board === 'teams' ? (() => { const t = teamCell(r.team_id); return (
+                    <td class="text-left text-nowrap">{t.href ? (<a href={t.href}>{t.name}</a>) : t.name}</td>); })()
+                  : board === 'lineups' ? (() => { const ps = unitPlayers(r).map(fullName); const t = teamCell(r.team_id); return (
+                    <td class="text-left text-nowrap" title={ps.join(', ')}>{ps.map((n) => short.get(n) ?? n).join(' · ')} <span class="text-muted small">{t.abbr}</span></td>); })()
+                  : pro ? (
+                    <td class="text-left text-nowrap"><a href={playerHref(Number(r.player_id), q, league)}>{String(r.player_name ?? `#${r.player_id}`)}</a> <span class="text-muted small">{String(r.teams ?? r.team_abbreviation ?? '')}</span></td>)
+                  : (
+                    <td class="text-left text-nowrap">{ncaaName(String(r.player ?? `#${r.player_id}`))} <span class="text-muted small">{String(r.team ?? '')}</span></td>)}
+                  {spec.cols.map((c) => { const x = cell(r, c); return (<td class:list={['text-center', 'numeral', x.cls]} title={x.hint}>{x.text}</td>); })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Fragment>
+    )}
+  </div>
+</GenericPage>
