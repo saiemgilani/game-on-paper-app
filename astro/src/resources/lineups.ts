@@ -71,9 +71,14 @@ export async function retrieveLineups(league: BasketballLeague, season: number, 
     const s = String(season);
     const [units, names] = await Promise.all([
         retrieveRows<LineupRow>(league, 'lineup_seasons', { season: s, team_id: String(teamId), n_players: String(size), poss__gte: String(MIN_POSS[league]), order: '-poss', select: SELECT, limit: String(UNIT_LIMIT) }, TTL, true),
-        isNcaaDashboards(league)
-            ? retrieveRows<NcaaNameRow>(league, 'ncaa_player_box', { season: s, team_espn_team_id: String(teamId), select: 'player_id,clean_name', limit: NAME_LIMIT }, TTL, true)
-            : Promise.resolve([]),
+        retrieveNcaaNames(league, season, teamId),
     ]);
     return { units, names };
+}
+
+/** College's stats.ncaa.org names for one team-season (ncaa_player_box, strict); [] for the NBA/WNBA, whose names are the page's season rows. */
+export function retrieveNcaaNames(league: BasketballLeague, season: number, teamId: number): Promise<NcaaNameRow[]> {
+    return isNcaaDashboards(league)
+        ? retrieveRows<NcaaNameRow>(league, 'ncaa_player_box', { season: String(season), team_espn_team_id: String(teamId), select: 'player_id,clean_name', limit: NAME_LIMIT }, TTL, true)
+        : Promise.resolve([]);
 }

@@ -16,9 +16,11 @@ import type { SortDir } from '../../nba/table';
 import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterRows, teamsFromSeasonRows, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
 import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots, type SeasonPlayerRow } from '../../resources/nbaShots';
 import { retrieveLineups } from '../../resources/lineups';
+import { retrieveOnOff } from '../../resources/onOff';
 import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
 import { isFeatureEnabled } from '../../utils/features';
 import { parseBasis, parseUnit, playerNames, unitLabels, type LineupsTab } from '../../utils/lineups';
+import { parseWowy, wowyLines, type OnOffTab } from '../../utils/onOff';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
@@ -46,6 +48,8 @@ export interface BasketballTeamParams {
     seasonBlock?: TeamSeasonReads | null;
     /** BB-G3, only with 'bball-lineups' on: the Lineups tab's controls and units; `units` null when a read failed */
     lineups?: LineupsTab;
+    /** BB-G4, only with 'bball-on-off' on: the On/Off and WOWY section; `players` null when a read failed */
+    onOff?: OnOffTab;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -110,13 +114,15 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     // read only once the page will render: a 404 or 503 never spends the five reads
     const flagged = isFeatureEnabled('bball-team-season', Astro.locals);
     const lineupsOn = isFeatureEnabled('bball-lineups', Astro.locals);
-    const [seasonBlock, lineups] = await Promise.all([
+    const onOffOn = isFeatureEnabled('bball-on-off', Astro.locals);
+    const [seasonBlock, lineups, onOff] = await Promise.all([
         flagged ? readSeasonBlock(league, season, teamId) : undefined,
         lineupsOn ? readLineups(Astro, league, season, teamId, rows) : undefined,
+        onOffOn ? readOnOff(Astro, league, season, teamId, rows) : undefined,
     ]);
-    // the block and the tab are decorative: a failed read renders the rest of the page, never cached
-    if (seasonBlock === null || lineups?.units === null) uncacheable(Astro);
-    const block = { ...(flagged ? { seasonBlock } : {}), ...(lineupsOn ? { lineups } : {}) };
+    // the block and the tabs are decorative: a failed read renders the rest of the page, never cached
+    if (seasonBlock === null || lineups?.units === null || onOff?.players === null) uncacheable(Astro);
+    const block = { ...(flagged ? { seasonBlock } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}) };
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);
@@ -162,5 +168,18 @@ async function readLineups(Astro: AstroGlobal, league: BasketballLeague, season:
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} ${unit}-man lineups for team ${teamId}: ${e}, ${e?.stack}`);
         return { unit, basis, units: null, labels: [] };
+    }
+}
+
+/** The On/Off and WOWY section (BB-G4): the two reads, ?wowy= and that player's pairs, the names; `players` null when a read failed. */
+async function readOnOff(Astro: AstroGlobal, league: BasketballLeague, season: number, teamId: number, rows: SeasonPlayerRow[]): Promise<OnOffTab> {
+    try {
+        const { players, pairs, names } = await retrieveOnOff(league, season, teamId);
+        const wowy = parseWowy(Astro.url.searchParams.get('wowy'), players);
+        // the season rows are ESPN-keyed in college: never mix them with the stats.ncaa.org ids
+        return { players, names: playerNames(isNcaaDashboards(league) ? [] : rows, names), wowy, lines: wowyLines(pairs, wowy) };
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} on/off for team ${teamId}: ${e}, ${e?.stack}`);
+        return { players: null, names: new Map(), wowy: null, lines: [] };
     }
 }

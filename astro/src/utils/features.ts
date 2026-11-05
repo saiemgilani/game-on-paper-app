@@ -82,6 +82,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // units over a possession gate, per 100 possessions or in totals (sdv-db's lineup_seasons). Off: no read and the team
     // page is today's, byte for byte.
     'bball-lineups': 'preview',
+    // The team page's On/Off and WOWY section (BB-G4) on /<league>/team/[id], inside each league's flag: each player's team
+    // on and off the floor and one player's teammate pairs (sdv-db's player_on_off and player_wowy). Off: no read and the
+    // team page is today's, byte for byte.
+    'bball-on-off': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
