@@ -12,7 +12,8 @@ import { isFeatureEnabled } from '../../utils/features';
 import { SOURCE_PARAM } from '../../utils/adminView';
 import { gopStorage } from '../../utils/telemetry';
 import type { BasketballLeague } from '../../utils/league';
-import { setCache, uncacheable } from './cache';
+import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBox';
+import { seasonCache, setCache, uncacheable } from './cache';
 
 /** The admin source tool's data (components/nba/game/NbaAdminSourceTools.astro); only an admin on the 'source-switch' path gets it. */
 export interface BasketballSourceTools {
@@ -24,7 +25,9 @@ export interface BasketballSourceTools {
     espn: NbaGame | null
 }
 
-export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { pregame: true; espnGame: ESPNPlayByPlayResponse } | { game: NbaGame; sourceTools?: BasketballSourceTools };
+export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { pregame: true; espnGame: ESPNPlayByPlayResponse }
+    /** `impact`: BB-G1, only with 'bball-impact-box' on and a final; null when a read failed (the panel says so) */
+    | { game: NbaGame; sourceTools?: BasketballSourceTools; impact?: ImpactBoxReads | null };
 
 /**
  * The registry and, for a non-ESPN selection, the ESPN side of the compare -- the ordinary no-`source` processor request,
@@ -74,6 +77,29 @@ function degraded(id: string, message: string, league: BasketballLeague): void {
 }
 
 export async function prepareBasketballGame(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballGamePrep> {
+    const r = await prepareGame(Astro, league);
+    // read only once a final will render: a 404, 503, pregame or live page never spends the reads, and flag off is today's page.
+    // The producer's tables are per season, so a game with no season has nothing to read (no panel, not "unavailable").
+    if (!('game' in r) || !r.game.status.completed || r.game.season == null || !isFeatureEnabled('bball-impact-box', Astro.locals)) return r;
+    const impact = await readImpact(league, r.game, r.game.season);
+    // the panel is decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
+    // not reached yet is held for the season pages' window, not the Data API final's year
+    if (impact === null) uncacheable(Astro);
+    else if (impact.players.length === 0 && r.game.source === 'data_api') setCache(Astro, seasonCache(league));
+    return { ...r, impact };
+}
+
+/** The Impact box's reads (BB-G1); null when any failed. */
+async function readImpact(league: BasketballLeague, game: NbaGame, season: number): Promise<ImpactBoxReads | null> {
+    try {
+        return await retrieveImpactBox(league, season, game.id, Number(game.home.team.id), Number(game.away.team.id));
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} impact box for game ${game.id}: ${e}, ${e?.stack}`);
+        return null;
+    }
+}
+
+async function prepareGame(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballGamePrep> {
     Astro.locals.league = league;
     const cfg = BASKETBALL[league];
     const id = Astro.params.id ?? '';

@@ -1,0 +1,72 @@
+---
+// src/components/nba/game/NbaImpactBox.astro
+// BB-G1, behind 'bball-impact-box': each side's on-court impact (minutes, possessions, +/- and the ratings while on the
+// floor) and its five most-used five-man units. Every number is the producer's (sdv-db game_player_impact /
+// game_lineups_used, sdv-py *_impact_rows); this reads, orders and formats.
+import type { NbaGame } from '../../../resources/nbaGame';
+import type { ImpactBoxReads } from '../../../resources/impactBox';
+import { TOP_UNITS } from '../../../resources/impactBox';
+import { impactSide, shortName, type ImpactSide } from '../../../utils/impactBox';
+import { fmtDec, fmtInt } from '../../../nba/format';
+import { cleanAbbreviation } from '../../../utils/misc';
+
+interface Props { game: NbaGame; impact: ImpactBoxReads | null }
+const { game, impact } = Astro.props;
+const dash = '—';
+const minus = '−';
+const signed = (v: number | null | undefined, digits = 0) => (v == null ? dash : v > 0 ? `+${v.toFixed(digits)}` : v < 0 ? `${minus}${Math.abs(v).toFixed(digits)}` : (0).toFixed(digits));
+const rtg = (v: number | null | undefined) => (v == null ? dash : fmtDec(v, 1));
+const mins = (v: number | null | undefined) => (v == null ? dash : fmtDec(v, 1));
+const int = (v: number | null | undefined) => (v == null ? dash : fmtInt(v));
+const built = impact && impact.players.length > 0;
+const sides: { key: 'away' | 'home'; abbr: string; name: string; rows: ImpactSide }[] = built
+    ? (['away', 'home'] as const).map((key) => ({ key, abbr: cleanAbbreviation(game[key].team), name: game[key].team.displayName, rows: impactSide(impact, key) }))
+    : [];
+---
+{impact === null ? (<p class="text-muted" id="impact-unavailable">The impact box is temporarily unavailable.</p>) : !built ? (<p class="text-muted" id="impact-empty">The impact box is not built for this game yet; it follows the nightly ingest.</p>) : (
+<Fragment>
+<div class="row">
+  {sides.map((s) => (
+    <div class="col-12 col-xl-6" id={`impact-${s.key}`}>
+      <h3 class="h6">{s.name}</h3>
+      {s.rows.players.length === 0 ? (<p class="text-muted small">No on-court rows for {s.abbr} (its players carry no ids in the source's box).</p>) : (<Fragment>
+      <div class="table-responsive"><table class="table table-sm numeral align-middle" aria-label={`${s.abbr} impact`}>
+        <thead><tr><th scope="col">Player</th><th scope="col" class="text-end">MIN</th><th scope="col" class="text-end"><abbr title="Possessions on the floor (offense)">Poss</abbr></th><th scope="col" class="text-end"><abbr title="Points for minus points against while on the floor">+/-</abbr></th><th scope="col" class="text-end"><abbr title="Points scored per 100 possessions while on the floor">ORtg</abbr></th><th scope="col" class="text-end"><abbr title="Points allowed per 100 possessions while on the floor">DRtg</abbr></th><th scope="col" class="text-end">Net</th></tr></thead>
+        <tbody>
+          {s.rows.players.map((p) => (
+            <tr>
+              <th scope="row" class="fw-normal text-nowrap">{p.name}</th>
+              <td class="text-end">{mins(p.minutes)}</td>
+              <td class="text-end">{int(p.poss)}</td>
+              <td class="text-end fw-bold">{signed(p.plus_minus)}</td>
+              <td class="text-end">{rtg(p.off_rtg)}</td>
+              <td class="text-end">{rtg(p.def_rtg)}</td>
+              <td class="text-end">{signed(p.net_rtg, 1)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      <h4 class="h6 mt-2">Lineups used <span class="text-muted small fw-normal">(top {TOP_UNITS} by minutes)</span></h4>
+      {s.rows.units.length === 0 ? (<p class="text-muted small">No five-man units for {s.abbr}.</p>) : (
+      <div class="table-responsive"><table class="table table-sm numeral align-middle" aria-label={`${s.abbr} lineups used`}>
+        <thead><tr><th scope="col">Unit</th><th scope="col" class="text-end">MIN</th><th scope="col" class="text-end">Poss</th><th scope="col" class="text-end">+/-</th><th scope="col" class="text-end">Net</th></tr></thead>
+        <tbody>
+          {s.rows.units.map((u) => (
+            <tr>
+              <th scope="row" class="fw-normal small">{u.names.map(shortName).join(', ')}</th>
+              <td class="text-end">{mins(u.minutes)}</td>
+              <td class="text-end">{int(u.poss)}</td>
+              <td class="text-end fw-bold">{signed(u.plus_minus)}</td>
+              <td class="text-end">{signed(u.net_rtg, 1)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      )}
+      </Fragment>)}
+    </div>
+  ))}
+</div>
+<p class="small text-muted mb-0">From the play-by-play's substitutions: the points scored and allowed while each player or unit was on the floor, and the ratings per 100 of those possessions.</p>
+</Fragment>
+)}

@@ -777,3 +777,18 @@ and `nba_cup_overtime_2027.parquet`), which sdv-db pins equal to the live call. 
 **Used by:** `test/nbaCup.test.ts`.
 
 **To regenerate:** rerun both producers on sdv-db main's fixtures, write the rows as JSON (dates as ISO strings) and gzip.
+
+## `impact-box-{nba-2027,wnba-2026,mbb-2026,wbb-2026,wbb-2026-nond1}.json.gz`
+The Data API reads behind the game page's Impact box (BB-G1, `resources/impactBox.ts`), captured live on 2026-11-05 with
+exactly that module's queries, as `{league, season, espnGameId, schedule, crosswalk | box, names?, players, home, away}`
+(the `data` array of each response, no edits). The pros: `/v1/<nba|wnba>/schedule_crosswalk?season=…&espn_game_id=…&limit=1`,
+then `/v1/<nba_stats|wnba_stats>/player_box`, `game_player_impact` (`game_id=<stats id>`, `limit=80`) and `game_lineups_used`
+once per side (`team_id=<stats id>&order=-seconds&limit=5`). College: `/v1/<mbb|wbb>/ncaa_player_box?season=…&espn_game_id=…`
+(`limit=80`), then the same two tables by the contest id (ESPN team ids). `schedule` is the games schema's row
+(`schedule?season=…&id=…&limit=1`), the final-score oracle for the +/- check. Games: BOS 113 at DET 121, 2026-10-20 (ESPN
+401909088); CON 75 at NY 106, 2026-05-08 (401856890); Southern Miss 79 at Buffalo 85, 2025-11-03 (401823425); GW 50 at
+Temple 86 (401824983); UDC 47 at GW 86 (401824982), whose non-D1 side has no stats.ncaa.org ids and no impact rows.
+
+**Used by:** `test/impactBox.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
