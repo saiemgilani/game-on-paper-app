@@ -5,10 +5,10 @@
     // resize) keep the view; a new resetKey returns to identity.
     import { zoomIdentity, type ZoomTransform } from 'd3-zoom';
     import { describeScatter, renderScatter, SCATTER_VIEWBOX } from '../../../nba/charts/scatterChart';
-    import type { ScatterMetric, ScatterPoint } from '../../../nba/scatterMetrics';
+    import type { AxisMetric, ScatterPoint } from '../../../nba/scatterMetrics';
     import type { Draw } from '../chartFrame';
     import ChartSvg from './ChartSvg.svelte';
-    let { points, x, y, faces, filter, resetKey, title, highlight = 'Nets', minFga = 100 }: { points: ScatterPoint[]; x: ScatterMetric; y: ScatterMetric; faces: boolean; filter: string; resetKey: number; title: string; highlight?: string | null; minFga?: number } = $props();
+    let { points, x, y, faces, filter, resetKey, title, highlight = 'Nets', minFga = 100, population }: { points: ScatterPoint[]; x: AxisMetric; y: AxisMetric; faces: boolean; filter: string; resetKey: number; title: string; highlight?: string | null; minFga?: number; population?: string } = $props();
     let canvas: HTMLCanvasElement | null = $state(null);
     let transform: ZoomTransform = zoomIdentity;
     // svelte-ignore state_referenced_locally -- the initial key is the baseline (blazing's useRef(resetKey)); later keys are read eagerly in the derived below
@@ -26,5 +26,5 @@
 <!-- the canvas sits under the svg (its own stacking context) so names and medians stay on top of faces -->
 <div class="position-relative nba-scatter">
     <canvas bind:this={canvas} aria-hidden="true" class="position-absolute top-0 start-0 w-100 h-100 pe-none" style="z-index: -1"></canvas>
-    <ChartSvg {draw} viewBox={SCATTER_VIEWBOX} {title} desc={describeScatter(points, x, y, highlight, minFga)} />
+    <ChartSvg {draw} viewBox={SCATTER_VIEWBOX} {title} desc={describeScatter(points, x, y, highlight, minFga, population)} />
 </div>

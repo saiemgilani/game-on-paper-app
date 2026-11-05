@@ -5,6 +5,8 @@ import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { apiSeasonPlayerRows } from './rows';
 
 const state = { empty: false };
+// BB-G10's scatter views read the Data API with 'bball-impact-scatter' on (preview): never from a test
+vi.mock('../../src/resources/scatterViews', () => ({ retrieveSeasonImpact: async () => [], retrieveSeasonTeamStrength: async () => [] }));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async () => (state.empty ? [] : apiSeasonPlayerRows()),
