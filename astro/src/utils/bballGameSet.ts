@@ -50,6 +50,12 @@ export function gameSetHref(url: URL, set: BbGameSet, anchor: string): string {
     return `${url.pathname}${s ? `?${s}` : ''}#${anchor}`;
 }
 
+/**
+ * The select's navigation: an option is the canonical URL, kept on the uncacheable /preview surface when the page is on
+ * it (BracketologyRoute's pattern): the public URL is where the flag is off, and may answer a cached anonymous copy.
+ */
+export const GAME_SET_NAV = "window.location.href = (location.pathname.startsWith('/preview/') ? '/preview' : '') + this.value";
+
 // ---- team page ---------------------------------------------------------------------------------------------------
 
 export interface TeamSetLine {

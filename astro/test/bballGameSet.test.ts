@@ -223,6 +223,8 @@ describe('the pages', () => {
         expect(panel).toContain(`>${v.line.off_rtg!.toFixed(1)}<`);
         expect(panel).toContain(`>${v.line.def_rtg!.toFixed(1)}<`);
         expect(panel).toContain('box score (the game page');
+        // on the /preview surface the select stays on it (the public URL is where the flag is off)
+        expect(panel).toContain(`onchange="window.location.href = (location.pathname.startsWith('/preview/') ? '/preview' : '') + this.value"`);
         expect(panel).not.toMatch(/hulk-bg-level-\d/); // no producer percentile for a summed set
     });
     test("team, on, all: the title unfiltered and the row the splits table's All games row", async () => {

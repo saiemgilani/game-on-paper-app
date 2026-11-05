@@ -12,7 +12,7 @@ import { fmtDate, fmtDec, fmtInt, fmtPct } from '../../nba/format';
 import { gameHref, teamHrefFromEspn } from '../../nba/links';
 import { formatRank, generateColorRampValue, generateMarginalString } from '../../utils/misc';
 import { basketball, regulationFor, seasonLabelFor } from '../../basketball/config';
-import { bbGameSetLabel, gameSetHref, teamGameSet, type BbGameSet } from '../../utils/bballGameSet';
+import { GAME_SET_NAV, bbGameSetLabel, gameSetHref, teamGameSet, type BbGameSet } from '../../utils/bballGameSet';
 import { isNcaaDashboards } from '../../basketball/dashboards';
 
 // gameSet: BB-G14 ('bball-game-set'), the ?games= line; absent, the block is BB-G5's byte for byte
@@ -116,7 +116,7 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
         <h3 class="h6 mb-0">{view.set === 'all' ? 'Team stats' : 'Team stats (Filtered)'}</h3>
         <label class="visually-hidden" for="game-set-select">Games</label>
         {/* each option is this page with ?games=, so the chosen set is a shareable URL */}
-        <select id="game-set-select" class="form-select form-select-sm w-auto" autocomplete="off" onchange="window.location.href = this.value">
+        <select id="game-set-select" class="form-select form-select-sm w-auto" autocomplete="off" onchange={GAME_SET_NAV}>
           {view.sets.map((k) => (<option value={gameSetHref(Astro.url, k, 'season-game-set')} selected={k === view.set}>{bbGameSetLabel(k)}</option>))}
         </select>
       </div>

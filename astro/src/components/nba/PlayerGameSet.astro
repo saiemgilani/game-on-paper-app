@@ -4,7 +4,7 @@
 // rows (shot_player_games) and divided once. "All games" is the season line in the page header.
 import type { PlayerGame } from '../../nba/data/aggregate';
 import { fmtInt, fmtPct } from '../../nba/format';
-import { bbGameSetLabel, gameSetHref, playerGameSet, type BbGameSet } from '../../utils/bballGameSet';
+import { GAME_SET_NAV, bbGameSetLabel, gameSetHref, playerGameSet, type BbGameSet } from '../../utils/bballGameSet';
 
 interface Props { games: PlayerGame[]; set: BbGameSet }
 const { games, set } = Astro.props;
@@ -17,7 +17,7 @@ const pct = (v: number | null) => (v === null ? '—' : fmtPct(v));
     <h2 class="h6 mb-0">{view.set === 'all' ? 'Shooting' : 'Shooting (Filtered)'}</h2>
     <label class="visually-hidden" for="game-set-select">Games</label>
     {/* each option is this page with ?games=, so the chosen set is a shareable URL */}
-    <select id="game-set-select" class="form-select form-select-sm w-auto" autocomplete="off" onchange="window.location.href = this.value">
+    <select id="game-set-select" class="form-select form-select-sm w-auto" autocomplete="off" onchange={GAME_SET_NAV}>
       {view.sets.map((k) => (<option value={gameSetHref(Astro.url, k, 'player-game-set')} selected={k === view.set}>{bbGameSetLabel(k)}</option>))}
     </select>
   </div>
