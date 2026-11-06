@@ -10,7 +10,7 @@
 
 import { hmacHex } from './preview';
 import { timingSafeEqual } from './adminSession';
-import { formatPercent, roundNumber } from './misc';
+import { cleanTextForTeam, formatPercent, roundNumber } from './misc';
 
 export const PRO_COOKIE = 'gop_pro';
 export const PRO_COOKIE_TTL_S = 30 * 24 * 60 * 60;
@@ -324,4 +324,64 @@ export function digestText(rows: BoardEntrant[], f: BoardFilters, origin: string
         `Bands are 80% intervals among qualifiers. Not a valuation. Method: ${origin}/pro/methodology`,
         'To stop these emails, clear your saved filters on the board.',
     ].join('\n');
+}
+
+// ---- compare and export (the Analyst tier: "compare, export of derived metrics") ----
+
+export const PRO_COMPARE_MAX = 4;
+
+/** `?ids=1,2,3`: up to four distinct ESPN ids, in the order given; anything else is dropped. */
+export function parseCompareIds(raw: unknown): string[] {
+    const ids = String(raw ?? '').split(',').map((s) => s.trim()).filter((s) => /^\d{1,10}$/.test(s));
+    return [...new Set(ids)].slice(0, PRO_COMPARE_MAX);
+}
+
+/** The slice of a profile (contract schema 2) that compare and export read. */
+export interface CompareProfile {
+    season: number
+    player: { espn_id: number; name: string | null; team: string | null; team_id: number | null; position: string | null }
+    metrics: { key: string; label: string; value: number | null; n: number | null; n_label: string
+        band_lo: number | null; band_mid: number | null; band_hi: number | null; delta_eb: number | null }[]
+    value?: { unit: string; age: number | null; production_usd_pace: number | null; projected_usd: number | null
+        projected_usd_lo: number | null; projected_usd_hi: number | null; p_start_next: number | null
+        projection: { pct: number | null; lo: number | null; hi: number | null } } | null
+}
+
+/** Every metric any of the players has, in first-seen order, with each player's row or null. */
+export function compareMetricRows(docs: CompareProfile[]): { key: string; label: string; cells: (CompareProfile['metrics'][number] | null)[] }[] {
+    const order = new Map<string, string>();
+    for (const d of docs) for (const m of d.metrics ?? []) if (!order.has(m.key)) order.set(m.key, m.label);
+    return [...order].map(([key, label]) => ({ key, label, cells: docs.map((d) => d.metrics?.find((m) => m.key === key) ?? null) }));
+}
+
+const csvCell = (v: unknown): string => {
+    if (v === null || v === undefined || (typeof v === 'number' && !Number.isFinite(v))) return '';
+    // a text cell a spreadsheet would run as a formula gets a leading quote (numbers keep their sign)
+    const s = typeof v === 'string' && /^\s*[=+\-@]/.test(v) ? `'${v}` : String(v);
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+/**
+ * One CSV row per player: identity, each efficiency metric with its sample, 80% percentile
+ * band and change, and the valuation. Derived figures only: no PFF grade or count leaves in
+ * a file (contract.md, as on the portal board's CSV), so `pff` and `volume` are never read.
+ */
+export function compareCsv(docs: CompareProfile[]): string {
+    const metrics = compareMetricRows(docs).map((r) => r.key);
+    const head = ['espn_id', 'name', 'team', 'position', 'season',
+        ...metrics.flatMap((k) => [k, `${k}_n`, `${k}_band_lo`, `${k}_band_mid`, `${k}_band_hi`, `${k}_change`]),
+        'unit', 'production_usd_pace', 'projected_usd', 'projected_usd_lo', 'projected_usd_hi',
+        'projection_pct', 'projection_lo', 'projection_hi', 'p_start_next', 'age'];
+    const rows = docs.map((d) => {
+        const by = new Map((d.metrics ?? []).map((m) => [m.key, m]));
+        const v = d.value ?? null;
+        return [d.player.espn_id, cleanTextForTeam(d.player.name, d.player.team_id), cleanTextForTeam(d.player.team, d.player.team_id), d.player.position, d.season,
+            ...metrics.flatMap((k) => {
+                const m = by.get(k);
+                return m ? [m.value, m.n, m.band_lo, m.band_mid, m.band_hi, m.delta_eb] : ['', '', '', '', '', ''];
+            }),
+            v?.unit, v?.production_usd_pace, v?.projected_usd, v?.projected_usd_lo, v?.projected_usd_hi,
+            v?.projection?.pct, v?.projection?.lo, v?.projection?.hi, v?.p_start_next, v?.age];
+    });
+    return [head, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }

@@ -426,6 +426,57 @@ describe('the pages', () => {
         }
     }, 60_000);
 
+    test('compare: players side by side from ?ids, add through search, remove, the CSV link', async () => {
+        const html = await render('../src/pages/pro/compare.astro', '/pro/compare?ids=1,2,1,x');
+        expect(html).toContain('data-player="1"');
+        expect(html).toContain('data-player="2"');
+        expect(html.match(/data-player="1"/g)).toHaveLength(1);  // a repeated id shows once
+        // a metric only one player has: the value for him, a gap for the other
+        const row = (attr: string, key: string) => html.split(`${attr}="${key}"`)[1].split('</tr>')[0];
+        expect(row('data-metric-band', 'rush_EPAplay')).toContain('—');
+        const pass = row('data-metric', 'pass_EPAplay');
+        expect(pass).toContain('+0.26');
+        expect(pass).toContain('—');
+        expect(pass).not.toContain('64 to 97');  // one number per cell: the band is its own row
+        expect(row('data-metric-band', 'pass_EPAplay')).toContain('64 to 97');
+        expect(html).toContain('href="/pro/export?ids=1,2"');
+        expect(html).toContain('href="/pro/compare?ids=2"');  // remove player 1
+        const add = await render('../src/pages/pro/compare.astro', '/pro/compare?ids=1&q=fixture');
+        expect(add).toContain('href="/pro/compare?ids=1,2"');
+        expect(add.split('id="pro-compare-hits"')[1].split('</table>')[0]).not.toContain('ids=1,1');
+        // the search filters: "receiver" finds player 2 and not player 1
+        const hits = (await render('../src/pages/pro/compare.astro', '/pro/compare?q=receiver')).split('id="pro-compare-hits"')[1].split('</table>')[0];
+        expect(hits).toContain('href="/pro/compare?ids=2"');
+        expect(hits).not.toContain('href="/pro/compare?ids=1"');
+        const { parseCompareIds } = await import('../src/utils/pro');
+        expect(parseCompareIds('1,x,2,1, 3,4,5,-6')).toEqual(['1', '2', '3', '4']);
+        expect(await render('../src/pages/pro/compare.astro', '/pro/compare')).toContain('id="pro-compare-empty"');
+        expect(await render('../src/pages/pro/players/[id].astro', '/pro/players/1', { id: '1' })).toContain('href="/pro/compare?ids=1"');
+    }, 60_000);
+
+    test('export: one CSV row per player, derived figures only, counted against the daily cap', async () => {
+        const { GET } = await import('../src/pages/pro/export');
+        const call = (ids: string, viewer: unknown = pro) => (GET as any)({ url: new URL(`https://gameonpaper.com/pro/export?ids=${ids}`), locals: { pro: viewer } });
+        expect((await call('1', null)).status).toBe(403);
+        expect((await call('999')).status).toBe(404);
+        const res: Response = await call('1,2');
+        expect(res.headers.get('Content-Disposition')).toContain('gop-pro-2026-compare.csv');
+        const lines = (await res.text()).trim().split('\r\n');
+        expect(lines).toHaveLength(3);
+        const head = lines[0].split(',');
+        expect(head.slice(0, 4)).toEqual(['espn_id', 'name', 'team', 'position']);
+        expect(head).toContain('pass_EPAplay_band_mid');
+        expect(head.some((h) => /pff|grade/i.test(h))).toBe(false);
+        expect(lines[1].split(',')[head.indexOf('pass_EPAplay')]).toBe('0.2593');
+        // a text cell that would run as a spreadsheet formula is quoted; a negative number is not
+        const { compareCsv } = await import('../src/utils/pro');
+        const evil = compareCsv([{ season: 2026, player: { espn_id: 9, name: '=HYPERLINK("x")', team: ' @t', team_id: null, position: 'QB' },
+            metrics: [{ key: 'm', label: 'M', value: -0.5, n: 1, n_label: 'plays', band_lo: null, band_mid: null, band_hi: null, delta_eb: null }] }]).split('\r\n')[1];
+        expect(evil.startsWith(`9,"'=HYPERLINK(""x"")",' @t,QB,2026,-0.5,`)).toBe(true);
+        await SESSION.put(`pro:dl:coach@example.edu:${new Date().toISOString().slice(0, 10)}`, '150');
+        expect((await call('1')).status).toBe(429);
+    }, 30_000);
+
     test('the Pro nav shows a viewer only what their tier opens', async () => {
         const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
         const { default: Nav } = await import('../src/components/pro/ProNav.astro');
