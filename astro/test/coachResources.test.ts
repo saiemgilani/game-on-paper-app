@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 // The three head-coach tables are read through requestSDV like team_summaries.
 // These pin the REQUEST contract, which no render test sees: the endpoint per
-// league, `role=HC` on the coach tables, `limit=400`, the key columns in
+// league, `role=HC` on the coach tables, `limit=2000` (a full page is truncation, so it is []), the key columns in
 // `select` (one unknown column is a 400), the multi-day KV TTL, [] on a bad
 // response, and that no read ever retries another season.
 const seen: { url: string }[] = [];
@@ -39,7 +39,7 @@ const select = (u: URL) => decodeURIComponent(u.searchParams.get('select') ?? ''
 const THREE_DAYS = 60 * 60 * 24 * 3;
 
 describe('coach tendency reads', () => {
-    test('coach_tendencies: season + role=HC, limit 400, the key columns, per-league base', async () => {
+    test('coach_tendencies: season + role=HC, limit 2000, the key columns, per-league base', async () => {
         const sdv = await import('../src/resources/sdv');
         const rows = await sdv.retrieveCoachTendencies({ season: 2024, league: 'nfl', columns: ['go_rate', 'sec_per_play'] });
         expect(rows).toEqual([{ coach: 'x' }]);
@@ -47,7 +47,7 @@ describe('coach tendency reads', () => {
         expect(u.origin + u.pathname).toBe('https://data.sportsdataverse.org/v1/nfl/coach_tendencies');
         expect(u.searchParams.get('season')).toBe('2024');
         expect(u.searchParams.get('role')).toBe('HC');
-        expect(u.searchParams.get('limit')).toBe('400');
+        expect(u.searchParams.get('limit')).toBe('2000');
         const sel = select(u);
         for (const k of ['season', 'pos_team_id', 'pos_team', 'coach', 'role', 'games', 'plays', 'drives', 'go_rate', 'sec_per_play']) expect(sel).toContain(k);
         expect(new Set(sel).size).toBe(sel.length);
@@ -62,7 +62,7 @@ describe('coach tendency reads', () => {
         expect(u.searchParams.has('role')).toBe(false);
         // no team filter: every team's row (the season team page ranks against them)
         expect(u.searchParams.has('pos_team_id')).toBe(false);
-        expect(u.searchParams.get('limit')).toBe('400');
+        expect(u.searchParams.get('limit')).toBe('2000');
         const sel = select(u);
         for (const k of ['season', 'pos_team_id', 'pos_team', 'games', 'plays', 'drives', 'pass_rate']) expect(sel).toContain(k);
         expect(sel).not.toContain('coach');
@@ -75,7 +75,7 @@ describe('coach tendency reads', () => {
         expect(u.origin + u.pathname).toBe('https://data.sportsdataverse.org/v1/nfl/coach_careers');
         expect(u.searchParams.has('season')).toBe(false);
         expect(u.searchParams.get('role')).toBe('HC');
-        expect(u.searchParams.get('limit')).toBe('400');
+        expect(u.searchParams.get('limit')).toBe('2000');
         const sel = select(u);
         for (const k of ['coach', 'role', 'teams', 'seasons', 'first_season', 'last_season', 'games', 'plays', 'drives', 'epa_per_play']) expect(sel).toContain(k);
         expect(sel).not.toContain('season');
@@ -128,6 +128,23 @@ describe('coach tendency reads', () => {
         respond = () => new Response('<html>maintenance</html>', { status: 200 });
         expect(await sdv.retrieveCoachTendencies({ season: 2024, columns: ['go_rate'] })).toEqual([]);
         expect(puts).toHaveLength(0);
+    });
+
+    test('a page that fills the limit is truncation (the API leaves `next` null), so it is [], never a partial board', async () => {
+        const sdv = await import('../src/resources/sdv');
+        const page = (n: number) => () => new Response(JSON.stringify({ data: Array.from({ length: n }, (_, i) => ({ coach: `c${i}` })), next: null }), { status: 200 });
+        respond = page(2000);
+        expect(await sdv.retrieveCoachCareers({ league: 'nfl', columns: ['go_rate'] })).toEqual([]);
+        // one row short of the limit is a whole page: the guard is exactly the limit, not some lower cut
+        respond = page(1999);
+        expect(await sdv.retrieveCoachCareers({ league: 'nfl', columns: ['go_rate'] })).toHaveLength(1999);
+        // 447 cfb careers (the field 400 cut short) all come back, through the default cfb request
+        seen.length = 0;
+        respond = page(447);
+        expect(await sdv.retrieveCoachCareers({ columns: ['go_rate'] })).toHaveLength(447);
+        const u = only();
+        expect(u.origin + u.pathname).toBe('https://data.sportsdataverse.org/v1/cfb/coach_careers');
+        expect(u.searchParams.get('limit')).toBe('2000');
     });
 });
 
