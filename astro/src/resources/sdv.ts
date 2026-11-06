@@ -1088,7 +1088,7 @@ export async function retrieveRankedRows({ table, season, metrics, idColumns, le
 // Only leagues with a fit of their own get a projection. The NFL has none yet, and the CFB
 // constants have no calibration behind them on NFL ratings, so NFL pregame pages and the
 // NFL Matchup Builder show no projection until an NFL entry is added here.
-const SDV_RATINGS_PREDICTION_CONFIG: Partial<Record<League, { net_points_scale: number, hfa_points: number, margin_sd: number }>> = {
+export const SDV_RATINGS_PREDICTION_CONFIG: Partial<Record<League, { net_points_scale: number, hfa_points: number, margin_sd: number }>> = {
     cfb: {
         net_points_scale: 48.4590,
         hfa_points: 2.7110,

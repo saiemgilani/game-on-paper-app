@@ -10,6 +10,7 @@ vi.mock('cloudflare:workers', () => ({ cache: { purge }, env: {} }));
 vi.mock('@astrojs/cloudflare/handler', () => ({ handle: vi.fn() }));
 vi.mock('../src/resources/sdv', () => ({ sdvPurgeTarget }));
 vi.mock('../src/resources/espn', () => ({ getCurrentScoreboard }));
+vi.mock('../src/resources/pro', () => ({ runProDigest: vi.fn() }));
 import worker from '../src/worker';
 
 describe('purgeTarget', () => {
