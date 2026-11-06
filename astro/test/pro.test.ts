@@ -137,6 +137,8 @@ describe('the magic link', () => {
         // the token is in this page's URL: its POST must not carry it as a Referer into request_log
         const page = await container.renderToResponse(Auth, { request: new Request(`https://gameonpaper.com/pro/auth?t=${t}`), locals });
         expect(page.headers.get('Referrer-Policy')).toBe('no-referrer');
+        // nor may analytics send that URL to a third party
+        expect(await page.text()).not.toContain('plausible.io');
         const post = () => container.renderToResponse(Auth, {
             request: new Request('https://gameonpaper.com/pro/auth', { method: 'POST', body: new URLSearchParams({ t }) }), locals,
         });
