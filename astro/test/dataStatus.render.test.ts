@@ -38,8 +38,10 @@ const h2s = (html: string) => [...html.matchAll(/<h2 class="fs-4 mt-4"[^>]*>([^<
 
 describe('data-status table (flag on)', () => {
     test('one row per surface: a stamped table shows its UTC time, a missing key "Unknown", ESPN "Live from ESPN"', async () => {
-        const { html } = await render({ preview: true });
+        const { html, cacheControl } = await render({ preview: true });
         expect(html.match(/<table/g)).toHaveLength(1);
+        // a table with real stamps takes the 5-minute edge cache; only an all-Unknown one opts out
+        expect(cacheControl).not.toBe('no-store');
         const r = Object.fromEntries(rows(html));
         expect(Object.keys(r)).toEqual(STATUS_SURFACES.map((s) => s.label));
         expect(r['Team leaderboards']).toBe('<time datetime="2026-09-26T13:14:00Z" data-freshness>Sep 26, 2026, 1:14 PM UTC</time>');
