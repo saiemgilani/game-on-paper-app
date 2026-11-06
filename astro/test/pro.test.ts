@@ -123,19 +123,37 @@ describe('the magic link', () => {
         expect(await redeemLoginToken(t)).toBeNull();
     });
 
-    test('/pro/auth sets a cookie the middleware accepts, then refuses the same link', async () => {
-        const { GET } = await import('../src/pages/pro/auth');
+    test('/pro/auth: a GET (an email scanner) spends nothing; the POST sets a cookie once', async () => {
+        const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
+        const { default: Auth } = await import('../src/pages/pro/auth.astro');
         const t = await createLoginToken('coach@example.edu');
-        const call = () => (GET as any)({ url: new URL(`https://gameonpaper.com/pro/auth?t=${t}`), request: new Request('https://gameonpaper.com/pro/auth') });
-        const first: Response = await call();
-        expect(first.status).toBe(302);
+        const locals = { preview: true, pro: null } as any;
+        for (let i = 0; i < 2; i++) {
+            const html = await container.renderToString(Auth, { request: new Request(`https://gameonpaper.com/pro/auth?t=${t}`), locals });
+            expect(html).toContain('id="pro-auth-form"');
+            expect(html).toContain(`value="${t}"`);
+        }
+        expect(SESSION.m.has(`pro:tok:${t}`)).toBe(true);
+        // the token is in this page's URL: its POST must not carry it as a Referer into request_log
+        const page = await container.renderToResponse(Auth, { request: new Request(`https://gameonpaper.com/pro/auth?t=${t}`), locals });
+        expect(page.headers.get('Referrer-Policy')).toBe('no-referrer');
+        // nor may analytics send that URL to a third party
+        expect(await page.text()).not.toContain('plausible.io');
+        const post = () => container.renderToResponse(Auth, {
+            request: new Request('https://gameonpaper.com/pro/auth', { method: 'POST', body: new URLSearchParams({ t }) }), locals,
+        });
+        const first = await post();
+        expect(first.status).toBe(303);
         expect(first.headers.get('Location')).toBe('/pro');
         const cookie = (first.headers.get('Set-Cookie') ?? '').split(';')[0].split('=').slice(1).join('=');
         expect(await verifyProCookie(cookie, 'pro-secret')).toBe('coach@example.edu');
-        const again: Response = await call();
+        const again = await post();
         expect(again.headers.get('Location')).toBe('/pro/login?err=1');
         expect(again.headers.get('Set-Cookie')).toBeNull();
-    });
+        // a link with no token says so and offers a new one
+        expect(await container.renderToString(Auth, { request: new Request('https://gameonpaper.com/pro/auth'), locals }))
+            .toContain('href="/pro/login"');
+    }, 30_000);
 
     test('/pro/login mails only an entitled address and answers the same either way', async () => {
         const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
