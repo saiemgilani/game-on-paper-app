@@ -23,6 +23,8 @@ const title = `${name} players, ${label} shooting | Game on Paper`;
 const subtitle = `Regular-season field-goal attempts from ${cfg.statsSourceLabel} play-by-play for ${who}, ${label}${selected ? '; FGA, FG%, eFG% and 3P% count the selected team only' : ''}.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Players', active: true }];
 const params = { season: String(season), team };
+// the team rides only to its franchise's seasons: ?team=PDX in 2026 is not carried to 2002, where 1611661327 is the old Fire
+const teamSeasons = selected ? cfg.teams.seasonsOf(selected.team_id, season) : undefined;
 ---
 <GenericPage title={title} subtitle={subtitle} slug={lp('/players')} breadcrumbs={breadcrumbs} canonicalPath={withParams(lp('/players'), params, defaults)}>
   <div class="container">
@@ -30,7 +32,7 @@ const params = { season: String(season), team };
       <div class="col-12">
         <h1 class="h3">Players, {label}</h1>
         <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
-          <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/players')} params={team === defaults.team ? {} : { team }} />
+          <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/players')} params={team === defaults.team ? {} : { team }} paramSeasons={teamSeasons} />
           <NbaTeamSelect teams={teams} team={team} season={season} defaults={defaults} />
         </div>
         <p class="small text-muted mb-0">{subtitle}</p>

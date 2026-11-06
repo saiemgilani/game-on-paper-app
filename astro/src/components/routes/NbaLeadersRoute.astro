@@ -5,7 +5,7 @@ import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astr
 import Leaderboards from '../nba/Leaderboards.svelte';
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import type { NbaLeadersParams } from '../../routes/nba/leaders';
-import { basketball, seasonLabelFor } from '../../basketball/config';
+import { basketball, islandLeagueProps, seasonLabelFor } from '../../basketball/config';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaLeadersParams }
@@ -16,6 +16,7 @@ const name = LEAGUES[league].shortName;
 const lp = (p: string) => leaguePath(league, p);
 const ft = cfg.featuredTeam;
 const label = seasonLabelFor(league, season);
+const ip = islandLeagueProps(league, season);
 const title = `${name} rolling leaders, ${label} | Game on Paper`;
 const description = `Who is shooting best over their last 5, 10 and 20 games in ${label}: FG%, eFG%, 3P% and most improved${ft ? `, the ${ft.menuLabel} highlighted` : ''}.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Leaders', active: true }];
@@ -31,7 +32,7 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
     <div class="row">
       <div class="col-12">
         {boards
-          ? (<Leaderboards client:load boards={boards} netsTeamId={ft?.statsTeamId ?? 0} seasonQuery={q} />)
+          ? (<Leaderboards client:load boards={boards} netsTeamId={ft?.statsTeamId ?? null} seasonQuery={q} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} {...(ip.leaderBars ? { bars: ip.leaderBars } : {})} {...(league === 'nba' ? {} : { league })} />)
           : (<p class="text-muted">The Data API has no game logs for {label}, and rolling windows need game dates, so there are no leaderboards for this season.</p>)}
       </div>
     </div>

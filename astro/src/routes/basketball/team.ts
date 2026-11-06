@@ -6,6 +6,7 @@
  * The roster is sorted server-side (?sort=, ?dir=, ?mode=pergame|totals, all whitelisted).
  */
 import type { AstroGlobal } from 'astro';
+import { BASKETBALL, courtFor, placeholderFor } from '../../basketball/config';
 import { leagueContextFromRows, shotsFromRows } from '../../nba/adapters';
 import { buildDashboard, type DashboardData } from '../../nba/dashboard';
 import { shootingLine, type ShootingLine } from '../../nba/data/aggregate';
@@ -61,19 +62,22 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     if (playersR.status !== 'fulfilled' || contextR.status !== 'fulfilled' || shotsR.status !== 'fulfilled') return { unavailable: true };
 
     const rows = playersR.value;
-    const team = teamsFromSeasonRows(rows, season).find((t) => t.team_id === teamId);
+    const team = teamsFromSeasonRows(rows, season, league).find((t) => t.team_id === teamId);
     const shots = shotsFromRows(shotsR.value);
     if (!team || shots.length === 0) {
         uncacheable(Astro);
         return { notFound: true };
     }
     setCache(Astro, playerCache(league));
+    // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them
+    const own = BASKETBALL[league].teams.seasonsOf(teamId, season);
     return {
         ...resolved,
+        seasons: own ? resolved.seasons.filter((s) => own.includes(s)) : resolved.seasons,
         team,
         line: shootingLine(shots),
         roster: sortRosterRows(rosterRows(rows, teamId), sort, dir, mode),
-        dashboard: buildDashboard(shots, leagueContextFromRows(contextR.value)),
+        dashboard: buildDashboard(shots, leagueContextFromRows(contextR.value), courtFor(league, season), placeholderFor(league, season)),
         sort, dir, mode,
     };
 }

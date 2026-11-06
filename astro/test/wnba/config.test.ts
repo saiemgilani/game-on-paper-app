@@ -36,7 +36,7 @@ describe('the wnba league entry', () => {
         expect(regulationFor('wnba', null)).toEqual(QUARTER);
         expect(BASKETBALL.wnba.overtimeMinutes).toBe(5);
     });
-    test('scoreboard: the 2002-05-25 floor, the ET day, year labels, no featured team, Scoreboard-only menu, teams-index landing', () => {
+    test('scoreboard: the 2002-05-25 floor, the ET day, year labels, no featured team, the five-page menu, teams-index landing', () => {
         const w = BASKETBALL.wnba;
         expect(parseDateParam('2002-05-24', '2026-10-12', w.firstScoreboardDay)).toEqual({ ok: false, reason: 'range' });
         expect(parseDateParam('2002-05-25', '2026-10-12', w.firstScoreboardDay)).toEqual({ ok: true, date: '2002-05-25' });
@@ -45,7 +45,7 @@ describe('the wnba league entry', () => {
         expect(gameHref('wnba', 401736287)).toBe('/wnba/game/401736287');
         expect(seasonLabelFor('wnba', 2025)).toBe('2025');
         expect([w.scoreboardTimeZone, w.scoreboardRefresh, w.featuredTeam, w.landing]).toEqual(['America/New_York', 60, null, 'teams-index']);
-        expect(w.headerMenu).toEqual([{ label: 'Scoreboard', path: '/scoreboard' }]);
+        expect(w.headerMenu.map((m) => `${m.label} ${m.path}`)).toEqual(['Scoreboard /scoreboard', 'Players /players', 'Teams /teams', 'Scatter /scatter', 'Leaders /leaders']);
     });
     test("court eras equal sdv-db's WNBA_COURTS era for era, restricted radius included (D32, resolution R5)", () => {
         type Era = { from: number; laneHalfWidth: number; threeRadius: number; threeCornerX: number; restrictedRadius: number };
@@ -140,9 +140,9 @@ describe('the wnba league entry', () => {
         }
         expect(BASKETBALL.nba.darkLogo.kind).toBe('abbr'); // the NBA keeps plan #4's strategy (byte-identical)
     });
-    test('team links: none until the league has team pages; the NBA unchanged', () => {
-        expect([hasTeamPages('nba'), hasTeamPages('wnba')]).toEqual([true, false]);
-        expect(teamHrefFromEspn({ id: '129689' }, 'wnba')).toBeNull();
+    test('team links: the WNBA has team pages; the NBA unchanged', () => {
+        expect([hasTeamPages('nba'), hasTeamPages('wnba')]).toEqual([true, true]);
+        expect(teamHrefFromEspn({ id: '129689' }, 'wnba')).toBe('/wnba/team/1611661331');
         expect(teamHrefFromEspn({ id: '17' }, 'nba')).toBe('/nba/team/1610612751');
     });
 });

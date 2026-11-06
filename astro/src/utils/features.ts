@@ -46,9 +46,9 @@ export const FLAGS: Record<string, FeatureState> = {
     // entry) for up to 6 h + 6 h stale -- purge, or confirm the deploy clears the cache. Before the
     // flip, `?view=live&flags=nba:on` previews the Header entry (isFeaturePublic honours the override).
     'nba': 'preview',
-    // The whole WNBA surface (pages/wnba/**, its Header menu and league-switch entry), gated in middleware like 'nba'.
-    // Scoreboard and game pages only (plan #5); /wnba redirects to the scoreboard until plan #6 ships the teams index and
-    // the shooting pages. Do not promote before plan #6: the sitemap would list /wnba while it is still a redirect.
+    // The whole WNBA surface (pages/wnba/**: the teams-index landing, the scoreboard, game pages and the shooting pages; its
+    // Header menu and league-switch entry), gated in middleware like 'nba'. Promote to 'on' when the design owner signs off,
+    // in a one-line commit as for 'nba': the sitemap then lists /wnba, the Header's pages and the team pages.
     'wnba': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's

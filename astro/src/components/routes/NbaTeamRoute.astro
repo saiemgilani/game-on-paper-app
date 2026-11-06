@@ -11,6 +11,7 @@ import NbaRosterTable from '../nba/NbaRosterTable.astro';
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import { fmtInt, fmtPct } from '../../nba/format';
 import { teamHref, withParams } from '../../nba/links';
+import { placeholderNote } from '../../nba/data/placeholder';
 import type { NbaTeamParams } from '../../routes/nba/team';
 import { basketball, seasonLabelFor } from '../../basketball/config';
 import { LEAGUES, leaguePath } from '../../utils/league';
@@ -51,6 +52,7 @@ const defaults = { season: String(current) };
       <a href="#roster" class="ms-2">Roster</a>
     </nav>
     <div id="charts">
+      {dashboard.unlocated && <p class="small text-muted">{placeholderNote(dashboard.unlocated.count, dashboard.unlocated.total, 'season')}</p>}
       <Dashboard client:load data={dashboard} subject={`${team.name} ${label}`} subjectLabel="Team" />
     </div>
     <section id="roster" aria-label="Roster by attempts" class="mt-3">

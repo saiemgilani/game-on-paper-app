@@ -11,7 +11,7 @@
 import type { AstroGlobal } from 'astro';
 import { BASKETBALL } from '../../basketball/config';
 import { playerSeasonsFromRows } from '../../nba/adapters';
-import { franchiseOf, type Team } from '../../nba/data/teams';
+import type { Team } from '../../nba/data/teams';
 import type { SortDir } from '../../nba/table';
 import { PLAYER_COLUMNS, parseDir, parseSort, playerRows, sortPlayerRows, teamsFromSeasonRows, type PlayerRow, type PlayerSortKey } from '../../nba/tables';
 import { leaguePath, type BasketballLeague } from '../../utils/league';
@@ -55,8 +55,8 @@ export async function prepareBasketballPlayers(Astro: AstroGlobal, league: Baske
         // not ingested yet: the empty page (readBasketballSeasonRows already made it uncacheable)
         return { ...resolved, teams: [], selected: null, team: requested === 'ALL' ? 'ALL' : defaults.team, defaults, rows: [], sort, dir };
     }
-    const teams = teamsFromSeasonRows(rows, season);
-    const selected = requested === 'ALL' ? null : (teams.find((t) => t.tricode === requested) ?? teams.find((t) => t.team_id === franchiseOf(requested)));
+    const teams = teamsFromSeasonRows(rows, season, league);
+    const selected = requested === 'ALL' ? null : (teams.find((t) => t.tricode === requested) ?? teams.find((t) => t.team_id === BASKETBALL[league].teams.franchiseOf(requested)));
     if (selected === undefined) {
         uncacheable(Astro);
         return { notFound: true };

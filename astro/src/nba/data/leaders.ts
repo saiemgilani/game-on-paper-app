@@ -15,9 +15,11 @@ export const LEADER_LABELS: Record<LeaderMetric, string> = {
   improved: "Most improved",
 };
 
-/** Eligible: 5 attempts per game of the window (and 3 threes per game for 3P%). */
-export const minAttempts = (n: number) => 5 * n;
-export const minThrees = (n: number) => 3 * n;
+/** Eligible in a window of n games: bars.fga attempts per game (and bars.fg3a threes per game for 3P%); the NBA's 5 / 3 by default. */
+export interface LeaderBars { fga: number; fg3a: number }
+export const NBA_LEADER_BARS: LeaderBars = { fga: 5, fg3a: 3 };
+export const minAttempts = (n: number, bars: LeaderBars = NBA_LEADER_BARS) => bars.fga * n;
+export const minThrees = (n: number, bars: LeaderBars = NBA_LEADER_BARS) => bars.fg3a * n;
 
 /** Active shooters only (R-BN-27): a window ending more than this many days before the season's latest game is dropped. */
 export const ACTIVE_DAYS = 14;
@@ -84,16 +86,16 @@ export interface LeaderRow {
  * 5-game rookie is not compared with a 20-game window; with `since`, a window that ended before
  * that date (an inactive shooter) is left out.
  */
-export function leaderboard(players: PlayerGames[], n: number, metric: LeaderMetric, since: string | null = null): LeaderRow[] {
+export function leaderboard(players: PlayerGames[], n: number, metric: LeaderMetric, since: string | null = null, bars: LeaderBars = NBA_LEADER_BARS): LeaderRow[] {
   const rows: Omit<LeaderRow, "rank">[] = [];
   for (const p of players) {
     const w = windowLine(p.games, n);
-    if (!w || w.games < n || w.attempts < minAttempts(n)) continue;
+    if (!w || w.games < n || w.attempts < minAttempts(n, bars)) continue;
     if (since !== null && w.to < since) continue;
     const line = lineOf(w);
     let value: number | null;
     let seasonEfg: number | null = null;
-    if (metric === "fg3Pct") value = w.fg3a >= minThrees(n) ? line.fg3Pct : null;
+    if (metric === "fg3Pct") value = w.fg3a >= minThrees(n, bars) ? line.fg3Pct : null;
     else if (metric === "improved") {
       seasonEfg = lineOf(windowLine(p.games, p.games.length) ?? w).efgPct;
       value = line.efgPct !== null && seasonEfg !== null ? line.efgPct - seasonEfg : null;
@@ -112,7 +114,7 @@ export function leaderboard(players: PlayerGames[], n: number, metric: LeaderMet
 export interface Board {
   /** The top rows. */
   rows: LeaderRow[];
-  /** Highlighted-team players ranked below the top rows (so the Nets always show). */
+  /** Highlighted-team players ranked below the top rows (so a featured team's players always show; empty without one). */
   also: LeaderRow[];
   eligible: number;
 }
@@ -127,13 +129,13 @@ export function topRows(ranked: LeaderRow[], top: number): LeaderRow[] {
 }
 
 /** Every window x metric board of active shooters, top `top` rows each (ties kept whole), plus the highlighted team's other rows. */
-export function leaderBoards(players: PlayerGames[], highlightTeamId: number, top = 15): Boards {
+export function leaderBoards(players: PlayerGames[], highlightTeamId: number | null, top = 15, bars: LeaderBars = NBA_LEADER_BARS): Boards {
   const since = activeSince(players);
   const out = {} as Boards;
   for (const n of LEADER_WINDOWS) {
     out[n] = {} as Record<LeaderMetric, Board>;
     for (const metric of LEADER_METRICS) {
-      const all = leaderboard(players, n, metric, since);
+      const all = leaderboard(players, n, metric, since, bars);
       const rows = topRows(all, top);
       out[n][metric] = { rows, also: all.slice(rows.length).filter((r) => r.team_id === highlightTeamId), eligible: all.length };
     }

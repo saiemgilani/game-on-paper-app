@@ -36,6 +36,8 @@ export interface LeagueContextRow {
     makes: number;
     fg3a: number;
     fg3m: number;
+    /** plan #3 (R3): placeholder shots counted in this row's attempts but in no location aggregate; WNBA total rows only */
+    placeholder_shots?: number | null;
 }
 
 export interface SeasonPlayerRow {

@@ -28,7 +28,7 @@ function common(html: string) {
     expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
     expect(html).toContain('href="/wnba"'); // the league crumb
     expect([...html.matchAll(/href="\/nba[^"]*"/g)].map((m) => m[0])).toEqual(['href="/nba"']); // only the Header's league switch
-    expect(html).not.toContain('/wnba/team/'); // no team pages yet: plain team names
+    expect(html).toMatch(/href="\/wnba\/team\/16116613\d\d(\?season=\d{4})?"/); // team names link the team pages (plan #6), a past season's with its ?season=
     expect(html).toContain('aspect-ratio: 2 / 1'); // the WP island's client:only fallback box (#319 R1 I1)
     // D21/D37 (R13): the WP panel names the WNBA model by what sdv-py records, verbatim and unescaped; never the NBA sentence
     expect(plain(html)).toContain("Game on Paper's WNBA in-game model (sdv-py wnba_in_game_wp.ubj): score margin, time remaining, the pregame prior and possession. The pregame home edge was fitted on 220 of 264 2024 WNBA games.");
@@ -67,6 +67,12 @@ describe('/wnba/game/[id] render (real captures)', () => {
         expect(html).toContain('DET WP');
         expect(html).toContain('<h3 class="h6">DET</h3>'); // shot-chart heading
     });
+    test("250603003, 2005: the team links carry the game's season (Detroit is Dallas's franchise page for 2005)", async () => {
+        prep.mockResolvedValueOnce({ game: fromProcessor(read('game_250603003_processor'), 'wnba') });
+        const html = await render('250603003');
+        const teamHrefs = [...html.matchAll(/href="(\/wnba\/team\/[^"]*)"/g)].map((m) => m[1]);
+        expect(teamHrefs).toEqual(['/wnba/team/1611661313?season=2005', '/wnba/team/1611661321?season=2005']);
+    });
     test('401736289 from the Data API: double overtime after four quarters', async () => {
         prep.mockResolvedValueOnce({ game: fromDataApi(read('game_401736289_api'), 'wnba') });
         const html = await render('401736289');
@@ -98,7 +104,7 @@ describe('/wnba/game/[id] render (real captures)', () => {
         expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
         expect(html).toContain('Atlanta Dream at Golden State Valkyries');
         expect(html).toContain('href="/wnba/scoreboard?date=2026-10-19"'); // a 00:00Z tip is 8 pm ET on Oct 19
-        expect(html).not.toContain('/wnba/team/');
+        for (const id of [1611661330, 1611661331]) expect(html).toContain(`href="/wnba/team/${id}"`);
         expect(summary.mock.calls[0][1]).toBe('wnba');
     });
     test('the processor-unavailable answer is a 503 naming the game', async () => {

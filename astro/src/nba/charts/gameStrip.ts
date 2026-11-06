@@ -1,4 +1,5 @@
 import { select } from "d3-selection";
+import type { Pronoun } from "../../basketball/config";
 import type { PlayerGame } from "../data/aggregate";
 import { fmtDate, fmtPct } from "../format";
 import { inWindow, type DateWindow } from "../selection";
@@ -18,6 +19,8 @@ export interface GameStripOptions {
   window: DateWindow;
   onToggle: (gameId: string) => void;
   animate?: boolean;
+  /** whose season the colours compare with, in the legend ('his' by default) */
+  pronoun?: Pronoun;
 }
 
 const CELL = 16;
@@ -59,13 +62,13 @@ export function stripKeydown(onToggle: (gameId: string) => void) {
   };
 }
 
-export function describeGames(data: GameStripData, selected: ReadonlySet<string>): string {
+export function describeGames(data: GameStripData, selected: ReadonlySet<string>, pronoun: Pronoun = "his"): string {
   const n = data.games.filter((g) => selected.has(g.game_id)).length;
-  return `${data.games.length} games in date order, ${n} selected; each game's FG% against his season FG% of ${fmtPct(data.seasonFgPct)}.`;
+  return `${data.games.length} games in date order, ${n} selected; each game's FG% against ${pronoun} season FG% of ${fmtPct(data.seasonFgPct)}.`;
 }
 
 export function renderGameStrip(svg: SVGSVGElement, data: GameStripData, opts: GameStripOptions): () => void {
-  const { width, selected, window, onToggle, animate = true } = opts;
+  const { width, selected, window, onToggle, animate = true, pronoun = "his" } = opts;
   const theme = chartTheme(svg);
   const root = select(svg).append("g");
   const { cells, rows } = stripLayout(data.games, width);
@@ -135,7 +138,7 @@ export function renderGameStrip(svg: SVGSVGElement, data: GameStripData, opts: G
     width - 2 * PAD,
     theme,
     ["click a game (or Tab to it, then Space) to add or drop it; faded: not in the charts below"],
-    ["game FG% vs his season FG% (points)", "red: above his season rate · blue: below"],
+    [`game FG% vs ${pronoun} season FG% (points)`, `red: above ${pronoun} season rate · blue: below`],
   );
   setViewBox(svg, width, gridH + 8 + used + 4);
 
