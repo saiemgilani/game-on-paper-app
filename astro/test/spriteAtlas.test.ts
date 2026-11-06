@@ -37,7 +37,7 @@ describe('buildAtlas (browser-only; faked canvas and Image)', () => {
     });
 
     function fakeDom(fail: (src: string) => boolean = () => false) {
-        const state = { inFlight: 0, peak: 0, pending: [] as (() => void)[], drawn: [] as unknown[][], canvas: { width: 0, height: 0 } as any };
+        const state = { inFlight: 0, peak: 0, pending: [] as (() => void)[], drawn: [] as unknown[][], cors: [] as string[], canvas: { width: 0, height: 0 } as any };
         class FakeImage {
             crossOrigin = '';
             width = 48;
@@ -45,6 +45,8 @@ describe('buildAtlas (browser-only; faked canvas and Image)', () => {
             onload: () => void = () => {};
             onerror: () => void = () => {};
             set src(s: string) {
+                // crossOrigin must already be set when src is: a late set taints the canvas (no PNG export)
+                state.cors.push(this.crossOrigin);
                 state.inFlight++;
                 state.peak = Math.max(state.peak, state.inFlight);
                 state.pending.push(() => {
@@ -77,6 +79,7 @@ describe('buildAtlas (browser-only; faked canvas and Image)', () => {
         expect(Object.keys(frames)).toHaveLength(40);
         expect(state.drawn).toHaveLength(40);
         expect(state.peak).toBe(16);
+        expect(state.cors).toEqual(Array(40).fill('anonymous'));
         // cols = ceil(sqrt(40)) = 7
         expect([canvas.width, canvas.height]).toEqual([7 * 48, 6 * 48]);
     });
