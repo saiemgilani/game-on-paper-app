@@ -21,14 +21,20 @@ export const STAT_FILTERS: Record<string, string> = {
 
 export const STAT_SEARCH_LIMIT = 200;
 
-/** Whitelisted keys holding a finite, non-negative number, in STAT_FILTERS order (so the cache key and the sort don't follow param order). */
+/** A threshold is a whole number of at most six digits, what the form's `min=0 step=1` field submits. */
+const THRESHOLD_RE = /^\d{1,6}$/;
+
+/**
+ * Whitelisted keys holding a whole, non-negative number, in STAT_FILTERS order (so the cache key and the sort
+ * don't follow param order). Anything else (a decimal, `1e3`, `0x10`, a sign, a seven-digit value) is dropped:
+ * `Number()` alone let `1e21` through as the string `1e+21`, which the API may refuse, and the page would then
+ * say the search is unavailable instead of "no seasons".
+ */
 export function parseStatFilters(q: URLSearchParams): Record<string, number> {
     const out: Record<string, number> = {};
     for (const key of Object.keys(STAT_FILTERS)) {
         const raw = q.get(key)?.trim();
-        if (!raw) continue;
-        const n = Number(raw);
-        if (Number.isFinite(n) && n >= 0) out[key] = n;
+        if (raw && THRESHOLD_RE.test(raw)) out[key] = Number(raw);
     }
     return out;
 }

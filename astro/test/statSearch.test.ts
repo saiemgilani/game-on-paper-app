@@ -31,6 +31,13 @@ import Header from '../src/components/Header.astro';
 
 beforeEach(() => { seen.length = 0; signals.length = 0; respond = ok; });
 
+function astro(path: string) {
+    const cache: unknown[] = [];
+    const headers = new Headers();
+    const a: any = { url: new URL(`https://gameonpaper.com${path}`), locals: {}, response: { headers }, cache: { set: (c: unknown) => cache.push(c) } };
+    return { a, cache, headers };
+}
+
 describe('parseStatFilters', () => {
     test('keeps whitelisted keys with finite non-negative numbers, in whitelist order', () => {
         const f = parseStatFilters(new URLSearchParams('rush_yards=1000&pass_yards=3000&rec=0'));
@@ -42,6 +49,23 @@ describe('parseStatFilters', () => {
         expect(parseStatFilters(new URLSearchParams(
             'bogus=5&pass_epa=10&season=2020&pass_yards=&rush_yards=-1&rec_yards=abc&rec_td=Infinity&pass_td=1e999&rush_td=%20',
         ))).toEqual({});
+    });
+
+    test('a threshold is a whole number of at most six digits; any other spelling is dropped', () => {
+        expect(parseStatFilters(new URLSearchParams('pass_yards=%203000%20&rush_yards=007&rec=999999'))).toEqual({ pass_yards: 3000, rush_yards: 7, rec: 999999 });
+        for (const v of ['1e3', '1e21', '0x10', '0b11', '0o7', '1.5', '%2B5', '-0', '1,000', '1 000', '1000000', 'NaN', '3000;DROP', '1%26limit%3D9999']) {
+            expect(parseStatFilters(new URLSearchParams(`pass_yards=${v}`)), v).toEqual({});
+        }
+    });
+
+    test('injection: only whitelisted columns and __gte ever reach the API, with the 200 cap fixed', async () => {
+        const { a } = astro('/search/seasons?pass_yards=3000&pass_yards__lte=1&pass_yards__gte=0&order=player_name&limit=100000&offset=5'
+            + '&select=*&rush_yards[]=9&Rush_Yards=9&rec_yards=1%26limit%3D9999&pass_td=1%26order%3D-games&season=2020');
+        await loadStatSearch(a, 'cfb');
+        expect(seen).toHaveLength(1);
+        const u = new URL(seen[0]);
+        // exactly the parsed filter, the sort and the cap: nothing from the query string is forwarded as-is
+        expect([...u.searchParams.entries()]).toEqual([['pass_yards__gte', '3000'], ['order', '-pass_yards'], ['limit', '200']]);
     });
 
     test('the whitelist is F11 columns only', () => {
@@ -75,12 +99,6 @@ describe('the read', () => {
 });
 
 describe('loadStatSearch', () => {
-    function astro(path: string) {
-        const cache: unknown[] = [];
-        const headers = new Headers();
-        const a: any = { url: new URL(`https://gameonpaper.com${path}`), locals: {}, response: { headers }, cache: { set: (c: unknown) => cache.push(c) } };
-        return { a, cache, headers };
-    }
 
     test('no filters: the empty form, no read, cacheable', async () => {
         const { a, cache } = astro('/search/seasons?bogus=1');
