@@ -1,0 +1,175 @@
+---
+/**
+ * One role report, the web twin of gop-pro's role_<kind>.typ: `pro/roles/<kind>/<key>.json`.
+ * Headlines, the PDF and the limits come first and last (ReportFrame), as on the valuation
+ * reports; in between, each kind's tables in the PDF's order. Middleware has checked the tier.
+ */
+import GenericPage from '../../../../layouts/GenericPage.astro';
+import Panel from '../../../../layouts/panel/GenericPanel.astro';
+import ProNav from '../../../../components/pro/ProNav.astro';
+import ReportFrame from '../../../../components/pro/ReportFrame.astro';
+import RoleTable, { type RoleCol } from '../../../../components/pro/RoleTable.astro';
+import { cleanTextForTeam } from '../../../../utils/misc';
+import { formatOdds, formatUsd, isRoleKind, ROLE_KINDS } from '../../../../utils/pro';
+import { proObject } from '../../../../resources/pro';
+
+type Row = Record<string, any>;
+interface RoleDoc {
+    schema: number; role: string; seasons: number[]; rendered: string; price_season: number
+    headlines: string[]; limits: string[]
+    team?: { team_id: number; team: string; conference: string | null; p4: boolean }
+    player?: { espn_id: number; name: string; team: string; unit: string; class: string | null; source: string | null; stars: number | null; age: number | null }
+    [k: string]: any
+}
+interface Section { id: string; title: string; note?: string; cols: RoleCol[]; rows: Row[]; rankOf?: string }
+
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
+const { kind, key } = Astro.params;
+const ok = isRoleKind(kind) && /^[A-Za-z0-9_-]+$/.test(key ?? '');
+const doc = ok ? await proObject<RoleDoc>(`pro/roles/${kind}/${key}.json`) : null;
+if (!ok || !doc) return Astro.rewrite('/404');
+const meta = ROLE_KINDS[kind];
+
+const P: RoleCol = { key: 'name', label: 'Player', fmt: 'player' };
+const season: RoleCol = { key: 'season', label: 'Season' };
+const unitName: RoleCol = { key: 'name', label: 'Unit' };
+const arr = (k: string): Row[] => (Array.isArray(doc[k]) ? doc[k] : []);
+const seasons = doc.seasons ?? [];
+const span = seasons.length ? `${Math.min(...seasons)}-${Math.max(...seasons)}` : '';
+const spend: Section = {
+    id: 'spend', title: 'Spend and efficiency', note: 'Modeled market pay against on-field value, by season; efficiency rank among its tier. Reported: a published budget, where one exists.',
+    cols: [season, { key: 'modeled', label: 'Modeled budget', fmt: 'usd' }, { key: 'value', label: 'Value', fmt: 'usd' },
+        { key: 'per_dollar', label: 'Value per $', fmt: 'x2' }, { key: 'eff_rank', label: 'Rank', fmt: 'rank' }, { key: 'reported', label: 'Reported', fmt: 'usd' }],
+    rows: arr('spend'), rankOf: 'eff_n',
+};
+
+let tiles: [string, string, string][] = [];
+let sections: Section[] = [];
+if (kind === 'team') {
+    sections = [
+        { id: 'unit-grid', title: 'Position groups by season', note: 'FBS rank of each unit\'s on-field value; 1 is best.',
+            cols: [unitName, ...seasons.map((s, i) => ({ key: `r${i}`, label: String(s), fmt: 'int' as const }))],
+            rows: arr('unit_grid').map((u) => ({ name: u.name, ...Object.fromEntries((u.ranks ?? []).map((r: number | null, i: number) => [`r${i}`, r])) })) },
+        { id: 'needs', title: 'Needs next season', note: 'Need near 1.0: one of the weakest projected units at that position in FBS. Returning: the unit\'s playing time expected back.',
+            cols: [unitName, { key: 'proj_upct', label: 'Next yr pct', fmt: 'pct' }, { key: 'need', label: 'Need', fmt: 'x2' }, { key: 'ret_share', label: 'Returning', fmt: 'odds' }],
+            rows: arr('needs') },
+        { id: 'targets', title: 'Portal targets', note: 'Players likely to move who fit the biggest needs, by expected fit.',
+            cols: [P, { key: 'team', label: 'Team' }, { key: 'unit', label: 'Unit' }, { key: 'class', label: 'Class' }, { key: 'pct', label: 'Pct', fmt: 'pct' },
+                { key: 'usd', label: 'Value', fmt: 'usd' }, { key: 'market_usd', label: 'Market price', fmt: 'usd' }, { key: 'p_move', label: 'Move odds', fmt: 'odds' }, { key: 'proj', label: 'Proj pct', fmt: 'pct' }],
+            rows: arr('targets') },
+        { id: 'best-buys', title: 'Best buys', note: 'Acquisition price against the value delivered while here.',
+            cols: [P, { key: 'unit', label: 'Unit' }, season, { key: 'price', label: 'Price', fmt: 'usd' }, { key: 'delivered', label: 'Delivered', fmt: 'usd' }, { key: 'seasons_there', label: 'Seasons', fmt: 'int' }],
+            rows: arr('best_buys') },
+        { id: 'worst-buys', title: 'Worst buys',
+            cols: [P, { key: 'unit', label: 'Unit' }, season, { key: 'price', label: 'Price', fmt: 'usd' }, { key: 'delivered', label: 'Delivered', fmt: 'usd' }, { key: 'seasons_there', label: 'Seasons', fmt: 'int' }],
+            rows: arr('worst_buys') },
+    ];
+} else if (kind === 'collective') {
+    tiles = [['Pool', formatUsd(doc.pool), 'modeled market budget this season']];
+    sections = [
+        { id: 'allocation', title: 'Allocation', note: 'The pool split by on-field value at market prices.',
+            cols: [P, { key: 'unit', label: 'Unit' }, { key: 'class', label: 'Class' }, { key: 'source', label: 'Route' }, { key: 'pct', label: 'Pct', fmt: 'pct' },
+                { key: 'usd', label: 'Value', fmt: 'usd' }, { key: 'alloc_usd', label: 'Allocation', fmt: 'usd' }],
+            rows: arr('allocation') },
+        { id: 'by-unit', title: 'By position group', note: 'Gap: value matched minus the room\'s budget at the market\'s position split.',
+            cols: [unitName, { key: 'value_matched', label: 'Value', fmt: 'usd' }, { key: 'room_budget', label: 'Room budget', fmt: 'usd' }, { key: 'gap', label: 'Gap', fmt: 'usd' }],
+            rows: arr('by_unit') },
+        { id: 'retention', title: 'Retention risk', note: 'Value at risk: his market price times the chance he moves.',
+            cols: [P, { key: 'unit', label: 'Unit' }, { key: 'class', label: 'Class' }, { key: 'p_move', label: 'Move odds', fmt: 'odds' },
+                { key: 'market_usd', label: 'Market price', fmt: 'usd' }, { key: 'value_at_risk', label: 'Value at risk', fmt: 'usd' }],
+            rows: arr('retention') },
+        { id: 'plan', title: 'Next cycle', note: 'Cost of a 75th-percentile starter at each need.',
+            cols: [unitName, { key: 'need', label: 'Need', fmt: 'x2' }, { key: 'cost_p75_starter', label: 'p75 starter', fmt: 'usd' }],
+            rows: arr('plan') },
+        { id: 'roi', title: 'Return by acquisition route', note: 'Value delivered per dollar of acquisition price, by season and route.',
+            cols: [season, { key: 'route', label: 'Route' }, { key: 'n', label: 'Players', fmt: 'int' }, { key: 'price', label: 'Price', fmt: 'usd' },
+                { key: 'delivered', label: 'Delivered', fmt: 'usd' }, { key: 'roi', label: 'Return', fmt: 'x2' }],
+            rows: arr('roi') },
+        spend,
+    ];
+} else if (kind === 'ad') {
+    sections = [
+        { id: 'peers', title: 'Peers', note: 'Its conference, by on-field value this season; this program in bold.',
+            cols: [{ key: 'team', label: 'Team' }, { key: 'value', label: 'Value', fmt: 'usd' }, { key: 'fbs_rank', label: 'FBS rank', fmt: 'int' },
+                { key: 'portal_net', label: 'Portal net', fmt: 'usd' }, { key: 'roi', label: 'Return', fmt: 'x2' }],
+            rows: arr('peers') },
+        spend,
+    ];
+} else if (kind === 'agent') {
+    const last = (u: Row) => ({ name: u.name, season: u.seasons?.at(-1), p50: u.p50?.at(-1), p90: u.p90?.at(-1) });
+    sections = [
+        { id: 'value-per-dollar', title: 'What the market pays for, by position', note: 'On-field value per market dollar; under 1.0, the market pays more than the play is worth.',
+            cols: [unitName, { key: 'pay', label: 'Market pay', fmt: 'usd' }, { key: 'value', label: 'Value', fmt: 'usd' }, { key: 'per_dollar', label: 'Value per $', fmt: 'x2' }],
+            rows: arr('value_per_dollar') },
+        { id: 'market-price', title: 'Market pay this season', note: 'Modeled pay of a P4 starter, median and 90th percentile, calibrated to the College Sports Commission.',
+            cols: [unitName, season, { key: 'p50', label: 'Median', fmt: 'usd' }, { key: 'p90', label: '90th pct', fmt: 'usd' }],
+            rows: arr('market_price').map(last) },
+        { id: 'premium', title: 'The transfer premium', note: 'Change in value after a move, and how often movers start.',
+            cols: [unitName, { key: 'movers', label: 'Movers', fmt: 'int' }, { key: 'change', label: 'Value change', fmt: 'usd' }, { key: 'start_rate', label: 'Start rate', fmt: 'odds' }],
+            rows: arr('premium') },
+        { id: 'market-list', title: 'Likely movers', note: 'Ranked by market price times the chance he moves.',
+            cols: [P, { key: 'team', label: 'Team' }, { key: 'unit', label: 'Unit' }, { key: 'class', label: 'Class' }, { key: 'pct', label: 'Pct', fmt: 'pct' },
+                { key: 'usd', label: 'Value', fmt: 'usd' }, { key: 'market_usd', label: 'Market price', fmt: 'usd' }, { key: 'p_move', label: 'Move odds', fmt: 'odds' }],
+            rows: arr('market_list') },
+        { id: 'landing', title: 'Landing spots', note: 'The programs with the biggest need at each position.',
+            cols: [unitName, { key: 'teams', label: 'Teams (need)' }],
+            rows: arr('landing_spots').map((u) => ({ name: u.name, teams: (u.teams ?? []).slice(0, 4).map((t: Row) => `${t.team} (${t.need?.toFixed(2)})`).join(', ') })) },
+    ];
+} else {
+    const pr = doc.projection ?? {};
+    const mk = doc.market ?? {};
+    tiles = [
+        ['Market pay', formatUsd(mk.pay_usd), 'modeled, this season'],
+        ['On-field value', formatUsd(mk.value_usd), 'this season'],
+        ['Surplus', formatUsd(mk.surplus), 'value minus market pay'],
+        ['Next season', pr.proj == null ? '—' : `${Math.round(pr.proj)} pct`, pr.proj_lo == null ? '' : `80% range ${Math.round(pr.proj_lo)} to ${Math.round(pr.proj_hi)}`],
+        ['Move odds', formatOdds(pr.p_move), `market price ${formatUsd(pr.market_usd)}`],
+    ];
+    sections = [
+        { id: 'career', title: 'Career', cols: [season, { key: 'team', label: 'Team' }, { key: 'unit', label: 'Unit' }, { key: 'class', label: 'Class' },
+            { key: 'pct', label: 'Pct', fmt: 'pct' }, { key: 'usd', label: 'Value', fmt: 'usd' }, { key: 'started', label: 'Started' }, { key: 'era', label: 'Era' }],
+            rows: arr('career').map((r) => ({ ...r, started: r.started ? 'Yes' : 'No' })) },
+        { id: 'destinations', title: 'Destinations', note: 'Programs with the biggest need at his position. Pull: the share of 4- and 5-star portal entrants a program lands.',
+            cols: [{ key: 'team', label: 'Team' }, { key: 'need', label: 'Need', fmt: 'x2' }, { key: 'pull', label: 'Pull', fmt: 'odds' }], rows: arr('destinations') },
+        { id: 'comps', title: 'Comparable players', note: 'Same position and level, and what came next.',
+            cols: [{ key: 'name', label: 'Player' }, { key: 'team', label: 'Team' }, season, { key: 'pct', label: 'Pct', fmt: 'pct' }, { key: 'usd', label: 'Value', fmt: 'usd' },
+                { key: 'pct_next', label: 'Next pct', fmt: 'pct' }, { key: 'team_next', label: 'Next team' }],
+            rows: arr('comps') },
+    ];
+}
+const who = doc.player ? `${doc.player.name}` : doc.team ? cleanTextForTeam(doc.team.team, doc.team.team_id) : 'FBS';
+const sub = doc.player
+    ? [doc.player.unit, doc.player.team, doc.player.class, doc.player.source].filter(Boolean).join(' · ')
+    : doc.team ? [doc.team.conference, doc.team.p4 ? 'P4' : 'G5'].filter(Boolean).join(' · ') : 'Every FBS program';
+---
+<GenericPage title={`${who} ${meta.title} | Game on Paper Pro`} subtitle={`${meta.title}, ${span}`} slug={`/pro/roles/${kind}/${key}`}
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Role reports', url: '/pro/roles', active: false }, { title: `${who} ${meta.title}`, active: true }]}
+    heading={`${who} ${meta.title}`}>
+    <ProNav active="roles" />
+    <div class="container">
+        <h1 class="fs-3">{who} <span class="text-muted fs-5">{meta.title} · {sub}</span></h1>
+        <p class="text-muted text-small">For {meta.reader}. {span} history in constant {doc.price_season}-{String(doc.price_season + 1).slice(-2)} revenue-share dollars.</p>
+        <ReportFrame headlines={doc.headlines} limits={doc.limits ?? []} pdfHref={`/pro/file/pro/roles/${kind}/${key}.pdf`}
+            snapshot={`history ${span}`} rendered={doc.rendered}>
+            {tiles.length > 0 && (
+                <div class="row g-2 mb-3" id="pro-kpis">
+                    {tiles.map(([label, val, note]) => (
+                        <div class="col-lg col-md-4 col-6">
+                            <div class="border rounded p-2 h-100">
+                                <div class="text-muted text-small text-uppercase">{label}</div>
+                                <div class="fs-5 fw-bold numeral">{val}</div>
+                                <div class="text-muted text-small">{note}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+            {sections.filter((s) => s.rows.length > 0).map((s) => (
+                <Panel id={`pro-role-${s.id}`} title={s.title} show={true} class="mb-md-3">
+                    {s.note && <p slot="panel-subtitle" class="m-0 text-muted text-small">{s.note}</p>}
+                    <Fragment slot="panel-body"><RoleTable id={`pro-role-${s.id}-table`} cols={s.cols} rows={s.rows} rankOf={s.rankOf} /></Fragment>
+                </Panel>
+            ))}
+        </ReportFrame>
+    </div>
+</GenericPage>

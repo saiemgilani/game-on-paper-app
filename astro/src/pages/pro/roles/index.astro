@@ -1,0 +1,85 @@
+---
+/**
+ * Role reports index: the 2019-present history read for each kind of buyer, from
+ * `pro/roles/index.json` (gop-pro roles.py). Team, collective and AD reports exist for every
+ * FBS program; the agent report is league-wide; player reports are a sample set.
+ */
+import GenericPage from '../../../layouts/GenericPage.astro';
+import ProNav from '../../../components/pro/ProNav.astro';
+import { cleanTextForTeam } from '../../../utils/misc';
+import { ROLE_KINDS } from '../../../utils/pro';
+import { proObject } from '../../../resources/pro';
+
+interface RoleRow { kind: keyof typeof ROLE_KINDS; key: string; title: string; team_id: number | null; team: string | null
+    conference: string | null; p4: boolean | null; unit: string | null; headline: string | null }
+interface RoleIndex { seasons: number[]; rendered: string; price_season: number; reports: RoleRow[] }
+
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
+const index = await proObject<RoleIndex>('pro/roles/index.json');
+const of = (k: RoleRow['kind']) => (index?.reports ?? []).filter((r) => r.kind === k);
+const teams = of('team');
+const has = (k: RoleRow['kind']) => new Set(of(k).map((r) => r.key));
+const [collectives, ads] = [has('collective'), has('ad')];
+const byConf = new Map<string, RoleRow[]>();
+for (const t of teams) byConf.set(t.conference ?? 'Other', [...(byConf.get(t.conference ?? 'Other') ?? []), t]);
+const confs = [...byConf.keys()].sort();
+const span = index?.seasons?.length ? `${Math.min(...index.seasons)}-${Math.max(...index.seasons)}` : '';
+---
+<GenericPage title="Role Reports | Game on Paper Pro" subtitle="Reports for coaches, collectives, ADs, agents and players" slug="/pro/roles"
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Role reports', active: true }]} heading="Role Reports">
+    <ProNav active="roles" />
+    <div class="container mb-4">
+        <h1 class="fs-3">Role Reports</h1>
+        <p>
+            The {span} valuation history, read for the person buying. Every season is priced in constant
+            {index?.price_season}-{String((index?.price_season ?? 0) + 1).slice(-2)} revenue-share dollars; before July 2021 that is a
+            shadow price, never a payment.
+        </p>
+        {!index
+            ? <p class="text-muted" id="pro-roles-unavailable">Role reports are unavailable right now.</p>
+            : (
+            <Fragment>
+                <div class="row mb-3" id="pro-roles-kinds">
+                    {Object.entries(ROLE_KINDS).map(([k, v]) => (
+                        <div class="col-lg col-md-4 col-6 mb-2">
+                            <div class="border rounded p-2 h-100" data-kind={k}>
+                                <div class="fw-bold">{v.title}</div>
+                                <div class="text-muted text-small">For {v.reader}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <h2 class="fs-5">Market History</h2>
+                <ul class="mb-3" id="pro-roles-agent">
+                    {of('agent').map((r) => <li><a href={`/pro/roles/agent/${r.key}`}>The FBS market, by position</a>{r.headline && <span class="text-muted text-small"> · {r.headline}</span>}</li>)}
+                </ul>
+
+                <h2 class="fs-5">Career and Market</h2>
+                <p class="text-muted text-small mb-1">A sample set of players; more on request.</p>
+                <ul class="mb-3" id="pro-roles-players">
+                    {of('player').map((r) => <li><a href={`/pro/roles/player/${r.key}`}>{r.title}</a> <span class="text-muted text-small">{[r.unit, r.team].filter(Boolean).join(', ')}</span></li>)}
+                </ul>
+
+                <h2 class="fs-5">Programs</h2>
+                <p class="text-muted text-small mb-2">Each school's Program History; its Budget and Allocation (collective) and Program Benchmark (AD) reports beside it.</p>
+                <div class="row" id="pro-roles-teams">
+                    {confs.map((c) => (
+                        <div class="col-lg-3 col-md-4 col-6 mb-3">
+                            <p class="fw-bold mb-1">{c}</p>
+                            <ul class="list-unstyled mb-0">
+                                {(byConf.get(c) ?? []).sort((a, b) => a.title.localeCompare(b.title)).map((t) => (
+                                    <li>
+                                        <a href={`/pro/roles/team/${t.key}`}>{cleanTextForTeam(t.title, t.team_id)}</a>
+                                        {collectives.has(t.key) && <a class="text-small ms-1" href={`/pro/roles/collective/${t.key}`}>collective</a>}
+                                        {ads.has(t.key) && <a class="text-small ms-1" href={`/pro/roles/ad/${t.key}`}>AD</a>}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
+                </div>
+            </Fragment>
+            )}
+    </div>
+</GenericPage>
