@@ -3,6 +3,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { env } from 'cloudflare:workers';
 import { bestSeasons, coachEras, conferenceSpans } from '../src/utils/teamHub';
 
 // 'team-hub' (S12): the team profile's Best Seasons, Head Coaches and Conference History tables.
@@ -14,7 +15,7 @@ const NFL = JSON.parse(readFileSync(new URL('./fixtures/team-hub-nfl.json', impo
 const fixtureFor = (league: string) => (league === 'nfl' ? NFL : CFB);
 const METRICS = ['net_adj_epa', 'EPAplay_margin', 'adj_off_epa', 'EPAplay_off', 'adj_def_epa', 'EPAplay_def'];
 
-const net = vi.hoisted(() => ({ seen: [] as string[], signals: [] as unknown[], timeout: false }));
+const net = vi.hoisted(() => ({ seen: [] as string[], signals: [] as unknown[], timeout: false, status: 200 }));
 vi.mock('../src/utils/telemetry', async (orig) => ({
     ...(await orig<typeof import('../src/utils/telemetry')>()),
     wrappedFetch: async (url: string, init?: RequestInit) => {
@@ -24,6 +25,7 @@ vi.mock('../src/utils/telemetry', async (orig) => ({
         const u = new URL(String(url));
         const league = u.pathname.split('/')[2];
         const rows = fixtureFor(league).coach_tendencies[u.searchParams.get('pos_team_id') ?? ''] ?? [];
+        if (net.status !== 200 && u.pathname.endsWith('/coach_tendencies')) return new Response('unavailable', { status: net.status });
         return new Response(JSON.stringify({ count: rows.length, data: rows }), { status: 200 });
     },
 }));
@@ -103,12 +105,14 @@ describe('team profile route', () => {
     async function render(league: 'cfb' | 'nfl', id: string, preview: boolean) {
         const locals = (preview ? { preview: true } : {}) as App.Locals;
         const { loadTeamProfile } = await import('../src/routes/teamProfile');
-        const data = await loadTeamProfile({ params: { id }, locals, cache: { set: () => {} } } as any, league);
+        const cache: unknown[] = [];
+        const headers = new Headers();
+        const data = await loadTeamProfile({ params: { id }, locals, cache: { set: (c: unknown) => cache.push(c) }, response: { headers } } as any, league);
         if ('notFound' in data) throw new Error('not found');
         const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
         const { default: Route } = await import('../src/components/routes/TeamProfileRoute.astro');
         const html = await container.renderToString(Route, { props: { ...data }, request: new Request(`https://gameonpaper.com/team/${id}`), locals });
-        return { data, html };
+        return { data, html, cache, headers };
     }
     const coachReads = () => net.seen.filter(u => u.includes('/coach_tendencies'));
     const panel = (html: string, id: string) => html.match(new RegExp(`id="${id}-panel"[\\s\\S]*?</table>`))?.[0];
@@ -151,18 +155,38 @@ describe('team profile route', () => {
         expect(coachReads()).toEqual([]);
     });
 
-    test('the coach read has a deadline; past it the page renders without Head Coaches', async () => {
+    test('the coach read has a deadline; past it the page renders without Head Coaches, uncached', async () => {
         net.timeout = true;
-        const { html } = await render('cfb', '2306', true);
-        expect(coachReads()).toHaveLength(1);
-        expect(net.signals[0]).toBeInstanceOf(AbortSignal);
-        expect(html).not.toContain('head-coaches-panel');
-        expect(html).toContain('best-seasons-panel');
-        expect(html).toContain('conference-history-panel');
+        const put = vi.spyOn(env.SDV_API_CACHE, 'put');
+        try {
+            const { data, html, cache, headers } = await render('cfb', '2306', true);
+            expect(coachReads()).toHaveLength(1);
+            expect(net.signals[net.seen.findIndex(u => u.includes('/coach_tendencies'))]).toBeInstanceOf(AbortSignal);
+            expect(html).not.toContain('head-coaches-panel');
+            expect(html).toContain('best-seasons-panel');
+            expect(html).toContain('conference-history-panel');
+            // a failure, not "no coaches": nothing written to KV, and the degraded page is not cached
+            expect((data as { coachSeasons?: unknown }).coachSeasons).toBeNull();
+            expect(put).not.toHaveBeenCalled();
+            expect(cache).toEqual([false]);
+            expect(headers.get('Cache-Control')).toBe('no-store');
+        } finally { put.mockRestore(); }
     });
 
-    test('no coach rows, no Head Coaches panel', async () => {
-        const { html } = await render('cfb', '99999', true);
+    test('a non-2xx coach read is a failure too, not a team with no coaches', async () => {
+        net.status = 503;
+        try {
+            const { data, html, headers } = await render('cfb', '2306', true);
+            expect((data as { coachSeasons?: unknown }).coachSeasons).toBeNull();
+            expect(html).not.toContain('head-coaches-panel');
+            expect(headers.get('Cache-Control')).toBe('no-store');
+        } finally { net.status = 200; }
+    });
+
+    test('no coach rows, no Head Coaches panel (and still cacheable)', async () => {
+        const { html, cache, headers } = await render('cfb', '99999', true);
+        expect(cache).toEqual([]);
+        expect(headers.get('Cache-Control')).toBeNull();
         expect(html).not.toContain('head-coaches-panel');
         expect(html).not.toContain('best-seasons-panel');
     });

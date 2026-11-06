@@ -18,8 +18,8 @@ export interface TeamProfileData {
     teamSummaries: SDVTeamSummary[];
     /** 'team-season-bands' */
     seasonBands: boolean;
-    /** 'team-hub': the team's head-coach seasons; absent with the flag off (no read) */
-    coachSeasons?: SDVCoachTendency[];
+    /** 'team-hub': the team's head-coach seasons; `null` when the read failed; absent with the flag off (no read) */
+    coachSeasons?: SDVCoachTendency[] | null;
 }
 
 export type TeamProfileResult = { notFound: true } | TeamProfileData;
@@ -59,5 +59,11 @@ export async function loadTeamProfile(Astro: AstroGlobal, league: League): Promi
         retrieveTeamSummaries({ team_id: Number(id), league }),
         hub ? retrieveTeamCoachSeasons({ team_id: id, league }) : undefined,
     ]);
+    // A failed coach read renders the page without Head Coaches; that render must not be cached as the
+    // page. set(false) alone emits no header (heuristic ~2 h cache, routes/game.ts), so opt out explicitly.
+    if (hub && coachSeasons === null) {
+        Astro.cache.set(false);
+        Astro.response.headers.set('Cache-Control', 'no-store');
+    }
     return { league, id, team, percentiles, teamSummaries, seasonBands, ...(hub ? { coachSeasons } : {}) };
 }
