@@ -377,16 +377,22 @@ describe('the pages', () => {
         }
         const page = (kind: string, key: string) => render('../src/pages/pro/roles/[kind]/[key].astro', `/pro/roles/${kind}/${key}`, { kind, key });
         const team = await page('team', '1');
+        expect(team).toContain('id="pro-headlines"');
         expect(team.indexOf('id="pro-headlines"')).toBeLessThan(team.indexOf('id="pro-role-unit-grid-table"'));
         expect(team).toContain('href="/pro/file/pro/roles/team/1.pdf"');
         expect(team).toContain('Fixture role limit two.');
-        expect(team.split('id="pro-role-targets-table"')[1].split('</table>')[0]).toContain('href="/pro/players/2"');
+        const targets = team.split('id="pro-role-targets-table"')[1].split('</table>')[0];
+        expect(targets).toContain('href="/pro/players/2"');
+        expect(targets).toContain('<td class="text-left text-nowrap">georgia</td>');  // team column: left, through cleanTextForTeam
         // a season with no rank prints a gap, not "null"
         expect(team.split('id="pro-role-unit-grid-table"')[1].split('</table>')[0]).toContain('—');
         const coll = await page('collective', '1');
         for (const s of ['$12.50M', '$4.10M', '14/68', 'id="pro-role-retention-table"']) expect(coll, s).toContain(s);
         const ad = await page('ad', '1');
-        expect(ad.split('id="pro-role-peers-table"')[1].split('</tr>')[1]).toContain('fw-bold');
+        // its own program's name is bold (per column, not the whole row)
+        const peers = ad.split('id="pro-role-peers-table"')[1].split('</table>')[0];
+        expect(peers.split('</tr>')[1]).toContain('<strong>');
+        expect(peers).not.toContain('fw-bold');
         const agent = await page('agent', 'market');
         for (const s of ['$2.65M', '0.23', 'Fixture State (0.85)']) expect(agent, s).toContain(s);
         const player = await page('player', '1');
@@ -395,8 +401,10 @@ describe('the pages', () => {
         const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
         const { default: Page } = await import('../src/pages/pro/roles/[kind]/[key].astro');
         for (const [kind, key] of [['coach', '1'], ['team', '999'], ['team', '..'], ['toString', '1']]) {
-            const res = await container.renderToResponse(Page, { params: { kind, key }, request: new Request(`https://gameonpaper.com/pro/roles/${kind}/${key}`), locals: { preview: true, pro } as any }).catch(() => null);
-            expect(res ? await res.text() : '', `${kind}/${key}`).not.toContain('Download PDF');
+            const out = await container.renderToResponse(Page, { params: { kind, key }, request: new Request(`https://gameonpaper.com/pro/roles/${kind}/${key}`), locals: { preview: true, pro } as any })
+                .then(async (r) => `${r.status}:${await r.text()}`, (e) => `throw:${String(e)}`);
+            // the page rewrites to /404; the test container has no such route, so that rewrite is what throws
+            expect(out, `${kind}/${key}`).toMatch(/^throw:.*route \/404$/);
         }
     }, 60_000);
 

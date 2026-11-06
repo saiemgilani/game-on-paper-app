@@ -9,7 +9,7 @@ import Panel from '../../../../layouts/panel/GenericPanel.astro';
 import ProNav from '../../../../components/pro/ProNav.astro';
 import ReportFrame from '../../../../components/pro/ReportFrame.astro';
 import RoleTable, { type RoleCol } from '../../../../components/pro/RoleTable.astro';
-import { cleanTextForTeam } from '../../../../utils/misc';
+import { cleanTextForTeam, roundNumber } from '../../../../utils/misc';
 import { formatOdds, formatUsd, isRoleKind, ROLE_KINDS } from '../../../../utils/pro';
 import { proObject } from '../../../../resources/pro';
 
@@ -18,7 +18,7 @@ interface RoleDoc {
     schema: number; role: string; seasons: number[]; rendered: string; price_season: number
     headlines: string[]; limits: string[]
     team?: { team_id: number; team: string; conference: string | null; p4: boolean }
-    player?: { espn_id: number; name: string; team: string; unit: string; class: string | null; source: string | null; stars: number | null; age: number | null }
+    player?: { espn_id: number; name: string; team: string; team_id?: number | null; unit: string; class: string | null; source: string | null; stars: number | null; age: number | null }
     [k: string]: any
 }
 interface Section { id: string; title: string; note?: string; cols: RoleCol[]; rows: Row[]; rankOf?: string }
@@ -54,7 +54,7 @@ if (kind === 'team') {
             cols: [unitName, { key: 'proj_upct', label: 'Next yr pct', fmt: 'pct' }, { key: 'need', label: 'Need', fmt: 'x2' }, { key: 'ret_share', label: 'Returning', fmt: 'odds' }],
             rows: arr('needs') },
         { id: 'targets', title: 'Portal targets', note: 'Players likely to move who fit the biggest needs, by expected fit.',
-            cols: [P, { key: 'team', label: 'Team' }, { key: 'unit', label: 'Unit' }, { key: 'class', label: 'Class' }, { key: 'pct', label: 'Pct', fmt: 'pct' },
+            cols: [P, { key: 'team', label: 'Team', fmt: 'team' }, { key: 'unit', label: 'Unit' }, { key: 'class', label: 'Class' }, { key: 'pct', label: 'Pct', fmt: 'pct' },
                 { key: 'usd', label: 'Value', fmt: 'usd' }, { key: 'market_usd', label: 'Market price', fmt: 'usd' }, { key: 'p_move', label: 'Move odds', fmt: 'odds' }, { key: 'proj', label: 'Proj pct', fmt: 'pct' }],
             rows: arr('targets') },
         { id: 'best-buys', title: 'Best buys', note: 'Acquisition price against the value delivered while here.',
@@ -90,7 +90,7 @@ if (kind === 'team') {
 } else if (kind === 'ad') {
     sections = [
         { id: 'peers', title: 'Peers', note: 'Its conference, by on-field value this season; this program in bold.',
-            cols: [{ key: 'team', label: 'Team' }, { key: 'value', label: 'Value', fmt: 'usd' }, { key: 'fbs_rank', label: 'FBS rank', fmt: 'int' },
+            cols: [{ key: 'team', label: 'Team', fmt: 'team' }, { key: 'value', label: 'Value', fmt: 'usd' }, { key: 'fbs_rank', label: 'FBS rank', fmt: 'int' },
                 { key: 'portal_net', label: 'Portal net', fmt: 'usd' }, { key: 'roi', label: 'Return', fmt: 'x2' }],
             rows: arr('peers') },
         spend,
@@ -108,12 +108,12 @@ if (kind === 'team') {
             cols: [unitName, { key: 'movers', label: 'Movers', fmt: 'int' }, { key: 'change', label: 'Value change', fmt: 'usd' }, { key: 'start_rate', label: 'Start rate', fmt: 'odds' }],
             rows: arr('premium') },
         { id: 'market-list', title: 'Likely movers', note: 'Ranked by market price times the chance he moves.',
-            cols: [P, { key: 'team', label: 'Team' }, { key: 'unit', label: 'Unit' }, { key: 'class', label: 'Class' }, { key: 'pct', label: 'Pct', fmt: 'pct' },
+            cols: [P, { key: 'team', label: 'Team', fmt: 'team' }, { key: 'unit', label: 'Unit' }, { key: 'class', label: 'Class' }, { key: 'pct', label: 'Pct', fmt: 'pct' },
                 { key: 'usd', label: 'Value', fmt: 'usd' }, { key: 'market_usd', label: 'Market price', fmt: 'usd' }, { key: 'p_move', label: 'Move odds', fmt: 'odds' }],
             rows: arr('market_list') },
         { id: 'landing', title: 'Landing spots', note: 'The programs with the biggest need at each position.',
             cols: [unitName, { key: 'teams', label: 'Teams (need)' }],
-            rows: arr('landing_spots').map((u) => ({ name: u.name, teams: (u.teams ?? []).slice(0, 4).map((t: Row) => `${t.team} (${t.need?.toFixed(2)})`).join(', ') })) },
+            rows: arr('landing_spots').map((u) => ({ name: u.name, teams: (u.teams ?? []).slice(0, 4).map((t: Row) => `${cleanTextForTeam(t.team, t.team_id)} (${roundNumber(t.need, 2, 2)})`).join(', ') })) },
     ];
 } else {
     const pr = doc.projection ?? {};
@@ -122,34 +122,34 @@ if (kind === 'team') {
         ['Market pay', formatUsd(mk.pay_usd), 'modeled, this season'],
         ['On-field value', formatUsd(mk.value_usd), 'this season'],
         ['Surplus', formatUsd(mk.surplus), 'value minus market pay'],
-        ['Next season', pr.proj == null ? '—' : `${Math.round(pr.proj)} pct`, pr.proj_lo == null ? '' : `80% range ${Math.round(pr.proj_lo)} to ${Math.round(pr.proj_hi)}`],
+        ['Next season', pr.proj == null ? '—' : `${roundNumber(pr.proj, 0, 0)} pct`, pr.proj_lo == null ? '' : `80% range ${roundNumber(pr.proj_lo, 0, 0)} to ${roundNumber(pr.proj_hi, 0, 0)}`],
         ['Move odds', formatOdds(pr.p_move), `market price ${formatUsd(pr.market_usd)}`],
     ];
     sections = [
-        { id: 'career', title: 'Career', cols: [season, { key: 'team', label: 'Team' }, { key: 'unit', label: 'Unit' }, { key: 'class', label: 'Class' },
+        { id: 'career', title: 'Career', cols: [season, { key: 'team', label: 'Team', fmt: 'team' }, { key: 'unit', label: 'Unit' }, { key: 'class', label: 'Class' },
             { key: 'pct', label: 'Pct', fmt: 'pct' }, { key: 'usd', label: 'Value', fmt: 'usd' }, { key: 'started', label: 'Started' }, { key: 'era', label: 'Era' }],
             rows: arr('career').map((r) => ({ ...r, started: r.started ? 'Yes' : 'No' })) },
         { id: 'destinations', title: 'Destinations', note: 'Programs with the biggest need at his position. Pull: the share of 4- and 5-star portal entrants a program lands.',
-            cols: [{ key: 'team', label: 'Team' }, { key: 'need', label: 'Need', fmt: 'x2' }, { key: 'pull', label: 'Pull', fmt: 'odds' }], rows: arr('destinations') },
+            cols: [{ key: 'team', label: 'Team', fmt: 'team' }, { key: 'need', label: 'Need', fmt: 'x2' }, { key: 'pull', label: 'Pull', fmt: 'odds' }], rows: arr('destinations') },
         { id: 'comps', title: 'Comparable players', note: 'Same position and level, and what came next.',
-            cols: [{ key: 'name', label: 'Player' }, { key: 'team', label: 'Team' }, season, { key: 'pct', label: 'Pct', fmt: 'pct' }, { key: 'usd', label: 'Value', fmt: 'usd' },
-                { key: 'pct_next', label: 'Next pct', fmt: 'pct' }, { key: 'team_next', label: 'Next team' }],
+            cols: [{ key: 'name', label: 'Player' }, { key: 'team', label: 'Team', fmt: 'team' }, season, { key: 'pct', label: 'Pct', fmt: 'pct' }, { key: 'usd', label: 'Value', fmt: 'usd' },
+                { key: 'pct_next', label: 'Next pct', fmt: 'pct' }, { key: 'team_next', label: 'Next team', fmt: 'team' }],
             rows: arr('comps') },
     ];
 }
 const who = doc.player ? `${doc.player.name}` : doc.team ? cleanTextForTeam(doc.team.team, doc.team.team_id) : 'FBS';
 const sub = doc.player
-    ? [doc.player.unit, doc.player.team, doc.player.class, doc.player.source].filter(Boolean).join(' · ')
-    : doc.team ? [doc.team.conference, doc.team.p4 ? 'P4' : 'G5'].filter(Boolean).join(' · ') : 'Every FBS program';
+    ? [doc.player.unit, doc.player.team && cleanTextForTeam(doc.player.team, doc.player.team_id), doc.player.class, doc.player.source].filter(Boolean).join(', ')
+    : doc.team ? [doc.team.conference, doc.team.p4 ? 'P4' : 'G5'].filter(Boolean).join(', ') : 'Every FBS program';
 ---
 <GenericPage title={`${who} ${meta.title} | Game on Paper Pro`} subtitle={`${meta.title}, ${span}`} slug={`/pro/roles/${kind}/${key}`}
     breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Role reports', url: '/pro/roles', active: false }, { title: `${who} ${meta.title}`, active: true }]}
     heading={`${who} ${meta.title}`}>
     <ProNav active="roles" />
     <div class="container">
-        <h1 class="fs-3">{who} <span class="text-muted fs-5">{meta.title} · {sub}</span></h1>
-        <p class="text-muted text-small">For {meta.reader}. {span} history in constant {doc.price_season}-{String(doc.price_season + 1).slice(-2)} revenue-share dollars.</p>
-        <ReportFrame headlines={doc.headlines} limits={doc.limits ?? []} pdfHref={`/pro/file/pro/roles/${kind}/${key}.pdf`}
+        <h1 class="fs-3">{who} <span class="text-muted fs-5">{meta.title}: {sub}</span></h1>
+        <p class="text-muted text-small">For {meta.reader}.{doc.price_season ? ` ${span} history in constant ${doc.price_season}-${String(doc.price_season + 1).slice(-2)} revenue-share dollars.` : ''}</p>
+        <ReportFrame headlines={doc.headlines ?? []} limits={doc.limits ?? []} pdfHref={`/pro/file/pro/roles/${kind}/${key}.pdf`}
             snapshot={`history ${span}`} rendered={doc.rendered}>
             {tiles.length > 0 && (
                 <div class="row g-2 mb-3" id="pro-kpis">

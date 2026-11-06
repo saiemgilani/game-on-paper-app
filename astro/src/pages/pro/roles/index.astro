@@ -52,13 +52,13 @@ const span = index?.seasons?.length ? `${Math.min(...index.seasons)}-${Math.max(
 
                 <h2 class="fs-5">Market History</h2>
                 <ul class="mb-3" id="pro-roles-agent">
-                    {of('agent').map((r) => <li><a href={`/pro/roles/agent/${r.key}`}>The FBS market, by position</a>{r.headline && <span class="text-muted text-small"> · {r.headline}</span>}</li>)}
+                    {of('agent').map((r) => <li><a href={`/pro/roles/agent/${r.key}`}>The FBS market, by position</a>{r.headline && <span class="text-muted text-small">: {r.headline}</span>}</li>)}
                 </ul>
 
                 <h2 class="fs-5">Career and Market</h2>
                 <p class="text-muted text-small mb-1">A sample set of players; more on request.</p>
                 <ul class="mb-3" id="pro-roles-players">
-                    {of('player').map((r) => <li><a href={`/pro/roles/player/${r.key}`}>{r.title}</a> <span class="text-muted text-small">{[r.unit, r.team].filter(Boolean).join(', ')}</span></li>)}
+                    {of('player').map((r) => <li><a href={`/pro/roles/player/${r.key}`}>{r.title}</a> <span class="text-muted text-small">{[r.unit, r.team && cleanTextForTeam(r.team, r.team_id)].filter(Boolean).join(', ')}</span></li>)}
                 </ul>
 
                 <h2 class="fs-5">Programs</h2>

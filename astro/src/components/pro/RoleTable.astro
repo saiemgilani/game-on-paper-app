@@ -1,26 +1,30 @@
 ---
 /**
  * One table of a role report (gop-pro roles.py), in the valuation reports' table markup:
- * `table-sm`, the first column left, numbers centred in `.numeral` cells, '—' for a gap.
- * A `player` column links to the profile when the row has an espn_id; a row with `me: true`
- * (the AD report's own program among its peers) is bold.
+ * `table-sm`, the first column and any player or team column left, numbers centred in `.numeral`
+ * cells via roundNumber, '—' for a gap. A `player` column links to the profile when the row has an
+ * espn_id; a `team` column goes through cleanTextForTeam with the row's `<key>_id`; a row with
+ * `me: true` (the AD report's own program among its peers) has its name cell bold.
  */
+import { cleanTextForTeam, roundNumber } from '../../utils/misc';
 import { formatOdds, formatUsd } from '../../utils/pro';
 
-export type RoleFmt = 'text' | 'player' | 'usd' | 'odds' | 'pct' | 'x2' | 'x3' | 'int' | 'rank';
+export type RoleFmt = 'text' | 'player' | 'team' | 'usd' | 'odds' | 'pct' | 'x2' | 'x3' | 'int' | 'rank';
 export interface RoleCol { key: string; label: string; fmt?: RoleFmt; title?: string }
 interface Props { id: string; cols: RoleCol[]; rows: Record<string, any>[]; rankOf?: string }
 const { id, cols, rows, rankOf } = Astro.props;
 
+const left = (c: RoleCol, i: number) => i === 0 || c.fmt === 'player' || c.fmt === 'team';
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 function cell(c: RoleCol, r: Record<string, any>): string {
     const v = r[c.key];
     switch (c.fmt) {
         case 'usd': return formatUsd(v);
         case 'odds': return formatOdds(v);
-        case 'pct': return isNum(v) ? String(Math.round(v)) : '—';
-        case 'x2': return isNum(v) ? v.toFixed(2) : '—';
-        case 'x3': return isNum(v) ? v.toFixed(3) : '—';
+        case 'pct': return isNum(v) ? roundNumber(v, 0, 0) : '—';
+        case 'x2': return isNum(v) ? roundNumber(v, 2, 2) : '—';
+        case 'x3': return isNum(v) ? roundNumber(v, 3, 3) : '—';
+        case 'team': return v === null || v === undefined || v === '' ? '—' : cleanTextForTeam(v, r[`${c.key}_id`]);
         case 'int': return isNum(v) ? Math.round(v).toLocaleString('en-US') : '—';
         case 'rank': return isNum(v) ? (rankOf && isNum(r[rankOf]) ? `${v}/${r[rankOf]}` : String(v)) : '—';
         default: return v === null || v === undefined || v === '' ? '—' : String(v);
@@ -30,14 +34,14 @@ function cell(c: RoleCol, r: Record<string, any>): string {
 <div class="table-responsive">
     <table class="table table-sm" id={id}>
         <thead>
-            <tr>{cols.map((c, i) => <th class={i === 0 ? 'text-left' : 'text-center'}>{c.title ? <abbr title={c.title}>{c.label}</abbr> : c.label}</th>)}</tr>
+            <tr>{cols.map((c, i) => <th class={left(c, i) ? 'text-left' : 'text-center'}>{c.title ? <abbr title={c.title}>{c.label}</abbr> : c.label}</th>)}</tr>
         </thead>
         <tbody>
             {rows.map((r) => (
-                <tr class:list={{ 'fw-bold': r.me === true }}>
+                <tr>
                     {cols.map((c, i) => (
-                        <td class:list={[i === 0 ? 'text-left text-nowrap' : 'text-center', { numeral: c.fmt && c.fmt !== 'text' && c.fmt !== 'player' }]}>
-                            {c.fmt === 'player' && r.espn_id ? <a href={`/pro/players/${r.espn_id}`}>{cell(c, r)}</a> : cell(c, r)}
+                        <td class:list={[left(c, i) ? 'text-left text-nowrap' : 'text-center', { numeral: c.fmt && !['text', 'player', 'team'].includes(c.fmt) }]}>
+                            {c.fmt === 'player' && r.espn_id ? <a href={`/pro/players/${r.espn_id}`}>{cell(c, r)}</a> : i === 0 && r.me === true ? <strong>{cell(c, r)}</strong> : cell(c, r)}
                         </td>
                     ))}
                 </tr>
