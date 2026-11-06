@@ -1,0 +1,56 @@
+---
+/**
+ * The magic link's landing: /pro/auth?t=<token>. GET only shows a button; the
+ * token is spent by the POST it submits. Email scanners and link previewers fetch
+ * a link with GET before the reader clicks it, and a GET that spent the token
+ * left the real click on "that link did not work". A live token is consumed (one
+ * use), the signed gop_pro cookie is set, and the viewer lands on /pro; anything
+ * else goes back to the sign-in form. Astro's origin check rejects a cross-site
+ * POST before this runs, and the middleware keeps this path no-store.
+ */
+import { getSecret } from 'astro:env/server';
+import GenericPage from '../../layouts/GenericPage.astro';
+import ProNav from '../../components/pro/ProNav.astro';
+import { sessionCookie } from '../../utils/preview';
+import { mintProCookie, PRO_COOKIE, PRO_COOKIE_TTL_S } from '../../utils/pro';
+import { redeemLoginToken } from '../../resources/pro';
+
+if (Astro.request.method === 'POST') {
+    let token: string | null = null;
+    try { token = String((await Astro.request.formData()).get('t') ?? ''); } catch { /* empty form */ }
+    const secret = getSecret('PRO_COOKIE_SECRET');
+    const email = secret ? await redeemLoginToken(token) : null;
+    if (!email || !secret) {
+        return new Response(null, { status: 303, headers: { Location: '/pro/login?err=1', 'Cache-Control': 'no-store' } });
+    }
+    return new Response(null, {
+        status: 303,
+        headers: {
+            Location: '/pro',
+            'Set-Cookie': sessionCookie(PRO_COOKIE, await mintProCookie(email, secret), PRO_COOKIE_TTL_S, Astro.request.url),
+            'Cache-Control': 'no-store',
+        },
+    });
+}
+const token = Astro.url.searchParams.get('t') ?? '';
+---
+<GenericPage title="Sign in | Game on Paper Pro" subtitle="Sign in to Game on Paper Pro" slug="/pro/auth" heading="Sign in to Game on Paper Pro"
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Sign in', active: true }]}>
+    <ProNav />
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-lg-6 col-12">
+                <h1 class="fs-3">Sign in</h1>
+                {token
+                    ? (
+                    <form method="post" action="/pro/auth" id="pro-auth-form">
+                        <input type="hidden" name="t" value={token} />
+                        <p>Finish signing in to Game on Paper Pro on this device.</p>
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">Sign in</button>
+                    </form>
+                    )
+                    : <p>That link is incomplete. <a href="/pro/login">Get a new sign-in link</a>.</p>}
+            </div>
+        </div>
+    </div>
+</GenericPage>
