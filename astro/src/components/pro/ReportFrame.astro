@@ -1,0 +1,24 @@
+---
+/** The frame every valuation report shares: headlines first, the PDF link, and the
+ * limits block last. The contract says render every headline in order and every limit. */
+interface Props { headlines: string[]; limits: string[]; pdfHref: string; snapshot: string; rendered: string }
+const { headlines, limits, pdfHref, snapshot, rendered } = Astro.props;
+---
+<div class="card border rounded mb-3" id="pro-headlines">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+            <p class="fw-bold mb-1">Headlines</p>
+            <a class="btn btn-sm btn-outline-secondary text-nowrap" href={pdfHref} id="pro-pdf">Download PDF</a>
+        </div>
+        <ul class="mb-0">{headlines.map((h) => <li>{h}</li>)}</ul>
+    </div>
+</div>
+<slot />
+<div class="alert alert-warning mb-3" id="pro-limits">
+    <p class="fw-bold mb-1">What these numbers are, and aren't</p>
+    <ul class="mb-0">{limits.map((l) => <li>{l}</li>)}</ul>
+</div>
+<p class="text-muted text-small" id="pro-provenance">
+    Data {snapshot}, rendered {rendered}. Dollar values are model estimates at revenue-share rates, not reported deals.
+    How they are made: <a href="/pro/methodology#valuation">methodology</a>.
+</p>

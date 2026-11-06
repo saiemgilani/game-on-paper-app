@@ -51,8 +51,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # the PR merge commit (default for pull_request); full history for the base worktree
-          fetch-depth: 0
+          # the PR merge commit (default for pull_request) and its parents: the base is HEAD^1.
+          # Not fetch-depth 0, which fetches every branch, pr-previews' ~6.6 GB of media included.
+          fetch-depth: 2
           persist-credentials: false
 
       - name: Evidence directory (outside the checkout, so no build or test globs see it)
@@ -161,8 +162,6 @@ jobs:
           shots="$EVIDENCE_DIR/shots"
           clips="$EVIDENCE_DIR/walkthrough"
           if ! ls "$shots"/*.jpg "$clips"/*.mp4 "$clips"/*.webm >/dev/null 2>&1; then echo "nothing to publish"; exit 0; fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           wt="$RUNNER_TEMP/pr-previews"
           dest="pr$PR/${PR_HEAD_SHA:0:7}"
           # one-shot auth for every pr-previews fetch and push (the checkout persists no token);
@@ -170,13 +169,24 @@ jobs:
           # fresh orphan branch whose push is then rejected
           auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)"
           echo "::add-mask::$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)"
-          # full fetch: the checkout is complete history, and a shallow fetch would graft it
-          if git -c "http.https://github.com/.extraheader=$auth" fetch -q origin pr-previews; then
-            git worktree add --detach "$wt" FETCH_HEAD
+          # A scratch repo, not a worktree of the checkout: a blobless fetch of pr-previews (every
+          # commit and tree, no file contents) and a sparse checkout of this PR's folder only, so the
+          # runner writes this PR's media and never the other PRs' ~12 GB (which filled the disk).
+          git init -q "$wt"
+          g() { git -C "$wt" "$@"; }
+          g remote add origin "https://github.com/${{ github.repository }}"
+          g config user.name "github-actions[bot]"
+          g config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # in the scratch repo's own config (not -c) so every fetch carries it, including the
+          # lazy blob fetches a checkout makes; the repo lives in RUNNER_TEMP and dies with the job
+          g config "http.https://github.com/.extraheader" "$auth"
+          # the sparse file directly: `sparse-checkout set` wants a commit to apply it to
+          g config core.sparseCheckout true
+          printf '/pr%s/\n' "$PR" > "$wt/.git/info/sparse-checkout"
+          if g fetch -q --filter=blob:none origin pr-previews; then
+            g checkout -q --detach FETCH_HEAD
           else
-            git worktree add --detach "$wt" HEAD
-            git -C "$wt" checkout --orphan pr-previews
-            git -C "$wt" rm -rfq .
+            g checkout -q --orphan pr-previews
           fi
           mkdir -p "$wt/$dest"
           cp "$shots"/*.jpg "$wt/$dest/" 2>/dev/null || true
@@ -185,16 +195,20 @@ jobs:
             [ -f "$w" ] || continue
             if [ -f "${w%.webm}.mp4" ]; then cp "${w%.webm}.mp4" "$wt/$dest/"; else cp "$w" "$wt/$dest/"; fi
           done
-          git -C "$wt" add "$dest"
+          g add "$dest"
           # a re-run of the same commit can reproduce identical images: nothing to commit, still publish
-          if ! git -C "$wt" diff --cached --quiet; then
-            git -C "$wt" commit -qm "chore(previews): PR #$PR @ ${PR_HEAD_SHA:0:7}"
-            # other PRs push here concurrently; their paths never overlap, so rebase and retry
+          if ! g diff --cached --quiet; then
+            g commit -qm "chore(previews): PR #$PR @ ${PR_HEAD_SHA:0:7}"
+            mine="$(g rev-parse HEAD)"
+            # other PRs push here concurrently and the weekly prune squashes the branch: on a rejected
+            # push, replay THIS commit alone onto the new tip. Never `rebase FETCH_HEAD`: after a prune
+            # the old history is unrelated to the tip, and a rebase would push all of it back.
             for attempt in 1 2 3 4 5; do
-              git -C "$wt" -c "http.https://github.com/.extraheader=$auth" push -q origin HEAD:refs/heads/pr-previews && break
-              git -C "$wt" -c "http.https://github.com/.extraheader=$auth" fetch -q origin pr-previews
-              git -C "$wt" rebase -q FETCH_HEAD
+              g push -q origin HEAD:refs/heads/pr-previews && break
               [ "$attempt" = 5 ] && exit 1
+              g fetch -q --filter=blob:none origin pr-previews
+              g checkout -q --detach FETCH_HEAD
+              g cherry-pick "$mine" >/dev/null
             done
           fi
           sha="$(git -C "$wt" rev-parse HEAD)"
