@@ -126,7 +126,11 @@ export async function claimDownload(viewer: ProViewer, key: string, now = new Da
     const objKey = `quota/dl/${await sha256Hex(viewer.email)}.json`;
     for (let attempt = 0; attempt < 5; attempt++) {
         const cur = await b.get(objKey);
-        const q = (cur ? await cur.json().catch(() => ({})) : {}) as { day?: string; n?: number; month?: string; pdf?: number };
+        let q: { day?: string; n?: number; month?: string; pdf?: number } = {};
+        if (cur) {
+            // an unreadable counter must not read as zero: that would reset the day and the month
+            try { q = await cur.json(); } catch (err) { console.error(`[pro quota] unreadable counter: ${err}`); return false; }
+        }
         const nDay = q.day === day ? Number(q.n) || 0 : 0;
         const nMonth = q.month === month ? Number(q.pdf) || 0 : 0;
         if (nDay >= PRO_FILES_PER_DAY || (metered && nMonth >= PRO_ANALYST_PDFS_PER_MONTH)) return false;

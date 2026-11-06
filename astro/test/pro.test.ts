@@ -653,6 +653,17 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         expect(await claimDownload(coach, 'pro/2026/players/1.pdf', new Date(Date.now() + DAY))).toBe(true);
     });
 
+    test('an unreadable counter refuses the download instead of resetting the count', async () => {
+        const coach = { ...live, email: 'coach@example.edu' } as any;
+        await spend(coach, 150);
+        const [key] = [...PRO_BUCKET.m.keys()];
+        PRO_BUCKET.m.get(key)!.v = 'not json';
+        const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+        expect(await claimDownload(coach, 'pro/2026/players/1.json')).toBe(false);
+        expect(PRO_BUCKET.m.get(key)!.v).toBe('not json');  // nothing was written over it
+        err.mockRestore();
+    });
+
     test('parallel downloads cannot overshoot the daily cap', async () => {
         const coach = { ...live, email: 'coach@example.edu' } as any;
         await spend(coach, 148);
