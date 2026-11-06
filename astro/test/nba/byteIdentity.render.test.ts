@@ -3,7 +3,7 @@
 // refactor, so these files are never regenerated from the branch. When main itself changes the NBA render (a header
 // island, a dependency bump), re-capture them ON MAIN: a detached worktree of main, with only this harness and its
 // fixtures copied in, then copy the snapshots back. First captured on 81dbaf1e, then re-captured on main 7e71f2d6.
- // The Plausible markup alone was carried over from renders on main 06d88c0c after #419 changed the shared layout.
+// The Plausible markup alone was carried over from renders on main 06d88c0c after #419 changed the shared layout.
 // player.html and team.html were re-captured on feat/basketball-square-bins, which changes the shot chart on purpose
 // (square bins, the distance link): that diff is the shot-chart island and its Squares button, nothing else.
 // game-*.html and pregame.html were re-captured on feat/basketball-parity: a SportsEvent JSON-LD script on each, and the

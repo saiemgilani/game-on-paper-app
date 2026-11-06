@@ -1,9 +1,9 @@
 # python/tests/test_nba_process_parity.py
 """Compare the full NBA process response with the captured baseline, excluding regulation_periods.
 
- The baseline is from 81dbaf1e. Only prior.home_team_spread was refreshed from
- 06d88c0c, using the same ESPN capture and the locked SportsDataverse dependency.
- """
+The baseline is from 81dbaf1e. Only prior.home_team_spread was refreshed from
+06d88c0c, using the same ESPN capture and the locked SportsDataverse dependency.
+"""
 
 import base64
 import gzip
