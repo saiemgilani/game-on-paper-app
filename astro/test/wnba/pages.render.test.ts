@@ -8,6 +8,8 @@ import { beforeAll, describe, expect, test, vi } from 'vitest';
 vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
 // BB-G6's Impact panel reads the Data API with 'bball-impact' on (preview): never from a test
 vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => [] }));
+// BB-G27's Value panel reads the Data API with 'bball-war' on (preview): never from a test
+vi.mock('../../src/resources/playerWar', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playerWar')>()), retrievePlayerWar: async () => [], retrievePlayerEpv: async () => [] }));
 import { BASKETBALL, courtFor } from '../../src/basketball/config';
 import { leagueContextFromRows, shotsFromRows } from '../../src/nba/adapters';
 import { describeHex } from '../../src/nba/charts/hexShotChart';
