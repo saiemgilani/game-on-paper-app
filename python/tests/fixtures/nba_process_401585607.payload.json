@@ -12793,7 +12793,7 @@
  ],
  "prior": {
   "game_spread_available": false,
-  "home_team_spread": 2.5,
+  "home_team_spread": null,
   "home_win_prob": 0.5598461453671343,
   "source": "hfa"
  },
