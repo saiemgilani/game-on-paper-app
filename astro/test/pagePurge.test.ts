@@ -1,6 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { PURGE_SETTLE_MS, SUMMARY_PAGE_TAGS, purgeTarget } from '../src/utils/pagePurge';
+import { PURGED_FOR_INGEST_KEY, PURGE_SETTLE_MS, SUMMARY_PAGE_TAGS, purgeTarget } from '../src/utils/pagePurge';
+
+// The cron itself (worker.ts), with every read it makes mocked: no Data API, ESPN or Cloudflare call.
+const { purge, sdvPurgeTarget, getCurrentScoreboard } = vi.hoisted(() => ({
+    purge: vi.fn(), sdvPurgeTarget: vi.fn(), getCurrentScoreboard: vi.fn(),
+}));
+vi.mock('cloudflare:workers', () => ({ cache: { purge }, env: {} }));
+vi.mock('@astrojs/cloudflare/handler', () => ({ handle: vi.fn() }));
+vi.mock('../src/resources/sdv', () => ({ sdvPurgeTarget }));
+vi.mock('../src/resources/espn', () => ({ getCurrentScoreboard }));
+import worker from '../src/worker';
 
 describe('purgeTarget', () => {
     const cfb = '2026-11-01T15:08:07.036607+00:00';
@@ -42,6 +52,55 @@ describe('purgeTarget', () => {
 });
 
 describe('the scheduled purge', () => {
+    const target = { 'cfb.team_summaries': '2026-11-01T15:08:07.036607+00:00' };
+    let kv: { get: ReturnType<typeof vi.fn>, put: ReturnType<typeof vi.fn> };
+    // runs the cron at midnight UTC (a 15-minute mark and a scoreboard refresh under either
+    // season config); resolves once the purge it registered has finished
+    async function runCron() {
+        const waits: Promise<unknown>[] = [];
+        await worker.scheduled!({ scheduledTime: Date.UTC(2026, 10, 1) } as ScheduledController,
+            { SDV_API_CACHE: kv } as unknown as Env, { waitUntil: (p: Promise<unknown>) => waits.push(p) } as unknown as ExecutionContext);
+        await Promise.all(waits);
+    }
+    beforeEach(() => {
+        vi.clearAllMocks();
+        kv = { get: vi.fn(async () => ({})), put: vi.fn(async () => {}) };
+        sdvPurgeTarget.mockResolvedValue(target);
+        getCurrentScoreboard.mockResolvedValue(undefined);
+    });
+
+    it('records the stamps only after the purge succeeds', async () => {
+        purge.mockResolvedValue({ success: true, errors: [] });
+        await runCron();
+        expect(purge).toHaveBeenCalledWith({ tags: SUMMARY_PAGE_TAGS });
+        expect(kv.put).toHaveBeenCalledWith(PURGED_FOR_INGEST_KEY, JSON.stringify(target));
+    });
+    it('leaves the stamps for a retry when the purge fails', async () => {
+        purge.mockResolvedValue({ success: false, errors: [{ code: 1, message: 'nope' }] });
+        await runCron();
+        expect(purge).toHaveBeenCalledTimes(1);
+        expect(kv.put).not.toHaveBeenCalled();
+        purge.mockRejectedValue(new Error('down'));
+        await runCron();
+        expect(kv.put).not.toHaveBeenCalled();
+    });
+    it('does not purge when nothing new has settled', async () => {
+        sdvPurgeTarget.mockResolvedValue(undefined);
+        await runCron();
+        expect(purge).not.toHaveBeenCalled();
+        expect(kv.put).not.toHaveBeenCalled();
+    });
+    it('runs even while the scoreboard refresh hangs', async () => {
+        getCurrentScoreboard.mockReturnValue(new Promise(() => {}));
+        purge.mockResolvedValue({ success: true, errors: [] });
+        const waits: Promise<unknown>[] = [];
+        void worker.scheduled!({ scheduledTime: Date.UTC(2026, 10, 1) } as ScheduledController,
+            { SDV_API_CACHE: kv } as unknown as Env, { waitUntil: (p: Promise<unknown>) => waits.push(p) } as unknown as ExecutionContext);
+        await Promise.all(waits);
+        expect(getCurrentScoreboard).toHaveBeenCalled();
+        expect(waits).toHaveLength(1);
+        expect(kv.put).toHaveBeenCalled();
+    });
     it('is registered before the scoreboard refresh is awaited', () => {
         const src = readFileSync(new URL('../src/worker.ts', import.meta.url), 'utf8');
         expect(src.indexOf('ctx.waitUntil(purgePagesAfterIngest(env))')).toBeGreaterThan(-1);
