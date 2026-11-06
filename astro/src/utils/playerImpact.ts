@@ -51,11 +51,16 @@ const cell = (row: PlayerImpactRow, col: string): ImpactCell => ({
 });
 const isTrue = (v: unknown) => v === true || v === 'true' || v === 'True' || v === 'TRUE';
 
-/** The panel for the player's rows, or null when there is none. College: the team row with the most minutes. */
-export function impactPanel(rows: PlayerImpactRow[], college: boolean): ImpactPanel | null {
+/**
+ * The panel for the player's rows, or null when there is none. College: the team row with the most minutes. `withoutWar`
+ * (BB-G27's 'bball-war' on) drops player_impact's WAR: the Value panel shows player_war's, with its interval, and
+ * player_impact's double-counts possessions (sdv-db docs/api.md).
+ */
+export function impactPanel(rows: PlayerImpactRow[], college: boolean, withoutWar = false): ImpactPanel | null {
     const row = [...rows].sort((a, b) => (numberOrNull(b.min) ?? 0) - (numberOrNull(a.min) ?? 0))[0];
     if (!row) return null;
-    const measures = (college ? COLLEGE : PRO).map(([label, hover, off, def, net]) => ({
+    const specs = college ? COLLEGE : withoutWar ? PRO.filter((s) => s[4] !== 'war') : PRO;
+    const measures = specs.map(([label, hover, off, def, net]) => ({
         label, hover, off: off ? cell(row, off) : null, def: def ? cell(row, def) : null, net: cell(row, net),
     }));
     const rating = numberOrNull(row.boban_projected_rating);

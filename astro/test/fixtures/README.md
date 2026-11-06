@@ -816,3 +816,19 @@ player, so one capture covers several players; the page reads one player (`playe
 **Used by:** `test/playerImpact.test.ts`.
 
 **To regenerate:** rerun the four reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `player-war.json.gz`
+The rows behind the player page's Value panel (BB-G27, `resources/playerWar.ts`), as `{nba, wnba, mbbTeam, wbbTeam, nbaEpv}`
+(no edits). `player_war` (sdv-db #202) is not served yet (the Data API answers 404 until its backfill runs), so its rows are
+the producer's output, the frame sdv-db loads unchanged: sportsdataverse-py `origin/main` at 39541177 (with #1114), run on
+2026-11-05 as `nba_player_war(2026)` (kept: Michael Porter Jr., 1629008, the player of `nba/player_games.json`),
+`nba_player_war(2025, league_id="10")` (A'ja Wilson, 1628932), `mbb_player_war(2026)` (Texas, team 251, 13 players) and
+`wbb_player_war(2026)` (South Carolina, team 2579, 11 players), each `write_json()`. `nbaEpv` is a live Data API read of the
+same day, `/v1/nba_stats/epv_player_games?season=2026&player_id=1629008&select=game_id,epv_own,own_actions,epv_on&limit=130`
+(57 rows: 53 regular-season games and 4 preseason).
+
+**Used by:** `test/playerWar.test.ts`.
+
+**To regenerate:** rerun the four sdv-py calls (filtered as above) and the one read (season filter and limit as above),
+wrap them as above and gzip. Once sdv-db #202's backfill has run, `/v1/{nba_stats,wnba_stats,mbb,wbb}/player_war?season=…&player_id=…&limit=5`
+replaces the sdv-py calls.
