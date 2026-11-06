@@ -166,6 +166,7 @@ describe('the WAR and VORP board', () => {
         const v = await board('nba', '?season=2026&board=value');
         expect(v.data.pctAvailable).toBe(true);
         expect(v.html).toContain('id="lb-view"');
+        expect(v.html).toContain('Shading is the producer’s percentile among the season’s players.'); // player_war ranks everyone, not qualifiers
         expect(v.html).toMatch(/hulk-bg-level-9[^>]*title="Rank 1, percentile/);
         const p = await board('nba', '?season=2026&board=value&view=percentiles');
         const top = cells(p.html)[0];

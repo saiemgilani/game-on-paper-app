@@ -88,7 +88,7 @@ const short = board === 'lineups' && rows ? dotLabels([...new Set(rows.flatMap((
 // BB-G27's boards: a player link for every league (both tables carry the player page's own id) and the team he played for
 const valueTeam = (r: Record<string, unknown>) => { const t = teamCell(r.team_id).abbr; const n = Number(r.teams); return n > 1 ? `${t} +${n - 1}` : t; };
 const sample = board === 'value'
-    ? `Players with at least ${fmtInt(qualified ? IMPACT_QUALIFIED_POSS[league] : IMPACT_FLOOR[league])} on-court possessions.`
+    ? `Players with at least ${fmtInt(qualified ? spec.gate!.min[league] : IMPACT_FLOOR[league])} on-court possessions.`
     : board === 'poe'
     ? `Players with at least ${fmtInt(qualified ? spec.gate!.min[league] : POE_FLOOR[league])} field-goal attempts for a team; a traded player has a row per team.`
     : board === 'impact'
@@ -97,6 +97,8 @@ const sample = board === 'value'
         ? (qualified ? 'Units the producer ranks: at least ' + (league === 'nba' ? '400' : '200') + ' offensive plus defensive possessions.' : `Units with at least ${fmtInt(LINEUP_FLOOR[league])} offensive possessions.`)
         : (qualified ? 'Teams the producer ranks.' : 'Every team the producer rates.');
 const scope = board === 'impact' ? (pro ? 'Regular season.' : 'Every game.') : (board === 'teams' || board === 'value' || board === 'poe') && pro ? 'Regular season.' : '';
+// player_war ranks every player of the season (sdv-py attach_ranks with no qualifier); BB-G8's boards rank qualifiers
+const among = board === 'value' ? 'the season’s players' : 'qualifiers';
 // with 'bball-war-boards' on the impact board has no WAR (the WAR board has it); off, BB-G8's caption as it was
 const unitNote = board === 'impact' ? (boards.includes('value') ? 'Per 100 possessions.' : 'Per 100 possessions, WAR in wins.')
     : board === 'value' ? 'Rating per 100 possessions; VORP and WAR are season totals, WAR in wins with its 90% interval (Low to High).'
@@ -175,7 +177,7 @@ const unitNote = board === 'impact' ? (boards.includes('value') ? 'Per 100 posse
       <p class="text-muted" id="lb-empty">{read === 0 ? `There are no ${label} rows for this board yet.` : 'No row qualifies yet. Choose "All" to see every row.'}</p>
     ) : (
       <Fragment>
-        <p class="small text-muted mb-2" id="lb-caption">{sample} {scope} {capped && `The ${fmtInt(BOARD_CAP)} with the most ${board === 'poe' ? 'field-goal attempts' : 'possessions'} are read.`} {!pctAvailable ? 'Unshaded: the producer publishes no percentiles for this board yet.' : view === 'percentiles' ? 'Each cell is the producer’s percentile among qualifiers.' : 'Shading is the producer’s percentile among qualifiers.'} {unitNote}</p>
+        <p class="small text-muted mb-2" id="lb-caption">{sample} {scope} {capped && `The ${fmtInt(BOARD_CAP)} with the most ${board === 'poe' ? 'field-goal attempts' : 'possessions'} are read.`} {!pctAvailable ? 'Unshaded: the producer publishes no percentiles for this board yet.' : view === 'percentiles' ? `Each cell is the producer’s percentile among ${among}.` : `Shading is the producer’s percentile among ${among}.`} {unitNote}</p>
         <div class="table-responsive">
           <table class="table table-sm align-middle table-fix-first-col" id="lb-table" data-board={board} data-basis={basis} data-view={view} data-sort={sort}>
             <thead>
