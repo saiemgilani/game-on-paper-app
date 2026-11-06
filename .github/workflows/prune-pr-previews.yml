@@ -1,0 +1,37 @@
+# Keeps pr-previews (the PR evidence screenshots and walkthrough clips, ~1 GB a week) to the open
+# PRs' folders: once a week it becomes a single parentless commit holding only those. Merged and
+# closed PRs' evidence images stop loading once GitHub garbage-collects the old commits, which is
+# also when the repository's size drops. See .github/scripts/prune-pr-previews.sh.
+name: Prune PR previews
+
+on:
+  schedule:
+    - cron: '23 9 * * 1'  # Mondays 09:23 UTC, outside the Fri-Sun merge freeze's evidence rush
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report what would be kept, change nothing'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: prune-pr-previews
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Squash pr-previews to the open PRs' folders
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: .github/scripts/prune-pr-previews.sh
