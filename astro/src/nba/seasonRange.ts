@@ -26,3 +26,7 @@ export const FIRST_BROOKLYN_SEASON = 2013;
 export function netsTricode(season: number): "BKN" | "NJN" {
   return season < FIRST_BROOKLYN_SEASON ? "NJN" : "BKN";
 }
+
+/** The WNBA's first season (1997) and the last one the shots and schedule releases hold (checked 2026-10-12). Bump when a season lands. */
+export const WNBA_FIRST_SEASON = 1997;
+export const WNBA_LAST_KNOWN_SEASON = 2026;

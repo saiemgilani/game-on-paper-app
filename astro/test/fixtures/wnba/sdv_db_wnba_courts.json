@@ -1,0 +1,25 @@
+{
+ "courts": [
+  {
+   "from": 1997,
+   "laneHalfWidth": 60,
+   "threeRadius": 197.5,
+   "threeCornerX": 197.5,
+   "restrictedRadius": 0
+  },
+  {
+   "from": 2004,
+   "laneHalfWidth": 80,
+   "threeRadius": 205.20833333333334,
+   "threeCornerX": 205.20833333333334,
+   "restrictedRadius": 0
+  },
+  {
+   "from": 2013,
+   "laneHalfWidth": 80,
+   "threeRadius": 221.45833333333334,
+   "threeCornerX": 220,
+   "restrictedRadius": 40
+  }
+ ]
+}

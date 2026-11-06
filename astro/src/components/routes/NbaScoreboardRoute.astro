@@ -17,23 +17,25 @@ const lp = (p: string) => leaguePath(league, p);
 const firstMonth = DateTime.fromISO(cfg.firstScoreboardDay, { zone: 'utc' }).setLocale('en-US').toFormat('LLLL yyyy');
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Scoreboard', active: true }];
 // The route accepts days up to the server's UTC date + 14; the picker's max is the same bound.
-const darkCss = 'badDate' in data ? '' : darkLogoCss(data.games.flatMap((g) => g.competitions[0].competitors).map((c) => ({ id: c.id, abbreviation: c.team?.abbreviation })), cfg.darkLogo);
+const darkCss = 'badDate' in data ? '' : darkLogoCss(data.games.flatMap((g) => g.competitions[0].competitors.map((c) => ({ id: c.id, abbreviation: c.team?.abbreviation, season: g.season?.year }))), cfg.darkLogo);
 // A degraded read with no ?date= has no trustworthy day (the route only has the server clock).
 const noDay = !('badDate' in data) && data.degraded && !!data.undated;
+// the live board names its day when that day is not tonight (an off-season board keeps ESPN's last game day)
+const tonight = !('badDate' in data) && data.isLive && !data.offDay;
 const maxDay = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
 ---
 {'badDate' in data ? (
     <ErrorPage htmlTitle="Bad date" htmlSubtitle={`${name} scoreboard`} slug={lp('/scoreboard')} humanTitle="That is not a date we can show."
         message={`Use ?date=YYYY-MM-DD for a day between ${firstMonth} and two weeks from today.`} />
 ) : (
-    <GenericPage title={`${name} scoreboard${data.isLive || noDay ? '' : `, ${data.nav.label}`} | Game on Paper`}
+    <GenericPage title={`${name} scoreboard${tonight || noDay ? '' : `, ${data.nav.label}`} | Game on Paper`}
         subtitle={`${name} scores${noDay ? '' : ` for ${data.nav.label}`} with win probability, four factors and shot charts for every game.`}
         slug={lp('/scoreboard')} breadcrumbs={breadcrumbs}
         description={`Live ${name} scoreboard with Game on Paper's win probability, four factors, advanced box scores and shot charts for every game.`}
         canonicalPath={data.isLive || noDay ? lp('/scoreboard') : `${lp('/scoreboard')}?date=${data.day}`}>
       <div class="container">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-          <h1 class="h3 mb-0">{noDay ? 'Scoreboard' : data.isLive ? 'Tonight' : data.nav.label}</h1>
+          <h1 class="h3 mb-0">{noDay ? 'Scoreboard' : tonight ? 'Tonight' : data.nav.label}</h1>
           <div class="d-flex flex-wrap align-items-center gap-2">
             {!noDay && data.nav.prev >= cfg.firstScoreboardDay && <a class="btn btn-sm btn-outline-primary text-nowrap" href={`${lp('/scoreboard')}?date=${data.nav.prev}`} rel="prev">&larr; {shortDay(data.nav.prev)}</a>}
             <form method="get" action={lp('/scoreboard')} class="d-inline-flex align-items-center gap-1">

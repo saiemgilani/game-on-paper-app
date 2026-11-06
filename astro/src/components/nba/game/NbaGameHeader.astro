@@ -25,10 +25,10 @@ const homeAbbr = cleanAbbreviation(game.home.team);
 const spread = prior?.gameSpreadAvailable ? prior.homeTeamSpread : null;
 const line = spread == null ? null : spread === 0 ? 'PK' : `${homeAbbr} ${spread > 0 ? '-' : '+'}${Math.abs(spread)}`;
 const int = (n: number) => String(n);
-const priorText = prior
-    ? `pregame prior ${homeAbbr} ${fmtPct(prior.homeWinProb, 0)}${prior.source === 'hfa' ? ' (home-court advantage only)' : ' (from the spread)'}`
-    : null;
-const lineText = `${line ? `Line: ${line}` : 'No line'}, ${priorText ?? 'no prior'}`;
+// the line already prices the venue; without one the prior is the home edge, or no edge at a neutral site (D13)
+const PRIOR_NOTE = { spread: ' (from the spread)', hfa: ' (home-court advantage only)', neutral: '' } as const;
+const priorText = prior ? `pregame prior ${homeAbbr} ${fmtPct(prior.homeWinProb, 0)}${PRIOR_NOTE[prior.source]}` : null;
+const lineText = `${line ? `Line: ${line}` : prior?.source === 'neutral' ? 'Neutral site, no line' : 'No line'}, ${priorText ?? 'no prior'}`;
 const back = scoreboardDayHref(league, game.date);
 ---
 <div class="py-3 text-center">

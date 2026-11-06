@@ -38,7 +38,7 @@ def _app(monkeypatch, summary, pushes=None):
 
 def test_one_rule_per_league_with_the_nba_rule_and_endpoint_unchanged(monkeypatch):
     app_mod = _app(monkeypatch, _summary())
-    assert set(app_mod.BASKETBALL_PROCESSORS) == {"nba"}
+    assert set(app_mod.BASKETBALL_PROCESSORS) == {"nba", "wnba"}
     rules = {r.rule: r.endpoint for r in app_mod.app.url_map.iter_rules()}
     for lg in app_mod.BASKETBALL_PROCESSORS:
         assert rules[f"/{lg}/<int(min=100000,max=999999999999):game_id>/process"] == f"process_{lg}"
@@ -74,4 +74,4 @@ def test_regulation_is_null_when_format_is_not_a_dict(monkeypatch):
 
 def test_an_unmapped_league_has_no_route(monkeypatch):
     app_mod = _app(monkeypatch, _summary())
-    assert app_mod.app.test_client().get("/wnba/401585607/process", headers=AUTH).status_code == 404
+    assert app_mod.app.test_client().get("/xyz/401585607/process", headers=AUTH).status_code == 404

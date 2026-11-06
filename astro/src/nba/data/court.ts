@@ -21,6 +21,27 @@ export const COURT = {
   threeRadius: 237.5, // 23.75 ft arc
 } as const;
 
+/**
+ * The WNBA court from 2013 (2026 WNBA Official Rule Book, Rule No. 1 Section I): the NBA's frame, lane, free-throw line,
+ * 4 ft restricted area and corner lines (36" from the sidelines), with a 22' 1 3/4" arc.
+ */
+export const WNBA_COURT = { ...COURT, threeRadius: ((22 * 12 + 1.75) / 12) * 10 } as const;
+/**
+ * The WNBA's earlier courts (plan #3 Task 5, sdv-db WNBA_COURTS, which zones the dashboards with the same figures): a 12 ft
+ * lane and a 19'9" arc through 2003, then a 16 ft lane and a 20'6.25" arc through 2012 (Seattle Times, 2003-12-18, "WNBA to
+ * have wider lane, extended three-point line"). Before 2013 the line is one arc meeting straight corner lines at the rim's
+ * depth, so the corner x is the radius and threeBreakY is 0. `/ 1.2` turns inches into tenths of a foot, as sdv-db does.
+ */
+export const WNBA_COURT_1997 = { ...COURT, laneHalfWidth: 60, threeRadius: 197.5, threeCornerX: 197.5 } as const;
+export const WNBA_COURT_2004 = { ...COURT, threeRadius: (20 * 12 + 6.25) / 1.2, threeCornerX: (20 * 12 + 6.25) / 1.2 } as const;
+/**
+ * D32 (resolution R5): the season the WNBA adopted the restricted-area arc and its radius in tenths, as plan #3 Task 5
+ * recorded them in sdv-db's WNBA_COURTS (WNBA_RESTRICTED_FROM / WNBA_RESTRICTED_RADIUS; its comment cites the source, the
+ * WNBA rules release of 2012-12-13; spec §3.3 names the season). Copied from test/fixtures/wnba/sdv_db_wnba_courts.json,
+ * never researched here: before `from` no arc is drawn or zoned.
+ */
+export const WNBA_RESTRICTED_AREA = { from: 2013, radius: 40 } as const;
+
 /** Height where the corner three meets the arc (NBA ~89.5, i.e. ~9 ft above the rim line). */
 export const threeBreakY = (court: Court = COURT) => Math.sqrt(court.threeRadius ** 2 - court.threeCornerX ** 2);
 export const THREE_BREAK_Y = threeBreakY(COURT);
@@ -87,7 +108,7 @@ function path(points: Point[], v: Viewport, close = false): string {
 export function courtLines(v: Viewport, court: Court = COURT): CourtLine[] {
   const { halfWidth: w, baselineY: base, halfCourtY: half, laneHalfWidth: lane, freeThrowY: ft } = court;
   const cornerAngle = Math.atan2(threeBreakY(court), court.threeCornerX);
-  return [
+  const lines: CourtLine[] = [
     { name: "boundary", d: path([{ x: -w, y: v.top }, { x: -w, y: base }, { x: w, y: base }, { x: w, y: v.top }], v) },
     { name: "half-court", d: path([{ x: -w, y: half }, { x: w, y: half }], v) },
     { name: "centre-circle", d: path(arc(0, half, court.circleRadius, Math.PI, 2 * Math.PI), v) },
@@ -112,6 +133,8 @@ export function courtLines(v: Viewport, court: Court = COURT): CourtLine[] {
       ),
     },
   ];
+  // D32: no restricted-area arc before a league adopted it (restrictedRadius 0); the NBA's 40 keeps every line
+  return lines.filter((l) => l.name !== "restricted-area" || court.restrictedRadius > 0);
 }
 
 /** Zone boundaries for `zoneOf`: restricted arc, paint, three-point line and the corner breaks. */
