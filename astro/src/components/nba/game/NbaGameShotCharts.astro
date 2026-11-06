@@ -5,9 +5,15 @@ import type { NbaGame } from '../../../resources/nbaGame';
 import { shotsOf } from '../../../nba/data/game';
 import type { GameShot } from '../../../nba/charts/gameShotChart';
 import { cleanAbbreviation } from '../../../utils/misc';
+import { COURT } from '../../../nba/data/court';
+import { islandPeriodProps } from '../../../basketball/periods';
+import { basketball, courtFor } from '../../../basketball/config';
 
 interface Props { game: NbaGame }
 const { game } = Astro.props;
+const cfg = basketball(Astro.locals.league);
+const league = cfg.league;
+const court = courtFor(league, game.season);
 const toShots = (teamId: string): GameShot[] => shotsOf(game.plays, Number(teamId)).map((p) => ({
     x: p.xLegacy!, y: p.yLegacy!, made: p.scoringPlay, value: p.scoreValue || (/three point/i.test(p.text) ? 3 : 2), label: `${p.clock} ${p.text}`, period: p.period,
 }));
@@ -16,5 +22,5 @@ const sides = [game.away, game.home].map((s) => ({ side: s, shots: toShots(s.tea
 {sides.every((s) => s.shots.length === 0)
     ? <p class="text-muted m-0">ESPN has no shot locations for this game.</p>
     : <div class="row">{sides.map(({ side, shots }) => (
-        <div class="col-12 col-lg-6"><h3 class="h6">{cleanAbbreviation(side.team)}</h3><GameShotChart client:load shots={shots} title={`${side.team.displayName} shots`} periods={game.periods} /></div>
+        <div class="col-12 col-lg-6"><h3 class="h6">{cleanAbbreviation(side.team)}</h3><GameShotChart client:load shots={shots} title={`${side.team.displayName} shots`} periods={game.periods} {...islandPeriodProps(game.regulation, game.periodKind)} {...(court === COURT ? {} : { court })} /></div>
     ))}</div>}

@@ -7,7 +7,7 @@ import type { ThemedGameColors } from '../../../utils/misc';
 import { cleanAbbreviation } from '../../../utils/misc';
 import { biggestPlays, dash, wpChartPlays } from '../../../nba/data/game';
 import { fmtPct, fmtPts } from '../../../nba/format';
-import { periodShort } from './periodLabel';
+import { islandPeriodProps, periodShort } from '../../../basketball/periods';
 
 interface Props { game: NbaGame; colors: ThemedGameColors | null }
 const { game, colors } = Astro.props;
@@ -21,7 +21,7 @@ const hasOt = game.plays.some((p) => p.wpRegime === 'ot');
 ---
 <div id="wp-section" class="mb-3">
     {plays.length > 1
-        ? <WinProbabilityChart client:only="svelte" id={`wp-${game.id}`} homeComp={comp(game.home)} awayComp={comp(game.away)} gameStatus={status} homeTeamSpread={game.prior?.homeTeamSpread ?? 0} overUnder={null} plays={plays} percentiles={[]} gei={null} colors={colors} showOdds={false} allPeriodMarkers={true}>
+        ? <WinProbabilityChart client:only="svelte" id={`wp-${game.id}`} homeComp={comp(game.home)} awayComp={comp(game.away)} gameStatus={status} homeTeamSpread={game.prior?.homeTeamSpread ?? 0} overUnder={null} plays={plays} percentiles={[]} gei={null} colors={colors} showOdds={false} allPeriodMarkers={true} {...islandPeriodProps(game.regulation, game.periodKind)}>
             {/* client:only renders nothing on the server: hold the chart's box (a text line, then Chart.js's default 2:1 canvas) so the page below does not jump */}
             <div slot="fallback" aria-hidden="true"><p class="text-small">&nbsp;</p><div style="aspect-ratio: 2 / 1"></div></div>
           </WinProbabilityChart>
@@ -39,7 +39,7 @@ const hasOt = game.plays.some((p) => p.wpRegime === 'ot');
     <thead><tr><th scope="col">Period</th><th scope="col">Clock</th><th scope="col" class="text-end">Score ({away}-{home})</th><th scope="col">Play</th><th scope="col" class="text-end">{home} WP</th><th scope="col" class="text-end">Swing</th></tr></thead>
     <tbody>
         {swings.map((p) => (
-            <tr><td>{periodShort(p.period)}</td><td>{p.clock}</td><td class="text-end">{p.awayScore}-{p.homeScore}</td><td>{p.text}</td><td class="text-end">{dash(p.homeWinProb, (v) => fmtPct(v, 0))}</td><td class="text-end">{dash(p.wpDelta, fmtPts)}</td></tr>
+            <tr><td>{periodShort(p.period, game.regulation, game.periodKind)}</td><td>{p.clock}</td><td class="text-end">{p.awayScore}-{p.homeScore}</td><td>{p.text}</td><td class="text-end">{dash(p.homeWinProb, (v) => fmtPct(v, 0))}</td><td class="text-end">{dash(p.wpDelta, fmtPts)}</td></tr>
         ))}
     </tbody>
 </table>

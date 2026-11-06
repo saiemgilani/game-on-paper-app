@@ -4,7 +4,7 @@
     // highlighted, shown below the top rows and the rest behind a <details>.
     import { ACTIVE_DAYS, LEADER_LABELS, LEADER_METRICS, LEADER_WINDOWS, minAttempts, minThrees, type Boards, type LeaderMetric, type LeaderRow, type LeaderWindow } from '../../nba/data/leaders';
     import { fmtDate, fmtInt, fmtPct, fmtPts } from '../../nba/format';
-    import { playerHref } from '../../nba/links';
+    import { playerHref } from '../../nba/hrefs';
     let { boards, netsTeamId, seasonQuery }: { boards: Boards; netsTeamId: number; seasonQuery: string } = $props();
     /** Nets rows shown below the top 15; the rest sit in a <details>. */
     const NETS_SHOWN = 5;
@@ -21,7 +21,7 @@
     <tr class:fw-bold={r.team_id === netsTeamId}>
         <td class="numeral">{r.rank}</td>
         <td class="text-truncate">
-            <a href={playerHref(r.person_id, seasonQuery)}>{r.name}</a>
+            <a href={playerHref(r.person_id, seasonQuery, 'nba')}>{r.name}</a>
             <span class="d-block d-md-none small fw-normal text-muted">last game {fmtDate(r.window.to)}</span>
         </td>
         <td class="text-muted">{r.team}</td>

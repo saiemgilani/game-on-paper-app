@@ -6,11 +6,13 @@
 // NbaNameFilter. Dropped from blazing: the j/k/h/l/s hotkeys and the photos/initials/none toggle.
 import NbaHeadshot from './NbaHeadshot.astro';
 import { foldText } from '../../nba/format';
+import { basketball } from '../../basketball/config';
 import { playerHref, withParams } from '../../nba/links';
 import type { SortDir } from '../../nba/table';
 import { ROSTER_COLUMNS, ROSTER_GROUPS, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
 interface Props { rows: RosterRow[]; seasonQuery: string; sort: RosterSortKey; dir: SortDir; mode: Mode; basePath: string; params: Record<string, string>; defaults: Record<string, string>; id?: string }
 const { rows, seasonQuery, sort, dir, mode, basePath, params, defaults, id = 'nba-roster' } = Astro.props;
+const league = basketball(Astro.locals.league).league;
 const urlDefaults = { ...defaults, sort: 'fga', dir: 'desc', mode: 'totals' };
 const state = { ...params, sort, dir, mode };
 const hrefFor = (key: RosterSortKey) => withParams(basePath, { ...state, sort: key, dir: key === sort && dir === 'desc' ? 'asc' : 'desc' }, urlDefaults);
@@ -46,7 +48,7 @@ const ACROSS = "GP, MIN, FGA/g, TS%, USG% and PIE are season totals across teams
     <tbody>
       {rows.map((r) => (
         <tr data-name={foldText(r.name)}>
-          <th scope="row" class="text-start fw-normal"><a href={playerHref(r.person_id, seasonQuery)}>{r.name}</a>{r.acrossTeams && (<span class="text-muted ms-1" title={ACROSS}>*</span>)}</th>
+          <th scope="row" class="text-start fw-normal"><a href={playerHref(r.person_id, seasonQuery, league)}>{r.name}</a>{r.acrossTeams && (<span class="text-muted ms-1" title={ACROSS}>*</span>)}</th>
           <td><NbaHeadshot src={r.headshot} name={r.name} size={36} decorative /></td>
           {ROSTER_COLUMNS.map((c) => (<td class="text-end numeral">{c.fmt(c.value(r, mode))}</td>))}
         </tr>
