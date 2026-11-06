@@ -426,9 +426,9 @@ describe('the pages', () => {
 
     test('no interpunct separators on the Pro pages (design-conventions: "replace dot")', () => {
         const dir = new URL('../src/pages/pro/', import.meta.url);
-        for (const f of readdirSync(dir, { recursive: true }) as string[]) {
-            if (f.endsWith('.astro')) expect(readFileSync(new URL(f.replaceAll('\\', '/'), dir), 'utf8'), f).not.toContain('·');
-        }
+        const pages = (readdirSync(dir, { recursive: true }) as string[]).map((f) => f.replaceAll('\\', '/')).filter((f) => f.endsWith('.astro'));
+        expect(pages).toContain('players/[id].astro');  // the scan found the tree
+        for (const f of pages) expect(readFileSync(new URL(f, dir), 'utf8'), f).not.toContain('·');
     });
 
     test('the profile valuation panel: tiles, routes, rushing over expected, labelled as a model', async () => {
