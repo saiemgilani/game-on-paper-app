@@ -644,6 +644,25 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         expect(proAllows(a, '/pro/rostersx')).toBe(true);
     });
 
+    test('the role gate holds through the middleware for any spelling of a program-side path', async () => {
+        await SESSION.put('pro:ent:fan@example.com', JSON.stringify(analyst));
+        const fan = (p: string) => run(p, { preview: true, email: 'fan@example.com' });
+        expect((await fan('/pro/roles/team/1')).res.headers.get('location')).toBe('/pricing');
+        expect((await fan('/pro/file/pro/roles/team/1.pdf')).res.status).toBe(403);
+        // encoded spellings never reach a route: they redirect to the canonical path, gated above
+        for (const [p, to] of [['/pro/file/pro/roles%2Fteam%2F1.pdf', '/pro/file/pro/roles/team/1.pdf'], ['/pro/%72oles/team/1', '/pro/roles/team/1']]) {
+            const r = await fan(p);
+            expect([r.res.status, r.res.headers.get('location'), r.rewrittenTo], p).toEqual([308, to, 'never-called']);
+        }
+        // odd shapes under roles/ fail closed; the index and the every-tier kinds pass
+        for (const p of ['/pro/roles/team', '/pro/roles//team/1', '/pro/file/pro/roles/team.pdf', '/pro/roles/x/1']) {
+            expect((await fan(p)).rewrittenTo, p).toBe('never-called');
+        }
+        for (const p of ['/pro/roles', '/pro/roles/', '/pro/roles/player/1', '/pro/roles/agent/market', '/pro/file/pro/roles/player/1.pdf']) {
+            expect((await fan(p)).rewrittenTo, p).toBe(undefined);  // next() was called: the request went through
+        }
+    });
+
     test('the middleware enforces them: pages to /pricing, files and board posts 403', async () => {
         const page = await run('/pro/portal', { preview: true, email: 'fan@example.com' });
         expect(page.res.status).toBe(302);

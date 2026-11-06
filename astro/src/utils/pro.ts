@@ -45,9 +45,11 @@ export function proRequirement(path: string): { tiers?: ProTier[]; addon?: ProAd
     if (/^\/pro\/(rosters|positions|market)(\/|$)/.test(path)
         || /^\/pro\/file\/pro\/\d{4}\/(rosters|positions|market)\//.test(path)) return { tiers: ['pro', 'program', 'agency'] };
     // a role report (page or file) opens by its reader: the agent and player reports to every tier,
-    // the program-side ones (team, collective, AD) above Analyst; an unknown kind is closed too
-    const role = /^\/pro\/(?:file\/pro\/)?roles\/([^/]+)\//.exec(path);
-    if (role && !(isRoleKind(role[1]) && ROLE_KINDS[role[1]].everyTier)) return { tiers: ['pro', 'program', 'agency'] };
+    // the program-side ones (team, collective, AD) above Analyst. Anything else under roles/ (an
+    // unknown kind, an empty segment, a bare /roles/team) is closed; only the index itself is open.
+    const role = /^\/pro\/(?:file\/pro\/)?roles\/(.+)$/.exec(path);
+    const kind = role?.[1].split(/[/.]/)[0];
+    if (role && !(isRoleKind(kind) && ROLE_KINDS[kind].everyTier)) return { tiers: ['pro', 'program', 'agency'] };
     return null;
 }
 
