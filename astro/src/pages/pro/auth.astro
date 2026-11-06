@@ -33,6 +33,9 @@ if (Astro.request.method === 'POST') {
     });
 }
 const token = Astro.url.searchParams.get('t') ?? '';
+// This page's URL carries the token, and the form's POST would send it as its Referer,
+// which request_log records (middleware emit); the path alone is logged for the GET.
+Astro.response.headers.set('Referrer-Policy', 'no-referrer');
 ---
 <GenericPage title="Sign in | Game on Paper Pro" subtitle="Sign in to Game on Paper Pro" slug="/pro/auth" heading="Sign in to Game on Paper Pro"
     breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Sign in', active: true }]}>

@@ -134,6 +134,9 @@ describe('the magic link', () => {
             expect(html).toContain(`value="${t}"`);
         }
         expect(SESSION.m.has(`pro:tok:${t}`)).toBe(true);
+        // the token is in this page's URL: its POST must not carry it as a Referer into request_log
+        const page = await container.renderToResponse(Auth, { request: new Request(`https://gameonpaper.com/pro/auth?t=${t}`), locals });
+        expect(page.headers.get('Referrer-Policy')).toBe('no-referrer');
         const post = () => container.renderToResponse(Auth, {
             request: new Request('https://gameonpaper.com/pro/auth', { method: 'POST', body: new URLSearchParams({ t }) }), locals,
         });
