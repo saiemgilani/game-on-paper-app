@@ -62,3 +62,29 @@ test("the 403 relay runs under the caller's own deadline, not a fresh 10 s", asy
     expect(seen.espn).toBe(caller);
     expect(seen.relay).toBe(caller);
 });
+
+test('without a caller signal the relay gets its own 10 s window, and a stalled relay keeps the 403', async () => {
+    const made = spyTimeouts();
+    const seen: Record<string, AbortSignal | null | undefined> = {};
+    vi.stubGlobal('fetch', vi.fn((u: unknown, init?: RequestInit) => {
+        if (!String(u).includes('/espn/proxy')) { seen.espn = init?.signal; return Promise.resolve(new Response('denied', { status: 403 })); }
+        seen.relay = init?.signal;
+        // the relay stalls until its signal fires; fire it now rather than wait 10 s
+        return new Promise((_, reject) => {
+            const s = init?.signal;
+            if (!s) return; // no signal: hang forever, which is the bug
+            s.addEventListener('abort', () => reject(s.reason));
+            (s as any).__fire?.();
+        });
+    }));
+    vi.mocked(AbortSignal.timeout).mockImplementation((ms: number) => {
+        const c = new AbortController();
+        made.push({ ms, signal: c.signal });
+        (c.signal as any).__fire = () => c.abort(new DOMException('timed out', 'TimeoutError'));
+        return c.signal;
+    });
+    expect(await retrieveGameSummary(7, 'nfl')).toBeNull(); // the 403 stands; the summary read gives up cleanly
+    expect(made.map((m) => m.ms)).toEqual([10_000, 10_000]);
+    expect(seen.espn).toBe(made[0].signal);
+    expect(seen.relay).toBe(made[1].signal); // a fresh window, not the spent ESPN one
+});
