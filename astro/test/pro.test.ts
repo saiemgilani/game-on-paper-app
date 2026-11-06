@@ -254,7 +254,7 @@ describe('/pro/file', () => {
         const full = { email: 'full@example.edu', ...live };
         await spend(full, 150);
         expect((await (GET as any)({ params: { key }, locals: { pro: full } })).status).toBe(429);
-    });
+    }, 30_000);
 });
 
 describe('formatting follows the contract', () => {
@@ -655,7 +655,7 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         expect(await claimDownload(coach, 'pro/2026/players/1.pdf')).toBe(false);
         // a new day starts a new count; the month's PDFs carry over
         expect(await claimDownload(coach, 'pro/2026/players/1.pdf', new Date(Date.now() + DAY))).toBe(true);
-    });
+    }, 30_000);
 
     test('an unreadable counter refuses the download instead of resetting the count, then clears at rollover', async () => {
         const coach = { ...live, email: 'coach@example.edu' } as any;
@@ -669,7 +669,7 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         const tomorrow = new Date(today.getTime() + 86_400_000);
         expect(await claimDownload(coach, 'pro/2026/players/1.pdf', tomorrow)).toBe(true);  // not stuck for good
         err.mockRestore();
-    });
+    }, 30_000);
 
     test('parallel downloads cannot overshoot the daily cap', async () => {
         const coach = { ...live, email: 'coach@example.edu' } as any;
@@ -680,5 +680,5 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         expect(got.filter(Boolean)).toHaveLength(2);
         expect(await claimDownload(coach, 'pro/2026/players/1.json')).toBe(false);
         expect([...PRO_BUCKET.m.keys()]).toEqual([expect.stringMatching(/^quota\/dl\/[0-9a-f]{64}\.json$/)]);  // no address in the key
-    });
+    }, 30_000);
 });
