@@ -16,6 +16,11 @@ export const PRO_COOKIE = 'gop_pro';
 export const PRO_COOKIE_TTL_S = 30 * 24 * 60 * 60;
 /** A magic link is good for 15 minutes and one use (resources/pro.ts redeemLoginToken). */
 export const PRO_TOKEN_TTL_S = 15 * 60;
+/** After a token is spent, the browser that spent it may finish again for this long: a
+ * sign-in whose response never arrived. Any other browser is refused at once. */
+export const PRO_AUTH_RETRY_S = 5 * 60;
+/** The per-browser nonce cookie /pro/auth's GET sets, which ties a spent token to its browser. */
+export const PRO_AUTH_NONCE_COOKIE = 'gop_pro_auth';
 export const PRO_TIERS = ['analyst', 'pro', 'program', 'agency'] as const;
 export type ProTier = typeof PRO_TIERS[number];
 

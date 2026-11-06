@@ -20,7 +20,8 @@ import {
     describeFilters, digestEntrants, digestText, filterBoard, formatOdds, formatPffValue, formatProDelta, formatProMetric,
     formatUsd, mintProCookie, parseBoardFilters, PRO_COOKIE, PRO_TOKEN_TTL_S, proAllows, sortBoard, verifyProCookie, type BoardEntrant,
 } from '../src/utils/pro';
-import { claimDownload, claimLoginSend, createLoginToken, isProKey, latestBoard, redeemLoginToken, runProDigest } from '../src/resources/pro';
+import { claimDownload, claimLoginSend, createLoginToken, isProKey, latestBoard, redeemLoginToken, runProDigest, sweepLoginMarkers } from '../src/resources/pro';
+import { PRO_AUTH_RETRY_S } from '../src/utils/pro';
 
 const board: { entrants: BoardEntrant[] } = JSON.parse(readFileSync(new URL('./fixtures/pro/2026/portal/board.json', import.meta.url)).toString());
 const DAY = 86_400_000;
@@ -118,18 +119,59 @@ describe('the middleware gate', () => {
 });
 
 describe('the magic link', () => {
+    // two browsers' gop_pro_auth nonces
+    const A = 'a'.repeat(64);
+    const B = 'b'.repeat(64);
+
     test('a token works once', async () => {
         const t = await createLoginToken('coach@example.edu');
-        expect(await redeemLoginToken(t)).toBe('coach@example.edu');
-        expect(await redeemLoginToken(t)).toBeNull();
-        expect(await redeemLoginToken('not-a-token')).toBeNull();
+        expect(await redeemLoginToken(t, A)).toBe('coach@example.edu');
+        expect(await redeemLoginToken(t, B)).toBeNull();  // another browser: spent
+        expect(await redeemLoginToken('not-a-token', A)).toBeNull();
+        const u = await createLoginToken('coach@example.edu');
+        expect(await redeemLoginToken(u, null)).toBeNull();  // no nonce, no spend
+        expect(await redeemLoginToken(u, A)).toBe('coach@example.edu');
+        // the marker is keyed by a hash: no token and no address in the bucket
+        for (const [k, e] of PRO_BUCKET.m) {
+            expect(k).toMatch(/^auth\/tok\/[0-9a-f]{64}\.json$/);
+            expect(k + e.v).not.toContain(t);
+            expect(e.v).not.toContain('coach@');
+        }
     });
 
     test('a token dies after 15 minutes', async () => {
         vi.useFakeTimers({ now: Date.now() });
         const t = await createLoginToken('coach@example.edu');
         vi.setSystemTime(Date.now() + PRO_TOKEN_TTL_S * 1000 + 1);
-        expect(await redeemLoginToken(t)).toBeNull();
+        expect(await redeemLoginToken(t, A)).toBeNull();
+    });
+
+    test('one spend across locations: two browsers at once, exactly one signs in', async () => {
+        const t = await createLoginToken('coach@example.edu');
+        PRO_BUCKET.lag = 20;  // both read before either writes, as two PoPs can
+        const got = await Promise.all([A, B, 'c'.repeat(64)].map((n) => redeemLoginToken(t, n)));
+        expect(got.filter(Boolean)).toEqual(['coach@example.edu']);
+    });
+
+    test('retry window: the same browser may finish again for PRO_AUTH_RETRY_S, nobody else', async () => {
+        const t = await createLoginToken('coach@example.edu');
+        const at = Date.now();
+        expect(await redeemLoginToken(t, A, at)).toBe('coach@example.edu');
+        expect(await redeemLoginToken(t, B, at + 1000)).toBeNull();
+        expect(await redeemLoginToken(t, A, at + 60_000)).toBe('coach@example.edu');  // the lost response, retried
+        expect(await redeemLoginToken(t, A, at + PRO_AUTH_RETRY_S * 1000)).toBe('coach@example.edu');
+        expect(await redeemLoginToken(t, A, at + PRO_AUTH_RETRY_S * 1000 + 1)).toBeNull();
+    });
+
+    test('the daily sweep drops markers older than a day and keeps fresh ones', async () => {
+        await redeemLoginToken(await createLoginToken('coach@example.edu'), A);
+        await redeemLoginToken(await createLoginToken('coach@example.edu'), A);
+        await PRO_BUCKET.put('quota/dl/x.json', '{}');
+        const [old] = [...PRO_BUCKET.m.keys()];
+        PRO_BUCKET.m.get(old)!.uploaded = new Date(Date.now() - 86_400_000 - 1);
+        expect(await sweepLoginMarkers()).toBe(1);
+        expect(PRO_BUCKET.m.has(old)).toBe(false);
+        expect(PRO_BUCKET.m.size).toBe(2);  // the fresh marker and the quota counter stay
     });
 
     test('/pro/auth: a GET (an email scanner) spends nothing; the POST sets a cookie once', async () => {
@@ -143,22 +185,34 @@ describe('the magic link', () => {
             expect(html).toContain(`value="${t}"`);
         }
         expect(SESSION.m.has(`pro:tok:${t}`)).toBe(true);
+        expect(PRO_BUCKET.m.size).toBe(0);  // a GET writes nothing anywhere
         // the token is in this page's URL: its POST must not carry it as a Referer into request_log
         const page = await container.renderToResponse(Auth, { request: new Request(`https://gameonpaper.com/pro/auth?t=${t}`), locals });
         expect(page.headers.get('Referrer-Policy')).toBe('no-referrer');
         // nor may analytics send that URL to a third party
         expect(await page.text()).not.toContain('plausible.io');
-        const post = () => container.renderToResponse(Auth, {
-            request: new Request('https://gameonpaper.com/pro/auth', { method: 'POST', body: new URLSearchParams({ t }) }), locals,
+        // the GET hands this browser a nonce, and keeps one it already has
+        const set = page.headers.get('Set-Cookie') ?? '';
+        expect(set).toMatch(/^gop_pro_auth=[0-9a-f]{64}; Path=\/pro\/auth; Max-Age=900; HttpOnly; Secure; SameSite=Lax$/);
+        const nonce = set.split(';')[0].split('=')[1];
+        const kept = await container.renderToResponse(Auth, { request: new Request(`https://gameonpaper.com/pro/auth?t=${t}`, { headers: { cookie: `gop_pro_auth=${nonce}` } }), locals });
+        expect(kept.headers.get('Set-Cookie')).toBeNull();
+        const post = (n: string | null) => container.renderToResponse(Auth, {
+            request: new Request('https://gameonpaper.com/pro/auth', { method: 'POST', body: new URLSearchParams({ t }), headers: n ? { cookie: `gop_pro_auth=${n}` } : {} }), locals,
         });
-        const first = await post();
+        expect((await post(null)).headers.get('Location')).toBe('/pro/login?err=1');  // no nonce: nothing spent
+        expect(PRO_BUCKET.m.size).toBe(0);
+        const first = await post(nonce);
         expect(first.status).toBe(303);
         expect(first.headers.get('Location')).toBe('/pro');
         const cookie = (first.headers.get('Set-Cookie') ?? '').split(';')[0].split('=').slice(1).join('=');
         expect(await verifyProCookie(cookie, 'pro-secret')).toBe('coach@example.edu');
-        const again = await post();
-        expect(again.headers.get('Location')).toBe('/pro/login?err=1');
-        expect(again.headers.get('Set-Cookie')).toBeNull();
+        // its response lost, the same browser presses Sign in again and finishes
+        expect((await post(nonce)).headers.get('Location')).toBe('/pro');
+        // another browser with the same link does not
+        const other = await post('d'.repeat(64));
+        expect(other.headers.get('Location')).toBe('/pro/login?err=1');
+        expect(other.headers.get('Set-Cookie')).toBeNull();
         // a link with no token says so and offers a new one
         expect(await container.renderToString(Auth, { request: new Request('https://gameonpaper.com/pro/auth'), locals }))
             .toContain('href="/pro/login"');

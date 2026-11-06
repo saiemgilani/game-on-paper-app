@@ -29,7 +29,7 @@ export function memKV() {
  * fail with null, as the real binding does. Set `lag` (ms) to hold every read that long, so
  * parallel callers all read before any of them writes: the race a real bucket allows. */
 export function memR2() {
-    const m = new Map<string, { v: string; etag: string }>();
+    const m = new Map<string, { v: string; etag: string; uploaded: Date }>();
     let n = 0;
     return {
         m,
@@ -45,9 +45,14 @@ export function memR2() {
             if (c?.etagMatches !== undefined && cur?.etag !== c.etagMatches) return null;
             if (c?.etagDoesNotMatch === '*' && cur) return null;
             const etag = `e${++n}`;
-            m.set(k, { v, etag });
+            m.set(k, { v, etag, uploaded: new Date() });
             return { key: k, etag };
         },
+        async list({ prefix = '' }: { prefix?: string; cursor?: string } = {}) {
+            const objects = [...m].filter(([k]) => k.startsWith(prefix)).map(([key, e]) => ({ key, uploaded: e.uploaded }));
+            return { objects, truncated: false, cursor: undefined };
+        },
+        async delete(keys: string | string[]) { for (const k of [keys].flat()) m.delete(k); },
     };
 }
 
