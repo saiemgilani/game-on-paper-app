@@ -454,3 +454,23 @@ children). 2026 season, captured 2026-10-18 with the `requestESPN` Safari UA. No
 
 **To regenerate:** re-fetch both URLs and gzip; the test pins the group ids, names and team counts, so a realignment
 change will need the assertion updated too.
+
+## `team-game-sets-cfb-2025.json.gz` / `team-game-sets-nfl-2025.json.gz`
+The two Data API bodies the season team page's Team Stats game-set panel
+('game-set-filter') reads, as `{ splits, summaries }`: `splits` is
+`GET /v1/{league}/team_opponent_splits?season=2025&select=<SEASON_SPLIT_COLUMNS>&limit=5000`
+(every team-game of the season: 1,912 CFB rows over 232 teams, 544 NFL), and
+`summaries` the `team_summaries` read `retrieveTeamSummaries` makes with
+`columns: TEAM_NEIGHBOR_METRICS` (136 FBS teams, 32 NFL), whose `conference`
+is the panel's membership. Alabama (cfb 333) has an FCS opponent (2197), a
+neutral-site SEC title game and two CFP games, one against an SEC member (201).
+
+**Provenance (2026-11-01):** captured verbatim from the live API; no edits.
+
+**Used by:** `test/gameSetFilter.test.ts` (each derivation from the live
+columns, the subsets, the rank population and its size) and
+`test/gameSetFilter.render.test.ts` (the panel on `/year/2025/team/333` and
+`/nfl/year/2025/team/12`, `?games=`, the flag gate).
+
+**To regenerate:** repeat the two reads per league for 2025 and gzip
+`{ splits, summaries }`; the tests assert on Alabama's 15 games and the 136 / 32 team counts.

@@ -10,12 +10,15 @@ interface Props {
 // `class` is a reserved word and cannot be a binding name, so it aliases to
 // `className` -- the Astro convention. `class:list` drops it when undefined.
 const { id, title, show, class: className } = Astro.props;
+// a control beside the title (title left, control right, as the team profile's
+// season picker); a panel without one renders exactly as before
+const controls = Astro.slots.has('panel-controls');
 ---
 
 <div class:list={["panel-group", className]} id={`${id}-panel`}>
     <div class="panel panel-default">
-        <div class="panel-heading">
-            <div class="panel-title">
+        <div class:list={["panel-heading", controls && "row"]}>
+            <div class:list={["panel-title", controls && "col-lg-6 col-12"]}>
                 <h2 class="d-inline">
                     {title}
                     <span class="d-inline text-small h6 ms-1">
@@ -28,6 +31,7 @@ const { id, title, show, class: className } = Astro.props;
                 </h2>
                 <slot name="panel-subtitle" />
             </div>
+            {controls && <div class="ms-auto col-lg-3 col-12"><slot name="panel-controls" /></div>}
         </div>
         <div id={id} class={`collapse ${show ? 'show' : 'hide'}`}>
             <div class="panel-body">

@@ -6,12 +6,12 @@
 import type { AstroGlobal } from 'astro';
 import { retrieveTeamInformation, type ESPNTeam } from '../resources/espn';
 import {
-    SummaryType, retrievePlayerSummaries, retrieveTeamOpponentSplits, retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveTeamTendencies, teamSummaryColumns,
+    SummaryType, retrievePlayerSummaries, retrieveSeasonOpponentSplits, retrieveTeamOpponentSplits, retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveTeamTendencies, teamSummaryColumns,
     type SDVPassingSummary, type SDVReceivingSummary, type SDVRushingSummary, type SDVTeamSeasonInformation, type SDVTeamSummary, type SDVTeamTendency,
 } from '../resources/sdv';
 import { isFeatureEnabled } from '../utils/features';
 import { fiveFactorColumns } from '../utils/fiveFactors';
-import type { GameSplits } from '../utils/gameSet';
+import { gameSetOf, gameSetTable, seasonTeams, type GameSetTable, type GameSplits } from '../utils/gameSet';
 import type { League } from '../utils/league';
 import { TEAM_NEIGHBOR_METRICS, teamNeighborLists, type NeighborList } from '../utils/neighbors';
 import { teamSplitColumns } from '../utils/teamSplits';
@@ -33,6 +33,8 @@ export interface SeasonTeamData {
     teamTendency?: SDVTeamTendency;
     /** every team's row for the season, the splits' rank population (same read) */
     seasonTendencies?: SDVTeamTendency[];
+    /** 'game-set-filter' only: the Team Stats panel for `?games=`; null with the flag off (no read, `?games=` unread) or when the season read failed */
+    gameSet: GameSetTable | null;
 }
 
 export type SeasonTeamResult = { notFound: true } | SeasonTeamData;
@@ -75,15 +77,31 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
     const passers = (await retrievePlayerSummaries(Number(year), SummaryType.PASSING, Number(id), "plays", false, 10, Number(year), league)) as SDVPassingSummary[];
     const rushers = (await retrievePlayerSummaries(Number(year), SummaryType.RUSHING, Number(id), "plays", false, 20, Number(year), league)) as SDVRushingSummary[];
     const receivers = (await retrievePlayerSummaries(Number(year), SummaryType.RECEIVING, Number(id), "plays", false, 25, Number(year), league)) as SDVReceivingSummary[];
+    // started here and awaited below, beside the season summaries it is ranked with
+    const gameSetOn = isFeatureEnabled('game-set-filter', Astro.locals);
+    const seasonSplits = gameSetOn ? retrieveSeasonOpponentSplits(Number(year), league) : undefined;
     const opponentSplits = isFeatureEnabled('vs-opponent', Astro.locals) ? await retrieveTeamOpponentSplits(Number(year), id, league) : null;
     const seasonTendencies = await tendencies;
     const teamTendency = seasonTendencies?.find((t) => String(t.pos_team_id) === id);
     // Nearby ranks ('rank-neighbors'): one season-wide read, the same URL (so the
     // same KV entry) for every team page of the season. Not made when the flag is
     // off, so the public page's reads are exactly today's.
-    const neighborRows = isFeatureEnabled('rank-neighbors', Astro.locals)
+    // The game-set panel reads the same URL for its team -> conference map, so one
+    // read (one KV entry) serves both when both flags are on.
+    const rankNeighbors = isFeatureEnabled('rank-neighbors', Astro.locals);
+    const neighborRows = rankNeighbors || gameSetOn
         ? await retrieveTeamSummaries({ season: Number(year), columns: TEAM_NEIGHBOR_METRICS, league })
         : [];
-    const neighborLists = teamNeighborLists(neighborRows, id, league, Number(year));
-    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies, neighborLists };
+    const neighborLists = teamNeighborLists(rankNeighbors ? neighborRows : [], id, league, Number(year));
+    const splits = await seasonSplits;
+    const gameSet = splits ? gameSetTable(splits, seasonTeams(neighborRows), id, gameSetOf(Astro.url.searchParams.get('games'), league), league) : null;
+    // A failed season read drops the panel, and a failed membership read (no
+    // season has zero teams) drops its ranks; never let Workers Caching keep that
+    // render (a header-less 200 is held ~2 h), as routes/player.ts does.
+    if (gameSetOn && (!splits || neighborRows.length === 0)) {
+        // the cache provider and response headers are absent under the Container API
+        try { Astro.cache?.set(false); } catch { /* as above */ }
+        try { Astro.response?.headers?.set('Cache-Control', 'no-store'); } catch { /* as above */ }
+    }
+    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies, neighborLists, gameSet };
 }
