@@ -21,8 +21,15 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     retrievePercentiles: async () => [],
     retrieveTeamSummaries: async () => [],
-    retrieveTeamSeasonInformation: async () => null,
+    retrieveTeamSeasonInformation: async () => ({ team: null, events: [], record: '0-0' }),
     retrieveMatchupHistory: async () => [],
+    retrievePlayerSummaries: async () => [],
+    retrieveTeamTendencies: async () => [],
+    retrieveTeamOpponentSplits: async () => null,
+}));
+vi.mock('../src/resources/espn', async (orig) => ({
+    ...(await orig<typeof import('../src/resources/espn')>()),
+    retrieveTeamInformation: async (id: string) => ({ id: String(id), location: 'Alabama', color: '000000', alternateColor: 'ffffff' }),
 }));
 
 let container: AstroContainer;
@@ -62,6 +69,28 @@ describe('season-team player tables', () => {
         expect(subtitle(await render({ league: 'cfb' }))).toBe('Data shown is from FBS vs FBS games only.');
         expect(subtitle(await render({ league: 'nfl' }))).toBe('Data shown is from regular season games only.');
     }, 60_000);
+});
+
+describe('season team page Profile panel', () => {
+    const credit = `(<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).`;
+    const profile = async (league: 'cfb' | 'nfl', preview: boolean) => {
+        const { default: Page } = await import(
+            league === 'nfl' ? '../src/pages/nfl/year/[year]/team/[id].astro' : '../src/pages/year/[year]/team/[id].astro');
+        const html = await container.renderToString(Page, {
+            params: { year: '2025', id: '333' },
+            request: new Request(`https://gameonpaper.com${league === 'nfl' ? '/nfl' : ''}/year/2025/team/333`),
+            locals: (preview ? { preview: true } : {}) as App.Locals,
+        });
+        return html.split('id="radar-panel"')[1].match(/<p class="text-muted text-small m-0"[^>]*>([^]*?)<\/p>/)![1];
+    };
+    for (const league of ['cfb', 'nfl'] as const) {
+        test(`[${league}] public: the credit sentence ends the subtitle, unchanged`, async () => {
+            expect((await profile(league, false)).endsWith(credit)).toBe(true);
+        }, 60_000);
+        test(`[${league}] preview: the season note follows the credit sentence`, async () => {
+            expect((await profile(league, true)).endsWith(`${credit} ${seasonNote(league)}`)).toBe(true);
+        }, 60_000);
+    }
 });
 
 describe('game page Team Stats', () => {
