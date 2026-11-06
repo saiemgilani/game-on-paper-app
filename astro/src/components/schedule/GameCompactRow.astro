@@ -3,9 +3,10 @@
 // game, mirrored, no color stripes. Rank sits ahead of the abbreviation on
 // both sides; the middle is a fixed grid column (score | status | score) so
 // scores and clocks align dead-center down the list regardless of status
-// text or digit count. The possession dot sits beside the logo on the row's
-// interior -- right of the away logo, left of the home logo (Akshay's
-// launch condition for this flag) -- red in the red zone; type, logo and
+// text or digit count. The possession dot sits inside the abbreviation, on the
+// row's interior (Akshay: inside the abbreviation, not the logo) -- after
+// the away abbr, ahead of the home rank and abbr, i.e. the desktop
+// TeamRow's "ABBR dot" mirrored -- red in the red zone; type, logo and
 // padding are viewport-clamped so a double-ranked 4-char matchup fits at
 // 320 (verified against element clipping in headless Chrome). Winner
 // fw-bold, completed loser opacity-50, matching TeamRow's formatScore.
@@ -72,19 +73,17 @@ const home = side(homeComp, homeScore, awayScore);
 ---
 <a class:list={["game-banner border rounded mb-2 py-2 text-reset text-decoration-none", { "outline-championship": isChamp }]} href={leaguePath(Astro.locals.league, `/game/${game.id}`)}>
   <span class="gb-side">
-    <span class="gb-logo gap-1">
+    <span class="gb-logo">
       <img width="28" height="28" loading="lazy" decoding="async" alt="" class={`team-logo-${away.id}`} src={away.logo} />
-      {away.hasBall && <span class:list={["gb-ball", { "gb-ball-rz": isRedZone }]}><span class="visually-hidden">{away.abbr} has the ball</span></span>}
     </span>
-    <span class:list={["gb-abbr", { "fw-bold": away.won, "opacity-50": away.lost }]}>{away.rank != 99 && <span class="gb-rank text-muted">#{away.rank}</span>} {away.abbr}</span>
+    <span class:list={["gb-abbr", { "fw-bold": away.won, "opacity-50": away.lost }]}>{away.rank != 99 && <span class="gb-rank text-muted">#{away.rank}</span>} {away.abbr}{away.hasBall && <span class:list={["gb-ball ms-1", { "gb-ball-rz": isRedZone }]}><span class="visually-hidden">{away.abbr} has the ball</span></span>}</span>
   </span>
   <span class:list={["gb-pts", { "fw-bold": away.won, "opacity-50": away.lost }]}>{scheduled ? "" : awayScore}</span>
   <span class="gb-mid text-muted text-center text-nowrap" data-gb-utc={scheduled && !timeTBD ? game.date : undefined}>{statusLabel}</span>
   <span class:list={["gb-pts", { "fw-bold": home.won, "opacity-50": home.lost }]}>{scheduled ? "" : homeScore}</span>
   <span class="gb-side gb-side-home">
-    <span class:list={["gb-abbr", { "fw-bold": home.won, "opacity-50": home.lost }]}>{home.rank != 99 && <span class="gb-rank text-muted">#{home.rank}</span>} {home.abbr}</span>
-    <span class="gb-logo gap-1">
-      {home.hasBall && <span class:list={["gb-ball", { "gb-ball-rz": isRedZone }]}><span class="visually-hidden">{home.abbr} has the ball</span></span>}
+    <span class:list={["gb-abbr", { "fw-bold": home.won, "opacity-50": home.lost }]}>{home.hasBall && <span class:list={["gb-ball me-1", { "gb-ball-rz": isRedZone }]}><span class="visually-hidden">{home.abbr} has the ball</span></span>}{home.rank != 99 && <><span class="gb-rank text-muted">#{home.rank}</span>{" "}</>}{home.abbr}</span>
+    <span class="gb-logo">
       <img width="28" height="28" loading="lazy" decoding="async" alt="" class={`team-logo-${home.id}`} src={home.logo} />
     </span>
   </span>

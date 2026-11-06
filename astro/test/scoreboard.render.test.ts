@@ -131,10 +131,10 @@ describe('the compact scoreboard rows are preview-gated', () => {
         expect(html).toMatch(/data-gb-utc="2026-09-06T23:30Z"[^>]*>7:30 PM EDT</);
         expect(html).toMatch(/gb-slot[^>]*data-gb-utc=/);
         expect([...html.matchAll(/data-gb-utc="/g)].length).toBe(2); // header + 1 scheduled game (live/final carry none)
-        // live game: possession dot beside the logo of the team with the ball,
+        // live game: possession dot inside the abbreviation of the team with the ball,
         // red variant in the red zone
         const liveCard = html.slice(html.indexOf('/game/403'));
-        expect(liveCard.slice(0, liveCard.indexOf('</a>'))).toContain('gb-ball gb-ball-rz');
+        expect(liveCard.slice(0, liveCard.indexOf('</a>'))).toMatch(/class="gb-ball [^"]*gb-ball-rz"/);
         expect(liveCard).toContain('8:32 - 3rd');
         // championship placeholder: default shield (no broken 500/0.png), note
         // line, TBD status, and NO data-gb-utc anywhere (its date is a
@@ -173,45 +173,55 @@ describe('the compact scoreboard rows are preview-gated', () => {
 });
 
 // Launch condition for 'scoreboard-compact' (Akshay, sign-off ledger): the
-// possession marker sits beside the logo on the row's interior -- right of the
-// away logo, left of the home logo -- not as a badge on the logo's corner.
+// possession marker sits on the row's interior, facing the score. Akshay's
+// #356 review: it belongs inside the abbreviation, not beside the logo -- so
+// the dot lives in the .gb-abbr span (after the away abbr, ahead of the home
+// rank and abbr), the desktop TeamRow's "ABBR dot" mirrored.
 describe('the compact row possession marker', () => {
-    async function row(ballTeamId: string) {
+    async function row(ballTeamId: string, unrankedHome = false) {
+        const game = gameEvent('403', { completed: false, live: true, ballTeamId });
+        if (unrankedHome) game.competitions[0].competitors[0].curatedRank.current = 99;
         const { default: GameCompactRow } = await import('../src/components/schedule/GameCompactRow.astro');
         return container.renderToString(GameCompactRow, {
-            props: { game: gameEvent('403', { completed: false, live: true, ballTeamId }) },
+            props: { game },
             request: new Request('https://gameonpaper.com/'),
             locals: { preview: true },
         });
     }
-    // competitors[0] is home (ALA, 333), competitors[1] away (AUB, 2); the dot
-    // span carries a visually-hidden name, so match the dot's opening tag only
-    // the hidden text names the team, so a screen reader hears who has it
-    const dot = (abbr: string) => String.raw`<span class="gb-ball[^"]*"><span class="visually-hidden">${abbr} has the ball</span></span>`;
+    // competitors[0] is home (ALA, 333, ranked #5), competitors[1] away (AUB,
+    // 2, unranked); the hidden text names the team, so a screen reader hears
+    // who has the ball
+    const dot = (abbr: string, margin: string) => String.raw`<span class="gb-ball ${margin}[^"]*"><span class="visually-hidden">${abbr} has the ball</span></span>`;
+    // every logo wrapper's contents: the logo <img> and nothing else
+    const logoWrappers = (html: string) => [...html.matchAll(/<span class="gb-logo[^"]*">([\s\S]*?)<\/span>/g)].map((m) => m[1]);
 
-    test('away team with the ball: the dot follows the away logo', async () => {
+    test('away team with the ball: the dot is inside the away abbreviation, after it', async () => {
         const html = await row('2');
         expect([...html.matchAll(/class="gb-ball/g)]).toHaveLength(1);
-        expect(html).toMatch(new RegExp(String.raw`team-logo-2"[^>]*>\s*` + dot('AUB')));
-        // the logo/dot spacing is the gap-1 utility on BOTH logo wrappers, and
-        // the dot sits inside the away wrapper, right after its logo
-        expect([...html.matchAll(/class="gb-logo gap-1"/g)]).toHaveLength(2);
-        expect(html).toMatch(new RegExp(String.raw`<span class="gb-logo gap-1"><img[^>]*team-logo-2"[^>]*>\s*` + dot('AUB')));
+        expect(html).toMatch(new RegExp(String.raw`<span class="gb-abbr[^"]*">\s*AUB` + dot('AUB', 'ms-1') + String.raw`</span>`));
+        // not beside the logo: neither logo wrapper holds a dot
+        const logos = logoWrappers(html);
+        expect(logos).toHaveLength(2);
+        for (const inner of logos) expect(inner).not.toContain('gb-ball');
         // outside the red zone the dot is the primary (not danger) variant
         expect(html).not.toContain('gb-ball-rz');
     });
 
-    test('home team with the ball: the dot precedes the home logo', async () => {
+    test('home team with the ball: the dot is inside the home abbreviation, ahead of the rank', async () => {
         const html = await row('333');
         expect([...html.matchAll(/class="gb-ball/g)]).toHaveLength(1);
-        expect(html).toMatch(new RegExp(dot('ALA') + String.raw`\s*<img[^>]*team-logo-333"`));
-        expect([...html.matchAll(/class="gb-logo gap-1"/g)]).toHaveLength(2);
-        expect(html).toMatch(new RegExp(String.raw`<span class="gb-logo gap-1">` + dot('ALA') + String.raw`\s*<img[^>]*team-logo-333"`));
-        // the dot is never after the home logo (its outer edge)
-        expect(html).not.toMatch(new RegExp(String.raw`team-logo-333"[^>]*>\s*<span class="gb-ball`));
+        expect(html).toMatch(new RegExp(String.raw`<span class="gb-abbr[^"]*">` + dot('ALA', 'me-1') + String.raw`<span class="gb-rank text-muted">#5</span> ALA</span>`));
+        const logos = logoWrappers(html);
+        expect(logos).toHaveLength(2);
+        for (const inner of logos) expect(inner).not.toContain('gb-ball');
     });
 
-    test('the dot takes inline width beside the logo instead of overlaying its corner', () => {
+    test('an unranked home team: the dot sits right against the abbr, no stray space', async () => {
+        const html = await row('333', true);
+        expect(html).toMatch(new RegExp(String.raw`<span class="gb-abbr[^"]*">` + dot('ALA', 'me-1') + 'ALA</span>'));
+    });
+
+    test('the dot is inline in the abbreviation text instead of overlaying the logo corner', () => {
         const css = readFileSync(new URL('../public/assets/css/index.css', import.meta.url), 'utf8');
         const rule = (sel: string) => {
             const at = css.indexOf(sel + ' {');
@@ -220,7 +230,11 @@ describe('the compact row possession marker', () => {
         const ball = rule('.game-banner .gb-ball');
         expect(ball).not.toBe('');
         expect(ball).not.toMatch(/position:\s*absolute/);
+        expect(ball).toMatch(/display:\s*inline-block/);
         expect(rule('.game-banner .gb-logo')).toMatch(/display:\s*flex/);
+        // the logo is what gives way when a double-ranked side carries the dot
+        // at 320, so neither the abbr nor the dot is clipped
+        expect(rule('.game-banner .gb-logo')).toMatch(/min-width:\s*0/);
         // spacing is a Bootstrap utility on the markup, not a bespoke CSS value
         // (docs/design-conventions.md: "Spacing is Bootstrap utilities only")
         expect(rule('.game-banner .gb-logo')).not.toMatch(/gap:/);

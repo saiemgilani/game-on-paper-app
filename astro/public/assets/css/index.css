@@ -184,8 +184,8 @@ h1, h2, h3, h4, h5, h6 {
    Bootstrap utilities carry what they can; this block holds the grid (a
    fixed score|status|score middle keeps every row's numbers dead-center),
    the viewport-clamped type that keeps a double-ranked 4-char matchup from
-   clipping at 320, the possession dot beside the logo on the row's interior,
-   and the Chivo opt-in
+   clipping at 320, the possession dot inside the abbreviation on the row's
+   interior, and the Chivo opt-in
    (the list is not a .row, which is where the site applies the stack). */
 .game-compact-list {
     font-family: "Chivo", "Fira Mono", serif;
@@ -214,20 +214,27 @@ h1, h2, h3, h4, h5, h6 {
     overflow: hidden;
 }
 .game-banner .gb-side-home { justify-content: flex-end; }
+/* the logo is the one part of a side that may shrink: a double-ranked
+   4-char side with the possession dot is ~8px too wide at 320, and the
+   logo giving way beats clipping the abbr or the dot */
 .game-banner .gb-logo {
     display: flex;
     align-items: center;
-    flex: none;
+    flex: 0 1 auto;
+    min-width: 0;
     line-height: 0;
 }
 .game-banner .gb-logo img {
     width: clamp(22px, 7vw, 28px);
+    min-width: 0;
     height: auto;
 }
-/* beside the logo, on the row's interior: the away dot follows its logo, the
-   home dot precedes it (GameCompactRow), so both face the score */
+/* inside the abbreviation, on the row's interior: the away dot follows the
+   away abbr, the home dot precedes the home rank and abbr (GameCompactRow),
+   so both face the score; ms-1/me-1 on the markup carry the spacing */
 .game-banner .gb-ball {
-    flex: none;
+    display: inline-block;
+    vertical-align: middle;
     width: 0.45rem;
     height: 0.45rem;
     border-radius: 50%;
