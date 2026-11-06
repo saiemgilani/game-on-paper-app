@@ -128,8 +128,14 @@ export async function claimDownload(viewer: ProViewer, key: string, now = new Da
         const cur = await b.get(objKey);
         let q: { day?: string; n?: number; month?: string; pdf?: number } = {};
         if (cur) {
-            // an unreadable counter must not read as zero: that would reset the day and the month
-            try { q = await cur.json(); } catch (err) { console.error(`[pro quota] unreadable counter: ${err}`); return false; }
+            // an unreadable counter must not read as zero (that would reset the day and the month);
+            // refuse, and replace it with a full one, so it clears itself at the next rollover
+            try { q = await cur.json(); } catch (err) {
+                console.error(`[pro quota] unreadable counter: ${err}`);
+                await b.put(objKey, JSON.stringify({ day, n: PRO_FILES_PER_DAY, month, pdf: PRO_ANALYST_PDFS_PER_MONTH }),
+                    { onlyIf: { etagMatches: cur.etag } });
+                return false;
+            }
         }
         const nDay = q.day === day ? Number(q.n) || 0 : 0;
         const nMonth = q.month === month ? Number(q.pdf) || 0 : 0;

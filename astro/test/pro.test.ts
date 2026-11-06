@@ -250,6 +250,10 @@ describe('/pro/file', () => {
         // a profile's JSON exists (and holds PFF arrays) but is never a download
         const json: Response = await (GET as any)({ params: { key: 'pro/2026/players/1.json' }, locals: { pro: { email: 'a@b.co', ...live } } });
         expect(json.status).toBe(404);
+        // at the cap: a 429, after closing the opened object's body
+        const full = { email: 'full@example.edu', ...live };
+        await spend(full, 150);
+        expect((await (GET as any)({ params: { key }, locals: { pro: full } })).status).toBe(429);
     });
 });
 
@@ -653,14 +657,17 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         expect(await claimDownload(coach, 'pro/2026/players/1.pdf', new Date(Date.now() + DAY))).toBe(true);
     });
 
-    test('an unreadable counter refuses the download instead of resetting the count', async () => {
+    test('an unreadable counter refuses the download instead of resetting the count, then clears at rollover', async () => {
         const coach = { ...live, email: 'coach@example.edu' } as any;
         await spend(coach, 150);
         const [key] = [...PRO_BUCKET.m.keys()];
         PRO_BUCKET.m.get(key)!.v = 'not json';
         const err = vi.spyOn(console, 'error').mockImplementation(() => {});
-        expect(await claimDownload(coach, 'pro/2026/players/1.json')).toBe(false);
-        expect(PRO_BUCKET.m.get(key)!.v).toBe('not json');  // nothing was written over it
+        const today = new Date();
+        expect(await claimDownload(coach, 'pro/2026/players/1.pdf', today)).toBe(false);
+        expect(await claimDownload(coach, 'pro/2026/players/1.pdf', today)).toBe(false);  // still full today
+        const tomorrow = new Date(today.getTime() + 86_400_000);
+        expect(await claimDownload(coach, 'pro/2026/players/1.pdf', tomorrow)).toBe(true);  // not stuck for good
         err.mockRestore();
     });
 
