@@ -27,13 +27,16 @@ export function memKV() {
 
 /** An in-memory R2 bucket with R2's conditional put: `onlyIf.etagMatches` / `etagDoesNotMatch: '*'`
  * fail with null, as the real binding does. Set `lag` (ms) to hold every read that long, so
- * parallel callers all read before any of them writes: the race a real bucket allows. */
+ * parallel callers all read before any of them writes: the race a real bucket allows. Set
+ * `pageSize` to make list() truncate, with R2's key-ordered cursor (it resumes after the last
+ * key returned, so deleting a page between calls skips nothing). */
 export function memR2() {
     const m = new Map<string, { v: string; etag: string; uploaded: Date }>();
     let n = 0;
     return {
         m,
         lag: 0,
+        pageSize: Infinity,
         async get(k: string) {
             const e = m.get(k);  // read now, answer after the lag
             await new Promise((r) => setTimeout(r, this.lag));
@@ -48,9 +51,11 @@ export function memR2() {
             m.set(k, { v, etag, uploaded: new Date() });
             return { key: k, etag };
         },
-        async list({ prefix = '' }: { prefix?: string; cursor?: string } = {}) {
-            const objects = [...m].filter(([k]) => k.startsWith(prefix)).map(([key, e]) => ({ key, uploaded: e.uploaded }));
-            return { objects, truncated: false, cursor: undefined };
+        async list({ prefix = '', cursor }: { prefix?: string; cursor?: string } = {}) {
+            const all = [...m].filter(([k]) => k.startsWith(prefix) && (cursor === undefined || k > cursor)).sort(([a], [b]) => (a < b ? -1 : 1));
+            const objects = all.slice(0, this.pageSize).map(([key, e]) => ({ key, uploaded: e.uploaded }));
+            const truncated = all.length > objects.length;
+            return { objects, truncated, cursor: truncated ? objects.at(-1)!.key : undefined };
         },
         async delete(keys: string | string[]) { for (const k of [keys].flat()) m.delete(k); },
     };

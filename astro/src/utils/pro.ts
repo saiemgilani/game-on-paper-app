@@ -20,7 +20,9 @@ export const PRO_TOKEN_TTL_S = 15 * 60;
  * sign-in whose response never arrived. Any other browser is refused at once. */
 export const PRO_AUTH_RETRY_S = 5 * 60;
 /** The per-browser nonce cookie /pro/auth's GET sets, which ties a spent token to its browser. */
-export const PRO_AUTH_NONCE_COOKIE = 'gop_pro_auth';
+// __Host-: the browser takes it only Secure, host-only and Path=/, so a sibling *.gameonpaper.com
+// host can't plant a nonce of its own choosing for this one to reuse
+export const PRO_AUTH_NONCE_COOKIE = '__Host-gop_pro_auth';
 export const PRO_TIERS = ['analyst', 'pro', 'program', 'agency'] as const;
 export type ProTier = typeof PRO_TIERS[number];
 
