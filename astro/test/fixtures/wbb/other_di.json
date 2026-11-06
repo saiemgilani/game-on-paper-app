@@ -1,0 +1,106 @@
+[
+ {
+  "id": 3,
+  "ab": "BSC",
+  "name": "Birmingham Southern Panthers",
+  "color": "#000000",
+  "first": 2004,
+  "last": 2006
+ },
+ {
+  "id": 42,
+  "ab": "HART",
+  "name": "Hartford Hawks",
+  "color": "#D60008",
+  "first": 2003,
+  "last": 2022
+ },
+ {
+  "id": 88,
+  "ab": "USI",
+  "name": "Southern Indiana Screaming Eagles",
+  "color": "#000000",
+  "first": 2023,
+  "last": 2026
+ },
+ {
+  "id": 284,
+  "ab": "STO",
+  "name": "Stonehill Skyhawks",
+  "color": "#000000",
+  "first": 2023,
+  "last": 2026
+ },
+ {
+  "id": 2113,
+  "ab": "CTLA",
+  "name": "Centenary (LA) Gentlemen",
+  "color": "#A20B36",
+  "first": 2008,
+  "last": 2011
+ },
+ {
+  "id": 2330,
+  "ab": "LEM",
+  "name": "Le Moyne Dolphins",
+  "color": "#000000",
+  "first": 2024,
+  "last": 2026
+ },
+ {
+  "id": 2341,
+  "ab": "LIU",
+  "name": "LIU Brooklyn Blackbirds",
+  "color": "#000000",
+  "first": 2003,
+  "last": 2019
+ },
+ {
+  "id": 2511,
+  "ab": "QUC",
+  "name": "Queens University Royals",
+  "color": "#192C66",
+  "first": 2023,
+  "last": 2027
+ },
+ {
+  "id": 2542,
+  "ab": "SAV",
+  "name": "Savannah State Tigers",
+  "color": "#280298",
+  "first": 2012,
+  "last": 2019
+ },
+ {
+  "id": 2597,
+  "ab": "SFBK",
+  "name": "St. Francis Brooklyn Terriers",
+  "color": "#113682",
+  "first": 2003,
+  "last": 2023
+ },
+ {
+  "id": 2697,
+  "ab": "UWF",
+  "name": "West Florida Argonauts",
+  "color": "#087DC2",
+  "first": 2027,
+  "last": 2027
+ },
+ {
+  "id": 2815,
+  "ab": "LIN",
+  "name": "Lindenwood Lions",
+  "color": "#000000",
+  "first": 2023,
+  "last": 2026
+ },
+ {
+  "id": 2837,
+  "ab": "ETAM",
+  "name": "East Texas A&M Lions",
+  "color": "#000000",
+  "first": 2023,
+  "last": 2026
+ }
+]

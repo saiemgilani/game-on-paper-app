@@ -54,6 +54,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // its Header menu and league-switch entry), gated in middleware like 'nba'. Promote to 'on' when the design owner signs
     // off, in a one-line commit: the sitemap then lists /mbb, the Header's pages and the 365 member team pages.
     'mbb': 'preview',
+    // Women's college basketball (pages/wbb/**, its Header menu and league-switch entry), gated in middleware like 'nba'.
+    // Scoreboard and game pages only (plan #10); /wbb redirects to the scoreboard until plan #11 ships the teams index and
+    // the shooting pages. Do not promote before plan #11.
+    'wbb': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

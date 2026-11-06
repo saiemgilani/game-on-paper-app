@@ -129,9 +129,14 @@ export function parseRecord(raw: unknown): string | null {
  * `turnovers` is the players' turnovers. The NBA/WNBA box already says so (total = players + team); a college box counts
  * the team's inside `turnovers` (total = turnovers, e.g. 13 with 3 team: players 10), so the team box's "(player + team)"
  * read 13 (13 + 3) (self-review on #343). Data-driven: an NBA box with team turnovers never has total == turnovers.
+ *
+ * ESPN's 2009-2012 WBB box files the team's whole count under team_turnovers with turnovers and total_turnovers both 0
+ * (sdv-py mbb_team_ratings._turnovers; the 2011 final: 0 / 18 / 0, rates 18). That is the total, with no player/team split.
  */
-function playerTurnovers(turnovers: number | null, team: number | null, total: number | null): number | null {
-    return turnovers != null && team != null && team > 0 && total === turnovers ? turnovers - team : turnovers
+function turnoverSplit(turnovers: number | null, team: number | null, total: number | null): Pick<NbaTeamBox, 'turnovers' | 'team_turnovers' | 'total_turnovers'> {
+    if (turnovers === 0 && total === 0 && team != null && team > 0) return { turnovers: null, team_turnovers: null, total_turnovers: team }
+    const players = turnovers != null && team != null && team > 0 && total === turnovers ? turnovers - team : turnovers
+    return { turnovers: players, team_turnovers: team, total_turnovers: total }
 }
 
 function teamBox(r: Record<string, any> | null | undefined): NbaTeamBox | null {
@@ -142,7 +147,7 @@ function teamBox(r: Record<string, any> | null | undefined): NbaTeamBox | null {
         three_point_field_goals_made: n('three_point_field_goals_made'), three_point_field_goals_attempted: n('three_point_field_goals_attempted'),
         free_throws_made: n('free_throws_made'), free_throws_attempted: n('free_throws_attempted'), offensive_rebounds: n('offensive_rebounds'),
         defensive_rebounds: n('defensive_rebounds'), total_rebounds: n('total_rebounds'), assists: n('assists'), steals: n('steals'), blocks: n('blocks'),
-        turnovers: playerTurnovers(n('turnovers'), n('team_turnovers'), n('total_turnovers')), team_turnovers: n('team_turnovers'), total_turnovers: n('total_turnovers'), fouls: n('fouls'),
+        ...turnoverSplit(n('turnovers'), n('team_turnovers'), n('total_turnovers')), fouls: n('fouls'),
         fast_break_points: r.fast_break_points ?? null, points_in_paint: r.points_in_paint ?? null, largest_lead: r.largest_lead ?? null,
     }
 }
@@ -181,6 +186,24 @@ function play(r: Record<string, any>, wp: Record<string, any> | undefined = r): 
 const eraAbbreviation = (league: BasketballLeague, id: unknown, season: number | null, abbr: string): string =>
     (league === 'wnba' ? wnbaEraTricode(Number(id), season) : undefined) ?? abbr
 
+/**
+ * R-W16: "not recorded" read from the data, not from a season constant. Early college boxes (ESPN's 2008 WBB box, D12) send 0
+ * for counts nobody kept. A final in which every player who has a minutes value shows 0 recorded no minutes; a team whose box
+ * says 0 turnovers while sdv-py nulled its rates' total_turnovers (the D12 signal) recorded no turnovers. Those become null, so
+ * the page shows a dash. No NBA, WNBA or MBB fixture matches either signature (test/wbb/game.render.test.ts pins the 2008 game).
+ */
+function blankUnrecorded(g: NbaGame): NbaGame {
+    if (!g.status.completed) return g // a live game at the tip really has 0 minutes and 0 turnovers
+    const mins = [g.home, g.away].flatMap((s) => s.players.map((p) => p.minutes)).filter((m) => m != null)
+    const noMinutes = mins.length > 0 && mins.every((m) => m === 0)
+    for (const s of [g.home, g.away]) {
+        const noTurnovers = s.box?.total_turnovers === 0 && s.rates?.total_turnovers == null
+        if (noTurnovers) s.box = { ...s.box!, turnovers: null, team_turnovers: null, total_turnovers: null }
+        if (noMinutes || noTurnovers) s.players = s.players.map((p) => ({ ...p, minutes: noMinutes ? null : p.minutes, turnovers: noTurnovers ? null : p.turnovers }))
+    }
+    return g
+}
+
 export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague): NbaGame {
     const comp = j.header.competitions[0]
     const season = j.header?.season?.year ?? null
@@ -196,13 +219,13 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague):
         }
     }
     const reg = regulationFor(league, season, j.regulation_periods)
-    return {
+    return blankUnrecorded({
         id: String(j.gameId), source: 'processor',
         status: { name: j.status.name, completed: j.status.completed, period: j.status.period, displayClock: j.status.display_clock, detail: j.status.detail },
         date: comp.date, venue: j.venue ?? null, periods: j.periods, season, regulation: reg.periods, periodKind: reg.kind,
         prior: { homeWinProb: j.prior.home_win_prob, source: priorSource(j.prior.source), homeTeamSpread: j.prior.home_team_spread, gameSpreadAvailable: j.prior.game_spread_available },
         home: side('home'), away: side('away'), plays: j.plays.map((r) => play(r)), hasOvertime: j.periods > reg.periods,
-    }
+    })
 }
 
 export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague): NbaGame {
@@ -224,11 +247,11 @@ export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague): Nb
             players: rows.player_box.filter((p) => num(p.team_id) === tid).map((p) => playerRow({ ...p, ...(prates.get(num(p.athlete_id)) ?? {}) })),
         }
     }
-    return {
+    return blankUnrecorded({
         id: String(s.id), source: 'data_api',
         status: { name: s.status_type_name, completed: isTrue(s.status_type_completed), period: num(s.status_period), displayClock: s.status_display_clock ?? null, detail: s.status_type_detail ?? null },
         date: s.date, venue: s.venue_full_name ?? null, periods, season: num(s.season), regulation: reg.periods, periodKind: reg.kind,
         prior: num(wp0?.pregame_home_prob) == null ? null : { homeWinProb: num(wp0.pregame_home_prob)!, source: priorSource(wp0.prior_source), homeTeamSpread: num(p0?.home_team_spread), gameSpreadAvailable: isTrue(p0?.game_spread_available) },
         home: side('home'), away: side('away'), plays, hasOvertime: periods > reg.periods,
-    }
+    })
 }

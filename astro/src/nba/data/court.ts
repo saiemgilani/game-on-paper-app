@@ -69,6 +69,21 @@ export const NCAA_COURTS: readonly CourtEra[] = [
   { from: 2016, court: ncaa(ft(20, 9), ft(20, 9), 40) },
   { from: 2020, court: ncaa(NCAA_ARC_NEW, NCAA_CORNER_X, 40) },
 ];
+/**
+ * The NCAA women's court by season (END year), the NBA frame otherwise. 2025-26 and 2026-27 NCAA Women's Basketball Rules, Rule 1:
+ * 12' lane (Sec. 6 Art. 1); three-point arc 22' 1 3/4" with 21' 7 7/8" corners from 2021-22 (Sec. 7 Art. 1; NCAA_ARC_NEW /
+ * NCAA_CORNER_X, D45/R1), 20' 9" from 2011-12 and 19' 9" before (Women's Playing Rules History), each a full arc whose straight
+ * lines meet the end line at its radius (the men moved in 2008-09 and 2019-20: NCAA_COURTS). Restricted arc (D32, resolution R5:
+ * plan #7's sdv-db NCAA_RESTRICTED['wbb'], mirrored exactly; Women's Playing Rules History): none before 2011-12, 3' from 2011-12,
+ * 4' from 2017-18, none from 2023-24 (Sec. 8 Art. 1: "the area of the playing court located directly underneath each basket").
+ */
+export const NCAA_W_COURTS: readonly CourtEra[] = [
+  { from: 2003, court: ncaa(ft(19, 9), ft(19, 9), 0) },
+  { from: 2012, court: ncaa(ft(20, 9), ft(20, 9), 30) },
+  { from: 2018, court: ncaa(ft(20, 9), ft(20, 9), 40) },
+  { from: 2022, court: ncaa(NCAA_ARC_NEW, NCAA_CORNER_X, 40) },
+  { from: 2024, court: ncaa(NCAA_ARC_NEW, NCAA_CORNER_X, 0) },
+];
 
 /** Height where the corner three meets the arc (NBA ~89.5, i.e. ~9 ft above the rim line). */
 export const threeBreakY = (court: Court = COURT) => Math.sqrt(court.threeRadius ** 2 - court.threeCornerX ** 2);

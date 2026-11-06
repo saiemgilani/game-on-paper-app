@@ -97,7 +97,9 @@ function buildEntries(): Entry[] {
     for (const lg of BASKETBALL_LEAGUES) {
         if (FLAGS[lg] !== 'on') continue;
         const cfg = BASKETBALL[lg];
-        for (const p of ['/', ...cfg.headerMenu.map((m) => m.path).filter((m) => m !== '/')]) {
+        // a teams-index landing exists with the teams index (hasTeamPages); before that the landing is a 302 (pages/wbb/index.astro)
+        const landing = cfg.landing !== 'teams-index' || hasTeamPages(lg) ? ['/'] : [];
+        for (const p of [...landing, ...cfg.headerMenu.map((m) => m.path).filter((m) => m !== '/')]) {
             out.push({ loc: leaguePath(lg, p), lastmod: today, changefreq: p === '/scoreboard' ? 'hourly' : 'daily', priority: p === '/' ? '0.8' : '0.6' });
         }
         // D43/D47: a league with a membership table lists its current-season members (every URL a 200); others every team
