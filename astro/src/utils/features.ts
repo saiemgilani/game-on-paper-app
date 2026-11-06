@@ -133,6 +133,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // The team profile as a history hub (/team/<id> and the /nfl twin): Best Seasons, Head Coaches and,
+    // CFB only, Conference History tables under Seasons. Only this path reads the team's
+    // coach_tendencies rows; the other two pivot the team_summaries rows the page already reads.
+    'team-hub': 'preview',
     // Game on Paper Pro: /pro/** (the paid player profiles, portal board and their
     // files), /pricing, the "Pro profile" link on the free player page and the
     // header's Pro entry. Gated in middleware like 'nfl': without the preview cookie
