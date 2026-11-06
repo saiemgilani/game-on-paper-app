@@ -2,11 +2,13 @@
 // filters live in the existing SESSION KV under a `pro:` prefix; the reports gop-pro
 // renders live in the private `gop-pro` R2 bucket (binding PRO_BUCKET) and are only
 // ever read here, server side, after the entitlement check (gop-pro docs/contract.md).
+// The one thing the site writes to the bucket is the download counter, outside `pro/`.
 //
 //   pro:ent:<email>      {tier, expires, team?}       written from /admin
 //   pro:tok:<hex>        <email>, 15-minute TTL       one magic link, deleted on use
 //   pro:board:<email>    ["<entrantKey>", ...]        "Save to my board"
 //   pro:filters:<email>  {pos?, metric?, min?}        what the portal digest matches
+//   R2 quota/dl/<sha256(email)>.json  {day, n, month, pdf}   claimDownload's counter
 //
 // Outside a deployed Worker (astro dev, vitest) a missing R2 object falls back to the
 // synthetic fixtures under test/fixtures/pro/, so nothing local depends on the real
@@ -71,21 +73,32 @@ export async function redeemLoginToken(token: string | null | undefined): Promis
 
 /**
  * Count one file download against the viewer's quotas; false = over quota (nothing counted).
- * Daily cap for everyone, plus Analyst's 10 PDFs a month. ponytail: KV read-then-write is not
- * atomic, so a burst of parallel requests can overshoot by a few -- a cap, not a meter.
+ * Daily cap for everyone, plus Analyst's 10 PDFs a month. The counter is one R2 object per
+ * viewer (`quota/dl/<sha256(email)>.json`, outside `pro/`, so isProKey never serves it and
+ * gop-pro's publish never touches it), advanced with R2's conditional put: R2 commits
+ * `etagMatches` / `etagDoesNotMatch: '*'` atomically, so two parallel downloads can't both
+ * take the last slot. KV can't do that (no compare-and-set, and a read can be up to 60 s
+ * stale at another PoP). Losing the race retries; persistent contention fails closed.
  */
 export async function claimDownload(viewer: ProViewer, key: string, now = new Date()): Promise<boolean> {
+    const bucket: R2Bucket | undefined = (env as any).PRO_BUCKET;
+    if (!bucket) return LOCAL;  // no bucket outside a Worker: no quota locally, none granted in production
     const day = now.toISOString().slice(0, 10);
-    const dayKey = `pro:dl:${viewer.email}:${day}`;
-    const monthKey = `pro:dlpdf:${viewer.email}:${day.slice(0, 7)}`;
-    const nDay = Number((await kv().get(dayKey)) ?? 0);
-    if (nDay >= PRO_FILES_PER_DAY) return false;
+    const month = day.slice(0, 7);
     const metered = viewer.tier === 'analyst' && key.endsWith('.pdf');
-    const nMonth = metered ? Number((await kv().get(monthKey)) ?? 0) : 0;
-    if (metered && nMonth >= PRO_ANALYST_PDFS_PER_MONTH) return false;
-    await kv().put(dayKey, String(nDay + 1), { expirationTtl: 2 * 86_400 });
-    if (metered) await kv().put(monthKey, String(nMonth + 1), { expirationTtl: 40 * 86_400 });
-    return true;
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(viewer.email));
+    const objKey = `quota/dl/${[...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')}.json`;
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const cur = await bucket.get(objKey);
+        const q = (cur ? await cur.json().catch(() => ({})) : {}) as { day?: string; n?: number; month?: string; pdf?: number };
+        const nDay = q.day === day ? Number(q.n) || 0 : 0;
+        const nMonth = q.month === month ? Number(q.pdf) || 0 : 0;
+        if (nDay >= PRO_FILES_PER_DAY || (metered && nMonth >= PRO_ANALYST_PDFS_PER_MONTH)) return false;
+        const next = JSON.stringify({ day, n: nDay + 1, month, pdf: nMonth + (metered ? 1 : 0) });
+        const put = await bucket.put(objKey, next, { onlyIf: cur ? { etagMatches: cur.etag } : { etagDoesNotMatch: '*' } });
+        if (put) return true;
+    }
+    return false;
 }
 
 export async function readBoard(email: string): Promise<string[]> {
