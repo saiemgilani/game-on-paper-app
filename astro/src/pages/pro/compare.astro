@@ -24,19 +24,21 @@ const docs = (await Promise.all(ids.map((id) => proObject<CompareProfile>(`pro/$
 const shown = docs.map((d) => String(d.player.espn_id));
 const href = (list: string[]) => (list.length ? `/pro/compare?ids=${list.join(',')}` : '/pro/compare');
 const q = (Astro.url.searchParams.get('q') ?? '').trim();
+const HITS = 20;
 const full = shown.length >= PRO_COMPARE_MAX;
 const index = q.length >= 2 && !full ? await proObject<ProIndex>(`pro/${PRO_SEASON}/players/index.json`) : null;
 const hits = (index?.players ?? [])
     .filter((r) => !shown.includes(String(r.espn_id)) && `${r.name ?? ''} ${r.team ?? ''}`.toLowerCase().includes(q.toLowerCase()))
-    .slice(0, 20);
+    .slice(0, HITS);
 const rows = compareMetricRows(docs);
 const name = (d: CompareProfile) => cleanTextForTeam(d.player.name ?? `Player ${d.player.espn_id}`, d.player.team_id);
-const r0 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : String(Math.round(v)));
+const r0 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : roundNumber(v, 0, 0));
 const valueRows: [string, (d: CompareProfile) => string][] = [
     ['Unit', (d) => d.value?.unit ?? '—'],
     ['Production (pace)', (d) => formatUsd(d.value?.production_usd_pace)],
     ['Projected next season', (d) => formatUsd(d.value?.projected_usd)],
-    ['Next-season percentile', (d) => (d.value ? `${r0(d.value.projection.pct)} (${r0(d.value.projection.lo)}–${r0(d.value.projection.hi)})` : '—')],
+    ['Next-season percentile', (d) => r0(d.value?.projection?.pct)],
+    ['&emsp;&emsp;80% range', (d) => (d.value?.projection?.lo == null ? '—' : `${r0(d.value.projection.lo)} to ${r0(d.value.projection.hi)}`)],
     ['Starts next season', (d) => formatOdds(d.value?.p_start_next)],
     ['Age', (d) => (d.value?.age == null ? '—' : String(d.value.age))],
 ];
@@ -79,6 +81,7 @@ const valueRows: [string, (d: CompareProfile) => string][] = [
                             ))}
                         </tbody>
                     </table>
+                    {hits.length === HITS && <p class="text-muted text-small">The first {HITS} matches. Narrow the search for more.</p>}
                 </div>
                 )
         )}
@@ -88,7 +91,7 @@ const valueRows: [string, (d: CompareProfile) => string][] = [
             : (
             <Fragment>
                 <Panel id="pro-compare-efficiency" title="Efficiency" show={true} class="mb-md-3">
-                    <p slot="panel-subtitle" class="m-0 text-muted text-small">Value, then the 80% percentile band among qualifying players at the position, and the change vs last season.</p>
+                    <p slot="panel-subtitle" class="m-0 text-muted text-small">Each metric, then its 80% percentile band among qualifying players at the position, its sample and its change vs last season.</p>
                     <Fragment slot="panel-body">
                         <div class="table-responsive">
                             <table class="table table-sm" id="pro-compare-table">
@@ -106,23 +109,24 @@ const valueRows: [string, (d: CompareProfile) => string][] = [
                                 </thead>
                                 <tbody>
                                     {rows.map((r) => (
-                                        <tr data-metric={r.key}>
-                                            <td class="text-left text-nowrap">{r.label}</td>
-                                            {r.cells.map((m) => (
-                                                <td class="text-center numeral">
-                                                    {m === null ? '—' : (
-                                                        <Fragment>
-                                                            <div class="fw-bold">{formatProMetric(m.key, m.value)}</div>
-                                                            <div class="text-muted text-small text-nowrap">
-                                                                {m.band_mid === null ? 'no band' : `${roundNumber(m.band_lo, 0, 0)} to ${roundNumber(m.band_hi, 0, 0)}`}
-                                                                {m.n !== null && ` · ${roundNumber(m.n, 0, 0)} ${m.n_label}`}
-                                                            </div>
-                                                            {m.delta_eb !== null && <div class="text-muted text-small">{formatProDelta(m.key, m.delta_eb)}</div>}
-                                                        </Fragment>
-                                                    )}
-                                                </td>
-                                            ))}
-                                        </tr>
+                                        <Fragment>
+                                            <tr data-metric={r.key}>
+                                                <td class="text-left text-nowrap">{r.label}</td>
+                                                {r.cells.map((m) => <td class="text-center numeral">{m === null ? '—' : formatProMetric(m.key, m.value)}</td>)}
+                                            </tr>
+                                            <tr data-metric-band={r.key}>
+                                                <td class="text-left text-nowrap text-muted">&emsp;&emsp;80% band</td>
+                                                {r.cells.map((m) => <td class="text-center numeral text-muted">{m === null || m.band_mid === null ? '—' : `${roundNumber(m.band_lo, 0, 0)} to ${roundNumber(m.band_hi, 0, 0)}`}</td>)}
+                                            </tr>
+                                            <tr data-metric-n={r.key}>
+                                                <td class="text-left text-nowrap text-muted">&emsp;&emsp;Sample</td>
+                                                {r.cells.map((m) => <td class="text-center numeral text-muted">{m === null || m.n === null ? '—' : `${roundNumber(m.n, 0, 0)} ${m.n_label}`}</td>)}
+                                            </tr>
+                                            <tr data-metric-change={r.key}>
+                                                <td class="text-left text-nowrap text-muted">&emsp;&emsp;Change vs last season</td>
+                                                {r.cells.map((m) => <td class="text-center numeral text-muted">{m === null || m.delta_eb === null ? '—' : formatProDelta(m.key, m.delta_eb)}</td>)}
+                                            </tr>
+                                        </Fragment>
                                     ))}
                                 </tbody>
                             </table>
@@ -139,7 +143,7 @@ const valueRows: [string, (d: CompareProfile) => string][] = [
                                 </thead>
                                 <tbody>
                                     {valueRows.map(([label, f]) => (
-                                        <tr><td class="text-left text-nowrap">{label}</td>{docs.map((d) => <td class="text-center numeral">{f(d)}</td>)}</tr>
+                                        <tr><td class="text-left text-nowrap" set:html={label} />{docs.map((d) => <td class="text-center numeral">{f(d)}</td>)}</tr>
                                     ))}
                                 </tbody>
                             </table>

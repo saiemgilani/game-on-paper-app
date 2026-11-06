@@ -202,7 +202,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const allowed = context.locals.pro && proAllows(context.locals.pro, effectivePath);
     if (!allowed && !isOpenProPath(effectivePath)) {
       const headers = { 'Cache-Control': 'no-store' };
-      if (effectivePath.startsWith('/pro/file/') || effectivePath === '/pro/board') {
+      if (effectivePath.startsWith('/pro/file/') || effectivePath === '/pro/board' || effectivePath === '/pro/export') {
         return new Response('Forbidden', { status: 403, headers });
       }
       return new Response(null, { status: 302, headers: { ...headers, Location: keepPreviewSurface('/pricing', url.pathname) } });

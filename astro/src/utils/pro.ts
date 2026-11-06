@@ -10,7 +10,7 @@
 
 import { hmacHex } from './preview';
 import { timingSafeEqual } from './adminSession';
-import { formatPercent, roundNumber } from './misc';
+import { cleanTextForTeam, formatPercent, roundNumber } from './misc';
 
 export const PRO_COOKIE = 'gop_pro';
 export const PRO_COOKIE_TTL_S = 30 * 24 * 60 * 60;
@@ -350,13 +350,14 @@ export interface CompareProfile {
 /** Every metric any of the players has, in first-seen order, with each player's row or null. */
 export function compareMetricRows(docs: CompareProfile[]): { key: string; label: string; cells: (CompareProfile['metrics'][number] | null)[] }[] {
     const order = new Map<string, string>();
-    for (const d of docs) for (const m of d.metrics) if (!order.has(m.key)) order.set(m.key, m.label);
-    return [...order].map(([key, label]) => ({ key, label, cells: docs.map((d) => d.metrics.find((m) => m.key === key) ?? null) }));
+    for (const d of docs) for (const m of d.metrics ?? []) if (!order.has(m.key)) order.set(m.key, m.label);
+    return [...order].map(([key, label]) => ({ key, label, cells: docs.map((d) => d.metrics?.find((m) => m.key === key) ?? null) }));
 }
 
 const csvCell = (v: unknown): string => {
     if (v === null || v === undefined || (typeof v === 'number' && !Number.isFinite(v))) return '';
-    const s = String(v);
+    // a text cell a spreadsheet would run as a formula gets a leading quote (numbers keep their sign)
+    const s = typeof v === 'string' && /^\s*[=+\-@]/.test(v) ? `'${v}` : String(v);
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
@@ -372,9 +373,9 @@ export function compareCsv(docs: CompareProfile[]): string {
         'unit', 'production_usd_pace', 'projected_usd', 'projected_usd_lo', 'projected_usd_hi',
         'projection_pct', 'projection_lo', 'projection_hi', 'p_start_next', 'age'];
     const rows = docs.map((d) => {
-        const by = new Map(d.metrics.map((m) => [m.key, m]));
+        const by = new Map((d.metrics ?? []).map((m) => [m.key, m]));
         const v = d.value ?? null;
-        return [d.player.espn_id, d.player.name, d.player.team, d.player.position, d.season,
+        return [d.player.espn_id, cleanTextForTeam(d.player.name, d.player.team_id), cleanTextForTeam(d.player.team, d.player.team_id), d.player.position, d.season,
             ...metrics.flatMap((k) => {
                 const m = by.get(k);
                 return m ? [m.value, m.n, m.band_lo, m.band_mid, m.band_hi, m.delta_eb] : ['', '', '', '', '', ''];
