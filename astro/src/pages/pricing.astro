@@ -22,10 +22,10 @@ const link = (name: string) => {
 };
 const card = [
     { tier: 'Analyst', who: 'Media, independent analysts, small agents, families',
-      includes: 'Profiles on the web for every player, compare, export of derived metrics, 10 PDFs a month, and the role reports for agents and players (Market History, Career and Market)',
+      includes: 'Profiles on the web for every player, compare, export of derived metrics, 10 PDFs a month',
       monthly: ['$29/mo', link('PRO_LINK_ANALYST_MONTHLY')], annual: ['$249/yr', link('PRO_LINK_ANALYST_ANNUAL')] },
     { tier: 'Pro seat', who: 'An individual coach or staffer. The seat is yours and follows you to a new job',
-      includes: 'Analyst, plus unlimited PDFs, the valuation reports (rosters, positions and the market), the role reports for programs, collectives and ADs (Program History, Budget and Allocation, Program Benchmark), the weekly Scout Pack and self-scout',
+      includes: 'Analyst, plus unlimited PDFs, the weekly Scout Pack and self-scout',
       monthly: ['$179/mo', link('PRO_LINK_PRO_MONTHLY')], annual: ['$1,499/yr', link('PRO_LINK_PRO_ANNUAL')] },
 ] as const;
 const invoiced = [
@@ -33,7 +33,7 @@ const invoiced = [
       price: 'P4 $7,500 / G5 $4,000 / FCS $2,000 / D-II, NAIA, JUCO and high school $750, per year' },
     { tier: 'Portal Board add-on', who: 'Programs and agencies', includes: 'The board, its CSV and the morning digest',
       price: '$1,995/yr, one published price for every D-I school; $750/yr outside D-I' },
-    { tier: 'Agency', who: 'Agencies', includes: 'Profiles for your roster, refreshed at each portal window and at season end, plus the valuation and role reports',
+    { tier: 'Agency', who: 'Agencies', includes: 'Profiles for your roster, refreshed at each portal window and at season end',
       price: '$750 / $1,500 / $2,500 per month for up to 25 / 75 / 200 players, billed annually. Single profile $350, 10-pack $1,000' },
     { tier: 'Coach Dossier', who: 'ADs and search firms', includes: 'One candidate, or a shortlist of five',
       price: '$2,500 / $7,500' },

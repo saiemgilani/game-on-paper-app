@@ -21,7 +21,7 @@ import {
     formatUsd, mintProCookie, parseBoardFilters, PRO_COOKIE, PRO_TOKEN_TTL_S, proAllows, sortBoard, verifyProCookie, type BoardEntrant,
 } from '../src/utils/pro';
 import { claimDownload, claimLoginSend, createLoginToken, isProKey, latestBoard, redeemLoginToken, runProDigest, sweepLoginMarkers } from '../src/resources/pro';
-import { PRO_AUTH_RETRY_S, ROLE_KINDS } from '../src/utils/pro';
+import { PRO_AUTH_RETRY_S } from '../src/utils/pro';
 
 const board: { entrants: BoardEntrant[] } = JSON.parse(readFileSync(new URL('./fixtures/pro/2026/portal/board.json', import.meta.url)).toString());
 const DAY = 86_400_000;
@@ -422,10 +422,6 @@ describe('the pages', () => {
         expect(html).toContain('href="/pro/methodology"');
         expect(html).toContain('Contact us');
         expect(html).not.toContain('Subscribe</a>');
-        // each role report is named on the cheapest row that opens it (utils/pro.ts ROLE_KINDS.everyTier)
-        const [analystRow, proRow] = ['Analyst', 'Pro seat'].map((t) => html.split(`<strong>${t}</strong>`)[1].split('</tr>')[0]);
-        for (const k of Object.values(ROLE_KINDS)) expect(k.everyTier ? analystRow : proRow, k.title).toContain(k.title);
-        expect(proRow).toContain('valuation reports');
     }, 60_000);
 
     test('no interpunct separators on the Pro pages (design-conventions: "replace dot")', () => {
