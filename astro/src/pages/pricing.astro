@@ -1,10 +1,12 @@
 ---
 /**
- * Game on Paper Pro pricing (plan 3.4; tiers from the design spec's section 3). Card
- * tiers buy through Stripe Payment Links read from env (PRO_LINK_ANALYST_MONTHLY and
- * friends), and say "Contact us" until one is set. Program, Portal Board, Agency,
- * Dossier and consulting go through the invoice-request form below, which mails the
- * request to PRO_CONTACT_EMAIL through resources/pro.ts sendEmail.
+ * Game on Paper Pro pricing. Plans split by side of the deal and by who pays: Analyst
+ * (player side) and Pro (program side) for one person, by card through Stripe Payment
+ * Links read from env (PRO_LINK_ANALYST_MONTHLY and friends), saying "Contact us" until
+ * one is set; Agency and Program for an organisation, invoiced. Portal Board and Coach
+ * Dossier go on any plan. Invoiced plans, extras and consulting go through the request
+ * form below, which mails PRO_CONTACT_EMAIL through resources/pro.ts sendEmail. What each
+ * plan opens is utils/pro.ts proRequirement; the copy here must match it.
  * ponytail: entitlements are written by hand from /admin after payment, until there
  * are enough customers that a Stripe webhook pays for itself.
  *
@@ -21,25 +23,26 @@ const link = (name: string) => {
     return v && v.startsWith('https://') ? v : null;
 };
 const card = [
-    { tier: 'Analyst', who: 'Media, independent analysts, small agents, families',
-      includes: 'Profiles on the web for every player, compare, export of derived metrics, 10 PDFs a month',
+    { tier: 'Analyst', who: 'Agents, players and families, media and analysts',
+      includes: 'Every player profile, compare, CSV export, 10 PDFs a month, and the player and agent reports (Career and Market, Market History)',
       monthly: ['$29/mo', link('PRO_LINK_ANALYST_MONTHLY')], annual: ['$249/yr', link('PRO_LINK_ANALYST_ANNUAL')] },
-    { tier: 'Pro seat', who: 'An individual coach or staffer. The seat is yours and follows you to a new job',
-      includes: 'Analyst, plus unlimited PDFs, the weekly Scout Pack and self-scout',
+    { tier: 'Pro', who: 'A coach, GM, collective or AD staffer. The seat is yours and follows you to a new job',
+      includes: 'Analyst, plus unlimited PDFs, the weekly Scout Pack and self-scout, roster, position and market valuation, and the program reports (Program History, Budget and Allocation, Program Benchmark)',
       monthly: ['$179/mo', link('PRO_LINK_PRO_MONTHLY')], annual: ['$1,499/yr', link('PRO_LINK_PRO_ANNUAL')] },
 ] as const;
 const invoiced = [
-    { tier: 'Program', who: "A school's whole staff", includes: 'Unlimited seats, everything above',
+    { tier: 'Agency', who: 'Agencies', includes: "Analyst for the whole agency, the market valuation, and your clients' profiles refreshed at each portal window and at season end",
+      price: '$750 / $1,500 / $2,500 per month for up to 25 / 75 / 200 clients, billed annually' },
+    { tier: 'Program', who: "A school's whole staff, its collective and the AD's office", includes: 'Pro for everyone',
       price: 'P4 $7,500 / G5 $4,000 / FCS $2,000 / D-II, NAIA, JUCO and high school $750, per year' },
-    { tier: 'Portal Board add-on', who: 'Programs and agencies', includes: 'The board, its CSV and the morning digest',
+];
+const extras = [
+    { tier: 'Portal Board', who: 'Programs and agencies, on any plan', includes: 'The board, its CSV and the morning digest',
       price: '$1,995/yr, one published price for every D-I school; $750/yr outside D-I' },
-    { tier: 'Agency', who: 'Agencies', includes: 'Profiles for your roster, refreshed at each portal window and at season end',
-      price: '$750 / $1,500 / $2,500 per month for up to 25 / 75 / 200 players, billed annually. Single profile $350, 10-pack $1,000' },
     { tier: 'Coach Dossier', who: 'ADs and search firms', includes: 'One candidate, or a shortlist of five',
       price: '$2,500 / $7,500' },
-    { tier: 'Consulting', who: 'Anyone', includes: 'Fixed-scope projects such as a fourth-down audit or a custom opponent pack',
-      price: 'From $3,500' },
 ];
+const requestable = [...invoiced, ...extras].map((t) => t.tier).concat('Consulting');
 
 let sent: 'no' | 'ok' | 'invalid' | 'failed' = 'no';
 if (Astro.request.method === 'POST') {
@@ -50,7 +53,7 @@ if (Astro.request.method === 'POST') {
     const product = field('product');
     if (field('website')) {
         sent = 'ok';  // the honeypot: a bot filled the hidden field, so drop it quietly
-    } else if (!isEmail(email) || !invoiced.some((t) => t.tier === product)) {
+    } else if (!isEmail(email) || !requestable.includes(product)) {
         sent = 'invalid';
     } else {
         const to = getSecret('PRO_CONTACT_EMAIL');
@@ -104,28 +107,32 @@ if (Astro.request.method === 'POST') {
             </table>
         </div>
 
-        <h2 class="fs-4 mt-4">Programs, agencies and reports</h2>
-        <div class="table-responsive">
-            <table class="table table-sm" id="pricing-invoiced">
-                <thead>
-                    <tr>
-                        <th class="text-left" colspan="1">Plan</th>
-                        <th class="text-left" colspan="1">Includes</th>
-                        <th class="text-left" colspan="1">Price</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {invoiced.map((t) => (
+        {[['Agencies and programs', 'pricing-invoiced', invoiced], ['Add to any plan', 'pricing-extras', extras]].map(([heading, id, rows]) => (
+            <Fragment>
+            <h2 class="fs-4 mt-4">{heading}</h2>
+            <div class="table-responsive">
+                <table class="table table-sm" id={id}>
+                    <thead>
                         <tr>
-                            <td class="text-left" colspan="1"><strong>{t.tier}</strong><br /><span class="text-muted text-small">{t.who}</span></td>
-                            <td class="text-left" colspan="1">{t.includes}</td>
-                            <td class="text-left" colspan="1">{t.price}</td>
+                            <th class="text-left" colspan="1">Plan</th>
+                            <th class="text-left" colspan="1">Includes</th>
+                            <th class="text-left" colspan="1">Price</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-        <p class="text-muted text-small">These are invoiced. Ask for a quote or an invoice below.</p>
+                    </thead>
+                    <tbody>
+                        {(rows as typeof invoiced).map((t) => (
+                            <tr>
+                                <td class="text-left" colspan="1"><strong>{t.tier}</strong><br /><span class="text-muted text-small">{t.who}</span></td>
+                                <td class="text-left" colspan="1">{t.includes}</td>
+                                <td class="text-left" colspan="1">{t.price}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            </Fragment>
+        ))}
+        <p class="text-muted text-small">These are invoiced. Custom projects, such as a fourth-down audit or an opponent pack, start at $3,500. Ask for a quote or an invoice below.</p>
 
         <h2 class="fs-4 mt-4" id="pricing-contact">Request an invoice</h2>
         <div class="row">
@@ -138,7 +145,7 @@ if (Astro.request.method === 'POST') {
                         {sent === 'failed' && <p class="text-danger text-small">That didn't send. Reach us on <a href="https://bsky.app/profile/gameonpaper.com">Bluesky</a> instead.</p>}
                         <label class="form-label" for="pricing-product">Plan</label>
                         <select class="form-select mb-2" id="pricing-product" name="product" required>
-                            {invoiced.map((t) => <option value={t.tier}>{t.tier}</option>)}
+                            {requestable.map((t) => <option value={t}>{t}</option>)}
                         </select>
                         <label class="form-label" for="pricing-name">Name</label>
                         <input class="form-control mb-2" id="pricing-name" name="name" autocomplete="name" required />

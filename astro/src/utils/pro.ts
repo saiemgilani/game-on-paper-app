@@ -35,7 +35,7 @@ export interface ProEntitlement { tier: ProTier; expires: string; team?: string;
 
 /**
  * What a /pro path needs beyond a live entitlement (gop-pro spec v2 §3): the Portal Board
- * and its files and saved boards are the add-on; Scout Pack files are Pro seat / Program;
+ * and its files and saved boards are the add-on; Scout Pack files are Pro / Program;
  * Coach Dossiers are bought separately. Everything else (profiles, search, methodology)
  * is open to any tier. null = no extra requirement.
  */
@@ -43,15 +43,18 @@ export function proRequirement(path: string): { tiers?: ProTier[]; addon?: ProAd
     if (/^\/pro\/(portal|board)(\/|$)/.test(path) || /^\/pro\/file\/pro\/\d{4}\/portal\//.test(path)) return { addon: 'portal' };
     if (/^\/pro\/file\/pro\/\d{4}\/teams\//.test(path)) return { tiers: ['pro', 'program'] };
     if (/^\/pro\/file\/pro\/coaches\//.test(path)) return { addon: 'dossier' };
-    // the valuation reports (roster, position market, talent market): every tier above Analyst
-    if (/^\/pro\/(rosters|positions|market)(\/|$)/.test(path)
-        || /^\/pro\/file\/pro\/\d{4}\/(rosters|positions|market)\//.test(path)) return { tiers: ['pro', 'program', 'agency'] };
+    // Plans split by side of the deal (pricing): Pro and Program are the program side, Analyst and
+    // Agency the player side. Roster and position valuation are program-side; the talent market is
+    // for both sides above Analyst.
+    if (/^\/pro\/(rosters|positions)(\/|$)/.test(path)
+        || /^\/pro\/file\/pro\/\d{4}\/(rosters|positions)\//.test(path)) return { tiers: ['pro', 'program'] };
+    if (/^\/pro\/market(\/|$)/.test(path) || /^\/pro\/file\/pro\/\d{4}\/market\//.test(path)) return { tiers: ['pro', 'program', 'agency'] };
     // a role report (page or file) opens by its reader: the agent and player reports to every tier,
-    // the program-side ones (team, collective, AD) above Analyst. Anything else under roles/ (an
+    // the program-side ones (team, collective, AD) to Pro and Program. Anything else under roles/ (an
     // unknown kind, an empty segment, a bare /roles/team) is closed; only the index itself is open.
     const role = /^\/pro\/(?:file\/pro\/)?roles\/(.+)$/.exec(path);
     const kind = role?.[1].split(/[/.]/)[0];
-    if (role && !(isRoleKind(kind) && ROLE_KINDS[kind].everyTier)) return { tiers: ['pro', 'program', 'agency'] };
+    if (role && !(isRoleKind(kind) && ROLE_KINDS[kind].everyTier)) return { tiers: ['pro', 'program'] };
     return null;
 }
 
