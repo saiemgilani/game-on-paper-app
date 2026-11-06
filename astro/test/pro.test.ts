@@ -347,10 +347,10 @@ describe('the portal digest', () => {
 
 describe('the pages', () => {
     const pro = { email: 'coach@example.edu', ...live };
-    const render = async (file: string, url: string, params: Record<string, string> = {}) => {
+    const render = async (file: string, url: string, params: Record<string, string> = {}, viewer: unknown = pro) => {
         const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
         const { default: Page } = await import(/* @vite-ignore */ file);
-        return container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, pro } as any });
+        return container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, pro: viewer } as any });
     };
 
     test('the profile: bands, sample, change, PFF, volume, every note and the PDF link', async () => {
@@ -459,7 +459,14 @@ describe('the pages', () => {
     }, 60_000);
 
     test('the role reports: the index links every kind; each kind renders its tables, PDF and limits', async () => {
+        // an Analyst's index: agent and player reports, no program links that would bounce
+        const fanIndex = await render('../src/pages/pro/roles/index.astro', '/pro/roles', {}, { email: 'fan@example.com', ...analyst });
+        for (const href of ['/pro/roles/agent/market', '/pro/roles/player/1']) expect(fanIndex, href).toContain(`href="${href}"`);
+        for (const href of ['/pro/roles/team/1', '/pro/roles/collective/1', '/pro/roles/ad/1']) expect(fanIndex, href).not.toContain(`href="${href}"`);
+        expect(fanIndex).toContain('id="pro-roles-programs-locked"');
+        expect(fanIndex).toContain('priced in constant 2026-27 revenue-share dollars');  // no space lost at a line break
         const index = await render('../src/pages/pro/roles/index.astro', '/pro/roles');
+        expect(index).not.toContain('id="pro-roles-programs-locked"');
         for (const href of ['/pro/roles/team/1', '/pro/roles/collective/1', '/pro/roles/ad/1', '/pro/roles/agent/market', '/pro/roles/player/1']) {
             expect(index, href).toContain(`href="${href}"`);
         }
@@ -557,8 +564,9 @@ describe('the pages', () => {
         const { default: Nav } = await import('../src/components/pro/ProNav.astro');
         const nav = (viewer: unknown) => container.renderToString(Nav, { locals: { pro: viewer } as any });
         const fan = await nav({ email: 'fan@example.com', ...analyst });
-        for (const href of ['/pro/portal', '/pro/rosters', '/pro/positions', '/pro/market', '/pro/roles']) expect(fan, href).not.toContain(`href="${href}"`);
+        for (const href of ['/pro/portal', '/pro/rosters', '/pro/positions', '/pro/market']) expect(fan, href).not.toContain(`href="${href}"`);
         expect(fan).toContain('href="/pro/methodology"');
+        expect(fan).toContain('href="/pro/roles"');  // the agent and player reports are every tier's
         const coach = await nav(pro);
         for (const href of ['/pro/portal', '/pro/rosters', '/pro/roles']) expect(coach, href).toContain(`href="${href}"`);
         expect(await nav(null)).toContain('href="/pro/roles"');  // signed out: the whole menu
@@ -622,13 +630,37 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
             expect(proAllows(a, path), path).toBe(false);
             expect(proAllows(pro, path), path).toBe(true);
         }
-        for (const path of ['/pro/roles', '/pro/roles/team/194', '/pro/roles/agent/market', '/pro/file/pro/roles/collective/194.pdf']) {
+        // role reports open by reader: program-side ones above Analyst (an unknown kind too), agent and player for every tier
+        for (const path of ['/pro/roles/team/194', '/pro/roles/collective/194', '/pro/roles/ad/194', '/pro/file/pro/roles/collective/194.pdf', '/pro/file/pro/roles/team/194.pdf', '/pro/roles/coach/1', '/pro/file/pro/roles/x/1.pdf']) {
             expect(proAllows(a, path), path).toBe(false);
             expect(proAllows(pro, path), path).toBe(true);
             expect(proAllows({ ...base, tier: 'agency' }, path), path).toBe(true);
         }
+        for (const path of ['/pro/roles', '/pro/roles/agent/market', '/pro/roles/player/4433971', '/pro/file/pro/roles/agent/market.pdf', '/pro/file/pro/roles/player/4433971.pdf']) {
+            expect(proAllows(a, path), path).toBe(true);
+            expect(proAllows(pro, path), path).toBe(true);
+        }
         expect(proAllows(a, '/pro/file/pro/2026/valuation/valuation.pdf')).toBe(true);
         expect(proAllows(a, '/pro/rostersx')).toBe(true);
+    });
+
+    test('the role gate holds through the middleware for any spelling of a program-side path', async () => {
+        await SESSION.put('pro:ent:fan@example.com', JSON.stringify(analyst));
+        const fan = (p: string) => run(p, { preview: true, email: 'fan@example.com' });
+        expect((await fan('/pro/roles/team/1')).res.headers.get('location')).toBe('/pricing');
+        expect((await fan('/pro/file/pro/roles/team/1.pdf')).res.status).toBe(403);
+        // encoded spellings never reach a route: they redirect to the canonical path, gated above
+        for (const [p, to] of [['/pro/file/pro/roles%2Fteam%2F1.pdf', '/pro/file/pro/roles/team/1.pdf'], ['/pro/%72oles/team/1', '/pro/roles/team/1']]) {
+            const r = await fan(p);
+            expect([r.res.status, r.res.headers.get('location'), r.rewrittenTo], p).toEqual([308, to, 'never-called']);
+        }
+        // odd shapes under roles/ fail closed; the index and the every-tier kinds pass
+        for (const p of ['/pro/roles/team', '/pro/roles//team/1', '/pro/file/pro/roles/team.pdf', '/pro/roles/x/1']) {
+            expect((await fan(p)).rewrittenTo, p).toBe('never-called');
+        }
+        for (const p of ['/pro/roles', '/pro/roles/', '/pro/roles/player/1', '/pro/roles/agent/market', '/pro/file/pro/roles/player/1.pdf']) {
+            expect((await fan(p)).rewrittenTo, p).toBe(undefined);  // next() was called: the request went through
+        }
     });
 
     test('the middleware enforces them: pages to /pricing, files and board posts 403', async () => {

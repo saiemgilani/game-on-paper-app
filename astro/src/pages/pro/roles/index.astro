@@ -2,12 +2,14 @@
 /**
  * Role reports index: the 2019-present history read for each kind of buyer, from
  * `pro/roles/index.json` (gop-pro roles.py). Team, collective and AD reports exist for every
- * FBS program; the agent report is league-wide; player reports are a sample set.
+ * FBS program; the agent report is league-wide; player reports are a sample set. Every tier gets the
+ * agent and player reports; a viewer whose tier can't open the program-side ones sees where they are
+ * instead of links that would bounce to pricing.
  */
 import GenericPage from '../../../layouts/GenericPage.astro';
 import ProNav from '../../../components/pro/ProNav.astro';
 import { cleanTextForTeam } from '../../../utils/misc';
-import { ROLE_KINDS } from '../../../utils/pro';
+import { proAllows, ROLE_KINDS } from '../../../utils/pro';
 import { proObject } from '../../../resources/pro';
 
 interface RoleRow { kind: keyof typeof ROLE_KINDS; key: string; title: string; team_id: number | null; team: string | null
@@ -16,6 +18,7 @@ interface RoleIndex { seasons: number[]; rendered: string; price_season: number;
 
 if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
 const index = await proObject<RoleIndex>('pro/roles/index.json');
+const programs = proAllows(Astro.locals.pro, '/pro/roles/team/');
 const of = (k: RoleRow['kind']) => (index?.reports ?? []).filter((r) => r.kind === k);
 const teams = of('team');
 const has = (k: RoleRow['kind']) => new Set(of(k).map((r) => r.key));
@@ -31,9 +34,7 @@ const span = index?.seasons?.length ? `${Math.min(...index.seasons)}-${Math.max(
     <div class="container mb-4">
         <h1 class="fs-3">Role Reports</h1>
         <p>
-            The {span} valuation history, read for the person buying. Every season is priced in constant
-            {index?.price_season}-{String((index?.price_season ?? 0) + 1).slice(-2)} revenue-share dollars; before July 2021 that is a
-            shadow price, never a payment.
+            {`The ${span} valuation history, read for the person buying. Every season is priced in constant ${index?.price_season}-${String((index?.price_season ?? 0) + 1).slice(-2)} revenue-share dollars; before July 2021 that is a shadow price, never a payment.`}
         </p>
         {!index
             ? <p class="text-muted" id="pro-roles-unavailable">Role reports are unavailable right now.</p>
@@ -45,6 +46,7 @@ const span = index?.seasons?.length ? `${Math.min(...index.seasons)}-${Math.max(
                             <div class="border rounded p-2 h-100" data-kind={k}>
                                 <div class="fw-bold">{v.title}</div>
                                 <div class="text-muted text-small">For {v.reader}</div>
+                                {!v.everyTier && !programs && <div class="text-muted text-small">With Pro, Program or Agency</div>}
                             </div>
                         </div>
                     ))}
@@ -62,6 +64,10 @@ const span = index?.seasons?.length ? `${Math.min(...index.seasons)}-${Math.max(
                 </ul>
 
                 <h2 class="fs-5">Programs</h2>
+                {!programs
+                    ? <p class="text-muted" id="pro-roles-programs-locked">Program History, Budget and Allocation and Program Benchmark reports for every FBS program come with a Pro seat, Program or Agency. <a href="/pricing">See pricing</a>.</p>
+                    : (
+                <Fragment>
                 <p class="text-muted text-small mb-2">Each school's Program History; its Budget and Allocation (collective) and Program Benchmark (AD) reports beside it.</p>
                 <div class="row" id="pro-roles-teams">
                     {confs.map((c) => (
@@ -79,6 +85,8 @@ const span = index?.seasons?.length ? `${Math.min(...index.seasons)}-${Math.max(
                         </div>
                     ))}
                 </div>
+                </Fragment>
+                    )}
             </Fragment>
             )}
     </div>

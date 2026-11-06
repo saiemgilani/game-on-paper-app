@@ -41,21 +41,28 @@ export function proRequirement(path: string): { tiers?: ProTier[]; addon?: ProAd
     if (/^\/pro\/(portal|board)(\/|$)/.test(path) || /^\/pro\/file\/pro\/\d{4}\/portal\//.test(path)) return { addon: 'portal' };
     if (/^\/pro\/file\/pro\/\d{4}\/teams\//.test(path)) return { tiers: ['pro', 'program'] };
     if (/^\/pro\/file\/pro\/coaches\//.test(path)) return { addon: 'dossier' };
-    // the valuation reports (roster, position market, talent market) and the 2019-present role
-    // reports (team, collective, AD, agent, player): every tier above Analyst
-    if (/^\/pro\/(rosters|positions|market|roles)(\/|$)/.test(path)
-        || /^\/pro\/file\/pro\/\d{4}\/(rosters|positions|market)\//.test(path)
-        || /^\/pro\/file\/pro\/roles\//.test(path)) return { tiers: ['pro', 'program', 'agency'] };
+    // the valuation reports (roster, position market, talent market): every tier above Analyst
+    if (/^\/pro\/(rosters|positions|market)(\/|$)/.test(path)
+        || /^\/pro\/file\/pro\/\d{4}\/(rosters|positions|market)\//.test(path)) return { tiers: ['pro', 'program', 'agency'] };
+    // a role report (page or file) opens by its reader: the agent and player reports to every tier,
+    // the program-side ones (team, collective, AD) above Analyst. Anything else under roles/ (an
+    // unknown kind, an empty segment, a bare /roles/team) is closed; only the index itself is open.
+    const role = /^\/pro\/(?:file\/pro\/)?roles\/(.+)$/.exec(path);
+    const kind = role?.[1].split(/[/.]/)[0];
+    if (role && !(isRoleKind(kind) && ROLE_KINDS[kind].everyTier)) return { tiers: ['pro', 'program', 'agency'] };
     return null;
 }
 
-/** gop-pro roles.py: one report family per reader, keyed `pro/roles/<kind>/<key>.json`. */
+/**
+ * gop-pro roles.py: one report family per reader, keyed `pro/roles/<kind>/<key>.json`.
+ * `everyTier`: open to Analyst too, because its readers (agents, families) are Analyst's buyers (spec §3).
+ */
 export const ROLE_KINDS = {
-    team: { title: 'Program History', reader: 'coaches and general managers' },
-    collective: { title: 'Budget and Allocation', reader: 'NIL collectives' },
-    ad: { title: 'Program Benchmark', reader: 'athletic directors' },
-    agent: { title: 'Market History', reader: 'agents and player representatives' },
-    player: { title: 'Career and Market', reader: 'players and families' },
+    team: { title: 'Program History', reader: 'coaches and general managers', everyTier: false },
+    collective: { title: 'Budget and Allocation', reader: 'NIL collectives', everyTier: false },
+    ad: { title: 'Program Benchmark', reader: 'athletic directors', everyTier: false },
+    agent: { title: 'Market History', reader: 'agents and player representatives', everyTier: true },
+    player: { title: 'Career and Market', reader: 'players and families', everyTier: true },
 } as const;
 export type RoleKind = keyof typeof ROLE_KINDS;
 
