@@ -51,6 +51,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
     // isCoachBoardPath). Promote to 'on' once the coach attribution is trusted.
     'coaches': 'on',
+    // The CFP projection page (/playoff): sportsdataverse-py's season sims + cfbseedR tiebreakers
+    // through the API (python/playoff_projection.py), the 2026 selection rules and the fixed
+    // bracket, plus the committee's field from the CFP rankings. Public since #389: linked
+    // under the header's Tools menu and listed in the sitemap.
+    'playoff-projection': 'on',
     // The play processor's source switch (football-sources Stage 4): the game
     // page may ask the API to process a game from an alternate feed
     // (?source=shield|cbs|yahoo|fox|ncaa, the sportsdataverse-py contract's
@@ -132,6 +137,13 @@ export const FLAGS: Record<string, FeatureState> = {
     // season team page's player tables and Profile panel carry the season note; the game page's Team Stats title
     // carries the game note as a hover. Off: today's hand-typed subtitles. Promote once the copy is reviewed.
     'method-notes': 'preview',
+    // Game on Paper Pro: /pro/** (the paid player profiles, portal board and their
+    // files), /pricing, the "Pro profile" link on the free player page and the
+    // header's Pro entry. Gated in middleware like 'nfl': without the preview cookie
+    // every one of those paths is the site's 404. Behind the flag, /pro/** also
+    // needs a live entitlement (utils/pro.ts, resources/pro.ts) except login,
+    // auth, logout and methodology. Promote to 'on' at launch.
+    'pro': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
