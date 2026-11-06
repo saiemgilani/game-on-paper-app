@@ -377,7 +377,7 @@ export function compareCsv(docs: CompareProfile[]): string {
         const by = new Map((d.metrics ?? []).map((m) => [m.key, m]));
         const v = d.value ?? null;
         return [d.player.espn_id, cleanTextForTeam(d.player.name, d.player.team_id), cleanTextForTeam(d.player.team, d.player.team_id), d.player.position, d.season,
-            ...metrics.flatMap((k) => {
+            ...metrics.flatMap((k): (string | number | null)[] => {
                 const m = by.get(k);
                 return m ? [m.value, m.n, m.band_lo, m.band_mid, m.band_hi, m.delta_eb] : ['', '', '', '', '', ''];
             }),
