@@ -369,21 +369,24 @@ export const WBB_TEAMS: readonly Team[] = [
     { team_id: 112358, tricode: 'LIU', name: 'Long Island University Sharks', color: '#50C9F7', espn_id: 112358 },
 ];
 
-// Programs with a D-I season (10+ games carrying a D-I conference id in that season's wehoop-wbb-data schedule; every season
-// first..last is one) that ESPN's 2026 core list omits: six reclassifying 2026 members (Southern Indiana, Stonehill, Le Moyne,
+// Programs with a D-I season (10+ games carrying a D-I conference id, the D-I Independents' 43 included, in that season's
+// wehoop-wbb-data schedule; every season first..last is one, or one with no conference id recorded at all: Centenary 2004-07)
+// that ESPN's 2026 core list omits: six reclassifying 2026 members (Southern Indiana, Stonehill, Le Moyne,
 // Queens, Lindenwood, East Texas A&M), West Florida from 2027, and departed programs. Identity and colour from ESPN's team endpoint.
 export const WBB_OTHER_DI: readonly { team: Team; first: number; last: number }[] = [
-    { team: { team_id: 3, tricode: 'BSC', name: 'Birmingham Southern Panthers', color: '#000000', espn_id: 3 }, first: 2004, last: 2006 },
-    { team: { team_id: 42, tricode: 'HART', name: 'Hartford Hawks', color: '#D60008', espn_id: 42 }, first: 2003, last: 2022 },
+    { team: { team_id: 3, tricode: 'BSC', name: 'Birmingham Southern Panthers', color: '#000000', espn_id: 3 }, first: 2003, last: 2006 },
+    { team: { team_id: 42, tricode: 'HART', name: 'Hartford Hawks', color: '#D60008', espn_id: 42 }, first: 2003, last: 2023 },
     { team: { team_id: 88, tricode: 'USI', name: 'Southern Indiana Screaming Eagles', color: '#000000', espn_id: 88 }, first: 2023, last: 2026 },
     { team: { team_id: 284, tricode: 'STO', name: 'Stonehill Skyhawks', color: '#000000', espn_id: 284 }, first: 2023, last: 2026 },
-    { team: { team_id: 2113, tricode: 'CTLA', name: 'Centenary (LA) Gentlemen', color: '#A20B36', espn_id: 2113 }, first: 2008, last: 2011 },
+    { team: { team_id: 2113, tricode: 'CTLA', name: 'Centenary (LA) Gentlemen', color: '#A20B36', espn_id: 2113 }, first: 2003, last: 2011 },
     { team: { team_id: 2330, tricode: 'LEM', name: 'Le Moyne Dolphins', color: '#000000', espn_id: 2330 }, first: 2024, last: 2026 },
     { team: { team_id: 2341, tricode: 'LIU', name: 'LIU Brooklyn Blackbirds', color: '#000000', espn_id: 2341 }, first: 2003, last: 2019 },
+    { team: { team_id: 2417, tricode: 'MCA', name: 'Morris Brown Wolverines', color: '#000000', espn_id: 2417 }, first: 2003, last: 2003 },
     { team: { team_id: 2511, tricode: 'QUC', name: 'Queens University Royals', color: '#192C66', espn_id: 2511 }, first: 2023, last: 2027 },
-    { team: { team_id: 2542, tricode: 'SAV', name: 'Savannah State Tigers', color: '#280298', espn_id: 2542 }, first: 2012, last: 2019 },
+    { team: { team_id: 2542, tricode: 'SAV', name: 'Savannah State Tigers', color: '#280298', espn_id: 2542 }, first: 2003, last: 2019 },
     { team: { team_id: 2597, tricode: 'SFBK', name: 'St. Francis Brooklyn Terriers', color: '#113682', espn_id: 2597 }, first: 2003, last: 2023 },
     { team: { team_id: 2697, tricode: 'UWF', name: 'West Florida Argonauts', color: '#087DC2', espn_id: 2697 }, first: 2027, last: 2027 },
+    { team: { team_id: 2736, tricode: 'WSSU', name: 'Winston-Salem State Rams', color: '#BB0100', espn_id: 2736 }, first: 2007, last: 2010 },
     { team: { team_id: 2815, tricode: 'LIN', name: 'Lindenwood Lions', color: '#000000', espn_id: 2815 }, first: 2023, last: 2026 },
     { team: { team_id: 2837, tricode: 'ETAM', name: 'East Texas A&M Lions', color: '#000000', espn_id: 2837 }, first: 2023, last: 2026 },
 ];

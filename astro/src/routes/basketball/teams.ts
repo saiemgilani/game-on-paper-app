@@ -7,10 +7,11 @@
 import type { AstroGlobal } from 'astro';
 import { placeholderFor } from '../../basketball/config';
 import { conferenceGroups, isNcaaDashboards, withSeasonMembers, type ConferenceGroup } from '../../basketball/dashboards';
-import type { ShootingLine } from '../../nba/data/aggregate';
+import { shotsFromRows } from '../../nba/adapters';
+import { shootingLine, type ShootingLine } from '../../nba/data/aggregate';
 import type { Team } from '../../nba/data/teams';
 import { teamLinesFromRows, teamsFromSeasonRows } from '../../nba/tables';
-import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows } from '../../resources/nbaShots';
+import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveTeamShots } from '../../resources/nbaShots';
 import { leaguePath, type BasketballLeague } from '../../utils/league';
 import { uncacheable } from './cache';
 import { readBasketballSeasonRows, readCoverageNote, resolveBasketballSeason } from './season';
@@ -30,6 +31,9 @@ export interface BasketballTeamsParams {
     conferences?: ConferenceGroup[] | null;
 }
 
+/** The most members a teams index reads team shots for (members with no named-player line). */
+const MAX_LINE_READS = 25;
+
 export type BasketballTeamsPrep = { unavailable: true } | BasketballTeamsParams;
 
 /** `landing`: the league root's teams index (/wnba); the read's route label is the root, the params are the same. */
@@ -44,12 +48,27 @@ export async function prepareBasketballTeams(Astro: AstroGlobal, league: Basketb
     const rows = await readBasketballSeasonRows(Astro, league, resolved.season, leaguePath(league, landing ? '/' : '/teams'));
     if (rows === null) return { unavailable: true };
     const teams = teamsFromSeasonRows(rows, resolved.season, league);
+    const lines = teamLinesFromRows(rows);
     let conferences: ConferenceGroup[] | null | undefined;
     if (isNcaaDashboards(league)) {
         try {
             const [c, games] = await Promise.all([conferencesP!, gamesP!]);
             // D43/D47 (R7): the index is the season's members, with or without linked shots
-            conferences = conferenceGroups(withSeasonMembers(teams, c.teams, games, resolved.season, league), c.teams, c.groups);
+            const members = withSeasonMembers(teams, c.teams, games, resolved.season, league);
+            conferences = conferenceGroups(members, c.teams, c.groups);
+            // R-S14 on the index (self-review on #344): a member whose shots name no player (New Orleans 2026: 992 FGA) has no
+            // season-player row, so no line, while its team page draws every shot. Its line comes from the same team-shot read
+            // the team page makes (same cache key). ponytail: a few such members a season (seven in 2019); past MAX_LINE_READS
+            // the season is not ingested yet and every member would be a read, so they keep the dash.
+            const missing = members.map((t) => t.team_id).filter((id) => !lines.has(id));
+            if (rows.length > 0 && missing.length <= MAX_LINE_READS) {
+                const reads = await Promise.allSettled(missing.map((id) => retrieveTeamShots(resolved.season, id, league)));
+                reads.forEach((r, i) => {
+                    if (r.status === 'rejected') { uncacheable(Astro); return; } // the dash is a guess: never held for the season
+                    const shots = shotsFromRows(r.value);
+                    if (shots.length) lines.set(missing[i], shootingLine(shots));
+                });
+            }
         } catch (e: any) {
             console.error(`ERROR while loading the ${league} conferences or schedule for ${resolved.season}: ${e}, ${e?.stack}`);
             conferences = null; // decorative: render plan #6's teams-with-shots cards, uncacheable below
@@ -72,5 +91,5 @@ export async function prepareBasketballTeams(Astro: AstroGlobal, league: Basketb
     const coverage = await coverageP;
     if (coverage === undefined) uncacheable(Astro);
     if (conferences === null) uncacheable(Astro);
-    return { ...resolved, teams, lines: teamLinesFromRows(rows), ...(unlocated ? { unlocated } : {}), ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}), ...(conferences === undefined ? {} : { conferences }) };
+    return { ...resolved, teams, lines, ...(unlocated ? { unlocated } : {}), ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}), ...(conferences === undefined ? {} : { conferences }) };
 }

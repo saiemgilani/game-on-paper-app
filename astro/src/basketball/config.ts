@@ -6,6 +6,8 @@ import { COURT, NCAA_COURTS, NCAA_W_COURTS, WNBA_COURT, WNBA_COURT_1997, WNBA_CO
 import { MBB_MEMBERS_2026 } from '../nba/data/mbbMembers';
 import { MBB_MEMBER_SEASONS, MBB_MEMBER_SEASONS_THROUGH } from '../nba/data/mbbMemberSeasons';
 import { MBB_CONFERENCES, MBB_TEAMS, mbbFranchiseOf, mbbSeasonsOf, mbbTeamByEspnId, mbbTeamInSeason } from '../nba/data/mbbTeams';
+import { WBB_MEMBERS_2026 } from '../nba/data/wbbMembers';
+import { WBB_MEMBER_SEASONS, WBB_MEMBER_SEASONS_THROUGH } from '../nba/data/wbbMemberSeasons';
 import { WBB_CONFERENCES, WBB_TEAMS, wbbFranchiseOf, wbbSeasonsOf, wbbTeamByEspnId, wbbTeamInSeason } from '../nba/data/wbbTeams';
 import { placeholderAt, type PlaceholderLocation } from '../nba/data/placeholder';
 import { NETS_TEAM_ID, TEAMS, franchiseOf, teamByEspnId, teamById, teamInSeason, type Team } from '../nba/data/teams';
@@ -279,9 +281,13 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         featuredTeam: null,
         courts: NCAA_W_COURTS,
         teams: { all: WBB_TEAMS, byEspnId: wbbTeamByEspnId, inSeason: wbbTeamInSeason, franchiseOf: wbbFranchiseOf, seasonsOf: wbbSeasonsOf },
-        // plan #11 builds the teams index; until then pages/wbb/index.astro redirects to the scoreboard
+        // pages/wbb/index.astro: every program of the season by conference (D38), with links to the scoreboard and the shooting pages
         landing: 'teams-index',
-        headerMenu: [{ label: 'Scoreboard', path: '/scoreboard' }],
+        // no featured-team entry (spec §3.4); /teams here turns on team links and sitemap team pages (hasTeamPages)
+        headerMenu: [
+            { label: 'Scoreboard', path: '/scoreboard' }, { label: 'Players', path: '/players' }, { label: 'Teams', path: '/teams' },
+            { label: 'Scatter', path: '/scatter' }, { label: 'Leaders', path: '/leaders' },
+        ],
         shotDashboards: 'ncaa',
         regularSeasonGames: wbbSeasonGames,
         pronoun: 'her',
@@ -290,6 +296,17 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         // ESPN's women's cdn board reads the singular `group=` like the men's: none = Top 25, 50 = all of D-I (Decision 1)
         scoreboardGroups: { default: 'top25', all: '50', conferences: WBB_CONFERENCES },
         espnRimPlaceholder: true,
+        // sdv-py load_ncaa_wbb_shots floor: stats.ncaa.org shot charts from 2018-19 (the scoreboard keeps 2003-2026)
+        shotFirstSeason: 2019,
+        // D25: plan #7's season line is box-score based and its pie is NULL
+        hidePie: true,
+        // D26, measured (plans/2026-10-11-wbb-shots-gop.md, Measured facts; Task 2's leaders_window_rows.json): any 49-day window
+        // (inclusive dates) of WBB player games holds at most 40,983 rows, under the 50,000 cap
+        leadersRead: { days: 49, windows: [5, 10] },
+        // D38 + D43/D47: the 2025-26 members (357 core + the six reclassifiers); plan #9's sitemap loop and current-season links read
+        // it. The member table's last season (R-S4); memberSeasons.test.ts ties it, these ids and WBB_LAST_KNOWN_SEASON together
+        currentMembers: { season: WBB_MEMBER_SEASONS_THROUGH, ids: WBB_MEMBERS_2026 },
+        memberSeasons: { through: WBB_MEMBER_SEASONS_THROUGH, seasons: WBB_MEMBER_SEASONS },
         // D44 (R6): regular season + postseason games, measured (games_in_scope.json)
         gamesInScope: wbbGamesInScope,
         // D39 (R12): ESPN's WBB summaries carry lines from 2025-26 only (Decision 8's sample)
