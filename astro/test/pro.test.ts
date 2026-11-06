@@ -13,23 +13,30 @@ vi.mock('astro:env/server', () => ({
 vi.mock('astro:middleware', () => ({ defineMiddleware: (fn: unknown) => fn }));
 vi.mock('cloudflare:workers', async () => ({ env: (await import('./helpers/memKV')).memEnv }));
 
-import { SESSION } from './helpers/memKV';
+import { PRO_BUCKET, SESSION } from './helpers/memKV';
 import { onRequest } from '../src/middleware';
 import { mintPreviewCookie, PREVIEW_COOKIE } from '../src/utils/preview';
 import {
     describeFilters, digestEntrants, digestText, filterBoard, formatOdds, formatPffValue, formatProDelta, formatProMetric,
     formatUsd, mintProCookie, parseBoardFilters, PRO_COOKIE, PRO_TOKEN_TTL_S, proAllows, sortBoard, verifyProCookie, type BoardEntrant,
 } from '../src/utils/pro';
-import { claimDownload, claimLoginSend, createLoginToken, isProKey, latestBoard, redeemLoginToken, runProDigest } from '../src/resources/pro';
+import { claimDownload, claimLoginSend, createLoginToken, isProKey, latestBoard, redeemLoginToken, runProDigest, sweepLoginMarkers } from '../src/resources/pro';
+import { PRO_AUTH_RETRY_S } from '../src/utils/pro';
 
 const board: { entrants: BoardEntrant[] } = JSON.parse(readFileSync(new URL('./fixtures/pro/2026/portal/board.json', import.meta.url)).toString());
 const DAY = 86_400_000;
 const live = { tier: 'pro' as const, expires: new Date(Date.now() + 30 * DAY).toISOString(), addons: ['portal', 'dossier'] };
 const analyst = { tier: 'analyst' as const, expires: new Date(Date.now() + 30 * DAY).toISOString() };
 const lapsed = { tier: 'analyst', expires: new Date(Date.now() - DAY).toISOString() };
+/** Spend `n` of a viewer's daily downloads (on JSON keys, so Analyst's PDF meter stays put). */
+async function spend(viewer: any, n: number) {
+    for (let i = 0; i < n; i++) if (!(await claimDownload(viewer, `pro/2026/players/${i}.json`))) throw new Error(`claim ${i} refused`);
+}
 
 beforeEach(async () => {
     SESSION.m.clear();
+    PRO_BUCKET.m.clear();
+    PRO_BUCKET.lag = 0;
     await SESSION.put('pro:ent:coach@example.edu', JSON.stringify(live));
     await SESSION.put('pro:ent:old@example.edu', JSON.stringify(lapsed));
     await SESSION.put('pro:ent:fan@example.com', JSON.stringify(analyst));
@@ -56,7 +63,7 @@ async function run(path: string, opts: { preview?: boolean; email?: string } = {
 
 describe('the middleware gate', () => {
     test("flag off: every Pro path and /pricing is the site's 404, even with an entitlement", async () => {
-        for (const p of ['/pro', '/pro/players/1', '/pro/portal', '/pro/methodology', '/pro/login', '/pro/file/pro/2026/players/1.pdf', '/pricing']) {
+        for (const p of ['/pro', '/pro/players/1', '/pro/portal', '/pro/methodology', '/pro/login', '/pro/file/pro/2026/players/1.pdf', '/pro/compare', '/pro/export', '/pricing']) {
             expect((await run(p, { email: 'coach@example.edu' })).rewrittenTo, p).toBe('/404');
         }
         // and nothing near it moves
@@ -72,9 +79,12 @@ describe('the middleware gate', () => {
             expect(res.headers.get('Location'), p).toBe('/pricing');
             expect(res.headers.get('Cache-Control'), p).toBe('no-store');
         }
-        const file = await run('/pro/file/pro/2026/players/1.pdf', { preview: true });
-        expect(file.res.status).toBe(403);
-        expect(file.res.headers.get('Location')).toBeNull();
+        for (const p of ['/pro/file/pro/2026/players/1.pdf', '/pro/export']) {
+            const file = await run(p, { preview: true });
+            expect(file.res.status, p).toBe(403);
+            expect(file.res.headers.get('Location'), p).toBeNull();
+        }
+        expect((await run('/pro/compare', { preview: true })).res.status).toBe(302);
         // the open ones render for anyone the flag lets in
         for (const p of ['/pro/login', '/pro/methodology', '/pricing']) {
             expect((await run(p, { preview: true })).rewrittenTo, p).toBeUndefined();
@@ -109,18 +119,59 @@ describe('the middleware gate', () => {
 });
 
 describe('the magic link', () => {
+    // two browsers' gop_pro_auth nonces
+    const A = 'a'.repeat(64);
+    const B = 'b'.repeat(64);
+
     test('a token works once', async () => {
         const t = await createLoginToken('coach@example.edu');
-        expect(await redeemLoginToken(t)).toBe('coach@example.edu');
-        expect(await redeemLoginToken(t)).toBeNull();
-        expect(await redeemLoginToken('not-a-token')).toBeNull();
+        expect(await redeemLoginToken(t, A)).toBe('coach@example.edu');
+        expect(await redeemLoginToken(t, B)).toBeNull();  // another browser: spent
+        expect(await redeemLoginToken('not-a-token', A)).toBeNull();
+        const u = await createLoginToken('coach@example.edu');
+        expect(await redeemLoginToken(u, null)).toBeNull();  // no nonce, no spend
+        expect(await redeemLoginToken(u, A)).toBe('coach@example.edu');
+        // the marker is keyed by a hash: no token and no address in the bucket
+        for (const [k, e] of PRO_BUCKET.m) {
+            expect(k).toMatch(/^auth\/tok\/[0-9a-f]{64}\.json$/);
+            expect(k + e.v).not.toContain(t);
+            expect(e.v).not.toContain('coach@');
+        }
     });
 
     test('a token dies after 15 minutes', async () => {
         vi.useFakeTimers({ now: Date.now() });
         const t = await createLoginToken('coach@example.edu');
         vi.setSystemTime(Date.now() + PRO_TOKEN_TTL_S * 1000 + 1);
-        expect(await redeemLoginToken(t)).toBeNull();
+        expect(await redeemLoginToken(t, A)).toBeNull();
+    });
+
+    test('one spend across locations: two browsers at once, exactly one signs in', async () => {
+        const t = await createLoginToken('coach@example.edu');
+        PRO_BUCKET.lag = 20;  // both read before either writes, as two PoPs can
+        const got = await Promise.all([A, B, 'c'.repeat(64)].map((n) => redeemLoginToken(t, n)));
+        expect(got.filter(Boolean)).toEqual(['coach@example.edu']);
+    });
+
+    test('retry window: the same browser may finish again for PRO_AUTH_RETRY_S, nobody else', async () => {
+        const t = await createLoginToken('coach@example.edu');
+        const at = Date.now();
+        expect(await redeemLoginToken(t, A, at)).toBe('coach@example.edu');
+        expect(await redeemLoginToken(t, B, at + 1000)).toBeNull();
+        expect(await redeemLoginToken(t, A, at + 60_000)).toBe('coach@example.edu');  // the lost response, retried
+        expect(await redeemLoginToken(t, A, at + PRO_AUTH_RETRY_S * 1000)).toBe('coach@example.edu');
+        expect(await redeemLoginToken(t, A, at + PRO_AUTH_RETRY_S * 1000 + 1)).toBeNull();
+    });
+
+    test('the daily sweep drops markers older than a day and keeps fresh ones', async () => {
+        await redeemLoginToken(await createLoginToken('coach@example.edu'), A);
+        await redeemLoginToken(await createLoginToken('coach@example.edu'), A);
+        await PRO_BUCKET.put('quota/dl/x.json', '{}');
+        const [old] = [...PRO_BUCKET.m.keys()];
+        PRO_BUCKET.m.get(old)!.uploaded = new Date(Date.now() - 86_400_000 - 1);
+        expect(await sweepLoginMarkers()).toBe(1);
+        expect(PRO_BUCKET.m.has(old)).toBe(false);
+        expect(PRO_BUCKET.m.size).toBe(2);  // the fresh marker and the quota counter stay
     });
 
     test('/pro/auth: a GET (an email scanner) spends nothing; the POST sets a cookie once', async () => {
@@ -134,22 +185,34 @@ describe('the magic link', () => {
             expect(html).toContain(`value="${t}"`);
         }
         expect(SESSION.m.has(`pro:tok:${t}`)).toBe(true);
+        expect(PRO_BUCKET.m.size).toBe(0);  // a GET writes nothing anywhere
         // the token is in this page's URL: its POST must not carry it as a Referer into request_log
         const page = await container.renderToResponse(Auth, { request: new Request(`https://gameonpaper.com/pro/auth?t=${t}`), locals });
         expect(page.headers.get('Referrer-Policy')).toBe('no-referrer');
         // nor may analytics send that URL to a third party
         expect(await page.text()).not.toContain('plausible.io');
-        const post = () => container.renderToResponse(Auth, {
-            request: new Request('https://gameonpaper.com/pro/auth', { method: 'POST', body: new URLSearchParams({ t }) }), locals,
+        // the GET hands this browser a nonce, and keeps one it already has
+        const set = page.headers.get('Set-Cookie') ?? '';
+        expect(set).toMatch(/^gop_pro_auth=[0-9a-f]{64}; Path=\/pro\/auth; Max-Age=900; HttpOnly; Secure; SameSite=Lax$/);
+        const nonce = set.split(';')[0].split('=')[1];
+        const kept = await container.renderToResponse(Auth, { request: new Request(`https://gameonpaper.com/pro/auth?t=${t}`, { headers: { cookie: `gop_pro_auth=${nonce}` } }), locals });
+        expect(kept.headers.get('Set-Cookie')).toBeNull();
+        const post = (n: string | null) => container.renderToResponse(Auth, {
+            request: new Request('https://gameonpaper.com/pro/auth', { method: 'POST', body: new URLSearchParams({ t }), headers: n ? { cookie: `gop_pro_auth=${n}` } : {} }), locals,
         });
-        const first = await post();
+        expect((await post(null)).headers.get('Location')).toBe('/pro/login?err=1');  // no nonce: nothing spent
+        expect(PRO_BUCKET.m.size).toBe(0);
+        const first = await post(nonce);
         expect(first.status).toBe(303);
         expect(first.headers.get('Location')).toBe('/pro');
         const cookie = (first.headers.get('Set-Cookie') ?? '').split(';')[0].split('=').slice(1).join('=');
         expect(await verifyProCookie(cookie, 'pro-secret')).toBe('coach@example.edu');
-        const again = await post();
-        expect(again.headers.get('Location')).toBe('/pro/login?err=1');
-        expect(again.headers.get('Set-Cookie')).toBeNull();
+        // its response lost, the same browser presses Sign in again and finishes
+        expect((await post(nonce)).headers.get('Location')).toBe('/pro');
+        // another browser with the same link does not
+        const other = await post('d'.repeat(64));
+        expect(other.headers.get('Location')).toBe('/pro/login?err=1');
+        expect(other.headers.get('Set-Cookie')).toBeNull();
         // a link with no token says so and offers a new one
         expect(await container.renderToString(Auth, { request: new Request('https://gameonpaper.com/pro/auth'), locals }))
             .toContain('href="/pro/login"');
@@ -187,6 +250,10 @@ describe('/pro/file', () => {
         // a profile's JSON exists (and holds PFF arrays) but is never a download
         const json: Response = await (GET as any)({ params: { key: 'pro/2026/players/1.json' }, locals: { pro: { email: 'a@b.co', ...live } } });
         expect(json.status).toBe(404);
+        // at the cap: a 429, after closing the opened object's body
+        const full = { email: 'full@example.edu', ...live };
+        await spend(full, 150);
+        expect((await (GET as any)({ params: { key }, locals: { pro: full } })).status).toBe(429);
     });
 });
 
@@ -476,7 +543,12 @@ describe('the pages', () => {
         const evil = compareCsv([{ season: 2026, player: { espn_id: 9, name: '=HYPERLINK("x")', team: ' @t', team_id: null, position: 'QB' },
             metrics: [{ key: 'm', label: 'M', value: -0.5, n: 1, n_label: 'plays', band_lo: null, band_mid: null, band_hi: null, delta_eb: null }] }]).split('\r\n')[1];
         expect(evil.startsWith(`9,"'=HYPERLINK(""x"")",' @t,QB,2026,-0.5,`)).toBe(true);
-        await SESSION.put(`pro:dl:coach@example.edu:${new Date().toISOString().slice(0, 10)}`, '150');
+        const lead = (team: string) => compareCsv([{ season: 2026, player: { espn_id: 9, name: 'n', team, team_id: null, position: null }, metrics: [] }]).split('\r\n')[1].split(',')[2];
+        expect(lead('\tx')).toBe("'\tx");
+        expect(lead('\rx')).toBe(`"'\rx"`);
+        expect(lead('A&M')).toBe('A&M');
+        await spend(pro, 148);  // with the export above, one download left today
+        expect((await call('1')).status).toBe(200);
         expect((await call('1')).status).toBe(429);
     }, 30_000);
 
@@ -579,7 +651,34 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         expect(await claimDownload(fan, 'pro/2026/players/11.pdf')).toBe(false);
         expect(await claimDownload(fan, 'pro/2026/players/11.json')).toBe(true);
         const coach = { ...live, email: 'coach@example.edu' } as any;
-        await SESSION.put(`pro:dl:coach@example.edu:${new Date().toISOString().slice(0, 10)}`, '150');
+        await spend(coach, 150);
         expect(await claimDownload(coach, 'pro/2026/players/1.pdf')).toBe(false);
+        // a new day starts a new count; the month's PDFs carry over
+        expect(await claimDownload(coach, 'pro/2026/players/1.pdf', new Date(Date.now() + DAY))).toBe(true);
+    });
+
+    test('an unreadable counter refuses the download instead of resetting the count, then clears at rollover', async () => {
+        const coach = { ...live, email: 'coach@example.edu' } as any;
+        await spend(coach, 150);
+        const [key] = [...PRO_BUCKET.m.keys()];
+        PRO_BUCKET.m.get(key)!.v = 'not json';
+        const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const today = new Date();
+        expect(await claimDownload(coach, 'pro/2026/players/1.pdf', today)).toBe(false);
+        expect(await claimDownload(coach, 'pro/2026/players/1.pdf', today)).toBe(false);  // still full today
+        const tomorrow = new Date(today.getTime() + 86_400_000);
+        expect(await claimDownload(coach, 'pro/2026/players/1.pdf', tomorrow)).toBe(true);  // not stuck for good
+        err.mockRestore();
+    });
+
+    test('parallel downloads cannot overshoot the daily cap', async () => {
+        const coach = { ...live, email: 'coach@example.edu' } as any;
+        await spend(coach, 148);
+        PRO_BUCKET.lag = 20;
+        // five at once with two slots left: exactly two get through (a read-then-write counter lets all five)
+        const got = await Promise.all([0, 1, 2, 3, 4].map((i) => claimDownload(coach, `pro/2026/players/p${i}.pdf`)));
+        expect(got.filter(Boolean)).toHaveLength(2);
+        expect(await claimDownload(coach, 'pro/2026/players/1.json')).toBe(false);
+        expect([...PRO_BUCKET.m.keys()]).toEqual([expect.stringMatching(/^quota\/dl\/[0-9a-f]{64}\.json$/)]);  // no address in the key
     });
 });

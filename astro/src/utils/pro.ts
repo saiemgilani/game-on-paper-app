@@ -16,6 +16,11 @@ export const PRO_COOKIE = 'gop_pro';
 export const PRO_COOKIE_TTL_S = 30 * 24 * 60 * 60;
 /** A magic link is good for 15 minutes and one use (resources/pro.ts redeemLoginToken). */
 export const PRO_TOKEN_TTL_S = 15 * 60;
+/** After a token is spent, the browser that spent it may finish again for this long: a
+ * sign-in whose response never arrived. Any other browser is refused at once. */
+export const PRO_AUTH_RETRY_S = 5 * 60;
+/** The per-browser nonce cookie /pro/auth's GET sets, which ties a spent token to its browser. */
+export const PRO_AUTH_NONCE_COOKIE = 'gop_pro_auth';
 export const PRO_TIERS = ['analyst', 'pro', 'program', 'agency'] as const;
 export type ProTier = typeof PRO_TIERS[number];
 
@@ -356,8 +361,9 @@ export function compareMetricRows(docs: CompareProfile[]): { key: string; label:
 
 const csvCell = (v: unknown): string => {
     if (v === null || v === undefined || (typeof v === 'number' && !Number.isFinite(v))) return '';
-    // a text cell a spreadsheet would run as a formula gets a leading quote (numbers keep their sign)
-    const s = typeof v === 'string' && /^\s*[=+\-@]/.test(v) ? `'${v}` : String(v);
+    // a text cell a spreadsheet would run as a formula (= + - @, or a leading tab or CR, OWASP's
+    // list) gets a leading quote; numbers keep their sign
+    const s = typeof v === 'string' && /^(\s*[=+\-@]|[\t\r])/.test(v) ? `'${v}` : String(v);
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
@@ -376,7 +382,7 @@ export function compareCsv(docs: CompareProfile[]): string {
         const by = new Map((d.metrics ?? []).map((m) => [m.key, m]));
         const v = d.value ?? null;
         return [d.player.espn_id, cleanTextForTeam(d.player.name, d.player.team_id), cleanTextForTeam(d.player.team, d.player.team_id), d.player.position, d.season,
-            ...metrics.flatMap((k) => {
+            ...metrics.flatMap((k): (string | number | null)[] => {
                 const m = by.get(k);
                 return m ? [m.value, m.n, m.band_lo, m.band_mid, m.band_hi, m.delta_eb] : ['', '', '', '', '', ''];
             }),
