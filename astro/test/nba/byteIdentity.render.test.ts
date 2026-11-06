@@ -5,6 +5,8 @@
 // fixtures copied in, then copy the snapshots back. First captured on 81dbaf1e; last re-captured on main 7e71f2d6.
 // player.html and team.html were re-captured on feat/basketball-square-bins, which changes the shot chart on purpose
 // (square bins, the distance link): that diff is the shot-chart island and its Squares button, nothing else.
+// game-*.html and pregame.html were re-captured on feat/basketball-parity: a SportsEvent JSON-LD script on each, and the
+// pregame's Players to Watch card (with DarkModeLogos' CSS for its two team logos).
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
