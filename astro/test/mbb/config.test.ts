@@ -64,7 +64,7 @@ describe('the mbb league entry', () => {
         expect(seasonLabelFor('mbb', 2026)).toBe('2025-26');
         expect(gameHref('mbb', 401820775)).toBe('/mbb/game/401820775');
         expect([m.scoreboardTimeZone, m.scoreboardRefresh, m.featuredTeam, m.landing]).toEqual(['America/New_York', 60, null, 'teams-index']);
-        expect(m.headerMenu).toEqual([{ label: 'Scoreboard', path: '/scoreboard' }]);
+        expect(m.headerMenu.map((x) => `${x.label} ${x.path}`)).toEqual(['Scoreboard /scoreboard', 'Players /players', 'Teams /teams', 'Scatter /scatter', 'Leaders /leaders']);
         expect(m.scoreboardGroups).toEqual({ default: 'top25', all: '50', conferences: MBB_CONFERENCES });
         expect(m.espnRimPlaceholder).toBe(true);
         expect([BASKETBALL.nba.scoreboardGroups, BASKETBALL.nba.espnRimPlaceholder, BASKETBALL.wnba.scoreboardGroups, BASKETBALL.wnba.espnRimPlaceholder]).toEqual([undefined, undefined, undefined, undefined]);
@@ -100,8 +100,9 @@ describe('the mbb league entry', () => {
         expect(darkLogoCss([{ id: '150', abbreviation: 'DUKE' }], BASKETBALL.mbb.darkLogo))
             .toBe("img.team-logo-150{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500-dark/150.png&h=120&w=120')}");
     });
-    test('no team pages yet: plain team names', () => {
-        expect(hasTeamPages('mbb')).toBe(false);
-        expect(teamHrefFromEspn({ id: '150' }, 'mbb')).toBeNull();
+    test('team pages: a D-I team name links its page by ESPN id; a non-D-I opponent stays plain', () => {
+        expect(hasTeamPages('mbb')).toBe(true);
+        expect(teamHrefFromEspn({ id: '150' }, 'mbb')).toBe('/mbb/team/150');
+        expect(teamHrefFromEspn({ id: '2476' }, 'mbb')).toBeNull(); // Oglethorpe, non-D-I
     });
 });

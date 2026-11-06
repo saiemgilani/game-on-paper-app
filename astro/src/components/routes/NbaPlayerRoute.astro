@@ -11,15 +11,18 @@ import { playerHref, teamHref } from '../../nba/links';
 import { placeholderNote } from '../../nba/data/placeholder';
 import type { NbaPlayerParams } from '../../routes/nba/player';
 import { basketball, islandLeagueProps, seasonLabelFor } from '../../basketball/config';
+import { dashboardScope, isNcaaDashboards, NCAA_USAGE_NOTE } from '../../basketball/dashboards';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaPlayerParams }
-const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons, min, unlocated } = Astro.props.data;
+const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons, min, unlocated, coverage } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
 const lp = (p: string) => leaguePath(league, p);
 const label = seasonLabelFor(league, season);
+const scope = dashboardScope(league, season);
+const usageNote = isNcaaDashboards(league) ? NCAA_USAGE_NOTE : null;
 const ip = islandLeagueProps(league, season);
 const stats = player.stats;
 const options = seasons.filter((s) => hisSeasons.includes(s) || s === season);
@@ -35,9 +38,9 @@ const sections = [['#ranks', 'League ranks'], ...(explorer.games ? [['#nba-games
       <div class="col-auto"><NbaHeadshot src={headshot} name={player.player_name} size={140} /></div>
       <div class="col">
         <h1 class="h3 mb-1">{player.player_name}</h1>
-        <p class="text-muted mb-1">{teams.join(', ')} &middot; {label} regular season</p>
+        <p class="text-muted mb-1">{teams.join(', ')} &middot; {label} {scope.noun}</p>
         <p class="numeral mb-1" id="nba-line">{fmtInt(line.makes)}/{fmtInt(line.attempts)} FG &middot; {fmtPct(line.fgPct)} FG% &middot; {fmtPct(line.efgPct)} eFG% &middot; {fmtPct(line.fg3Pct)} 3P% ({fmtInt(line.fg3m)}/{fmtInt(line.fg3a)})</p>
-        {stats && (<p class="small text-muted numeral mb-2">{fmtInt(stats.gp)} GP &middot; {fmtDec(stats.min)} MIN &middot; {fmtPct(stats.usg_pct)} USG% &middot; {fmtPct(stats.ts_pct)} TS% &middot; {fmtPct(stats.pie)} PIE</p>)}
+        {stats && (<>{cfg.hidePie ? (<p class="small text-muted numeral mb-2">{fmtInt(stats.gp)} GP &middot; {fmtDec(stats.min)} MIN &middot; {fmtPct(stats.usg_pct)} USG% &middot; {fmtPct(stats.ts_pct)} TS%</p>) : (<p class="small text-muted numeral mb-2">{fmtInt(stats.gp)} GP &middot; {fmtDec(stats.min)} MIN &middot; {fmtPct(stats.usg_pct)} USG% &middot; {fmtPct(stats.ts_pct)} TS% &middot; {fmtPct(stats.pie)} PIE</p>)}{usageNote && (<p class="small text-muted mb-2">{usageNote}</p>)}</>)}{coverage && (<p class="small text-muted mb-2" id="nba-coverage">{coverage}</p>)}
         <div class="d-flex flex-wrap align-items-center gap-3">
           <NbaSeasonSelect seasons={options} season={season} current={current} basePath={lp(`/players/${player.person_id}`)} />
           <a href={teamHref(player.team_id, q, league)}>{player.team_tricode} team page &rarr;</a>
@@ -48,9 +51,9 @@ const sections = [['#ranks', 'League ranks'], ...(explorer.games ? [['#nba-games
       <span class="text-muted">On this page:</span>
       {sections.map(([href, text]) => (<a href={href} class="ms-2">{text}</a>))}
     </nav>
-    <NbaRankLists ranks={ranks} personId={player.person_id} seasonQuery={q} min={min} />
+    <NbaRankLists ranks={ranks} personId={player.person_id} seasonQuery={q} min={min} {...(scope.noun === 'regular season' ? {} : { scope: scope.noun })} />
     {unlocated && <p class="small text-muted">{placeholderNote(unlocated.count, unlocated.total, 'season')}</p>}
-    <PlayerExplorer client:load data={explorer} subject={subject} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} />
+    <PlayerExplorer client:load data={explorer} subject={subject} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} {...(scope.leagueLines === 'full regular season' ? {} : { leagueLines: scope.leagueLines })} />
     <nav aria-label={`${player.team_tricode} players`} class="d-flex justify-content-between small mt-3">
       {prev ? (<a href={playerHref(prev.person_id, q, league)}>&larr; {prev.player_name}</a>) : (<span></span>)}
       {next && (<a href={playerHref(next.person_id, q, league)}>{next.player_name} &rarr;</a>)}

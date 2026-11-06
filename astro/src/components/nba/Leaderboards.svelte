@@ -6,7 +6,7 @@
     import { fmtDate, fmtInt, fmtPct, fmtPts } from '../../nba/format';
     import { playerHref } from '../../nba/hrefs';
     import type { BasketballLeague } from '../../utils/league';
-    let { boards, netsTeamId, seasonQuery, pronoun = 'his', bars = NBA_LEADER_BARS, league = 'nba' }: { boards: Boards; netsTeamId: number | null; seasonQuery: string; pronoun?: 'his' | 'her'; bars?: LeaderBars; league?: BasketballLeague } = $props();
+    let { boards, netsTeamId, seasonQuery, pronoun = 'his', bars = NBA_LEADER_BARS, league = 'nba', windows = LEADER_WINDOWS, windowNote = '', activeByTeam = false }: { boards: Boards; netsTeamId: number | null; seasonQuery: string; pronoun?: 'his' | 'her'; bars?: LeaderBars; league?: BasketballLeague; windows?: readonly LeaderWindow[]; windowNote?: string; activeByTeam?: boolean } = $props();
     /** Nets rows shown below the top 15; the rest sit in a <details>. */
     const NETS_SHOWN = 5;
     let n = $state<LeaderWindow>(10);
@@ -35,7 +35,7 @@
 
 <div class="d-flex flex-wrap align-items-center gap-2 mb-2" role="group" aria-label="Window">
     <span class="small text-muted">Last</span>
-    {#each LEADER_WINDOWS as w (w)}
+    {#each windows as w (w)}
         <button type="button" class="btn btn-sm btn-outline-secondary" class:active={n === w} aria-pressed={n === w} onclick={() => (n = w)}>{w} games</button>
     {/each}
 </div>
@@ -47,7 +47,7 @@
 <p class="small text-muted">
     Each player's last {n} games with a field-goal attempt (a full {n}-game window), {minAttempts(n, bars)}+ FGA in it{metric === 'fg3Pct' ? ` and ${minThrees(n, bars)}+ threes` : ''}.
     {metric === 'improved' ? `Most improved: window eFG% minus ${pronoun} season eFG%. ` : ''}
-    Active shooters only: last game within {ACTIVE_DAYS} days of the season's latest game. {board.eligible} players qualify.
+    Active shooters only: last game within {ACTIVE_DAYS} days of {activeByTeam ? `${pronoun} team's` : "the season's"} latest game. {board.eligible} players qualify.{windowNote}
 </p>
 <div class="table-responsive">
     <table class="table table-sm" id="nba-leaders">

@@ -3,11 +3,13 @@
 // Leaf data (team lists, court geometry, dark-logo lists) stays in src/nba/**; this file only points at it.
 import { LEAGUES, leagueSource, NBA_GAMES_SOURCE, WNBA_LOGO_ABBR, isBasketball, type BasketballLeague, type League, type SdvSource } from '../utils/league';
 import { COURT, NCAA_COURTS, WNBA_COURT, WNBA_COURT_1997, WNBA_COURT_2004, WNBA_RESTRICTED_AREA } from '../nba/data/court';
+import { MBB_MEMBERS_2026 } from '../nba/data/mbbMembers';
+import { MBB_MEMBER_SEASONS, MBB_MEMBER_SEASONS_THROUGH } from '../nba/data/mbbMemberSeasons';
 import { MBB_CONFERENCES, MBB_TEAMS, mbbFranchiseOf, mbbSeasonsOf, mbbTeamByEspnId, mbbTeamInSeason } from '../nba/data/mbbTeams';
 import { placeholderAt, type PlaceholderLocation } from '../nba/data/placeholder';
 import { NETS_TEAM_ID, TEAMS, franchiseOf, teamByEspnId, teamById, teamInSeason, type Team } from '../nba/data/teams';
 import { WNBA_TEAMS, wnbaFranchiseOf, wnbaLogoId, wnbaSeasonsOf, wnbaTeamByEspnId, wnbaTeamInSeason } from '../nba/data/wnbaTeams';
-import { NBA_LEADER_BARS, type LeaderBars } from '../nba/data/leaders';
+import { NBA_LEADER_BARS, type LeaderBars, type LeaderWindow } from '../nba/data/leaders';
 import { RANK_MIN, type RankMins } from '../nba/data/ranks';
 import { mbbGamesInScope, mbbLeaderBars, mbbSeasonGames, netsTricode, wnbaLeaderBars, wnbaSeasonGames } from '../nba/seasonRange';
 import { seasonLabel } from '../nba/seasons';
@@ -102,6 +104,20 @@ export interface BasketballConfig {
     linesFromSeason?: number;
     /** Owner ruling D36 (R11): 'status' renders a day's cards in Live / Upcoming / Final sections with jump links (college). Absent: one grid. */
     scoreboardGrouping?: 'status';
+    /** The shot dashboards' first season when it is later than the league's first listed season (stats.ncaa.org charts from 2019). */
+    shotFirstSeason?: number;
+    /** D25: the source has no PIE (college box scores), so its column, header item and sort key are hidden. */
+    hidePie?: true;
+    /**
+     * D26: the leaders page reads only the last `days` days of player games (a season-wide read is over the API's 50,000-row cap)
+     * and offers these windows. `days` counts inclusive dates (R-P4): the read is [latest - (days - 1), latest], so 49 is the
+     * latest game date and the 48 before it; never subtract `days` itself.
+     */
+    leadersRead?: { days: number; windows: readonly LeaderWindow[] };
+    /** D43/D47: the current season's members (a committed table), for the sitemap and current-season team links, which make no API read. */
+    currentMembers?: { season: number; ids: readonly number[] };
+    /** R-P11: each team's member seasons through `through` (a generated table), for the season pickers; seasons after it are unknown. */
+    memberSeasons?: { through: number; seasons: ReadonlyMap<number, readonly number[]> };
 }
 
 export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
@@ -200,10 +216,15 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         wpModelNote: "Game on Paper's men's college basketball in-game model (sdv-py mbb_in_game_wp.ubj, trained on the season before the pregame gate season; it does not use the period as a feature).",
         featuredTeam: null,
         courts: NCAA_COURTS,
+        // seasonsOf keeps the TeamModule contract; the MBB season pickers read memberSeasonsOf (the member table) first
         teams: { all: MBB_TEAMS, byEspnId: mbbTeamByEspnId, inSeason: mbbTeamInSeason, franchiseOf: mbbFranchiseOf, seasonsOf: mbbSeasonsOf },
-        // plan #9 builds the teams index; until then pages/mbb/index.astro redirects to the scoreboard
+        // pages/mbb/index.astro: the season's teams by conference with links to the scoreboard and the shooting pages
         landing: 'teams-index',
-        headerMenu: [{ label: 'Scoreboard', path: '/scoreboard' }],
+        // no featured-team entry (spec §3.4); /teams here turns on team links and sitemap team pages (hasTeamPages)
+        headerMenu: [
+            { label: 'Scoreboard', path: '/scoreboard' }, { label: 'Players', path: '/players' }, { label: 'Teams', path: '/teams' },
+            { label: 'Scatter', path: '/scatter' }, { label: 'Leaders', path: '/leaders' },
+        ],
         shotDashboards: 'ncaa',
         regularSeasonGames: mbbSeasonGames,
         pronoun: 'his',
@@ -212,6 +233,16 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         // ESPN's cdn reads the singular `group=`: none = the Top 25 board, 50 = all of Division I (probe, Decision 1)
         scoreboardGroups: { default: 'top25', all: '50', conferences: MBB_CONFERENCES },
         espnRimPlaceholder: true,
+        // sdv-py load_ncaa_mbb_shots floor: stats.ncaa.org shot charts exist from 2018-19 (the scoreboard keeps 2003-2026)
+        shotFirstSeason: 2019,
+        // D25: plan #7's season line is box-score based and its pie is NULL
+        hidePie: true,
+        // D26, measured (plans/2026-10-11-mbb-shots-gop.md, Measured facts; Task 2's leaders_window_rows.json): any 49-day window
+        // of player games holds at most 43,835 rows (2022), under the 50,000 cap; a 20-game window needs ~120 days of games
+        leadersRead: { days: 49, windows: [5, 10] },
+        // the member table's last season; memberSeasons.test.ts ties it, these ids and MBB_LAST_KNOWN_SEASON together
+        currentMembers: { season: MBB_MEMBER_SEASONS_THROUGH, ids: MBB_MEMBERS_2026 },
+        memberSeasons: { through: MBB_MEMBER_SEASONS_THROUGH, seasons: MBB_MEMBER_SEASONS },
         // D44 (R6): regular season + postseason games, measured (games_in_scope.json); plan #9 wires rankMins / the scatter bar to it
         gamesInScope: mbbGamesInScope,
         // D39: hoopR-mbb-data has lined games in every season 2013-2023 and none before (lines_by_season.json); 2024-2026 lack
@@ -302,7 +333,10 @@ export const NBA_SEASON_GAMES = 82;
 
 /** A season's rank / scatter bars: the NBA's per-game rate over this league-season's games (the NBA: 100 / 50 always). */
 export function rankMins(league: BasketballLeague, season: number): RankMins {
-    const g = BASKETBALL[league].regularSeasonGames(season);
+    // D44 (R6): a league whose dashboards include the postseason scales by its games in scope (plan #8's gamesInScope);
+    // the NBA and WNBA have none, so their bars are unchanged
+    const cfg = BASKETBALL[league];
+    const g = (cfg.gamesInScope ?? cfg.regularSeasonGames)(season);
     return { fga: Math.round((RANK_MIN.fga * g) / NBA_SEASON_GAMES), fg3a: Math.round((RANK_MIN.fg3a * g) / NBA_SEASON_GAMES) };
 }
 

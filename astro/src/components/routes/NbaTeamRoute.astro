@@ -14,18 +14,23 @@ import { teamHref, withParams } from '../../nba/links';
 import { placeholderNote } from '../../nba/data/placeholder';
 import type { NbaTeamParams } from '../../routes/nba/team';
 import { basketball, seasonLabelFor } from '../../basketball/config';
+import { dashboardScope, isNcaaDashboards, NCAA_USAGE_NOTE } from '../../basketball/dashboards';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaTeamParams }
-const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode } = Astro.props.data;
+const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode, coverage, empty } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
 const lp = (p: string) => leaguePath(league, p);
 const ft = cfg.featuredTeam;
+const byIdPlayers = isNcaaDashboards(league);
 const label = seasonLabelFor(league, season);
+const scope = dashboardScope(league, season);
+const usageNote = isNcaaDashboards(league) ? NCAA_USAGE_NOTE : null;
 const title = `${team.name}, ${label} shooting | Game on Paper`;
-const description = `${team.name} ${label} shooting: ${fmtPct(line.fgPct)} FG%, ${fmtPct(line.efgPct)} eFG% on ${fmtInt(line.attempts)} attempts, charted against the league, with the roster's shooting splits.`;
+const emptyNote = `No ${cfg.statsSourceLabel} shots are linked to ${team.name} in ${label}.`;
+const description = empty ? emptyNote : `${team.name} ${label} shooting: ${fmtPct(line.fgPct)} FG%, ${fmtPct(line.efgPct)} eFG% on ${fmtInt(line.attempts)} attempts, charted against the league, with the roster's shooting splits.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Teams', url: `${lp('/teams')}${q}`, active: false }, { title: team.tricode, active: true }];
 const basePath = lp(`/team/${team.team_id}`);
 const params = { season: String(season) };
@@ -38,27 +43,27 @@ const defaults = { season: String(current) };
       <div class="col-auto"><span aria-hidden="true" class="nba-team-bar rounded d-block" style={`background: ${team.color}; height: 5rem`}></span></div>
       <div class="col">
         <h1 class="h3 mb-1">{team.tricode} <span class="fw-normal">{team.name}</span></h1>
-        <p class="text-muted mb-1">{label} regular season</p>
-        <p class="numeral mb-2" id="nba-line">{fmtInt(line.makes)}/{fmtInt(line.attempts)} FG &middot; {fmtPct(line.fgPct)} FG% &middot; {fmtPct(line.efgPct)} eFG% &middot; {fmtPct(line.fg3Pct)} 3P%</p>
+        <p class="text-muted mb-1">{label} {scope.noun}</p>
+        {!empty && (<p class="numeral mb-2" id="nba-line">{fmtInt(line.makes)}/{fmtInt(line.attempts)} FG &middot; {fmtPct(line.fgPct)} FG% &middot; {fmtPct(line.efgPct)} eFG% &middot; {fmtPct(line.fg3Pct)} 3P%</p>)}{coverage && (<p class="small text-muted mb-2" id="nba-coverage">{coverage}</p>)}
         <div class="d-flex flex-wrap align-items-center gap-3">
           <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={basePath} />
-          <a href={withParams(lp('/players'), { season: String(season), team: team.tricode }, { season: String(current), team: ft ? ft.tricode(season) : 'ALL' })}>{team.tricode} player list &rarr;</a>
+          {!empty && (<a href={withParams(lp('/players'), { season: String(season), team: byIdPlayers ? String(team.team_id) : team.tricode }, { season: String(current), team: byIdPlayers ? '' : ft ? ft.tricode(season) : 'ALL' })}>{team.tricode} player list &rarr;</a>)}
         </div>
       </div>
     </div>
-    <nav aria-label="On this page" class="small mb-3">
+    {empty ? (<p class="text-muted" id="nba-empty">{emptyNote}</p>) : (<Fragment><nav aria-label="On this page" class="small mb-3">
       <span class="text-muted">On this page:</span>
       <a href="#charts" class="ms-2">Shot charts</a>
       <a href="#roster" class="ms-2">Roster</a>
     </nav>
     <div id="charts">
-      {dashboard.unlocated && <p class="small text-muted">{placeholderNote(dashboard.unlocated.count, dashboard.unlocated.total, 'season')}</p>}
-      <Dashboard client:load data={dashboard} subject={`${team.name} ${label}`} subjectLabel="Team" />
+      {dashboard!.unlocated && <p class="small text-muted">{placeholderNote(dashboard!.unlocated.count, dashboard!.unlocated.total, 'season')}</p>}
+      <Dashboard client:load data={dashboard!} subject={`${team.name} ${label}`} subjectLabel="Team" />
     </div>
     <section id="roster" aria-label="Roster by attempts" class="mt-3">
       <h2 class="h5">Roster by attempts</h2>
       <NbaNameFilter tableId="nba-roster" count={roster.length} />
-      <NbaRosterTable rows={roster} seasonQuery={q} sort={sort} dir={dir} mode={mode} basePath={basePath} params={params} defaults={defaults} />
-    </section>
+      <NbaRosterTable rows={roster} seasonQuery={q} sort={sort} dir={dir} mode={mode} basePath={basePath} params={params} defaults={defaults} {...(cfg.hidePie ? { hidePie: true, note: usageNote } : {})} />
+    </section></Fragment>)}
   </div>
 </GenericPage>

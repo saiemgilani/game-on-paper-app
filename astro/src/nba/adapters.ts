@@ -3,7 +3,7 @@
  * is the same JavaScript d3-hexbin uses, so a league hex rebuilt from (i, j) lands on the
  * key the player's own hexbin produces (see sdv-db nba_shot_dashboards.py).
  */
-import { lineOf, ZONES, type DistanceBin, type PlayerGame, type SideBin, type Split, type Zone } from './data/aggregate';
+import { lineOf, ZONES, type DistanceBin, type FieldGoals, type PlayerGame, type SideBin, type Split, type Zone } from './data/aggregate';
 import type { PlayerGames } from './data/leaders';
 import type { PlayerSeason, PlayerStats } from './data/players';
 import type { ShotLite } from './data/shots';
@@ -152,6 +152,16 @@ export function seasonPlayerGamesFromRows(gameRows: PlayerGameRow[], playerRows:
         const last = games[games.length - 1];
         const lastRow = rows.find((r) => r.game_id === last.game_id) ?? rows[0];
         out.push({ person_id, name: names.get(person_id) ?? String(person_id), team_id: last.team_id, team: lastRow.team_tricode, games });
+    }
+    return out;
+}
+
+/** person_id -> his season field goals summed over his team rows (the season line "Most improved" compares with when the game rows are a window). */
+export function seasonLinesFromRows(rows: SeasonPlayerRow[]): Map<number, FieldGoals> {
+    const out = new Map<number, FieldGoals>();
+    for (const r of rows) {
+        const s = out.get(r.person_id) ?? { attempts: 0, makes: 0, fg3a: 0, fg3m: 0 };
+        out.set(r.person_id, { attempts: s.attempts + r.attempts, makes: s.makes + r.makes, fg3a: s.fg3a + r.fg3a, fg3m: s.fg3m + r.fg3m });
     }
     return out;
 }

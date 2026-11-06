@@ -9,22 +9,25 @@ import NbaTeamSelect from '../nba/NbaTeamSelect.astro';
 import { withParams } from '../../nba/links';
 import type { NbaPlayersParams } from '../../routes/nba/players';
 import { basketball, seasonLabelFor } from '../../basketball/config';
+import { dashboardScope, memberSeasonsOf } from '../../basketball/dashboards';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaPlayersParams }
-const { season, seasons, current, q, teams, selected, team, defaults, rows, sort, dir } = Astro.props.data;
+const { season, seasons, current, q, teams, selected, team, defaults, rows, sort, dir, coverage, byId, needsTeam } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
 const lp = (p: string) => leaguePath(league, p);
 const label = seasonLabelFor(league, season);
-const who = selected ? `${selected.tricode} ${selected.name}` : 'every team';
+const scope = dashboardScope(league, season);
+const who = selected ? `${selected.tricode} ${selected.name}` : needsTeam ? 'the team you choose' : 'every team';
 const title = `${name} players, ${label} shooting | Game on Paper`;
-const subtitle = `Regular-season field-goal attempts from ${cfg.statsSourceLabel} play-by-play for ${who}, ${label}${selected ? '; FGA, FG%, eFG% and 3P% count the selected team only' : ''}.`;
+const subtitle = `${scope.adj[0].toUpperCase()}${scope.adj.slice(1)} field-goal attempts from ${scope.source} for ${who}, ${label}${selected ? '; FGA, FG%, eFG% and 3P% count the selected team only' : ''}.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Players', active: true }];
 const params = { season: String(season), team };
-// the team rides only to its franchise's seasons: ?team=PDX in 2026 is not carried to 2002, where 1611661327 is the old Fire
-const teamSeasons = selected ? cfg.teams.seasonsOf(selected.team_id, season) : undefined;
+// the team rides only to its franchise's seasons: ?team=PDX in 2026 is not carried to 2002, where 1611661327 is the old Fire;
+// a college team only to its member seasons (R-P11)
+const teamSeasons = selected ? (memberSeasonsOf(league, selected.team_id, season, seasons) ?? cfg.teams.seasonsOf(selected.team_id, season)) : undefined;
 ---
 <GenericPage title={title} subtitle={subtitle} slug={lp('/players')} breadcrumbs={breadcrumbs} canonicalPath={withParams(lp('/players'), params, defaults)}>
   <div class="container">
@@ -33,15 +36,15 @@ const teamSeasons = selected ? cfg.teams.seasonsOf(selected.team_id, season) : u
         <h1 class="h3">Players, {label}</h1>
         <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
           <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/players')} params={team === defaults.team ? {} : { team }} paramSeasons={teamSeasons} />
-          <NbaTeamSelect teams={teams} team={team} season={season} defaults={defaults} />
+          <NbaTeamSelect teams={teams} team={team} season={season} defaults={defaults} {...(byId ? { byId: true } : {})} />
         </div>
-        <p class="small text-muted mb-0">{subtitle}</p>
+        <p class="small text-muted mb-0">{subtitle}</p>{coverage && (<p class="small text-muted mb-0" id="nba-coverage">{coverage}</p>)}
       </div>
     </div>
     <div class="row mb-3">
       <div class="col-12">
-        {rows.length === 0
-          ? (<p class="text-muted">{selected ? `No regular-season shots for ${who} in ${label} yet.` : `No regular-season shots in ${label} yet.`}</p>)
+        {needsTeam && teams.length > 0 ? (<p class="text-muted">Choose a team to list its players.</p>) : rows.length === 0
+          ? (<p class="text-muted">{selected ? `No ${scope.adj} shots for ${who} in ${label} yet.` : `No ${scope.adj} shots in ${label} yet.`}</p>)
           : (<Fragment>
               <NbaNameFilter tableId="nba-players" count={rows.length} />
               <NbaPlayerTable rows={rows} seasonQuery={q} sort={sort} dir={dir} basePath={lp('/players')} params={params} defaults={defaults} />

@@ -555,6 +555,29 @@ needs a new id and a new snapshot in its own PR.
   real day (owner ruling D36's HTML budget; 1,770,598 bytes before gzip). 2026-11-03: 29 scheduled (`pre`) games. `mbb/scoreboard_budget.json`:
   the rendered HTML length of the 2024-11-04 page and its budget (measured × 1.2), written by Task 6b Step 3. **Used by:**
   `test/mbb/scoreboardSections.test.ts`, `test/mbb/scoreboardBudget.test.ts`. **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 6b Steps 1 and 3.
+- `mbb/dashboards/*`: the men's college shot dashboards' fixtures. (a) `ncaa_fixture_shot_rows.json` is sdv-db's committed
+  `tests/fixtures/ncaa_shot_dashboards/mbb/shot_rows.json` (sdv-db 6c2d393, file last changed in 7c64c30 = #167, plan
+  2026-10-11-ncaa-shots-sdv-db Task 5; sha256 beabaf96e0e32d6b5484ea4a3c9ff50a5c23d41d487c8555e8c1be69d4a62454), byte for byte: the
+  SQL's own `shot_rows` (1,719 rows) for Texas's three 2018-19 contests and twelve 2025-26 games of real release rows;
+  `ncaa_fixture_league_context.json` (465 rows) is sdv-db's `ncaa_shot_dashboards.select_league_context(schema, 'mbb')` over exactly
+  those rows (all six kinds), written by `ncaa_fixture_context.py` (plan 2026-10-11-mbb-shots-gop Task 2 Step 3). (b) Every other
+  `.json` / `.json.gz` (gzip of the same JSON) is the `.data` of a LOCAL sdv-db Data API response (sdv-db 6c2d393, `serve` on
+  127.0.0.1) over a local warehouse loaded from the real release parquet, per its `api.ingest_manifest`: `ncaa_shots` /
+  `ncaa_schedule` 2019–2026 on 2026-10-12 (ncaa-mbb-hoops-data 9238abb; its 2019 and 2026 shot files hold 257,291 and 740,861
+  rows = `shot_coverage.source_shots`), `schedule` / `player_box` / `team_box` on 2026-10-12 (hoopR-mbb-data 63b1918 / d697cba),
+  `team_group_seasons` / `group_seasons` on 2026-10-18 (sportsdataverse-data `mbb_groups`), the five `mbb.shot_*` tables built by
+  sdv-db `ncaa_shot_dashboards` (7c64c30) on 2026-10-12, captured 2026-10-19 with `resources/nbaShots.ts`'s queries: `shot_rows`
+  by person with the six lite columns, by team (Texas, 251) with the six plus `person_id` (for the parity test), and no game-id
+  filter (regular season + postseason, D23); `shot_season_players` / `shot_league_context` by season; `shot_player_games` by
+  person, the 2026 latest game date (`order=-game_date&limit=1`) and the leaders' 49-day read (`game_date__gte` = latest − 48 days,
+  49 dates inclusive); `shot_coverage` (every season); `team_group_seasons` / `group_seasons` (`level=conference`) by season;
+  `schedule` (`select=home_id,away_id`) by season. Players: Texas's most-attempts shooter in 2026 (Dailyn Swain, 4848625, 395
+  attempts) and in 2018-19 (Kerwin Roach, 3947250, 38). `leaders_window_rows.json`, `postseason_games.json` and
+  `placeholder_check.json` are psql output of `measure_mbb.sql` (Task 2 Step 2) on the same warehouse: the largest player-game count
+  in any 42/49/56-date window per season, type-3 games per season, and the densest shot location per season.
+  **Used by:** `test/mbb/dashboardFixtures.ts` (and every MBB dashboard test through it). **To regenerate:** plan
+  2026-10-11-mbb-shots-gop Task 2 (local warehouse, local API, the three scratch scripts).
+
 
 
 

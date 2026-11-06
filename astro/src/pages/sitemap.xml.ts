@@ -100,7 +100,8 @@ function buildEntries(): Entry[] {
         for (const p of ['/', ...cfg.headerMenu.map((m) => m.path).filter((m) => m !== '/')]) {
             out.push({ loc: leaguePath(lg, p), lastmod: today, changefreq: p === '/scoreboard' ? 'hourly' : 'daily', priority: p === '/' ? '0.8' : '0.6' });
         }
-        if (hasTeamPages(lg)) for (const t of cfg.teams.all) out.push({ loc: leaguePath(lg, `/team/${t.team_id}`), lastmod: today, changefreq: 'weekly', priority: '0.5' });
+        // D43/D47: a league with a membership table lists its current-season members (every URL a 200); others every team
+        if (hasTeamPages(lg)) for (const id of cfg.currentMembers?.ids ?? cfg.teams.all.map((t) => t.team_id)) out.push({ loc: leaguePath(lg, `/team/${id}`), lastmod: today, changefreq: 'weekly', priority: '0.5' });
     }
 
     for (const year of AVAILABLE_SEASONS) {

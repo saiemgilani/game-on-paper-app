@@ -24,6 +24,12 @@ export const minThrees = (n: number, bars: LeaderBars = NBA_LEADER_BARS) => bars
 /** Active shooters only (R-BN-27): a window ending more than this many days before the season's latest game is dropped. */
 export const ACTIVE_DAYS = 14;
 
+const activeFrom = (latest: string) => {
+  const t = new Date(`${latest}T00:00:00Z`);
+  t.setUTCDate(t.getUTCDate() - ACTIVE_DAYS);
+  return t.toISOString().slice(0, 10);
+};
+
 /** The earliest window end that still counts as active: the season's latest game minus ACTIVE_DAYS. */
 export function activeSince(players: PlayerGames[]): string | null {
   let latest = "";
@@ -31,10 +37,21 @@ export function activeSince(players: PlayerGames[]): string | null {
     const d = p.games[p.games.length - 1]?.date;
     if (d && d > latest) latest = d;
   }
-  if (!latest) return null;
-  const t = new Date(`${latest}T00:00:00Z`);
-  t.setUTCDate(t.getUTCDate() - ACTIVE_DAYS);
-  return t.toISOString().slice(0, 10);
+  return latest ? activeFrom(latest) : null;
+}
+
+/**
+ * The same cut per team: each team's latest game minus ACTIVE_DAYS, keyed by the team of a player's latest game. A
+ * season that runs through a tournament (college, D23) ends on one final; against that date only the last few teams
+ * left would count as active (self-review on #342: 279 of 3,819 players from 32 of 365 teams on 2026).
+ */
+export function activeSinceByTeam(players: PlayerGames[]): Map<number, string> {
+  const latest = new Map<number, string>();
+  for (const p of players) {
+    const d = p.games[p.games.length - 1]?.date;
+    if (d && d > (latest.get(p.team_id) ?? "")) latest.set(p.team_id, d);
+  }
+  return new Map([...latest].map(([team, d]) => [team, activeFrom(d)]));
 }
 
 export interface PlayerGames {
@@ -83,21 +100,23 @@ export interface LeaderRow {
 /**
  * One board: eligible players ranked on `metric` over their last `n` games with a field-goal
  * attempt (competition ranking: ties share a rank). A full window is required (n such games) so a
- * 5-game rookie is not compared with a 20-game window; with `since`, a window that ended before
- * that date (an inactive shooter) is left out.
+ * 5-game rookie is not compared with a 20-game window; with `since` (one date, or one per team), a window that ended before
+ * that date (an inactive shooter) is left out. With `seasonLines` (the game rows are a window, D26), "improved"
+ * compares with his season line from them instead of with every game read.
  */
-export function leaderboard(players: PlayerGames[], n: number, metric: LeaderMetric, since: string | null = null, bars: LeaderBars = NBA_LEADER_BARS): LeaderRow[] {
+export function leaderboard(players: PlayerGames[], n: number, metric: LeaderMetric, since: string | ReadonlyMap<number, string> | null = null, bars: LeaderBars = NBA_LEADER_BARS, seasonLines?: ReadonlyMap<number, FieldGoals>): LeaderRow[] {
   const rows: Omit<LeaderRow, "rank">[] = [];
   for (const p of players) {
     const w = windowLine(p.games, n);
     if (!w || w.games < n || w.attempts < minAttempts(n, bars)) continue;
-    if (since !== null && w.to < since) continue;
+    const cut = since === null || typeof since === "string" ? since : since.get(p.team_id) ?? null;
+    if (cut !== null && w.to < cut) continue;
     const line = lineOf(w);
     let value: number | null;
     let seasonEfg: number | null = null;
     if (metric === "fg3Pct") value = w.fg3a >= minThrees(n, bars) ? line.fg3Pct : null;
     else if (metric === "improved") {
-      seasonEfg = lineOf(windowLine(p.games, p.games.length) ?? w).efgPct;
+      seasonEfg = lineOf(seasonLines?.get(p.person_id) ?? windowLine(p.games, p.games.length) ?? w).efgPct;
       value = line.efgPct !== null && seasonEfg !== null ? line.efgPct - seasonEfg : null;
     } else value = line[metric];
     if (value === null) continue;
@@ -121,6 +140,14 @@ export interface Board {
 
 export type Boards = Record<LeaderWindow, Record<LeaderMetric, Board>>;
 
+/** A restricted leaders read (D26): the windows to build, and each player's season line when the game rows are not the season. */
+export interface LeaderOptions {
+  windows?: readonly LeaderWindow[];
+  seasonLines?: ReadonlyMap<number, FieldGoals>;
+  /** "Active" measured from each team's latest game, not the season's (a college season ends on one final, D23). */
+  activeByTeam?: boolean;
+}
+
 /** The first `top` rows, extended to the end of a tie group that straddles the cut. */
 export function topRows(ranked: LeaderRow[], top: number): LeaderRow[] {
   let end = Math.min(top, ranked.length);
@@ -128,14 +155,17 @@ export function topRows(ranked: LeaderRow[], top: number): LeaderRow[] {
   return ranked.slice(0, end);
 }
 
-/** Every window x metric board of active shooters, top `top` rows each (ties kept whole), plus the highlighted team's other rows. */
-export function leaderBoards(players: PlayerGames[], highlightTeamId: number | null, top = 15, bars: LeaderBars = NBA_LEADER_BARS): Boards {
-  const since = activeSince(players);
+/**
+ * Every window x metric board of active shooters, top `top` rows each (ties kept whole), plus the highlighted team's other rows.
+ * `opts.windows` limits the windows built (only those keys exist); with no options the boards are every window's.
+ */
+export function leaderBoards(players: PlayerGames[], highlightTeamId: number | null, top = 15, bars: LeaderBars = NBA_LEADER_BARS, opts: LeaderOptions = {}): Boards {
+  const since = opts.activeByTeam ? activeSinceByTeam(players) : activeSince(players);
   const out = {} as Boards;
-  for (const n of LEADER_WINDOWS) {
+  for (const n of opts.windows ?? LEADER_WINDOWS) {
     out[n] = {} as Record<LeaderMetric, Board>;
     for (const metric of LEADER_METRICS) {
-      const all = leaderboard(players, n, metric, since, bars);
+      const all = leaderboard(players, n, metric, since, bars, opts.seasonLines);
       const rows = topRows(all, top);
       out[n][metric] = { rows, also: all.slice(rows.length).filter((r) => r.team_id === highlightTeamId), eligible: all.length };
     }

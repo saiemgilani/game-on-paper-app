@@ -14,7 +14,7 @@
     import Timeline from './charts/Timeline.svelte';
     import VersusChart from './charts/VersusChart.svelte';
     import type { PlayerExplorerData as ExplorerData } from '../../routes/nba/explorer';
-    let { data, subject, pronoun = 'his' }: { data: ExplorerData; subject: string; pronoun?: 'his' | 'her' } = $props();
+    let { data, subject, pronoun = 'his', leagueLines = 'full regular season' }: { data: ExplorerData; subject: string; pronoun?: 'his' | 'her'; leagueLines?: string } = $props();
 
     const WINDOWS = [5, 10, 20] as const;
     const NO_GAMES = 'No games selected: choose games above (a preset, single games or a date window) to draw this.';
@@ -42,7 +42,7 @@
     const first = games?.[0]?.date ?? '';
     const last = games?.[games.length - 1]?.date ?? '';
     const windowText = $derived(dateWindow ? `${fmtDate(dateWindow[0])} to ${fmtDate(dateWindow[1])}` : null);
-    const caption = $derived(`${games && view.view ? `${view.view.length} of ${games.length} games${windowText ? `, ${windowText}` : ''}` : 'Every game'}; league lines: full regular season.`);
+    const caption = $derived(`${games && view.view ? `${view.view.length} of ${games.length} games${windowText ? `, ${windowText}` : ''}` : 'Every game'}; league lines: ${leagueLines}.`);
     const onDate = (end: 0 | 1, value: string) => {
         drafts = end === 0 ? [value, drafts[1]] : [drafts[0], value];
         dateWindow = withTypedDate(dateWindow, end, value, first, last);
