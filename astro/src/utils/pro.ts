@@ -41,7 +41,7 @@ export interface ProEntitlement { tier: ProTier; expires: string; team?: string;
  */
 export function proRequirement(path: string): { tiers?: ProTier[]; addon?: ProAddon } | null {
     if (/^\/pro\/(portal|board)(\/|$)/.test(path) || /^\/pro\/file\/pro\/\d{4}\/portal\//.test(path)) return { addon: 'portal' };
-    if (/^\/pro\/file\/pro\/\d{4}\/teams\//.test(path)) return { tiers: ['pro', 'program'] };
+    if (/^\/pro\/teams(\/|$)/.test(path) || /^\/pro\/file\/pro\/\d{4}\/teams\//.test(path)) return { tiers: ['pro', 'program'] };
     if (/^\/pro\/file\/pro\/coaches\//.test(path)) return { addon: 'dossier' };
     // Plans split by side of the deal (pricing): Pro and Program are the program side, Analyst and
     // Agency the player side. Roster and position valuation are program-side; the talent market is

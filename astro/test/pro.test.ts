@@ -471,6 +471,36 @@ describe('the pages', () => {
         expect(index).toContain('href="/pro/rosters/1"');
     }, 60_000);
 
+    test('the Scout Pack: the matchup both ways, tendencies, self-scout, a bye week, the index', async () => {
+        const html = await render('../src/pages/pro/teams/[id].astro', '/pro/teams/1', { id: '1' });
+        expect(html).toContain('at <a href="/pro/teams/2">Fixture Tech</a>, week 10 (2026-11-07)');
+        expect(html).toContain('href="/pro/file/pro/2026/teams/1.pdf"');
+        expect(html).toContain("Fixture State <span class=\"text-muted fs-5\" id=\"pro-scout-game\">");  // a space before the game line
+        const order = ['pro-scout-their-ball', 'pro-scout-our-ball', 'pro-scout-opp-tendencies', 'pro-scout-self'].map((k) => html.indexOf(`id="${k}"`));
+        expect(order.every((v, i) => v > 0 && (i === 0 || v > order[i - 1])), String(order)).toBe(true);
+        const their = html.split('id="pro-scout-their-ball"')[1].split('id="pro-scout-our-ball"')[0];
+        expect(their).toContain('Fixture Tech offense');
+        expect(their).toContain('Fixture State defense');
+        const epa = their.split('data-key="EPAplay_off"')[1].split('</tr>')[0];
+        expect(epa).toContain('+0.32');  // EPA signed to 2
+        expect(epa).toContain('60th percentile');
+        expect(their.split('data-key="passrate_off"')[1].split('</tr>')[0]).toContain('tendency');
+        expect(their.split('data-key="success_off"')[1].split('</tr>')[0]).toContain('64.0%');
+        const self = html.split('id="pro-scout-self"')[1];
+        for (const s of ['2nd', '+4.2', '—', '-0.05', '87%']) expect(self, s).toContain(s);
+        expect(html).toContain('Fixture note two.');
+        const bye = await render('../src/pages/pro/teams/[id].astro', '/pro/teams/2', { id: '2' });
+        expect(bye).toContain('bye week');
+        expect(bye).toContain('id="pro-scout-units"');
+        expect(bye).not.toContain('id="pro-scout-opp-tendencies"');
+        const index = await render('../src/pages/pro/teams/index.astro', '/pro/teams');
+        expect(index).toContain('href="/pro/teams/1"');
+        expect(index).toContain('next: Fixture Tech');
+        expect(index).toContain('through week 10');
+        const missing = await render('../src/pages/pro/teams/[id].astro', '/pro/teams/x', { id: 'x' }).catch((e) => String(e));
+        expect(missing).not.toContain('Fixture State');
+    }, 60_000);
+
     test('the position and market reports render; an unknown unit is a 404', async () => {
         const qb = await render('../src/pages/pro/positions/[unit].astro', '/pro/positions/QB', { unit: 'QB' });
         for (const s of ['Quarterbacks: fixture headline one.', '$5.09M', '+3.6 pts', 'href="/pro/file/pro/2026/positions/QB.pdf"']) expect(qb, s).toContain(s);
@@ -611,12 +641,14 @@ describe('valuation formatting', () => {
 });
 
 describe('Pro pages refuse to render without an entitlement on their own', () => {
-    test.each(['index', 'players/[id]', 'portal', 'rosters/index', 'rosters/[id]', 'positions/[unit]', 'market'])('/pro/%s redirects to /pricing when locals.pro is null', async (page) => {
+    test.each(['index', 'players/[id]', 'portal', 'teams/index', 'teams/[id]', 'rosters/index', 'rosters/[id]', 'positions/[unit]', 'market'])('/pro/%s redirects to /pricing when locals.pro is null', async (page) => {
         const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
         const pages: Record<string, () => Promise<any>> = {
             index: () => import('../src/pages/pro/index.astro'),
             'players/[id]': () => import('../src/pages/pro/players/[id].astro'),
             portal: () => import('../src/pages/pro/portal.astro'),
+            'teams/index': () => import('../src/pages/pro/teams/index.astro'),
+            'teams/[id]': () => import('../src/pages/pro/teams/[id].astro'),
             'rosters/index': () => import('../src/pages/pro/rosters/index.astro'),
             'rosters/[id]': () => import('../src/pages/pro/rosters/[id].astro'),
             'positions/[unit]': () => import('../src/pages/pro/positions/[unit].astro'),
@@ -649,6 +681,13 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         expect(proAllows(a, '/pro/file/pro/2025/portal/board.csv')).toBe(false);
         expect(proAllows({ ...a, addons: ['portal'] }, '/pro/portal')).toBe(true);
         expect(proAllows(a, '/pro/file/pro/2026/teams/52.pdf')).toBe(false);
+        // the Scout Pack (pages and files) is program side: Pro and Program
+        for (const path of ['/pro/teams', '/pro/teams/52', '/pro/file/pro/2026/teams/52.pdf']) {
+            expect(proAllows(a, path), path).toBe(false);
+            expect(proAllows({ ...a, tier: 'agency' }, path), path).toBe(false);
+            expect(proAllows(pro, path), path).toBe(true);
+            expect(proAllows({ ...a, tier: 'program' }, path), path).toBe(true);
+        }
         expect(proAllows(pro, '/pro/file/pro/2026/teams/52.pdf')).toBe(true);
         expect(proAllows(pro, '/pro/file/pro/coaches/kirk-ferentz.pdf')).toBe(false);
         expect(proAllows({ ...pro, addons: ['dossier'] }, '/pro/file/pro/coaches/kirk-ferentz.pdf')).toBe(true);
