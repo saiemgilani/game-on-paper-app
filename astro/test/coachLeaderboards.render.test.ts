@@ -75,6 +75,31 @@ describe('situations board (coach-situations)', () => {
         }
     }, 60_000);
 
+    test('a career rate is shaded only among coaches with 5+ games in its own situation', async () => {
+        const saved = feed.careers;
+        feed.careers = sx.cfb_coach_careers;
+        try {
+            const html = await renderBoard('cfb', 'situations');
+            const { COACH_BOARDS } = await import('../src/utils/coaches');
+            const at = COACH_BOARDS.situations.columns.findIndex((c) => c.key === 'win_rate_opener');
+            // the board's metric cells, in column order, for one coach's row
+            const cells = (coach: string) => {
+                const row = html.split('<tr').find((r) => r.includes(`<strong>${coach}</strong>`))!;
+                return [...row.matchAll(/<td class="text-center ([^"]*)" colspan="1">/g)].map((m) => m[1].trim()).slice(-COACH_BOARDS.situations.columns.length);
+            };
+            // ranked on one-score games, but too few openers to have his opener record shaded
+            const ranked = sx.cfb_coach_careers.filter((r) => (numericValue(r, 'plays') ?? 0) >= 1500 && (numericValue(r, 'games_one_score_game') ?? 0) >= 5);
+            const few = ranked.filter((r) => (numericValue(r, 'games_opener') ?? 0) < 5 && numericValue(r, 'win_rate_opener') !== null);
+            expect(few.length).toBeGreaterThan(0);
+            for (const r of few) expect(cells(String(r.coach))[at]).toBe('');
+            // the best opener record among coaches with 5+ openers still gets the top shade
+            const best = byTop(ranked.filter((r) => (numericValue(r, 'games_opener') ?? 0) >= 5), 'win_rate_opener');
+            expect(cells(String(best.coach))[at]).toMatch(/hulk-bg-level-9/);
+        } finally {
+            feed.careers = saved;
+        }
+    }, 60_000);
+
     test('the /nfl twin has no vs-ranked header and never selects a vs-ranked column; 0 openers is a dash under the divider', async () => {
         const saved = feed.careers;
         feed.careers = sx.nfl_coach_careers;

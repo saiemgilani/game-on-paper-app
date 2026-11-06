@@ -30,12 +30,19 @@ const { qualified, partial } = splitByMinPlays(sortCoachRows(rows, sortColumn), 
 const ranks = rankCoachRows(qualified, sortKey);
 // every quality cell is shaded by its own column's rank, as the team grid does;
 // a style column (pace, pass rate, go rate) has no good end, so it stays plain
-const columnRank = new Map<string, Map<CoachRow, number | null>>(def.columns.filter((c) => !c.neutral).map((c) => {
-    const sorted = sortCoachRows(qualified, c);
+// a situational column is shaded only among coaches who also clear the games floor in its own
+// situation, so a 1-opener career's 100% is not painted the best opener record
+const gamesFloor = def.minGames && (careers ? def.minGames.careers : def.minGames.season);
+const columnRank = new Map<string, { n: number; ranks: Map<CoachRow, number | null> }>(def.columns.filter((c) => !c.neutral).map((c) => {
+    const pool = gamesFloor && c.games ? splitByMinPlays(qualified, 0, { key: c.games, min: gamesFloor }).qualified : qualified;
+    const sorted = sortCoachRows(pool, c);
     const r = rankCoachRows(sorted, c.key);
-    return [c.key, new Map(sorted.map((row, i) => [row, r[i]]))];
+    return [c.key, { n: pool.length, ranks: new Map(sorted.map((row, i) => [row, r[i]])) }];
 }));
-const shade = (row: CoachRow, key: string) => generateColorRampValue(columnRank.get(key)?.get(row) ?? null, qualified.length, true) ?? '';
+const shade = (row: CoachRow, key: string) => {
+    const col = columnRank.get(key);
+    return generateColorRampValue(col?.ranks.get(row) ?? null, col?.n ?? qualified.length, true) ?? '';
+};
 const hrefFor = (key: string) => `?sort=${key}`;
 const arrow = sortColumn.lowerIsBetter ? 'up' : 'down';
 const teamHref = (row: CoachRow) => leaguePath(league, `/year/${row.season}/team/${row.pos_team_id}`);
