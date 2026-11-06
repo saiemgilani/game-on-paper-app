@@ -21,7 +21,7 @@ import {
     formatUsd, mintProCookie, parseBoardFilters, PRO_COOKIE, PRO_TOKEN_TTL_S, proAllows, sortBoard, verifyProCookie, type BoardEntrant,
 } from '../src/utils/pro';
 import { claimDownload, claimLoginSend, createLoginToken, isProKey, latestBoard, redeemLoginToken, runProDigest, sweepLoginMarkers } from '../src/resources/pro';
-import { PRO_AUTH_RETRY_S } from '../src/utils/pro';
+import { PRO_AUTH_RETRY_S, ROLE_KINDS } from '../src/utils/pro';
 
 const board: { entrants: BoardEntrant[] } = JSON.parse(readFileSync(new URL('./fixtures/pro/2026/portal/board.json', import.meta.url)).toString());
 const DAY = 86_400_000;
@@ -417,11 +417,22 @@ describe('the pages', () => {
 
     test('pricing: the tiers, "Contact us" with no payment link set, and the plain statements', async () => {
         const html = await render('../src/pages/pricing.astro', '/pricing');
-        for (const s of ['$29/mo', '$249/yr', '$179/mo', '$1,499/yr', 'P4 $7,500', '$1,995/yr', '$350', '$2,500 / $7,500', 'From $3,500']) expect(html, s).toContain(s);
+        for (const s of ['$29/mo', '$249/yr', '$179/mo', '$1,499/yr', 'P4 $7,500', '$1,995/yr', '$2,500 / $7,500', 'start at $3,500']) expect(html, s).toContain(s);
+        expect(html).not.toContain('$350');  // the single profile cost more than a year of Analyst; dropped
         expect(html).toContain('never reported NIL deals');
         expect(html).toContain('href="/pro/methodology"');
         expect(html).toContain('Contact us');
         expect(html).not.toContain('Subscribe</a>');
+        // each role report is named on the row of the cheapest plan that opens it (proRequirement), and
+        // Agency, the player side's organisation plan, names none of the program-side ones
+        const row = (t: string) => html.split(`<strong>${t}</strong>`)[1].split('</tr>')[0];
+        for (const [k, v] of Object.entries(ROLE_KINDS)) {
+            const path = `/pro/roles/${k}/1`;
+            expect(proAllows(analyst, path) ? row('Analyst') : row('Pro'), v.title).toContain(v.title);
+            if (!proAllows({ ...analyst, tier: 'agency' }, path)) expect(row('Agency'), v.title).not.toContain(v.title);
+        }
+        expect(row('Pro')).toContain('roster, position and market valuation');
+        for (const t of ['Agency', 'Program', 'Portal Board', 'Coach Dossier', 'Consulting']) expect(html, t).toContain(`<option value="${t}">`);
     }, 60_000);
 
     test('no interpunct separators on the Pro pages (design-conventions: "replace dot")', () => {
@@ -641,19 +652,27 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         expect(proAllows(pro, '/pro/file/pro/2026/teams/52.pdf')).toBe(true);
         expect(proAllows(pro, '/pro/file/pro/coaches/kirk-ferentz.pdf')).toBe(false);
         expect(proAllows({ ...pro, addons: ['dossier'] }, '/pro/file/pro/coaches/kirk-ferentz.pdf')).toBe(true);
-        // valuation reports: above Analyst; the methodology PDF and profile values are for every tier
-        for (const path of ['/pro/rosters', '/pro/rosters/194', '/pro/positions/QB', '/pro/market', '/pro/file/pro/2026/rosters/194.pdf', '/pro/file/pro/2026/market/market.pdf']) {
+        // plans split by side: roster and position valuation and the program-side role reports (an
+        // unknown kind too) are Pro and Program only; the talent market is above Analyst on both sides
+        const agency = { ...base, tier: 'agency' as const };
+        const program = { ...base, tier: 'program' as const };
+        for (const path of ['/pro/rosters', '/pro/rosters/194', '/pro/positions/QB', '/pro/file/pro/2026/rosters/194.pdf',
+            '/pro/roles/team/194', '/pro/roles/collective/194', '/pro/roles/ad/194', '/pro/file/pro/roles/collective/194.pdf',
+            '/pro/file/pro/roles/team/194.pdf', '/pro/roles/coach/1', '/pro/file/pro/roles/x/1.pdf']) {
             expect(proAllows(a, path), path).toBe(false);
+            expect(proAllows(agency, path), path).toBe(false);
+            expect(proAllows(pro, path), path).toBe(true);
+            expect(proAllows(program, path), path).toBe(true);
+        }
+        for (const path of ['/pro/market', '/pro/file/pro/2026/market/market.pdf']) {
+            expect(proAllows(a, path), path).toBe(false);
+            expect(proAllows(agency, path), path).toBe(true);
             expect(proAllows(pro, path), path).toBe(true);
         }
-        // role reports open by reader: program-side ones above Analyst (an unknown kind too), agent and player for every tier
-        for (const path of ['/pro/roles/team/194', '/pro/roles/collective/194', '/pro/roles/ad/194', '/pro/file/pro/roles/collective/194.pdf', '/pro/file/pro/roles/team/194.pdf', '/pro/roles/coach/1', '/pro/file/pro/roles/x/1.pdf']) {
-            expect(proAllows(a, path), path).toBe(false);
-            expect(proAllows(pro, path), path).toBe(true);
-            expect(proAllows({ ...base, tier: 'agency' }, path), path).toBe(true);
-        }
+        // agent and player role reports for every tier
         for (const path of ['/pro/roles', '/pro/roles/agent/market', '/pro/roles/player/4433971', '/pro/file/pro/roles/agent/market.pdf', '/pro/file/pro/roles/player/4433971.pdf']) {
             expect(proAllows(a, path), path).toBe(true);
+            expect(proAllows(agency, path), path).toBe(true);
             expect(proAllows(pro, path), path).toBe(true);
         }
         expect(proAllows(a, '/pro/file/pro/2026/valuation/valuation.pdf')).toBe(true);

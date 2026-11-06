@@ -46,7 +46,7 @@ const span = index?.seasons?.length ? `${Math.min(...index.seasons)}-${Math.max(
                             <div class="border rounded p-2 h-100" data-kind={k}>
                                 <div class="fw-bold">{v.title}</div>
                                 <div class="text-muted text-small">For {v.reader}</div>
-                                {!v.everyTier && !programs && <div class="text-muted text-small">With Pro, Program or Agency</div>}
+                                {!v.everyTier && !programs && <div class="text-muted text-small">With Pro or Program</div>}
                             </div>
                         </div>
                     ))}
@@ -65,7 +65,7 @@ const span = index?.seasons?.length ? `${Math.min(...index.seasons)}-${Math.max(
 
                 <h2 class="fs-5">Programs</h2>
                 {!programs
-                    ? <p class="text-muted" id="pro-roles-programs-locked">Program History, Budget and Allocation and Program Benchmark reports for every FBS program come with a Pro seat, Program or Agency. <a href="/pricing">See pricing</a>.</p>
+                    ? <p class="text-muted" id="pro-roles-programs-locked">Program History, Budget and Allocation and Program Benchmark reports for every FBS program come with Pro or Program. <a href="/pricing">See pricing</a>.</p>
                     : (
                 <Fragment>
                 <p class="text-muted text-small mb-2">Each school's Program History; its Budget and Allocation (collective) and Program Benchmark (AD) reports beside it.</p>
