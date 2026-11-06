@@ -67,7 +67,7 @@ const subtitle = 'Who builds Game on Paper, and where its numbers come from.';
                             {p.role && <p class="text-muted small mb-0">{p.role}</p>}
                             <p class="card-text">{p.bio}</p>
                             {p.links.length > 0 && (
-                                <p class="small mb-0">{p.links.map((l, i) => <>{i > 0 && ' · '}<a href={l.href}>{l.label}</a></>)}</p>
+                                <p class="small mb-0">{p.links.map((l, i) => <>{i > 0 && ', '}<a href={l.href}>{l.label}</a></>)}</p>
                             )}
                         </div>
                     </div>
