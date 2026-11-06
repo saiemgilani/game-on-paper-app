@@ -1,4 +1,4 @@
-import { AVAILABLE_SEASONS, CURRENT_YEAR } from './constants';
+import { AVAILABLE_SEASONS, CURRENT_YEAR, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from './constants';
 import { FIRST_SEASON as NBA_FIRST_SEASON, LAST_KNOWN_SEASON as NBA_LAST_KNOWN_SEASON } from '../nba/seasonRange';
 
 /**
@@ -142,6 +142,31 @@ export function teamLogoUrl(league: League | undefined, teamId: string | number,
         return abbr ? `https://a.espncdn.com/i/teamlogos/nfl/500-dark/${abbr}.png` : light;
     }
     return `https://a.espncdn.com/i/teamlogos/${logoLeague}/500-dark/${id}.png`;
+}
+
+// ESPN's resizer (CORS-open, like the logos): a 64 px logo is ~2.6 KB against ~32 KB for the 500 px original.
+const espnCombiner = (path: string, w: number, h: number) => `https://a.espncdn.com/combiner/i?img=${path}&w=${w}&h=${h}`;
+
+/**
+ * The image a chart draws for a team (roadmap F14): a college special image first (the dark map when `dark`,
+ * else the light one, as ChartBuilder picks today), otherwise `teamLogoUrl`, sized through ESPN's combiner
+ * when `size` is given. A special image is a local asset and is never resized.
+ */
+export function teamLogoSrc(league: League | undefined, teamId: string | number, dark: boolean, size?: number): string {
+    const id = String(teamId);
+    if (espnLogoLeague(league) === 'ncaa') {
+        const special = (dark && SPECIAL_IMAGES_DARK[id]) || SPECIAL_IMAGES[id];
+        if (special) return special;
+    }
+    const url = teamLogoUrl(league, id, dark);
+    return size ? espnCombiner(new URL(url).pathname, size, size) : url;
+}
+
+const HEADSHOT_DIR: Record<League, string> = { cfb: 'college-football', nfl: 'nfl', nba: 'nba' };
+
+/** ESPN headshot for an athlete, sized through the combiner (a 96x70 face is ~9 KB against ~260 KB full size). */
+export function headshotSrc(league: League | undefined, athleteId: string | number, size: { w: number; h: number }): string {
+    return espnCombiner(`/i/headshots/${HEADSHOT_DIR[league ?? DEFAULT_LEAGUE]}/players/full/${athleteId}.png`, size.w, size.h);
 }
 
 // `nfl.espn_schedule` carries nflverse week numbering, where the postseason

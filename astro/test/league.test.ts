@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { LEAGUES, NFL_LOGO_ABBR, leaguePath, meetingLabel, nflRegularSeasonWeeks, splitLeague, teamLogoUrl, weekLabel } from '../src/utils/league';
+import { LEAGUES, NFL_LOGO_ABBR, headshotSrc, leaguePath, meetingLabel, nflRegularSeasonWeeks, splitLeague, teamLogoSrc, teamLogoUrl, weekLabel } from '../src/utils/league';
 
 describe('splitLeague', () => {
     test('strips the nfl prefix and keeps everything else', () => {
@@ -174,4 +174,32 @@ describe('the nba league', () => {
         expect(teamLogoUrl('nba', 17, false)).toBe('https://a.espncdn.com/i/teamlogos/nba/500/17.png');
         expect(teamLogoUrl('nba', 17, true)).toBe('https://a.espncdn.com/i/teamlogos/nba/500-dark/17.png');
     });
+});
+
+// roadmap F14: the sized sources a sprite atlas loads
+describe('teamLogoSrc', () => {
+  test('a college special image wins, the dark map in dark mode, and is never resized', () => {
+    expect(teamLogoSrc('cfb', '61', false)).toBe('/assets/img/ennui-uga.png');
+    expect(teamLogoSrc('cfb', '59', true)).toBe('/assets/img/gt-old-gold-dark.png');
+    expect(teamLogoSrc('cfb', '59', false, 64)).toBe('/assets/img/gt-old-gold.png');
+    // no dark special for UGA: the light special, as ChartBuilder picks today
+    expect(teamLogoSrc(undefined, 61, true)).toBe('/assets/img/ennui-uga.png');
+  });
+  test('otherwise teamLogoUrl, through the combiner when sized', () => {
+    expect(teamLogoSrc('nfl', '8', true, 64)).toBe('https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500-dark/det.png&w=64&h=64');
+    expect(teamLogoSrc('cfb', '333', false, 64)).toBe('https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/333.png&w=64&h=64');
+    expect(teamLogoSrc('cfb', 251, true)).toBe(teamLogoUrl('cfb', 251, true));
+    expect(teamLogoSrc('nfl', 999, true, 64)).toBe('https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/999.png&w=64&h=64');
+  });
+  test('the college special images apply to college ids only', () => {
+    expect(teamLogoSrc('nfl', '61', false)).toBe('https://a.espncdn.com/i/teamlogos/nfl/500/61.png');
+  });
+});
+
+describe('headshotSrc', () => {
+  test('the combiner over the league headshot path', () => {
+    expect(headshotSrc('cfb', '4430870', { w: 96, h: 70 })).toBe('https://a.espncdn.com/combiner/i?img=/i/headshots/college-football/players/full/4430870.png&w=96&h=70');
+    expect(headshotSrc('nfl', 3139477, { w: 96, h: 70 })).toBe('https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/3139477.png&w=96&h=70');
+    expect(headshotSrc(undefined, '1', { w: 48, h: 48 })).toBe('https://a.espncdn.com/combiner/i?img=/i/headshots/college-football/players/full/1.png&w=48&h=48');
+  });
 });
