@@ -13,7 +13,7 @@ vi.mock('astro:env/server', () => ({
 vi.mock('astro:middleware', () => ({ defineMiddleware: (fn: unknown) => fn }));
 vi.mock('cloudflare:workers', async () => ({ env: (await import('./helpers/memKV')).memEnv }));
 
-import { SESSION } from './helpers/memKV';
+import { PRO_BUCKET, SESSION } from './helpers/memKV';
 import { onRequest } from '../src/middleware';
 import { mintPreviewCookie, PREVIEW_COOKIE } from '../src/utils/preview';
 import {
@@ -27,9 +27,15 @@ const DAY = 86_400_000;
 const live = { tier: 'pro' as const, expires: new Date(Date.now() + 30 * DAY).toISOString(), addons: ['portal', 'dossier'] };
 const analyst = { tier: 'analyst' as const, expires: new Date(Date.now() + 30 * DAY).toISOString() };
 const lapsed = { tier: 'analyst', expires: new Date(Date.now() - DAY).toISOString() };
+/** Spend `n` of a viewer's daily downloads (on JSON keys, so Analyst's PDF meter stays put). */
+async function spend(viewer: any, n: number) {
+    for (let i = 0; i < n; i++) if (!(await claimDownload(viewer, `pro/2026/players/${i}.json`))) throw new Error(`claim ${i} refused`);
+}
 
 beforeEach(async () => {
     SESSION.m.clear();
+    PRO_BUCKET.m.clear();
+    PRO_BUCKET.lag = 0;
     await SESSION.put('pro:ent:coach@example.edu', JSON.stringify(live));
     await SESSION.put('pro:ent:old@example.edu', JSON.stringify(lapsed));
     await SESSION.put('pro:ent:fan@example.com', JSON.stringify(analyst));
@@ -476,7 +482,8 @@ describe('the pages', () => {
         const evil = compareCsv([{ season: 2026, player: { espn_id: 9, name: '=HYPERLINK("x")', team: ' @t', team_id: null, position: 'QB' },
             metrics: [{ key: 'm', label: 'M', value: -0.5, n: 1, n_label: 'plays', band_lo: null, band_mid: null, band_hi: null, delta_eb: null }] }]).split('\r\n')[1];
         expect(evil.startsWith(`9,"'=HYPERLINK(""x"")",' @t,QB,2026,-0.5,`)).toBe(true);
-        await SESSION.put(`pro:dl:coach@example.edu:${new Date().toISOString().slice(0, 10)}`, '150');
+        await spend(pro, 148);  // with the export above, one download left today
+        expect((await call('1')).status).toBe(200);
         expect((await call('1')).status).toBe(429);
     }, 30_000);
 
@@ -579,7 +586,20 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         expect(await claimDownload(fan, 'pro/2026/players/11.pdf')).toBe(false);
         expect(await claimDownload(fan, 'pro/2026/players/11.json')).toBe(true);
         const coach = { ...live, email: 'coach@example.edu' } as any;
-        await SESSION.put(`pro:dl:coach@example.edu:${new Date().toISOString().slice(0, 10)}`, '150');
+        await spend(coach, 150);
         expect(await claimDownload(coach, 'pro/2026/players/1.pdf')).toBe(false);
+        // a new day starts a new count; the month's PDFs carry over
+        expect(await claimDownload(coach, 'pro/2026/players/1.pdf', new Date(Date.now() + DAY))).toBe(true);
+    });
+
+    test('parallel downloads cannot overshoot the daily cap', async () => {
+        const coach = { ...live, email: 'coach@example.edu' } as any;
+        await spend(coach, 148);
+        PRO_BUCKET.lag = 20;
+        // five at once with two slots left: exactly two get through (a read-then-write counter lets all five)
+        const got = await Promise.all([0, 1, 2, 3, 4].map((i) => claimDownload(coach, `pro/2026/players/p${i}.pdf`)));
+        expect(got.filter(Boolean)).toHaveLength(2);
+        expect(await claimDownload(coach, 'pro/2026/players/1.json')).toBe(false);
+        expect([...PRO_BUCKET.m.keys()]).toEqual([expect.stringMatching(/^quota\/dl\/[0-9a-f]{64}\.json$/)]);  // no address in the key
     });
 });
