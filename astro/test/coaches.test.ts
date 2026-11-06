@@ -6,7 +6,10 @@ import {
     COACH_MIN_PLAYS,
     coachBoard,
     coachBoardColumn,
+    coachBoardColumns,
+    coachBoardSlugs,
     coachMetricColumns,
+    coachSourceColumns,
     formatCoachValue,
     formatSeasonSpan,
     numericValue,
@@ -30,8 +33,12 @@ const fx = JSON.parse(readFileSync(new URL('./fixtures/nfl-coaches-2024.json', i
     team_tendencies: CoachRow[]; coach_tendencies: CoachRow[]; coach_careers: CoachRow[];
 };
 
+// The Situations board's columns postdate this capture; they are checked against
+// fixtures/coach-situations.json in their own block below.
+const FIXTURE_BOARDS = Object.values(COACH_BOARDS).filter((b) => b.slug !== 'situations');
+
 describe('board definitions', () => {
-    test('the six boards, each with a default sort it owns', () => {
+    test('the six public boards, each with a default sort it owns', () => {
         expect(COACH_BOARD_SLUGS).toEqual(['pace', 'tendencies', 'efficiency', 'scoring', 'fourth-downs', 'defense']);
         for (const b of Object.values(COACH_BOARDS)) {
             expect(b.columns.map((c) => c.key), b.slug).toContain(b.defaultSort);
@@ -42,7 +49,7 @@ describe('board definitions', () => {
     test('every board column exists in all three real payloads', () => {
         for (const [table, rows] of Object.entries(fx)) {
             const keys = new Set(Object.keys(rows[0]));
-            for (const c of coachMetricColumns()) expect(keys.has(c), `${c} in ${table}`).toBe(true);
+            for (const c of FIXTURE_BOARDS.flatMap((b) => b.columns.flatMap((col) => coachSourceColumns(col.key)))) expect(keys.has(c), `${c} in ${table}`).toBe(true);
         }
         // and the key columns the resource selects
         const season = new Set(Object.keys(fx.coach_tendencies[0]));
@@ -53,7 +60,7 @@ describe('board definitions', () => {
 
     test('pct columns hold 0-1 fractions and the point-scaled columns do not (the format convention)', () => {
         const rows = withDerivedColumns(fx.coach_tendencies.concat(fx.coach_careers));
-        for (const b of Object.values(COACH_BOARDS)) {
+        for (const b of FIXTURE_BOARDS) {
             for (const c of b.columns) {
                 const vals = rows.map((r) => numericValue(r, c.key)).filter((v): v is number => v !== null);
                 expect(vals.length, c.key).toBeGreaterThan(0);
@@ -92,6 +99,94 @@ describe('board definitions', () => {
         expect(coachBoard('hasOwnProperty')).toBeUndefined();
         expect(coachBoard('pace')?.slug).toBe('pace');
         expect(coachBoardColumn('constructor', 'go_rate')).toBeUndefined();
+    });
+});
+
+// Live Data API rows (fixtures/coach-situations.json): CFB 2025 and careers,
+// NFL 2024 and careers, trimmed to the keys and the game-context columns.
+const sx = JSON.parse(readFileSync(new URL('./fixtures/coach-situations.json', import.meta.url)).toString()) as Record<
+    'cfb_coach_tendencies_2025' | 'cfb_coach_careers' | 'nfl_coach_tendencies_2024' | 'nfl_coach_careers', CoachRow[]
+>;
+const VS_RANKED = ['games_vs_ranked', 'win_rate_vs_ranked', 'epa_per_play_vs_ranked', 'def_epa_per_play_vs_ranked'];
+
+describe('situations board', () => {
+    const board = COACH_BOARDS.situations;
+
+    test('every column is in the CFB payloads; the NFL list drops the four vs-ranked columns and the rest are in its payloads', () => {
+        const cfb = coachBoardColumns(board, 'cfb').map((c) => c.key);
+        expect(cfb).toEqual(board.columns.map((c) => c.key));
+        for (const t of ['cfb_coach_tendencies_2025', 'cfb_coach_careers'] as const) {
+            const keys = new Set(Object.keys(sx[t][0]));
+            for (const k of cfb) expect(keys.has(k), `${k} in ${t}`).toBe(true);
+        }
+        const nfl = coachBoardColumns(board, 'nfl').map((c) => c.key);
+        expect(nfl).toEqual(cfb.filter((k) => !VS_RANKED.includes(k)));
+        for (const t of ['nfl_coach_tendencies_2024', 'nfl_coach_careers'] as const) {
+            const keys = new Set(Object.keys(sx[t][0]));
+            for (const k of nfl) expect(keys.has(k), `${k} in ${t}`).toBe(true);
+            for (const k of VS_RANKED) expect(keys.has(k), `${k} not in ${t}`).toBe(false);
+        }
+        // the default select never asks the NFL for a column it lacks (a 400 and an empty board)
+        for (const k of VS_RANKED) {
+            expect(coachMetricColumns('nfl')).not.toContain(k);
+            expect(coachMetricColumns('cfb')).toContain(k);
+        }
+        expect(board.defaultSort).toBe('win_rate_one_score_game');
+    });
+
+    test('win rates are pct fractions, games are int counts', () => {
+        const rows = Object.values(sx).flat();
+        for (const c of board.columns) {
+            if (c.key.startsWith('win_rate_')) {
+                expect(c.format, c.key).toBe('pct');
+                const vals = rows.map((r) => numericValue(r, c.key)).filter((v): v is number => v !== null);
+                expect(vals.length, c.key).toBeGreaterThan(0);
+                expect(Math.max(...vals), c.key).toBeLessThanOrEqual(1);
+            }
+            if (c.key.startsWith('games_')) expect([c.format, c.neutral], c.key).toEqual(['int', true]);
+            expect(c.games, c.key).toMatch(/^games_/);
+        }
+    });
+
+    test('a ?sort the league lacks falls back to the default', () => {
+        expect(resolveCoachSort('situations', 'win_rate_vs_ranked', 'cfb')).toBe('win_rate_vs_ranked');
+        expect(resolveCoachSort('situations', 'win_rate_vs_ranked', 'nfl')).toBe('win_rate_one_score_game');
+        expect(resolveCoachSort('situations', 'win_rate_opener', 'nfl')).toBe('win_rate_opener');
+    });
+
+    test('qualification uses the sorted column\'s games: 0 openers renders a dash, unranked, never 0%', () => {
+        // Bill Callahan: 44 NFL games and 2,785 plays, over the careers plays floor, but no opener in the table
+        const col = board.columns.find((c) => c.key === 'win_rate_opener')!;
+        const callahan = sx.nfl_coach_careers.find((r) => r.coach === 'Bill Callahan')!;
+        expect([callahan.games_opener, callahan.win_rate_opener]).toEqual([0, null]);
+        expect(numericValue(callahan, 'plays')).toBeGreaterThanOrEqual(COACH_MIN_PLAYS.careers);
+        expect(formatCoachValue(numericValue(callahan, col.key), col.format)).toBe('—');
+        const sorted = sortCoachRows(sx.nfl_coach_careers, col);
+        const { qualified, partial } = splitByMinPlays(sorted, COACH_MIN_PLAYS.careers, { key: col.games!, min: board.minGames!.careers });
+        expect(partial).toContain(callahan);
+        expect(qualified).not.toContain(callahan);
+        for (const r of qualified) expect(numericValue(r, 'games_opener')!).toBeGreaterThanOrEqual(board.minGames!.careers);
+        expect(rankCoachRows(qualified, col.key).every((r) => r !== null)).toBe(true);
+        // without the games floor he would be ranked on the plays floor alone
+        expect(splitByMinPlays(sorted, COACH_MIN_PLAYS.careers).qualified).toContain(callahan);
+        // a season needs one game in the situation
+        expect(board.minGames!.season).toBe(1);
+    });
+
+    test('behind its own flag: not listed, not routable, not in the sitemap list unless coach-situations is on', () => {
+        expect(COACH_BOARD_SLUGS).not.toContain('situations');
+        expect(coachBoardSlugs({})).not.toContain('situations');
+        expect(coachBoardSlugs({ preview: true })).toEqual([...COACH_BOARD_SLUGS, 'situations']);
+        expect(coachBoardSlugs({ flagOverrides: { 'coach-situations': true } })).toContain('situations');
+        expect(prepareCoachCareers(fakeAstro('/coaches/situations', { board: 'situations' }), 'cfb')).toEqual({ notFound: true });
+        expect(prepareCoachBoard(fakeAstro('/nfl/year/2024/coaches/situations', { board: 'situations', year: '2024' }), 'nfl')).toEqual({ notFound: true });
+        const on = (p: string, params: Record<string, string>) => ({ ...fakeAstro(p, params), locals: { preview: true } });
+        expect(prepareCoachCareers(on('/coaches/situations', { board: 'situations' }), 'cfb')).toEqual({ board: 'situations', metric: 'win_rate_one_score_game' });
+        expect(prepareCoachBoard(on('/nfl/year/2024/coaches/situations?sort=win_rate_vs_ranked', { board: 'situations', year: '2024' }), 'nfl'))
+            .toEqual({ season: 2024, board: 'situations', metric: 'win_rate_one_score_game' });
+        expect(COACH_BOARD_COPY.situations).toBeDefined();
+        expect(COACH_BOARD_COPY.situations.title(2024, 'nfl').replace(/ \| Game on Paper$/, '').length).toBeLessThanOrEqual(80);
+        expect(COACH_BOARD_COPY.situations.description(2024, 'nfl')).not.toMatch(/ranked/);
     });
 });
 

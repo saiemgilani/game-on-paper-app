@@ -10,7 +10,7 @@ import { CURRENT_YEAR, METRIC_YEAR } from '../utils/constants';
 import { leaguePath, teamCategoriesFor, type League } from '../utils/league';
 import { modifyMetricForCategory } from '../utils/misc';
 import { PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
-import { COACH_BOARD_SLUGS, DEFAULT_COACH_BOARD, resolveCoachSort } from '../utils/coaches';
+import { DEFAULT_COACH_BOARD, coachBoardSlugs, resolveCoachSort } from '../utils/coaches';
 
 export interface LeaderboardParams {
     season: number;
@@ -106,7 +106,7 @@ export function prepareCoachBoard(Astro: AstroGlobal, league: League): CoachBoar
     const { board } = Astro.params;
     // an own-key check: `in` matches inherited names, so /coaches/toString
     // would pass the guard and crash on COACH_BOARDS.toString.columns
-    if (!board || !COACH_BOARD_SLUGS.includes(board)) {
+    if (!board || !coachBoardSlugs(Astro.locals).includes(board)) {
         return { notFound: true };
     }
     const season = seasonOf(Astro);
@@ -114,7 +114,7 @@ export function prepareCoachBoard(Astro: AstroGlobal, league: League): CoachBoar
     if (season === CURRENT_YEAR && CURRENT_YEAR != METRIC_YEAR) {
         return { redirect: leaguePath(league, `/year/${METRIC_YEAR}/coaches/${board}`) };
     }
-    const metric = resolveCoachSort(board, Astro.url.searchParams.get('sort'));
+    const metric = resolveCoachSort(board, Astro.url.searchParams.get('sort'), league);
     return { season, board, metric };
 }
 
@@ -124,9 +124,9 @@ export function prepareCoachCareers(Astro: AstroGlobal, league: League): CoachBo
     const { board } = Astro.params;
     // an own-key check: `in` matches inherited names, so /coaches/toString
     // would pass the guard and crash on COACH_BOARDS.toString.columns
-    if (!board || !COACH_BOARD_SLUGS.includes(board)) {
+    if (!board || !coachBoardSlugs(Astro.locals).includes(board)) {
         return { notFound: true };
     }
-    const metric = resolveCoachSort(board, Astro.url.searchParams.get('sort'));
+    const metric = resolveCoachSort(board, Astro.url.searchParams.get('sort'), league);
     return { board, metric };
 }
