@@ -8,6 +8,7 @@ import { wrappedFetch } from "../utils/telemetry"
 import { LEAGUES, type League, type SdvSource, leagueSource, teamCategoriesFor } from '../utils/league';
 import { coachMetricColumns, type CoachRow } from '../utils/coaches';
 import { formatRecord } from '../utils/resume';
+import { type IngestStamps, purgeTarget } from '../utils/pagePurge';
 import { PLAYER_SPLITS } from '../utils/players';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
@@ -614,6 +615,12 @@ async function fetchSDVDatasets(fresh = false): Promise<Record<string, string> |
  *  pinned read saw a newer ingest (TrendsRoute), which those copies may not show yet. */
 export async function sdvIngestStamp(league: League, table: string, fresh = false): Promise<string | undefined> {
     return ingestStamp(LEAGUES[league].sdvSchema, table, fresh);
+}
+
+/** The page purge cron's next target across every league's tables (utils/pagePurge.ts),
+ *  from /v1/meta read past the cached copies. */
+export async function sdvPurgeTarget(purgedFor: IngestStamps, now: number): Promise<IngestStamps | undefined> {
+    return purgeTarget(await fetchSDVDatasets(true), Object.values(LEAGUES).map((l) => l.sdvSchema), purgedFor, now);
 }
 
 /** When `<schema>.<table>` last ingested, per /v1/meta; see sdvIngestStamp. */
