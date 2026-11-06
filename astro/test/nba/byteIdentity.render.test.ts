@@ -3,6 +3,12 @@
 // refactor, so these files are never regenerated from the branch. When main itself changes the NBA render (a header
 // island, a dependency bump), re-capture them ON MAIN: a detached worktree of main, with only this harness and its
 // fixtures copied in, then copy the snapshots back. First captured on 81dbaf1e; last re-captured on main 7e71f2d6.
+// player.html and team.html were re-captured on feat/basketball-square-bins, which changes the shot chart on purpose
+// (square bins, the distance link): that diff is the shot-chart island and its Squares button, nothing else.
+// game-*.html and pregame.html were re-captured on feat/basketball-parity: a SportsEvent JSON-LD script on each, and the
+// pregame's Players to Watch card (with DarkModeLogos' CSS for its two team logos).
+// home, leaders, player, players, scatter, team and teams .html were re-captured on feat/basketball-2026-27: the NBA lists
+// 2026-27, so each season picker gains it and the 2025-26 pages these captures load carry ?season=2026 in canonical and links.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';

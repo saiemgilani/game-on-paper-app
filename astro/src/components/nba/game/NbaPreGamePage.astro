@@ -7,6 +7,9 @@ import { gameHref, scoreboardDayHref, teamHrefFromEspn } from '../../../nba/link
 import { LEAGUES, leaguePath } from '../../../utils/league';
 import { basketball } from '../../../basketball/config';
 import { cleanAbbreviation } from '../../../utils/misc';
+import RecentForm from '../../game/RecentForm.astro';
+import NbaPlayersToWatch from './NbaPlayersToWatch.astro';
+import { basketballEventJsonLd } from '../../../basketball/parity';
 import { retrieveGameSummary, type ESPNPlayByPlayResponse } from '../../../resources/espn';
 
 interface Props { espnGame: ESPNPlayByPlayResponse }
@@ -28,13 +31,23 @@ const title = `${away.team.displayName} at ${home.team.displayName} | Game on Pa
 const description = `${away.team.displayName}${paren(away)} at ${home.team.displayName}${paren(home)}: tip time and broadcast. Win probability, four factors and shot charts arrive at tip-off.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: leaguePath(league, '/'), active: false }, { title: 'Scoreboard', url: scoreboardDayHref(league, comp.date), active: false }, { title: `${ab(away)} @ ${ab(home)}`, active: true }];
 const networks = ((comp as any).broadcasts ?? []).map((b: any) => b?.media?.shortName).filter(Boolean).join(', ');
+const season = espnGame.gamepackageJSON.header.season?.year ?? null;
+const jsonLd = basketballEventJsonLd({
+    league, path: gameHref(league, espnGame.gameId), date: comp.date, description, venue: (comp as any).venue?.fullName ?? null, statusDetail: comp.status?.type?.description ?? null,
+    home: { name: home.team.displayName, href: teamHrefFromEspn(home.team, league, season), score: null },
+    away: { name: away.team.displayName, href: teamHrefFromEspn(away.team, league, season), score: null },
+});
 ---
-<GenericPage title={title} subtitle={description} slug={gameHref(league, espnGame.gameId)} breadcrumbs={breadcrumbs} description={description}>
+<GenericPage title={title} subtitle={description} slug={gameHref(league, espnGame.gameId)} breadcrumbs={breadcrumbs} description={description} jsonLd={[jsonLd]}>
   <div class="container py-3 text-center">
-    <GameTitle awayTeam={away.team} homeTeam={home.team} links={false} hrefOf={(t) => teamHrefFromEspn(t, league)} league={league} />
+    <GameTitle awayTeam={away.team} homeTeam={home.team} links={false} hrefOf={(t) => teamHrefFromEspn(t, league, espnGame.gamepackageJSON.header.season?.year)} league={league} />
     <LocalDate client:only divClass="text-small m-0" date={comp.date} format={DateTime.DATETIME_FULL} prefix={comp.status.type.description ?? 'Scheduled'}><p slot="fallback" class="text-small m-0">&nbsp;</p></LocalDate>
     <p class="text-muted m-0">{side(away)}, {side(home)}</p>
     {line && <p class="text-muted m-0">{`Line: ${line}`}</p>}
     {networks && <p class="text-muted m-0">{networks}</p>}
+  </div>
+  <div class="container">
+    {season !== null && <NbaPlayersToWatch homeTeam={home.team} awayTeam={away.team} season={season} />}
+    <RecentForm summary={summary} homeTeam={home.team} awayTeam={away.team} />
   </div>
 </GenericPage>

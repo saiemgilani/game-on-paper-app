@@ -10,8 +10,9 @@ import { basketball } from '../../basketball/config';
 import { playerHref, withParams } from '../../nba/links';
 import type { SortDir } from '../../nba/table';
 import { ROSTER_COLUMNS, ROSTER_GROUPS, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
-interface Props { rows: RosterRow[]; seasonQuery: string; sort: RosterSortKey; dir: SortDir; mode: Mode; basePath: string; params: Record<string, string>; defaults: Record<string, string>; id?: string }
-const { rows, seasonQuery, sort, dir, mode, basePath, params, defaults, id = 'nba-roster' } = Astro.props;
+interface Props { rows: RosterRow[]; seasonQuery: string; sort: RosterSortKey; dir: SortDir; mode: Mode; basePath: string; params: Record<string, string>; defaults: Record<string, string>; id?: string; hidePie?: boolean; note?: string | null }
+const { rows, seasonQuery, sort, dir, mode, basePath, params, defaults, id = 'nba-roster', hidePie = false, note = null } = Astro.props;
+const columns = hidePie ? ROSTER_COLUMNS.filter((c) => c.key !== 'pie') : ROSTER_COLUMNS;
 const league = basketball(Astro.locals.league).league;
 const urlDefaults = { ...defaults, sort: 'fga', dir: 'desc', mode: 'totals' };
 const state = { ...params, sort, dir, mode };
@@ -19,7 +20,7 @@ const hrefFor = (key: RosterSortKey) => withParams(basePath, { ...state, sort: k
 const modeHref = (m: Mode) => withParams(basePath, { ...state, mode: m }, urlDefaults);
 // aria-sort sits on the sorted header only (ARIA: at most one per table), the others carry none
 const ariaSort = (key: RosterSortKey) => (key === sort ? (dir === 'desc' ? 'descending' : 'ascending') : undefined);
-const ACROSS = "GP, MIN, FGA/g, TS%, USG% and PIE are season totals across teams; FGA and the percentages are this team's shots";
+const ACROSS = hidePie ? "GP, MIN, FGA/g, TS% and USG% are season totals across teams; FGA and the percentages are this team's shots" : "GP, MIN, FGA/g, TS%, USG% and PIE are season totals across teams; FGA and the percentages are this team's shots";
 ---
 <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
   <div class="btn-group btn-group-sm" role="group" aria-label="Per game or totals">
@@ -33,12 +34,12 @@ const ACROSS = "GP, MIN, FGA/g, TS%, USG% and PIE are season totals across teams
     <thead>
       <tr>
         <td></td><td></td>
-        {ROSTER_GROUPS.map((g) => (<th scope="col" colspan={ROSTER_COLUMNS.filter((c) => c.group === g).length} class="text-center fw-normal text-muted">{g}</th>))}
+        {ROSTER_GROUPS.map((g) => (<th scope="col" colspan={columns.filter((c) => c.group === g).length} class="text-center fw-normal text-muted">{g}</th>))}
       </tr>
       <tr>
         <th scope="col" class="text-start">Player</th>
         <th scope="col" aria-label="Headshot"></th>
-        {ROSTER_COLUMNS.map((c) => (
+        {columns.map((c) => (
           <th scope="col" class="text-end" aria-sort={ariaSort(c.key)} data-sort={c.key}>
             <a href={hrefFor(c.key)} class="link-secondary text-decoration-none">{c.label(mode)}{c.key === sort && (<span aria-hidden="true"> {dir === 'desc' ? '▾' : '▴'}</span>)}</a>
           </th>
@@ -50,10 +51,10 @@ const ACROSS = "GP, MIN, FGA/g, TS%, USG% and PIE are season totals across teams
         <tr data-name={foldText(r.name)}>
           <th scope="row" class="text-start fw-normal"><a href={playerHref(r.person_id, seasonQuery, league)}>{r.name}</a>{r.acrossTeams && (<span class="text-muted ms-1" title={ACROSS}>*</span>)}</th>
           <td><NbaHeadshot src={r.headshot} name={r.name} size={36} decorative /></td>
-          {ROSTER_COLUMNS.map((c) => (<td class="text-end numeral">{c.fmt(c.value(r, mode))}</td>))}
+          {columns.map((c) => (<td class="text-end numeral">{c.fmt(c.value(r, mode))}</td>))}
         </tr>
       ))}
     </tbody>
   </table>
 </div>
-<p class="small text-muted mb-0">* {ACROSS}.</p>
+<p class="small text-muted mb-0">* {ACROSS}.</p>{note && (<p class="small text-muted mb-0">{note}</p>)}

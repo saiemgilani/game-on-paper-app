@@ -8,7 +8,7 @@ import { fmtPct } from '../../../nba/format';
 import { dash } from '../../../nba/data/game';
 import { scoreboardDayHref, teamHrefFromEspn } from '../../../nba/links';
 import { linescoreLabel } from '../../../basketball/periods';
-import { basketball } from '../../../basketball/config';
+import { basketball, noLineText } from '../../../basketball/config';
 import { cleanAbbreviation } from '../../../utils/misc';
 import type { NbaGame } from '../../../resources/nbaGame';
 
@@ -25,15 +25,15 @@ const homeAbbr = cleanAbbreviation(game.home.team);
 const spread = prior?.gameSpreadAvailable ? prior.homeTeamSpread : null;
 const line = spread == null ? null : spread === 0 ? 'PK' : `${homeAbbr} ${spread > 0 ? '-' : '+'}${Math.abs(spread)}`;
 const int = (n: number) => String(n);
-const priorText = prior
-    ? `pregame prior ${homeAbbr} ${fmtPct(prior.homeWinProb, 0)}${prior.source === 'hfa' ? ' (home-court advantage only)' : ' (from the spread)'}`
-    : null;
-const lineText = `${line ? `Line: ${line}` : 'No line'}, ${priorText ?? 'no prior'}`;
+// the line already prices the venue; without one the prior is the home edge, or no edge at a neutral site (D13)
+const PRIOR_NOTE = { spread: ' (from the spread)', hfa: ' (home-court advantage only)', neutral: '' } as const;
+const priorText = prior ? `pregame prior ${homeAbbr} ${fmtPct(prior.homeWinProb, 0)}${PRIOR_NOTE[prior.source]}` : null;
+const lineText = `${line ? `Line: ${line}` : prior?.source === 'neutral' ? 'Neutral site, no line' : noLineText(league, game.season, game.source)}, ${priorText ?? 'no prior'}`;
 const back = scoreboardDayHref(league, game.date);
 ---
 <div class="py-3 text-center">
     <a class="btn btn-sm btn-outline-primary mb-2" href={back}><i class="bi-arrow-left"></i> Scoreboard</a>
-    <GameTitle awayTeam={game.away.team} homeTeam={game.home.team} awayScore={game.away.score} homeScore={game.home.score} links={false} hrefOf={(t) => teamHrefFromEspn(t, league)} league={league} />
+    <GameTitle awayTeam={game.away.team} homeTeam={game.home.team} awayScore={game.away.score} homeScore={game.home.score} links={false} hrefOf={(t) => teamHrefFromEspn(t, league, game.season)} league={league} />
     {live ? <p class="text-small m-0">{game.status.detail ? `LIVE - ${game.status.detail}` : 'LIVE'}</p>
           : <LocalDate client:only divClass="text-small m-0" date={game.date} format={DateTime.DATETIME_FULL} prefix={game.status.detail ?? 'Final'}><p slot="fallback" class="text-small m-0">&nbsp;</p></LocalDate>}
     {game.venue && <p class="text-small text-muted m-0">{game.venue}</p>}
