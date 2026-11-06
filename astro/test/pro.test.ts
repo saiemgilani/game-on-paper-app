@@ -62,7 +62,7 @@ async function run(path: string, opts: { preview?: boolean; email?: string } = {
 
 describe('the middleware gate', () => {
     test("flag off: every Pro path and /pricing is the site's 404, even with an entitlement", async () => {
-        for (const p of ['/pro', '/pro/players/1', '/pro/portal', '/pro/methodology', '/pro/login', '/pro/file/pro/2026/players/1.pdf', '/pricing']) {
+        for (const p of ['/pro', '/pro/players/1', '/pro/portal', '/pro/methodology', '/pro/login', '/pro/file/pro/2026/players/1.pdf', '/pro/compare', '/pro/export', '/pricing']) {
             expect((await run(p, { email: 'coach@example.edu' })).rewrittenTo, p).toBe('/404');
         }
         // and nothing near it moves
@@ -78,9 +78,12 @@ describe('the middleware gate', () => {
             expect(res.headers.get('Location'), p).toBe('/pricing');
             expect(res.headers.get('Cache-Control'), p).toBe('no-store');
         }
-        const file = await run('/pro/file/pro/2026/players/1.pdf', { preview: true });
-        expect(file.res.status).toBe(403);
-        expect(file.res.headers.get('Location')).toBeNull();
+        for (const p of ['/pro/file/pro/2026/players/1.pdf', '/pro/export']) {
+            const file = await run(p, { preview: true });
+            expect(file.res.status, p).toBe(403);
+            expect(file.res.headers.get('Location'), p).toBeNull();
+        }
+        expect((await run('/pro/compare', { preview: true })).res.status).toBe(302);
         // the open ones render for anyone the flag lets in
         for (const p of ['/pro/login', '/pro/methodology', '/pricing']) {
             expect((await run(p, { preview: true })).rewrittenTo, p).toBeUndefined();
