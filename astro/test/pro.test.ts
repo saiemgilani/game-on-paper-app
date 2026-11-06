@@ -479,6 +479,10 @@ describe('the pages', () => {
         const evil = compareCsv([{ season: 2026, player: { espn_id: 9, name: '=HYPERLINK("x")', team: ' @t', team_id: null, position: 'QB' },
             metrics: [{ key: 'm', label: 'M', value: -0.5, n: 1, n_label: 'plays', band_lo: null, band_mid: null, band_hi: null, delta_eb: null }] }]).split('\r\n')[1];
         expect(evil.startsWith(`9,"'=HYPERLINK(""x"")",' @t,QB,2026,-0.5,`)).toBe(true);
+        const lead = (team: string) => compareCsv([{ season: 2026, player: { espn_id: 9, name: 'n', team, team_id: null, position: null }, metrics: [] }]).split('\r\n')[1].split(',')[2];
+        expect(lead('\tx')).toBe("'\tx");
+        expect(lead('\rx')).toBe(`"'\rx"`);
+        expect(lead('A&M')).toBe('A&M');
         await spend(pro, 148);  // with the export above, one download left today
         expect((await call('1')).status).toBe(200);
         expect((await call('1')).status).toBe(429);

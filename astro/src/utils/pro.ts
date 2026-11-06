@@ -356,8 +356,9 @@ export function compareMetricRows(docs: CompareProfile[]): { key: string; label:
 
 const csvCell = (v: unknown): string => {
     if (v === null || v === undefined || (typeof v === 'number' && !Number.isFinite(v))) return '';
-    // a text cell a spreadsheet would run as a formula gets a leading quote (numbers keep their sign)
-    const s = typeof v === 'string' && /^\s*[=+\-@]/.test(v) ? `'${v}` : String(v);
+    // a text cell a spreadsheet would run as a formula (= + - @, or a leading tab or CR, OWASP's
+    // list) gets a leading quote; numbers keep their sign
+    const s = typeof v === 'string' && /^(\s*[=+\-@]|[\t\r])/.test(v) ? `'${v}` : String(v);
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
