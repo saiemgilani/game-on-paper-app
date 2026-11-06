@@ -798,3 +798,19 @@ the captured lineups use. `reads` lists each query and its row count:
 **To regenerate:** rerun the reads above (season filter and limit as listed, never unfiltered), filter the two name reads to
 the lineups' player ids, write `{nbaImpact, mbbImpact, wnbaRates, wnbaStrength, wnbaFlow, mbbRates, nbaLineups, nbaNames,
 mbbLineups, mbbNames, reads, captured}` as JSON and gzip.
+
+## `war-boards-2026.json.gz`
+The rows behind BB-G27's two leaderboards (`resources/leaderboards.ts`, boards `value` and `poe`), as `{nbaWar, mbbWar, nbaPoe}`
+(no edits). `player_war` (sdv-db #202) is not served yet (the Data API answers 404 until its backfill runs), so `nbaWar` /
+`mbbWar` are the producer's output, the frame sdv-db loads unchanged, cut the way the board's read cuts it (`poss >= 250` /
+`100`, most possessions first, 500 rows): sportsdataverse-py `origin/main` at 39541177 (with #1114), run on 2026-11-05 as
+`nba_player_war(2026)` (495 rows) and `mbb_player_war(2026)` (500 of 5,030), each `write_json()`. `nbaPoe` is a live Data
+API read of the same day with the board's query: `/v1/nba_stats/shot_quality_season?season=2026&level=player&attempts__gte=100&order=-attempts&select=person_id,team_id,team_tricode,games,attempts,pts,xpts,poe,poe_se,xpps,poe_per_shot,fg_pct_oe&limit=500`
+(453 rows). The POE board's names come from `leaderboards-v2-2026.json.gz`'s `nbaNames` (112 of the 453 shooters; the rest
+show their id, as the board does for a player the season players do not list).
+
+**Used by:** `test/warBoards.test.ts`.
+
+**To regenerate:** rerun the two sdv-py calls (cut as above) and the one read, wrap them as above and gzip. Once sdv-db
+#202's backfill has run, `/v1/{nba_stats,mbb}/player_war?season=2026&poss__gte=…&order=-poss&limit=500` replaces the
+sdv-py calls.

@@ -4,11 +4,12 @@
 // cell: the producer's value, or in the Percentiles view its percentile among qualifiers; cells are shaded by that same
 // column's percentile on the site's green-to-purple ramp. GP / minutes / possessions lead, the identity column is frozen
 // and the headers are grouped two rows deep (spec §4.2). Every select is a select of URLs (the Cup page's pattern).
+// BB-G27, behind 'bball-war-boards': the WAR and VORP board (WAR beside its 90% interval) and the points over expected board.
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import type { LeaderboardsParams } from '../../routes/basketball/leaderboards';
-import { BASIS_LABEL, BOARD_LABEL, BOARDS, TEAM_GROUP_LABEL, TEAM_GROUPS, UNIT_SIZES, IMPACT_QUALIFIED_POSS, cellOf, labelFor, shown, ncaaName, offeredBases, type Col } from '../../utils/leaderboards';
-import { IMPACT_FLOOR, LINEUP_FLOOR, BOARD_CAP } from '../../resources/leaderboards';
-import { fmtDec, fmtInt, fmtPct } from '../../nba/format';
+import { BASIS_LABEL, BOARD_LABEL, TEAM_GROUP_LABEL, TEAM_GROUPS, UNIT_SIZES, IMPACT_QUALIFIED_POSS, cellOf, labelFor, shown, ncaaName, offeredBases, type Col } from '../../utils/leaderboards';
+import { IMPACT_FLOOR, LINEUP_FLOOR, POE_FLOOR, BOARD_CAP } from '../../resources/leaderboards';
+import { fmtDec, fmtInt, fmtPct, fmtPts } from '../../nba/format';
 import { playerHref, seasonQuery, teamHrefFromEspn, withParams } from '../../nba/links';
 import { dotLabels } from '../../nba/scatterMetrics';
 import { formatRank, generateColorRampValue, generateMarginalString } from '../../utils/misc';
@@ -16,14 +17,14 @@ import { BASKETBALL, seasonLabelFor } from '../../basketball/config';
 import { LEAGUES, PRO_LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: LeaderboardsParams }
-const { league, season, seasons, current, controls, spec, rows, read, capped, pctAvailable, names } = Astro.props.data;
+const { league, season, seasons, current, controls, spec, rows, read, capped, pctAvailable, names, boards } = Astro.props.data;
 const { board, group, unit, basis, view, qualified, sort, basisFallback, viewFallback } = controls;
 const pro = PRO_LEAGUES.includes(league);
 const lname = LEAGUES[league].shortName;
 const lp = (p: string) => leaguePath(league, p);
 const path = lp('/leaderboards');
 const label = seasonLabelFor(league, season);
-const boardTitle = board === 'teams' ? `Teams: ${TEAM_GROUP_LABEL[group]}` : board === 'lineups' ? `${unit}-man lineups` : BOARD_LABEL.impact;
+const boardTitle = board === 'teams' ? `Teams: ${TEAM_GROUP_LABEL[group]}` : board === 'lineups' ? `${unit}-man lineups` : BOARD_LABEL[board];
 const title = `${lname} leaderboards: ${boardTitle}, ${label}`;
 const description = `${lname} ${label} leaderboards: player impact (RAPM, SPM, BPM, WAR), team ratings, four factors, strength and game flow, and lineups, with league ranks and percentiles.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: lname, url: lp('/'), active: false }, { title: 'Leaderboards', active: true }];
@@ -51,6 +52,7 @@ const fmt = (c: Col, v: number | null): string => {
         case 'pct': return fmtPct(v);
         case 'rate3': return fmtDec(v, 3);
         case 'secs': return `${fmtDec(v, 0)}s`;
+        case 'ppts': return fmtPts(v);
     }
 };
 const cell = (r: Record<string, unknown>, c: Col) => {
@@ -83,12 +85,22 @@ const fullName = (id: unknown) => names.get(String(id)) ?? `#${id}`;
 const unitPlayers = (r: Record<string, unknown>) => [r.player_1, r.player_2, r.player_3, r.player_4, r.player_5].filter((p) => p != null);
 const short = board === 'lineups' && rows ? dotLabels([...new Set(rows.flatMap((r) => unitPlayers(r).map(fullName)))]) : new Map<string, string>();
 
-const sample = board === 'impact'
+// BB-G27's boards: a player link for every league (both tables carry the player page's own id) and the team he played for
+const valueTeam = (r: Record<string, unknown>) => { const t = teamCell(r.team_id).abbr; const n = Number(r.teams); return n > 1 ? `${t} +${n - 1}` : t; };
+const sample = board === 'value'
+    ? `Players with at least ${fmtInt(qualified ? IMPACT_QUALIFIED_POSS[league] : IMPACT_FLOOR[league])} on-court possessions.`
+    : board === 'poe'
+    ? `Players with at least ${fmtInt(qualified ? spec.gate!.min[league] : POE_FLOOR[league])} field-goal attempts for a team; a traded player has a row per team.`
+    : board === 'impact'
     ? `Players with at least ${fmtInt(qualified ? IMPACT_QUALIFIED_POSS[league] : IMPACT_FLOOR[league])} offensive possessions${qualified ? ' (the board’s qualifier: the producer ranks no player yet)' : ''}.`
     : board === 'lineups'
         ? (qualified ? 'Units the producer ranks: at least ' + (league === 'nba' ? '400' : '200') + ' offensive plus defensive possessions.' : `Units with at least ${fmtInt(LINEUP_FLOOR[league])} offensive possessions.`)
         : (qualified ? 'Teams the producer ranks.' : 'Every team the producer rates.');
-const scope = board === 'impact' ? (pro ? 'Regular season.' : 'Every game.') : board === 'teams' && pro ? 'Regular season.' : '';
+const scope = board === 'impact' ? (pro ? 'Regular season.' : 'Every game.') : (board === 'teams' || board === 'value' || board === 'poe') && pro ? 'Regular season.' : '';
+// with 'bball-war-boards' on the impact board has no WAR (the WAR board has it); off, BB-G8's caption as it was
+const unitNote = board === 'impact' ? (boards.includes('value') ? 'Per 100 possessions.' : 'Per 100 possessions, WAR in wins.')
+    : board === 'value' ? 'Rating per 100 possessions; VORP and WAR are season totals, WAR in wins with its 90% interval (Low to High).'
+    : board === 'poe' ? 'Field goals only: free throws are not shots in the model.' : false;
 ---
 <GenericPage title={`${title} | Game on Paper`} subtitle={description} slug={path} breadcrumbs={breadcrumbs} description={description} canonicalPath={url({})}>
   <link href="/assets/css/sticky-table.css" rel="stylesheet">
@@ -99,7 +111,7 @@ const scope = board === 'impact' ? (pro ? 'Regular season.' : 'Every game.') : b
         <div class="d-flex flex-wrap gap-2">
           <label class="visually-hidden" for="lb-board">Board</label>
           <select id="lb-board" class="form-select w-auto" onchange={NAV}>
-            {BOARDS.map((b) => (<option value={fresh({ board: b })} selected={b === board}>{BOARD_LABEL[b]}</option>))}
+            {boards.map((b) => (<option value={fresh({ board: b })} selected={b === board}>{BOARD_LABEL[b]}</option>))}
             <option value={`${lp('/leaders')}${q}`}>Players: Shooting (rolling)</option>
           </select>
           {board === 'teams' && (
@@ -163,7 +175,7 @@ const scope = board === 'impact' ? (pro ? 'Regular season.' : 'Every game.') : b
       <p class="text-muted" id="lb-empty">{read === 0 ? `There are no ${label} rows for this board yet.` : 'No row qualifies yet. Choose "All" to see every row.'}</p>
     ) : (
       <Fragment>
-        <p class="small text-muted mb-2" id="lb-caption">{sample} {scope} {capped && `The ${fmtInt(BOARD_CAP)} with the most possessions are read.`} {!pctAvailable ? 'Unshaded: the producer publishes no percentiles for this board yet.' : view === 'percentiles' ? 'Each cell is the producer’s percentile among qualifiers.' : 'Shading is the producer’s percentile among qualifiers.'} {board === 'impact' && 'Per 100 possessions, WAR in wins.'}</p>
+        <p class="small text-muted mb-2" id="lb-caption">{sample} {scope} {capped && `The ${fmtInt(BOARD_CAP)} with the most ${board === 'poe' ? 'field-goal attempts' : 'possessions'} are read.`} {!pctAvailable ? 'Unshaded: the producer publishes no percentiles for this board yet.' : view === 'percentiles' ? 'Each cell is the producer’s percentile among qualifiers.' : 'Shading is the producer’s percentile among qualifiers.'} {unitNote}</p>
         <div class="table-responsive">
           <table class="table table-sm align-middle table-fix-first-col" id="lb-table" data-board={board} data-basis={basis} data-view={view} data-sort={sort}>
             <thead>
@@ -186,6 +198,8 @@ const scope = board === 'impact' ? (pro ? 'Regular season.' : 'Every game.') : b
                     <td class="text-left text-nowrap">{t.href ? (<a href={t.href}>{t.name}</a>) : t.name}</td>); })()
                   : board === 'lineups' ? (() => { const ps = unitPlayers(r).map(fullName); const t = teamCell(r.team_id); return (
                     <td class="text-left" style="min-width: 10rem; max-width: 14rem" title={ps.join(', ')}>{ps.map((n) => short.get(n) ?? n).join(' · ')} <span class="text-muted small">{t.abbr}</span></td>); })()
+                  : board === 'value' || board === 'poe' ? (() => { const id = board === 'value' ? r.player_id : r.person_id; return (
+                    <td class="text-left text-nowrap"><a href={playerHref(Number(id), q, league)}>{board === 'value' ? String(r.player_name ?? `#${id}`) : fullName(id)}</a> <span class="text-muted small">{board === 'value' ? valueTeam(r) : String(r.team_tricode ?? '')}</span></td>); })()
                   : pro ? (
                     <td class="text-left text-nowrap"><a href={playerHref(Number(r.player_id), q, league)}>{String(r.player_name ?? `#${r.player_id}`)}</a> <span class="text-muted small">{String(r.teams ?? r.team_abbreviation ?? '')}</span></td>)
                   : (

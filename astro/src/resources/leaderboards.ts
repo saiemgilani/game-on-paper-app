@@ -11,8 +11,9 @@
  */
 import { retrieveRows, retrieveRowsFrom } from './sdv';
 import { retrieveSeasonPlayerRows } from './nbaShots';
+import { NBA_READ_TIMEOUT_MS } from './nbaGames';
 import { BASKETBALL } from '../basketball/config';
-import { PRO_LEAGUES, type BasketballLeague } from '../utils/league';
+import { leagueSource, PRO_LEAGUES, type BasketballLeague } from '../utils/league';
 import { boardSpec, srcFor, BASES, ncaaName, type Board, type BoardSpec, type TeamGroup, type UnitSize } from '../utils/leaderboards';
 
 /** The season products are rebuilt once a day: the season pages' window. */
@@ -32,6 +33,8 @@ export const IMPACT_FLOOR: Record<BasketballLeague, number> = { nba: 250, wnba: 
  * near-misses and the qualified view is exactly the producer's ranked units.
  */
 export const LINEUP_FLOOR: Record<BasketballLeague, number> = { nba: 150, wnba: 75, mbb: 75, wbb: 75 };
+/** BB-G27's POE read floor, in field-goal attempts: a third of the board's qualifier (POE_QUALIFIED_FGA). */
+export const POE_FLOOR: Record<BasketballLeague, number> = { nba: 100, wnba: 50, mbb: 40, wbb: 40 };
 
 /** Producer columns with no `_rank` / `_pct`: counts and samples. Every other column a board shows is ranked by the producer. */
 const UNRANKED = new Set(['games', 'poss', 'pts', 'opp_pts', 'wins', 'minutes', 'plus_minus', 'runs_10', 'opp_runs_10', 'kills', 'double_kills']);
@@ -54,10 +57,30 @@ const TEAM_TABLE: Record<TeamGroup, string> = { ratings: 'team_season_rates', fa
 export const LINEUP_IDENTITY = ['team_id', 'lineup_id', 'n_players', 'player_1', 'player_2', 'player_3', 'player_4', 'player_5'] as const;
 const PRO_IMPACT_IDENTITY = ['player_id', 'player_name', 'team_id', 'team_abbreviation', 'teams'] as const;
 const COLLEGE_IMPACT_IDENTITY = ['player_id', 'player', 'team'] as const;
+export const VALUE_IDENTITY = ['player_id', 'player_name', 'team_id', 'teams'] as const;
+/** player_war ranks VORP and WAR only (sdv-py attach_ranks), so the read asks for those four and no other `_rank` / `_pct`. */
+const VALUE_RANKS = ['vorp_rank', 'vorp_pct', 'war_rank', 'war_pct'] as const;
+export const POE_IDENTITY = ['person_id', 'team_id', 'team_tricode'] as const;
 
-export async function retrieveBoard(league: BasketballLeague, season: number, board: Board, group: TeamGroup, unit: UnitSize): Promise<BoardReads> {
+export async function retrieveBoard(league: BasketballLeague, season: number, board: Board, group: TeamGroup, unit: UnitSize, war = false): Promise<BoardReads> {
     const s = String(season);
-    const spec = boardSpec(board, league, group);
+    const spec = boardSpec(board, league, group, war);
+    if (board === 'value') {
+        // the season schema's player_war (sdv-db #202): the regular season for the pros; strict, so a 404 before its
+        // backfill is the board's "unavailable" line, never an empty board
+        const select = `${selectFor(spec, VALUE_IDENTITY, false)},${VALUE_RANKS.join(',')}`;
+        const rows = await retrieveRowsFrom<BoardRow>(leagueSource(league), 'player_war', { season: s, poss__gte: String(IMPACT_FLOOR[league]), order: '-poss', select, limit: String(BOARD_CAP) }, TTL, true, NBA_READ_TIMEOUT_MS);
+        return { rows, names: new Map() };
+    }
+    if (board === 'poe') {
+        // shot_quality_season's player rows (one per player and team), named from the season players: the same person id
+        // (stats.nba.com's for the pros, ESPN's in college) the player pages use
+        const [rows, names] = await Promise.all([
+            retrieveRowsFrom<BoardRow>(leagueSource(league), 'shot_quality_season', { season: s, level: 'player', attempts__gte: String(POE_FLOOR[league]), order: '-attempts', select: selectFor(spec, POE_IDENTITY, false), limit: String(BOARD_CAP) }, TTL, true, NBA_READ_TIMEOUT_MS),
+            retrieveSeasonPlayerRows(season, league).then((ps) => ps.map((p) => [String(p.person_id), p.player_name] as const)),
+        ]);
+        return { rows, names: new Map(names) };
+    }
     const pro = PRO_LEAGUES.includes(league);
     if (board === 'impact') {
         const q = { season: s, off_poss__gte: String(IMPACT_FLOOR[league]), order: '-off_poss', limit: String(BOARD_CAP) };
