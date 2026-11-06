@@ -65,6 +65,8 @@ function buildEntries(): Entry[] {
         { loc: '/standings/', lastmod: today, changefreq: 'weekly', priority: '0.6' },
         { loc: '/glossary/', lastmod: today, changefreq: 'monthly', priority: '0.5' },
         { loc: '/data-sources/', lastmod: today, changefreq: 'monthly', priority: '0.4' },
+        // server-rendered, so no trailing slash; listed once the page is public
+        ...(FLAGS['about-page'] === 'on' ? [{ loc: '/about', lastmod: today, changefreq: 'monthly', priority: '0.4' }] : []),
         { loc: '/charts/trends', lastmod: today, changefreq: 'weekly', priority: '0.5' },
         { loc: '/charts/builder', lastmod: today, changefreq: 'weekly', priority: '0.5' },
         { loc: '/changelog/', lastmod: today, changefreq: 'weekly', priority: '0.3' },
