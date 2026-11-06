@@ -2,25 +2,36 @@
 // One shot chart per team; ESPN's sentinel locations arrive as null, so a game with none shows a message, not an empty court.
 import GameShotChart from '../charts/GameShotChart.svelte';
 import type { NbaGame } from '../../../resources/nbaGame';
-import { shotsOf } from '../../../nba/data/game';
+import { shotsOf, unlocatedShots } from '../../../nba/data/game';
 import type { GameShot } from '../../../nba/charts/gameShotChart';
 import { cleanAbbreviation } from '../../../utils/misc';
 import { COURT } from '../../../nba/data/court';
 import { islandPeriodProps } from '../../../basketball/periods';
 import { basketball, courtFor } from '../../../basketball/config';
+import { placeholderNote } from '../../../nba/data/placeholder';
 
 interface Props { game: NbaGame }
 const { game } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const court = courtFor(league, game.season);
-const toShots = (teamId: string): GameShot[] => shotsOf(game.plays, Number(teamId)).map((p) => ({
-    x: p.xLegacy!, y: p.yLegacy!, made: p.scoringPlay, value: p.scoreValue || (/three point/i.test(p.text) ? 3 : 2), label: `${p.clock} ${p.text}`, period: p.period,
-}));
+const toShots = (teamId: string): GameShot[] => {
+    const plays = shotsOf(game.plays, Number(teamId));
+    // ESPN's college (25, 0) rule; every other league passes its shots untouched, so their island props do not change
+    const un = cfg.espnRimPlaceholder ? unlocatedShots(plays) : new Set();
+    return plays.map((p) => ({
+        x: p.xLegacy!, y: p.yLegacy!, made: p.scoringPlay, value: p.scoreValue || (/three point/i.test(p.text) ? 3 : 2), label: `${p.clock} ${p.text}`, period: p.period,
+        ...(un.has(p) ? { unlocated: true as const } : {}),
+    }));
+};
 const sides = [game.away, game.home].map((s) => ({ side: s, shots: toShots(s.team.id) }));
+const total = sides.reduce((n, s) => n + s.shots.length, 0);
+const unplaced = sides.reduce((n, s) => n + s.shots.filter((x) => x.unlocated).length, 0);
 ---
 {sides.every((s) => s.shots.length === 0)
     ? <p class="text-muted m-0">ESPN has no shot locations for this game.</p>
+    : unplaced === total
+    ? <p class="text-muted m-0">ESPN has no shot locations for this game: {placeholderNote(unplaced, total, 'game')}</p>
     : <div class="row">{sides.map(({ side, shots }) => (
         <div class="col-12 col-lg-6"><h3 class="h6">{cleanAbbreviation(side.team)}</h3><GameShotChart client:load shots={shots} title={`${side.team.displayName} shots`} periods={game.periods} {...islandPeriodProps(game.regulation, game.periodKind)} {...(court === COURT ? {} : { court })} /></div>
     ))}</div>}

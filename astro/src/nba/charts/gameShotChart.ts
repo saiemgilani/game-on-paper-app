@@ -4,8 +4,9 @@ import { COURT, toSvg, type Viewport } from "../data/court";
 import { COURT_PAD, COURT_TOP, courtViewport, DEFAULT_WIDTH, drawCourt } from "./court";
 import { setViewBox, TOKENS, type G } from "./theme";
 import type { Court } from "../../basketball/config";
+import { placeholderNote } from "../data/placeholder";
 
-export interface GameShot { x: number; y: number; made: boolean; value: number; label: string; period: number }
+export interface GameShot { x: number; y: number; made: boolean; value: number; label: string; period: number; unlocated?: true }
 export interface ShotMark { cx: number; cy: number; made: boolean; value: number; label: string }
 export const GAME_SHOT_VIEWBOX = { width: DEFAULT_WIDTH, height: courtViewport().height };
 const R = 4.5;
@@ -21,13 +22,14 @@ export function shotMarks(shots: GameShot[], v: Viewport): ShotMark[] {
 // `shots.filter(onDrawnCourt)` passes the array index as `court` (hence `| number`): anything but a court object means COURT.
 export function onDrawnCourt(s: GameShot, court?: Court | number): boolean {
   const c = typeof court === "object" && court !== null ? court : COURT;
-  return s.y <= COURT_TOP && s.y >= c.baselineY - COURT_PAD && Math.abs(s.x) <= c.halfWidth + COURT_PAD;
+  return !s.unlocated && s.y <= COURT_TOP && s.y >= c.baselineY - COURT_PAD && Math.abs(s.x) <= c.halfWidth + COURT_PAD;
 }
 
 export function describeShots(shots: GameShot[], court: Court = COURT): string {
   const threes = shots.filter((s) => s.value === 3);
-  const off = shots.filter((s) => !onDrawnCourt(s, court)).length;
-  return `${shots.filter((s) => s.made).length} of ${shots.length} field goals made, ${threes.filter((s) => s.made).length} of ${threes.length} threes${off ? `; ${off} from beyond the drawn court not shown` : ''}`;
+  const none = shots.filter((s) => s.unlocated).length;
+  const off = shots.filter((s) => !s.unlocated && !onDrawnCourt(s, court)).length;
+  return `${shots.filter((s) => s.made).length} of ${shots.length} field goals made, ${threes.filter((s) => s.made).length} of ${threes.length} threes${off ? `; ${off} from beyond the drawn court not shown` : ''}${none ? `; ${placeholderNote(none, shots.length, 'game')}` : ''}`;
 }
 
 export function renderGameShotChart(svg: SVGSVGElement, shots: GameShot[], { width, court = COURT }: { width: number; court?: Court }): () => void {

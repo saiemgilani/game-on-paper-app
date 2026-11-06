@@ -2,7 +2,14 @@
 // PR 0 (basketball generalization) gate: the rendered HTML of every /nba route state. A diff is a regression in the
 // refactor, so these files are never regenerated from the branch. When main itself changes the NBA render (a header
 // island, a dependency bump), re-capture them ON MAIN: a detached worktree of main, with only this harness and its
-// fixtures copied in, then copy the snapshots back. First captured on 81dbaf1e; last re-captured on main 7e71f2d6.
+// fixtures copied in, then copy the snapshots back. First captured on 81dbaf1e, then re-captured on main 7e71f2d6.
+// The Plausible markup alone was carried over from renders on main 06d88c0c after #419 changed the shared layout.
+// player.html and team.html were re-captured on feat/basketball-square-bins, which changes the shot chart on purpose
+// (square bins, the distance link): that diff is the shot-chart island and its Squares button, nothing else.
+// game-*.html and pregame.html were re-captured on feat/basketball-parity: a SportsEvent JSON-LD script on each, and the
+// pregame's Players to Watch card (with DarkModeLogos' CSS for its two team logos).
+// home, leaders, player, players, scatter, team and teams .html were re-captured on feat/basketball-2026-27: the NBA lists
+// 2026-27, so each season picker gains it and the 2025-26 pages these captures load carry ?season=2026 in canonical and links.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
