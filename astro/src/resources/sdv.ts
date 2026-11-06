@@ -1366,6 +1366,8 @@ export async function retrieveTeamOpponentSplits(season: number, teamId: string 
 /** The columns the Team Stats game-set panel sums; the rest of a row is never read there. */
 export const SEASON_SPLIT_COLUMNS = ['game_id', 'team_id', 'opponent_id', 'season_type', 'week', 'is_home', 'points_for', 'points_against', 'plays', 'epa_per_play', 'success_rate'];
 export const SEASON_SPLITS_TIMEOUT_MS = 10_000;
+// the API's default page is 1000 rows; a CFB season is ~1,900
+export const SEASON_SPLITS_LIMIT = 5000;
 
 /**
  * Every team-game row of a season ('game-set-filter'): the Team Stats panel's
@@ -1376,12 +1378,12 @@ export const SEASON_SPLITS_TIMEOUT_MS = 10_000;
  */
 export async function retrieveSeasonOpponentSplits(season: number, league: League = 'cfb'): Promise<SDVTeamOpponentSplit[] | null> {
     if (!LEAGUES[league].sdvEnabled) return null;
-    // the API's default page is 1000 rows; a CFB season is ~1,900
-    const query = new URLSearchParams({ season: String(season), select: SEASON_SPLIT_COLUMNS.join(','), limit: '5000' });
+    const query = new URLSearchParams({ season: String(season), select: SEASON_SPLIT_COLUMNS.join(','), limit: String(SEASON_SPLITS_LIMIT) });
     try {
         const content = await requestSDV('team_opponent_splits', query, undefined, 60 * 60 * 24 * 3, true, leagueSource(league), true, SEASON_SPLITS_TIMEOUT_MS);
         if (!Array.isArray(content?.data)) throw new Error('no data array');
-        if (content.next) throw new Error('more rows than one page');
+        // the API leaves `next` null on a page cut short by `limit`, so a full page counts as truncated too
+        if (content.next || content.data.length >= SEASON_SPLITS_LIMIT) throw new Error(`more rows than one ${SEASON_SPLITS_LIMIT}-row page`);
         return content.data;
     } catch (e) {
         console.error(`ERROR while loading the season's team_opponent_splits (${league} ${season}): ${e}`);
