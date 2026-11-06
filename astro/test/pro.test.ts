@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
@@ -37,6 +37,7 @@ beforeEach(async () => {
     SESSION.m.clear();
     PRO_BUCKET.m.clear();
     PRO_BUCKET.lag = 0;
+    PRO_BUCKET.pageSize = Infinity;
     await SESSION.put('pro:ent:coach@example.edu', JSON.stringify(live));
     await SESSION.put('pro:ent:old@example.edu', JSON.stringify(lapsed));
     await SESSION.put('pro:ent:fan@example.com', JSON.stringify(analyst));
@@ -174,6 +175,14 @@ describe('the magic link', () => {
         expect(PRO_BUCKET.m.size).toBe(2);  // the fresh marker and the quota counter stay
     });
 
+    test('the sweep follows the cursor past a truncated listing', async () => {
+        const stale = new Date(Date.now() - 86_400_000 - 1);
+        for (let i = 0; i < 7; i++) PRO_BUCKET.m.set(`auth/tok/${i}.json`, { v: '{}', etag: `s${i}`, uploaded: i === 3 ? new Date() : stale });
+        PRO_BUCKET.pageSize = 2;
+        expect(await sweepLoginMarkers()).toBe(6);
+        expect([...PRO_BUCKET.m.keys()]).toEqual(['auth/tok/3.json']);
+    });
+
     test('/pro/auth: a GET (an email scanner) spends nothing; the POST sets a cookie once', async () => {
         const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
         const { default: Auth } = await import('../src/pages/pro/auth.astro');
@@ -193,12 +202,12 @@ describe('the magic link', () => {
         expect(await page.text()).not.toContain('plausible.io');
         // the GET hands this browser a nonce, and keeps one it already has
         const set = page.headers.get('Set-Cookie') ?? '';
-        expect(set).toMatch(/^gop_pro_auth=[0-9a-f]{64}; Path=\/pro\/auth; Max-Age=900; HttpOnly; Secure; SameSite=Lax$/);
+        expect(set).toMatch(/^__Host-gop_pro_auth=[0-9a-f]{64}; Path=\/; Max-Age=900; HttpOnly; Secure; SameSite=Lax$/);
         const nonce = set.split(';')[0].split('=')[1];
-        const kept = await container.renderToResponse(Auth, { request: new Request(`https://gameonpaper.com/pro/auth?t=${t}`, { headers: { cookie: `gop_pro_auth=${nonce}` } }), locals });
+        const kept = await container.renderToResponse(Auth, { request: new Request(`https://gameonpaper.com/pro/auth?t=${t}`, { headers: { cookie: `__Host-gop_pro_auth=${nonce}` } }), locals });
         expect(kept.headers.get('Set-Cookie')).toBeNull();
         const post = (n: string | null) => container.renderToResponse(Auth, {
-            request: new Request('https://gameonpaper.com/pro/auth', { method: 'POST', body: new URLSearchParams({ t }), headers: n ? { cookie: `gop_pro_auth=${n}` } : {} }), locals,
+            request: new Request('https://gameonpaper.com/pro/auth', { method: 'POST', body: new URLSearchParams({ t }), headers: n ? { cookie: `__Host-gop_pro_auth=${n}` } : {} }), locals,
         });
         expect((await post(null)).headers.get('Location')).toBe('/pro/login?err=1');  // no nonce: nothing spent
         expect(PRO_BUCKET.m.size).toBe(0);
@@ -398,7 +407,7 @@ describe('the pages', () => {
         const rows = html.split('id="pro-board-table"')[1].split('</table>')[0].split('data-key=').slice(1);
         expect(rows[0]).toContain('$1.90M');  // highest projected value first
         expect(rows[0]).toContain('66 <span');
-        expect(rows[0]).toContain('71 · $2.10M');  // next season, actual
+        expect(rows[0]).toContain('71 / $2.10M');  // next season, actual
         expect(rows[1]).toContain('$420K');
         expect(html.split('id="pro-board-scarcity"')[1].split('</div>')[0]).toContain('QB 1.25');
         expect(html).toContain('id="pro-board-check-table"');
@@ -414,6 +423,13 @@ describe('the pages', () => {
         expect(html).toContain('Contact us');
         expect(html).not.toContain('Subscribe</a>');
     }, 60_000);
+
+    test('no interpunct separators on the Pro pages (design-conventions: "replace dot")', () => {
+        const dir = new URL('../src/pages/pro/', import.meta.url);
+        const pages = (readdirSync(dir, { recursive: true }) as string[]).map((f) => f.replaceAll('\\', '/')).filter((f) => f.endsWith('.astro'));
+        expect(pages).toContain('players/[id].astro');  // the scan found the tree
+        for (const f of pages) expect(readFileSync(new URL(f, dir), 'utf8'), f).not.toContain('·');
+    });
 
     test('the profile valuation panel: tiles, routes, rushing over expected, labelled as a model', async () => {
         const html = await render('../src/pages/pro/players/[id].astro', '/pro/players/1', { id: '1' });

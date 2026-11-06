@@ -9,7 +9,7 @@
  * Astro's origin check rejects a cross-site POST before this runs, and the
  * middleware keeps this path no-store.
  *
- * The GET also gives the browser a random `gop_pro_auth` nonce cookie (kept if it
+ * The GET also gives the browser a random `__Host-gop_pro_auth` nonce cookie (kept if it
  * already has one; no server state). The POST spends the token for that nonce, so
  * if its response is lost, the same browser can press Sign in again, or reopen the
  * link, and finish within PRO_AUTH_RETRY_S. A different browser cannot.
@@ -46,10 +46,10 @@ const token = Astro.url.searchParams.get('t') ?? '';
 Astro.response.headers.set('Referrer-Policy', 'no-referrer');
 if (token && !/^[0-9a-f]{64}$/.test(readCookie(Astro.request.headers.get('cookie'), PRO_AUTH_NONCE_COOKIE) ?? '')) {
     const nonce = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, '0')).join('');
-    const secure = Astro.url.protocol === 'https:' ? ' Secure;' : '';
-    // Lax, not Strict: the GET arrives from an email client, a cross-site navigation
+    // Lax, not Strict: the GET arrives from an email client, a cross-site navigation. The
+    // __Host- name needs Secure and Path=/ (browsers accept Secure on http://localhost too)
     Astro.response.headers.append('Set-Cookie',
-        `${PRO_AUTH_NONCE_COOKIE}=${nonce}; Path=/pro/auth; Max-Age=${PRO_TOKEN_TTL_S}; HttpOnly;${secure} SameSite=Lax`);
+        `${PRO_AUTH_NONCE_COOKIE}=${nonce}; Path=/; Max-Age=${PRO_TOKEN_TTL_S}; HttpOnly; Secure; SameSite=Lax`);
 }
 ---
 <GenericPage title="Sign in | Game on Paper Pro" subtitle="Sign in to Game on Paper Pro" slug="/pro/auth" heading="Sign in to Game on Paper Pro" noAnalytics

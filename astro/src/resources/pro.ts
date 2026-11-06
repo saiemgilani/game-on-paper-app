@@ -73,7 +73,7 @@ export async function claimLoginSend(email: string): Promise<boolean> {
  * get-then-delete could: KV has no compare-and-set and a delete takes up to 60 s to reach
  * other PoPs). The KV entry is left to its 15-minute TTL, so nothing works past that.
  *
- * Retry-safe: `nonce` is the `gop_pro_auth` cookie the GET gave this browser. The marker
+ * Retry-safe: `nonce` is the `__Host-gop_pro_auth` cookie the GET gave this browser. The marker
  * keeps its hash, so the SAME browser may spend the token again within PRO_AUTH_RETRY_S
  * of the first spend (a POST whose response was lost: closed tab, dropped connection).
  * Any other browser, or the same one after the window, gets null. A GET never calls this.
