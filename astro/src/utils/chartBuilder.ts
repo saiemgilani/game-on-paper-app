@@ -6,19 +6,30 @@ import { SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS } from './constants';
 import { leaguePath, type League } from './league';
 import { generateCategoryForMetric, generateSubCategoryForMetric, generateTeamMetricTitle, metricHasBetterSide, shouldInvertSortForMetric } from './misc';
 import { PREVIEW_PATH_PREFIX } from './preview';
+import { METRICS, resolveMetric } from '../resources/metricRegistry';
 
 /** The caption colours the builder already draws in. */
 export const CHART_TEXT = { light: '#525252', dark: '#e8e6e3' } as const;
 
 export type MarkMode = 'logos' | 'dots';
 
+/** 'metric-registry' (F13): the bases an offense wants low, from the registry (adds start_position).
+ *  turnovers is not registered, so it is carried over from misc.ts's list. */
+export const REGISTRY_WANTS_LOW = [...Object.values(METRICS).filter((m) => m.polarity === 'lower').map((m) => m.key), 'turnovers'];
+
+/** A column's title; with `registry` ('metric-registry') the registry's label first, else today's. */
+export function metricTitle(metric: string, registry = false): string {
+    return generateTeamMetricTitle(metric, registry ? resolveMetric : undefined);
+}
+
 /**
  * The builder's one answer for "is lower better" on an axis: a metric's own side picks the category.
  * v2 never flips a style/volume column (no better side), so its High/Low captions read on the
- * unflipped scale; the public builder (v2 off) flips as before.
+ * unflipped scale; the public builder (v2 off) flips as before. `registry` ('metric-registry') takes the
+ * lower-is-better list from the metric registry (start_position).
  */
-export function lowerIsBetter(metric: string, v2: boolean): boolean {
-    return (!v2 || metricHasBetterSide(metric)) && shouldInvertSortForMetric(metric.includes('_def') ? 'defensive' : 'offensive', metric);
+export function lowerIsBetter(metric: string, v2: boolean, registry = false): boolean {
+    return (!v2 || metricHasBetterSide(metric)) && shouldInvertSortForMetric(metric.includes('_def') ? 'defensive' : 'offensive', metric, registry ? REGISTRY_WANTS_LOW : undefined);
 }
 
 /** Median of the finite values; a team with no value (null) is skipped, never read as 0. */
@@ -44,20 +55,20 @@ const FAMILY_ORDER = ['Differential: Passing', 'Differential: Rushing', 'Differe
 const NOT_METRICS = ['fbs_class', 'valid_games', 'team_id', 'pos_team', 'division', 'conference', 'season'];
 
 /** Every plottable team column once, grouped as the builder's selects group them today. */
-export function metricRail(columns: string[] = SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS): RailFamily[] {
+export function metricRail(columns: string[] = SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, registry = false): RailFamily[] {
     const byFamily = new Map<string, RailFamily>();
     for (const m of columns) {
         if (NOT_METRICS.includes(m) || m.endsWith('_rank')) continue;
         if ((m.includes('passrate') && m.includes('_rush')) || (m.includes('rushrate') && m.includes('_pass'))) continue;
         const family = `${generateCategoryForMetric(m)}: ${generateSubCategoryForMetric(m)}`;
         if (!byFamily.has(family)) byFamily.set(family, { family, metrics: [] });
-        byFamily.get(family)!.metrics.push({ key: m, title: generateTeamMetricTitle(m) });
+        byFamily.get(family)!.metrics.push({ key: m, title: metricTitle(m, registry) });
     }
     return FAMILY_ORDER.filter((f) => byFamily.has(f)).map((f) => byFamily.get(f)!);
 }
 
-export function chartTitle(x: string, y: string, season: string | number, filtered: boolean): string {
-    return `${generateTeamMetricTitle(y)} vs ${generateTeamMetricTitle(x)} (${season})${filtered ? ' (Filtered)' : ''}`;
+export function chartTitle(x: string, y: string, season: string | number, filtered: boolean, registry = false): string {
+    return `${metricTitle(y, registry)} vs ${metricTitle(x, registry)} (${season})${filtered ? ' (Filtered)' : ''}`;
 }
 
 /** Two different keys for the Random button; `rand` is injectable so tests are deterministic. */
@@ -116,11 +127,12 @@ export function chartLabelLayout(area: PlotArea, viewport: 'xs' | 'sm' | 'md' | 
 }
 
 /** The one-line empty state when the loaded season has no values to plot, or null when there is something to draw. */
-export function emptyChartMessage(points: { x: unknown; y: unknown }[], x: string, y: string, season: string | number): string | null {
+export function emptyChartMessage(points: { x: unknown; y: unknown }[], x: string, y: string, season: string | number, registry = false): string | null {
     const has = (k: 'x' | 'y') => points.some((p) => Number.isFinite(p[k]));
     const missing = [!has('x') && x, !has('y') && y].filter((m): m is string => !!m);
     if (points.length > 0 && missing.length === 0) return null;
-    const metrics = missing.length === 1 ? generateTeamMetricTitle(missing[0]) : `${generateTeamMetricTitle(x)} vs ${generateTeamMetricTitle(y)}`;
+    const title = (m: string) => metricTitle(m, registry);
+    const metrics = missing.length === 1 ? title(missing[0]) : `${title(x)} vs ${title(y)}`;
     return `No data for ${metrics} in ${season}.`;
 }
 

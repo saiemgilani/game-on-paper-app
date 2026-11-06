@@ -29,6 +29,7 @@ export interface ChartBuilderData {
     v2: boolean;
     highlight: string;
     mode: MarkMode;
+    registry: boolean;
 }
 
 export async function loadChartBuilder(Astro: AstroGlobal, league: League): Promise<ChartBuilderData> {
@@ -62,5 +63,6 @@ export async function loadChartBuilder(Astro: AstroGlobal, league: League): Prom
     const v2 = isFeatureEnabled('chart-builder-v2', Astro.locals);
     const highlight = v2 ? (query.get('hl') ?? '').slice(0, 60) : '';
     const mode: MarkMode = v2 && query.get('mode') === 'dots' ? 'dots' : 'logos';
-    return { league, season, metricX, metricY, points, v2, highlight, mode };
+    const registry = isFeatureEnabled('metric-registry', Astro.locals);
+    return { league, season, metricX, metricY, points, v2, highlight, mode, registry };
 }

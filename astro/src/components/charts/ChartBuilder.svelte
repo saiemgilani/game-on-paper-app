@@ -4,20 +4,22 @@
     import { type ChartConfiguration, type ChartItem } from 'chart.js';
     import { chartGridLines } from '../../resources/chart';
     import { AVAILABLE_SEASONS, SDV_TEAM_SUMMARY_AVAILABLE_COLUMNS, SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants';
-    import { formatNumberForMetric, generateTeamMetricTitle, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, metricHasBetterSide, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite, escapeHtml } from '../../utils/misc'
+    import { formatNumberForMetric, getAxisTitleSizeForViewport, getCurrentViewport, getImageSizeForViewport, getTitleSizeForViewport, roundNumber, waitForElement, metricHasBetterSide, generateCategoryForMetric, generateSubCategoryForMetric, STANDARD_THEME_COLOR, cleanField, generateColorRampValue, isTeamFavorite, escapeHtml } from '../../utils/misc'
     import "bootstrap-icons/font/bootstrap-icons.css";
-    import { builderUrl, CHART_TEXT, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, lowerIsBetter, metricRail, plottedMedians, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
+    import { builderUrl, CHART_TEXT, chartLabelLayout, chartSummary, chartTitle, emptyChartMessage, keepPreviewSurface, LABEL_PX, lowerIsBetter, metricRail, metricTitle, plottedMedians, quadrantLabels, randomAxes } from '../../utils/chartBuilder';
 
     // `league` comes from the SSR page; the FBS group/conference filters and
     // copy only make sense for college football
-    const { season, x, y, points, league = 'cfb', v2 = false, highlight = '', mode = 'logos' } = $props();
+    const { season, x, y, points, league = 'cfb', v2 = false, highlight = '', mode = 'logos', registry = false } = $props();
+    // 'metric-registry': titles and the lower-is-better list from the metric registry; off, today's
+    const generateTeamMetricTitle = (m: string) => metricTitle(m, registry);
     let selectedSeason = season;
     let selectedMetricX = x;
     let selectedMetricY = y;
 
     // v2 ('chart-builder-v2'): the bar above the chart only edits these. Plot is a GET of the builder URL
     // (SSR, cached per URL), so the chart and table keep showing the loaded season/x/y until then.
-    const metricFamilies = metricRail();
+    const metricFamilies = metricRail(undefined, registry);
     const metricKeys = metricFamilies.flatMap((f) => f.metrics.map((m) => m.key));
     let formSeason = $state(String(season));
     let formX = $state(x);
@@ -40,7 +42,7 @@
     let selectedConferenceFilter = $state("all");
     // v2: one answer for "is a filter on", read by the chart title and the canvas's accessible name
     let filtered = $derived(selectedFBSClassFilter !== 'all' || selectedConferenceFilter !== 'all');
-    let flipArrow = $derived(lowerIsBetter(selectedSort == "x" ? selectedMetricX : selectedMetricY, v2))
+    let flipArrow = $derived(lowerIsBetter(selectedSort == "x" ? selectedMetricX : selectedMetricY, v2, registry))
     let chartedPoints = $derived(
         points
             .filter((p) => (selectedFBSClassFilter == "all") || (selectedFBSClassFilter == p.fbs_class))
@@ -126,8 +128,8 @@
         const lineMultiplier = 0.125
         const xAdjust = 0.05
 
-        const shouldFlipYAxis = lowerIsBetter(selectedMetricY, v2);
-        const shouldFlipXAxis = lowerIsBetter(selectedMetricX, v2);
+        const shouldFlipYAxis = lowerIsBetter(selectedMetricY, v2, registry);
+        const shouldFlipXAxis = lowerIsBetter(selectedMetricX, v2, registry);
         const quadrants = quadrantLabels(generateTeamMetricTitle(selectedMetricX), generateTeamMetricTitle(selectedMetricY),
             metricHasBetterSide(selectedMetricX), metricHasBetterSide(selectedMetricY));
         if (crosshair) {
@@ -347,7 +349,7 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: v2 ? chartTitle(selectedMetricX, selectedMetricY, selectedSeason, filtered) : `${generateTeamMetricTitle(selectedMetricX)} vs ${generateTeamMetricTitle(selectedMetricY)} - ${selectedSeason}`,
+                        text: v2 ? chartTitle(selectedMetricX, selectedMetricY, selectedSeason, filtered, registry) : `${generateTeamMetricTitle(selectedMetricX)} vs ${generateTeamMetricTitle(selectedMetricY)} - ${selectedSeason}`,
                         color: (isDarkMode) ? "white" : "black",
                         // v2: drop the title below the credit lines, which it overlaps at desktop width (drawn on lg/xl only)
                         ...(v2 && (viewport == "xl" || viewport == "lg") ? { padding: { top: 34, bottom: 10 } } : {}),
@@ -399,7 +401,7 @@
         try {
             const context = await waitForElement(document, "metric_chart_canvas")
             // v2: a season with no values for the pair names what is missing in the error note
-            const empty = v2 ? emptyChartMessage(points, selectedMetricX, selectedMetricY, selectedSeason) : null;
+            const empty = v2 ? emptyChartMessage(points, selectedMetricX, selectedMetricY, selectedSeason, registry) : null;
             if (empty) throw new ChartNoteError(empty);
             if (chartedPoints.length == 0) {
                 throw new Error("Unable to generate chart, no points available.")
@@ -550,7 +552,7 @@
     </form>
 </div>
 <div class="container mb-3" id="chart_container">
-    <canvas id="metric_chart_canvas" class="mb-3" width="1200" height="800" role="img" aria-label={chartTitle(selectedMetricX, selectedMetricY, selectedSeason, filtered)} aria-describedby="chart-summary"></canvas>
+    <canvas id="metric_chart_canvas" class="mb-3" width="1200" height="800" role="img" aria-label={chartTitle(selectedMetricX, selectedMetricY, selectedSeason, filtered, registry)} aria-describedby="chart-summary"></canvas>
 </div>
 <p class="visually-hidden" id="chart-summary">{summary}</p>
 {:else}
