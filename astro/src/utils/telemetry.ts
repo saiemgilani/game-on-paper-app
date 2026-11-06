@@ -16,12 +16,29 @@ export type GopCollector = {
   missing_datasets: string[] | null;
   cache_status: string | null;
   events: GopEvent[];
+  /** the visitor this request serves, forwarded to the API by callerHeaders() */
+  client?: { ip: string | null; ua: string; page: string };
 };
 
 export const gopStorage = new AsyncLocalStorage<GopCollector>();
 
 export function createCollector(): GopCollector {
   return { game_id: null, render_outcome: null, missing_datasets: null, cache_status: null, events: [] };
+}
+
+/**
+ * The visitor behind the current request, as headers for an API call. The API logs a
+ * /process call when it finishes, while this Worker logs only after it responds: a
+ * visitor who gives up on a slow page leaves no Worker row, only the API's, which would
+ * otherwise carry nothing but the Worker's own address (2026-11-03: at p50 30s, 75-90%
+ * of /process calls had no Worker row to attribute them).
+ */
+export function callerHeaders(): Record<string, string> {
+  const c = gopStorage.getStore()?.client;
+  if (!c) return {};
+  const h: Record<string, string> = { 'X-GOP-Client-UA': c.ua.slice(0, 400), 'X-GOP-Page': c.page.slice(0, 300) };
+  if (c.ip) h['X-GOP-Client-IP'] = c.ip;
+  return h;
 }
 
 export function classifyTarget(url: string, pythonBase?: string, summaryBase?: string): string {

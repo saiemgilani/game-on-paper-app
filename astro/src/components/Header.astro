@@ -104,9 +104,12 @@ const lp = (p: string) => leaguePath(league, p);
                         </a>
                         <ul class="dropdown-menu">
                             {football && (<li><a href={lp("/game/matchup")} class="dropdown-item">Matchup Builder</a></li>)}
+                            {league === 'cfb' && isFeaturePublic("playoff-projection", Astro.locals) && (<li><a href="/playoff" class="dropdown-item">Playoff Projection</a></li>)}
                             <li><a href="/glossary" class="dropdown-item">Glossary</a></li>
                             <li><a href="/data-sources" class="dropdown-item">Data & Sources</a></li>
                             <li><a href="/changelog" class="dropdown-item">Changelog</a></li>
+                            {/* only once 'pro' is public, like the NBA entry: the Header is on every cached page */}
+                            {league === 'cfb' && isFeaturePublic("pro", Astro.locals) && (<li><a href="/pro" class="dropdown-item">Game on Paper Pro</a></li>)}
                         </ul>
                     </li>
                 </ul>

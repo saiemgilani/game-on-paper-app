@@ -1,0 +1,158 @@
+---
+/**
+ * Game on Paper Pro pricing (plan 3.4; tiers from the design spec's section 3). Card
+ * tiers buy through Stripe Payment Links read from env (PRO_LINK_ANALYST_MONTHLY and
+ * friends), and say "Contact us" until one is set. Program, Portal Board, Agency,
+ * Dossier and consulting go through the invoice-request form below, which mails the
+ * request to PRO_CONTACT_EMAIL through resources/pro.ts sendEmail.
+ * ponytail: entitlements are written by hand from /admin after payment, until there
+ * are enough customers that a Stripe webhook pays for itself.
+ *
+ * Behind the 'pro' flag in middleware like /pro/**, and not prerendered for the same
+ * reason as the methodology page.
+ */
+import { getSecret } from 'astro:env/server';
+import GenericPage from '../layouts/GenericPage.astro';
+import { isEmail, normalizeEmail } from '../utils/pro';
+import { sendEmail } from '../resources/pro';
+
+const link = (name: string) => {
+    const v = getSecret(name);
+    return v && v.startsWith('https://') ? v : null;
+};
+const card = [
+    { tier: 'Analyst', who: 'Media, independent analysts, small agents, families',
+      includes: 'Profiles on the web for every player, compare, export of derived metrics, 10 PDFs a month',
+      monthly: ['$29/mo', link('PRO_LINK_ANALYST_MONTHLY')], annual: ['$249/yr', link('PRO_LINK_ANALYST_ANNUAL')] },
+    { tier: 'Pro seat', who: 'An individual coach or staffer. The seat is yours and follows you to a new job',
+      includes: 'Analyst, plus unlimited PDFs, the weekly Scout Pack and self-scout',
+      monthly: ['$179/mo', link('PRO_LINK_PRO_MONTHLY')], annual: ['$1,499/yr', link('PRO_LINK_PRO_ANNUAL')] },
+] as const;
+const invoiced = [
+    { tier: 'Program', who: "A school's whole staff", includes: 'Unlimited seats, everything above',
+      price: 'P4 $7,500 / G5 $4,000 / FCS $2,000 / D-II, NAIA, JUCO and high school $750, per year' },
+    { tier: 'Portal Board add-on', who: 'Programs and agencies', includes: 'The board, its CSV and the morning digest',
+      price: '$1,995/yr, one published price for every D-I school; $750/yr outside D-I' },
+    { tier: 'Agency', who: 'Agencies', includes: 'Profiles for your roster, refreshed at each portal window and at season end',
+      price: '$750 / $1,500 / $2,500 per month for up to 25 / 75 / 200 players, billed annually. Single profile $350, 10-pack $1,000' },
+    { tier: 'Coach Dossier', who: 'ADs and search firms', includes: 'One candidate, or a shortlist of five',
+      price: '$2,500 / $7,500' },
+    { tier: 'Consulting', who: 'Anyone', includes: 'Fixed-scope projects such as a fourth-down audit or a custom opponent pack',
+      price: 'From $3,500' },
+];
+
+let sent: 'no' | 'ok' | 'invalid' | 'failed' = 'no';
+if (Astro.request.method === 'POST') {
+    let form: FormData | null = null;
+    try { form = await Astro.request.formData(); } catch { /* empty */ }
+    const field = (k: string) => String(form?.get(k) ?? '').trim().slice(0, 2000);
+    const email = normalizeEmail(field('email'));
+    const product = field('product');
+    if (field('website')) {
+        sent = 'ok';  // the honeypot: a bot filled the hidden field, so drop it quietly
+    } else if (!isEmail(email) || !invoiced.some((t) => t.tier === product)) {
+        sent = 'invalid';
+    } else {
+        const to = getSecret('PRO_CONTACT_EMAIL');
+        const ok = !!to && await sendEmail({
+            to, replyTo: email,
+            subject: `Pro invoice request: ${product}`,
+            text: [`Product: ${product}`, `Name: ${field('name')}`, `Email: ${email}`,
+                   `Organization: ${field('org')}`, '', field('message')].join('\n'),
+        });
+        sent = ok ? 'ok' : 'failed';
+    }
+}
+---
+<GenericPage title="Pricing | Game on Paper Pro" subtitle="Game on Paper Pro plans and prices" slug="/pricing"
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Pricing', active: true }]} heading="Game on Paper Pro pricing">
+    <div class="container mb-4">
+        <h1 class="fs-3">Game on Paper Pro</h1>
+        <p>
+            Player profiles with percentile bands, PFF grades, the transfer portal board, scouting reports, and player and roster
+            valuation. Dollar figures are model estimates at revenue-share rates, never reported NIL deals.
+            Every number is explained on the <a href="/pro/methodology">methodology</a> page. Already subscribed? <a href="/pro/login">Sign in</a>.
+        </p>
+
+        <h2 class="fs-4 mt-4">Individual plans</h2>
+        <div class="table-responsive">
+            <table class="table table-sm" id="pricing-card">
+                <thead>
+                    <tr>
+                        <th class="text-left" colspan="1">Plan</th>
+                        <th class="text-left" colspan="1">Includes</th>
+                        <th class="text-center" colspan="1">Monthly</th>
+                        <th class="text-center" colspan="1">Annual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {card.map((t) => (
+                        <tr>
+                            <td class="text-left" colspan="1"><strong>{t.tier}</strong><br /><span class="text-muted text-small">{t.who}</span></td>
+                            <td class="text-left" colspan="1">{t.includes}</td>
+                            {[t.monthly, t.annual].map(([price, href]) => (
+                                <td class="text-center" colspan="1">
+                                    <span class="numeral">{price}</span><br />
+                                    {href
+                                        ? <a class="btn btn-sm btn-outline-secondary" href={href}>Subscribe</a>
+                                        : <a class="text-small" href="#pricing-contact">Contact us</a>}
+                                </td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="fs-4 mt-4">Programs, agencies and reports</h2>
+        <div class="table-responsive">
+            <table class="table table-sm" id="pricing-invoiced">
+                <thead>
+                    <tr>
+                        <th class="text-left" colspan="1">Plan</th>
+                        <th class="text-left" colspan="1">Includes</th>
+                        <th class="text-left" colspan="1">Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {invoiced.map((t) => (
+                        <tr>
+                            <td class="text-left" colspan="1"><strong>{t.tier}</strong><br /><span class="text-muted text-small">{t.who}</span></td>
+                            <td class="text-left" colspan="1">{t.includes}</td>
+                            <td class="text-left" colspan="1">{t.price}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+        <p class="text-muted text-small">These are invoiced. Ask for a quote or an invoice below.</p>
+
+        <h2 class="fs-4 mt-4" id="pricing-contact">Request an invoice</h2>
+        <div class="row">
+            <div class="col-lg-6 col-12">
+                {sent === 'ok'
+                    ? <p id="pricing-sent">Thanks. We'll reply by email.</p>
+                    : (
+                    <form method="post" action="/pricing#pricing-contact" id="pricing-form">
+                        {sent === 'invalid' && <p class="text-danger text-small">Pick a plan and give a working email.</p>}
+                        {sent === 'failed' && <p class="text-danger text-small">That didn't send. Reach us on <a href="https://bsky.app/profile/gameonpaper.com">Bluesky</a> instead.</p>}
+                        <label class="form-label" for="pricing-product">Plan</label>
+                        <select class="form-select mb-2" id="pricing-product" name="product" required>
+                            {invoiced.map((t) => <option value={t.tier}>{t.tier}</option>)}
+                        </select>
+                        <label class="form-label" for="pricing-name">Name</label>
+                        <input class="form-control mb-2" id="pricing-name" name="name" autocomplete="name" required />
+                        <label class="form-label" for="pricing-email">Email</label>
+                        <input class="form-control mb-2" type="email" id="pricing-email" name="email" autocomplete="email" required />
+                        <label class="form-label" for="pricing-org">School or organization</label>
+                        <input class="form-control mb-2" id="pricing-org" name="org" autocomplete="organization" />
+                        <label class="form-label" for="pricing-message">Anything we should know</label>
+                        <textarea class="form-control mb-2" id="pricing-message" name="message" rows="3"></textarea>
+                        <input class="visually-hidden" tabindex="-1" autocomplete="off" name="website" aria-hidden="true" />
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">Send request</button>
+                    </form>
+                    )}
+            </div>
+        </div>
+    </div>
+</GenericPage>
