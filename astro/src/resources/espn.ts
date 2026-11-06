@@ -355,25 +355,30 @@ export const ESPN_INVALID_GAME_STATUS_NAMES = ["STATUS_ABANDONED", "STATUS_POSTP
 //: in the same window succeed -- so a short retry recovers them.
 const ESPN_RETRY_STATUSES = new Set([403, 429, 500, 502, 503, 504]);
 const ESPN_RETRY_DELAYS_MS = [120, 400];
+//: A stalled ESPN (or relay) connection used to hold the render open until the
+//: Worker itself was killed. Each attempt now gives up after this long and
+//: throws, as a dropped connection already did. A caller's own signal wins.
+export const ESPN_TIMEOUT_MS = 10_000;
 
 async function requestESPN(url: string, init?: RequestInit): Promise<Response> {
-    const options: RequestInit = {
+    const options = (): RequestInit => ({
         ...init,
+        signal: init?.signal ?? AbortSignal.timeout(ESPN_TIMEOUT_MS), // fresh per attempt, so a retry gets its own window
         headers: {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15"
         }
-    };
+    });
 
-    let resp = await wrappedFetch(url, options);
+    let resp = await wrappedFetch(url, options());
     for (const delay of ESPN_RETRY_DELAYS_MS) {
         if (!ESPN_RETRY_STATUSES.has(resp.status)) return resp;
         if (resp.status === 403) break; // an Akamai denial lasts minutes; retrying the same egress IP is pointless
         console.warn(`ESPN ${resp.status} for ${url}; retrying in ${delay}ms`);
         await new Promise((r) => setTimeout(r, delay));
-        resp = await wrappedFetch(url, options);
+        resp = await wrappedFetch(url, options());
     }
     if (resp.status === 403) {
-        const relayed = await relayESPN(url);
+        const relayed = await relayESPN(url, init?.signal);
         if (relayed) return relayed;
     }
     return resp;
@@ -384,7 +389,7 @@ async function requestESPN(url: string, init?: RequestInit): Promise<Response> {
 //: while the same URL from the API host succeeds every time. On a 403 the fetch
 //: is retried through the API host (python/espn_proxy.py). Null = relay
 //: unavailable; the caller keeps the original 403.
-async function relayESPN(url: string): Promise<Response | null> {
+async function relayESPN(url: string, signal?: AbortSignal | null): Promise<Response | null> {
     const base = getSecret("PYTHON_HTTP_URL");
     const token = getSecret("PYTHON_HTTP_TOKEN");
     if (!base || !token) return null;
@@ -403,6 +408,7 @@ async function relayESPN(url: string): Promise<Response | null> {
     try {
         const resp = await wrappedFetch(`${base.replace(/\/$/, "")}/espn/proxy?url=${encodeURIComponent(url)}`, {
             headers: { "Authorization": `Bearer ${btoa(token)}` },
+            signal: signal ?? AbortSignal.timeout(ESPN_TIMEOUT_MS), // the caller's own budget covers the relay too
             // never follow a redirect carrying the bearer token to a host we
             // did not validate above. Workers fetch implements only "follow"
             // and "manual" ("error" throws a TypeError at the edge), so take
