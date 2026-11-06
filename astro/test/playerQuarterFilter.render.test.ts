@@ -78,6 +78,7 @@ describe('player sections: quarter filter', () => {
                 expect(windows.map((m) => m[1])).toEqual(keys);
                 expect(windows.filter((m) => !m[2]).map((m) => m[1]), 'only Game is visible').toEqual(['all']);
             }
+            expect(html).toMatch(/<script[^>]*PlayerSpanSelect\.astro/);
         }, 60_000);
 
         test(`[${league}] a quarter window shows that quarter's box, not the game's`, async () => {
@@ -106,6 +107,8 @@ describe('player sections: quarter filter', () => {
         test(`[${league}] flag off: no select, one unmarked section per team`, async () => {
             const { html } = await render(league, 'off');
             expect(html).not.toContain('data-player-span');
+            // nor the select's script: a component's <script> ships wherever the component renders
+            expect(html).not.toMatch(/<script[^>]*(TeamPlayerStats|PlayerSpanSelect)\.astro/);
             for (const id of ['away-stats-panel', 'home-stats-panel']) {
                 expect(panel(html, id)).toMatch(/<div class="panel-body">\s*<div class="row">/);
             }
