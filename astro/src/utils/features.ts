@@ -133,6 +133,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // G9: each team's player section on the v2 game page gets the Team Stats "Show only"
+    // select (Game, quarters, halves, OT when played), each window pre-rendered from
+    // advBoxScoreSpans (game/metrics/TeamPlayerStats.astro). Off: the section is unchanged.
+    'player-quarter-filter': 'preview',
     // Game on Paper Pro: /pro/** (the paid player profiles, portal board and their
     // files), /pricing, the "Pro profile" link on the free player page and the
     // header's Pro entry. Gated in middleware like 'nfl': without the preview cookie

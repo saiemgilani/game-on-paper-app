@@ -1,0 +1,30 @@
+---
+/**
+ * The "Show only" select of one team's player section (TeamPlayerStats.astro,
+ * 'player-quarter-filter'). Its own component so the script ships only when the
+ * flag renders it: a component's <script> is emitted wherever the component
+ * renders, so inside TeamPlayerStats it reached flag-off pages too.
+ */
+interface Props {
+    id: string,
+    windows: { key: string, label: string }[],
+}
+const { id, windows } = Astro.props;
+---
+<div class="d-flex flex-wrap gap-2 align-items-center mb-2 mt-1" data-player-span-bar>
+    <label class="text-small text-muted" for={id}>Show only</label>
+    <select id={id} aria-label="Show only this period of player stats" class="form-select form-select-sm" style="width:auto;min-width:250px">
+        {windows.map((w) => <option value={w.key} selected={w.key === 'all'}>{w.label}</option>)}
+    </select>
+</div>
+
+<script>
+    // the windows are the bar's siblings (both sit in the panel body)
+    for (const bar of document.querySelectorAll<HTMLElement>('[data-player-span-bar]')) {
+        const sel = bar.querySelector('select');
+        const windows = bar.parentElement?.querySelectorAll<HTMLElement>(':scope > [data-player-span]') ?? [];
+        sel?.addEventListener('change', () => {
+            for (const w of windows) w.hidden = w.dataset.playerSpan !== sel.value;
+        });
+    }
+</script>
