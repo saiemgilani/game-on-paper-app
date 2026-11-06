@@ -467,7 +467,8 @@ needs a new id and a new snapshot in its own PR.
   new ESPN id 129689. 2005-06-03: two finals in the halves era (`format.regulation.periods` 2), one in overtime (250603003, period 3;
   ESPN's own `status.type.detail` says "Final", GOP's `Final/OT` comes from the period and the regulation, D14); the board spells
   WAS / TUL / NYL (ESPN ids 16 / 3 / 9, today wsh / dal / ny). A dated request carries no `sbData.day`. **Used by:**
-  `test/wnba/scoreboard.test.ts`, `test/wnba/scoreboard.render.test.ts`. **To regenerate:** `plans/2026-10-11-wnba-games-gop.md`
+  `test/wnba/scoreboard.test.ts`, `test/wnba/scoreboard.render.test.ts`, `test/mbb/scoreboardGroups.test.ts` (2025-08-01 keeps the event
+  `links` and competition `highlights|headlines|geoBroadcasts` `trimScoreboardEvents` drops). **To regenerate:** `plans/2026-10-11-wnba-games-gop.md`
   Task 5 Step 1 (with the Safari UA; a 202 with an empty body is a WAF challenge, never an empty board).
 - `wnba/scoreboard-20020615.json`: the same ESPN cdn WNBA scoreboard for 2002-06-15 (same URL, UA and trim), captured
   2026-10-19T01:31Z: six finals with three defunct franchises ESPN serves no logo for, Cleveland (2) and Miami (7), and the
@@ -490,6 +491,71 @@ needs a new id and a new snapshot in its own PR.
   attempts 28,436 / 31,006 / 38,535 / 45,296 (2003 / 2008 / 2025 / 2026); one `team_id` 0 row in 2025; 5,677 2003 shots at
   (0, 0) (Seattle 424), counted in the 2003 league total's `placeholder_shots`. **Used by:** `test/wnba/dashboardFixtures.ts`.
   **To regenerate:** plan 2026-10-11-wnba-shots-gop Task 2 (local warehouse, local API, `capture_wnba_dashboards.py`).
+- `mbb/teams_2026.json`: ESPN's core D-I list for 2026 (owner ruling D34),
+  `https://sports.core.api.espn.com/v2/sports/basketball/leagues/mens-college-basketball/seasons/2026/types/2/groups/50/teams?limit=500`
+  (2026-10-18, `count` 366, ids from each item's `$ref`), with `espn_abbreviation` / `espn_display_name` / `color` from
+  `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=1000` or, for the five ids it lacks
+  (42, 88, 2511, 2598, 2815), `…/mens-college-basketball/teams/<id>` (2026-10-18, requestESPN's Safari UA; colour '#'-prefixed,
+  upper-cased; none: #888888). `mbb/other_di.json`: the 3 ids that have a D-I season (10+ games with one of the 32 D-I conference
+  ids) in hoopR-mbb-data `mbb/schedules/parquet/mbb_schedule_{2003..2026}.parquet` (commit 55d7a2a23) but are not in the 366, with
+  first/last such season (every season between is one), the abbreviation and name of the last such season's schedule rows
+  (St. Francis Brooklyn: SFBK in 2023, SFNY before) and the colour of `…/mens-college-basketball/teams/<id>`. `mbb/season_games.json`:
+  per season, the median / p10 / p90 completed regular-season (`season_type` 2) games of those D-I team-seasons.
+  `mbb/games_in_scope.json`: per season, the median / max completed regular-season + postseason (`season_type` 2 or 3) games of the
+  same team-seasons (D44). `mbb/conferences_2026.json`: `content.altSbDropdown.options` of
+  `https://cdn.espn.com/core/mens-college-basketball/scoreboard?xhr=1` (2026-10-18, requestESPN's Safari UA) as
+  `{id: data.group, label}`, 33 rows. **Used by:** `test/mbb/teams.test.ts`, `test/mbb/config.test.ts`. **To regenerate:**
+  `mbb_teams.py` with its ESPN captures in `mbb-probe/`, both in ClaudeCowork `ledgers/2026-10-19-bball-mbb-games-gop/` (plan #8 Task 1 Step 1's script plus `mbbSeasonsOf`; it also writes `astro/src/nba/data/mbbTeams.ts`).
+- `mbb/leader_bars.json`: per season 2019-2026, league-average regular-season (`season_type` 2) FGA per team game for the 366 D-I teams
+  (hoopR-mbb-data `mbb/team_box/parquet/team_box_<season>.parquet`, commit 55d7a2a23) and for the NBA (hoopR-nba-data
+  `nba/team_box/parquet/team_box_<season>.parquet`, commit 3aa30da7e), their ratio, and the bars `max(1, round(5 × ratio))` /
+  `max(1, round(3 × ratio))` (owner ruling D31). **Used by:** `test/mbb/config.test.ts`. **To regenerate:** `mbb_leader_bars.py` in ClaudeCowork `ledgers/2026-10-19-bball-mbb-games-gop/` (plan #8 Task 1 Step 1b).
+- `mbb/game_<id>_processor.json` and `mbb/game_<id>_api.json` for 401808271 (Alabama at Tennessee, 2026-02-28, 71-69), 401820775 (NC State at
+  Notre Dame, 2026-02-28, 90-96, one overtime), 401744223 (Old Dominion vs Texas State at Pensacola Bay Center, 2025-03-07, 64-61, neutral)
+  and 401829457 (Coastal Carolina vs North Dakota at Western Hall, 2025-11-23, 75-58, neutral); `mbb/game_401706366_processor.json` (Western
+  Michigan at Akron, 2025-02-12, 92-105; every field-goal attempt at ESPN's (25, 0)). Dates are the schedule's UTC dates. Captured 2026-10-18.
+  - `_processor.json`: the live body of `GET /mbb/<id>/process` (`python/`, sdv-py `game_page_frames(final, league="mbb")` at the
+    `python/uv.lock` commit `b4229f1c`, with plan #1's score rebuild). ESPN carries a DraftKings line for 401808271 (Tennessee favored
+    by 5.5, `home_team_spread` 5.5, pregame home win probability 0.688) and 401820775 (NC State favored by 6.5, -6.5, 0.2812), prior `spread`; none for the others
+    (`neutral` 0.5 for the two neutral-site games, `hfa` 0.6029 for 401706366).
+  - `_api.json`: one object per table (`schedule`, `pbp`, `team_box`, `player_box`, `play_wp`, `game_team_rates`, `game_player_rates`),
+    read with exactly `resources/nbaGames.ts`'s `SEL` columns (`player_box` through `playerBoxSelect('mbb')`, which leaves out
+    `plus_minus` and `reason`: hoopR-mbb-data's player box has neither) from a LOCAL sdv-db Data API over a local warehouse loaded from
+    the hoopR-mbb-data release parquet (commit `55d7a2a23`, after the owner's 2026-10-18 republish of plan #1's score rebuild),
+    `play_wp` / `game_*_rates` built by sdv-db's `mbb_game_pages` (`6391dda`) scoring with sdv-py `cd6f7f25` (the lock's `b4229f1c`
+    differs in the game-page code only by #900's guard for a non-object `format`). The release has no line for any 2024-2026 game,
+    so those priors are `hfa` or `neutral` (Decision 8). `*_linescores` / `*_records` are Python-repr strings (spec §3.5).
+  - Known, asserted differences (`test/mbb/game.test.ts`): none. `RELEASE_SCORE_ROWS` is empty and `SWAPPED_RELEASE` is null: after the
+    republish, 401744223's rows 458-461 read 59-61 as in the rebuild, and 401829457's release rows read UND 58 - CCU 75 to the last
+    row, so all four pairs are in the parity gate (spec D7, post-republish).
+  - **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 3 Steps 1-3 (on the droplet: the local cluster via `sdvdb-safe.sh local`,
+    the API on 127.0.0.1:18000, the processor on 127.0.0.1:5177, the capture script with `playerBoxSelect`'s rule; ruling R16).
+- `mbb/lines_by_season.json`: per season, the number of games and of games with `game_spread_available` true in hoopR-mbb-data
+  `mbb/pbp/parquet/play_by_play_<season>.parquet` (commit 55d7a2a23), and `linesFromSeason`, the first season from which every season
+  through 2023 has lined games (2024-2026 lack lines in the release: owner ruling D33's producer issue). Owner ruling D39.
+  **Used by:** `test/mbb/lineNote.test.ts`. **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 5 Step 0.
+- `mbb/espn_page_401820775.json` and `mbb/pregame_401920982.json`: ESPN cdn game pages
+  (`https://cdn.espn.com/core/mens-college-basketball/playbyplay?gameId=<id>&xhr=1&render=false&userab=18`, the GOP `requestESPN` UA),
+  captured 2026-10-18, trimmed to `{ gameId, gamepackageJSON: { header } }`. 401820775 is Task 3's OT final; 401920982 (Villanova vs Notre Dame,
+  neutral, scheduled 2026-11-01T14:30Z) was `STATUS_SCHEDULED` when captured. `mbb/pregame_401920982_summary.json` is `{ pickcenter }` of
+  `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary?event=401920982` at the same time (no providers yet).
+  **Used by:** `test/mbb/gameRoute.test.ts`, `test/mbb/game.render.test.ts`. **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 5 Step 1.
+- `mbb/scoreboard-<YYYYMMDD>-<group>.json`: ESPN cdn men's college scoreboards
+  (`https://cdn.espn.com/core/mens-college-basketball/scoreboard?<group=…&>xhr=1&date=<YYYYMMDD>`, the GOP `requestESPN` Safari UA), captured
+  2026-10-18, every event kept, reduced to `content.{sbData, altSbDropdown, dateParams}`, and from each event the keys no card reads removed
+  (`links`, `competitions[].highlights|headlines|geoBroadcasts`, `competitors[].statistics|linescores`: what `trimScoreboardEvents` drops before
+  caching). 2025-02-22: `top25` (no group; 15 events, every one with a ranked team), `all` (`group=50`, 131 events, 8 in overtime,
+  1,318,786 bytes), `g8` (Big 12, 6). 2024-11-04 `g30` (UAC, 8; three opponents ESPN has no logo for: UNTD 126794, AL 484, ARBA 2027).
+  2025-04-06 `top25`: empty (no ranked team played); 2025-04-06 `all` (`group=50`): its one D-I game, unranked (owner ruling D35's
+  real no-ranked-games day). A grouped body has no `sbData.day`. **Used by:** `test/mbb/scoreboardGroups.test.ts`, `test/mbb/scoreboard.test.ts`,
+  `test/mbb/scoreboard.render.test.ts`, `test/mbb/scoreboardRoute.test.ts`. **To regenerate:** Task 6 Step 1 of `plans/2026-10-11-mbb-games-gop.md`.
+- `mbb/scoreboard-20241104-all.json.gz` / `mbb/scoreboard-20261103-all.json`: ESPN cdn men's college D-I boards
+  (`https://cdn.espn.com/core/mens-college-basketball/scoreboard?group=50&xhr=1&date=<YYYYMMDD>`, the GOP `requestESPN` Safari UA), captured
+  2026-10-19, reduced and trimmed exactly as the Task 6 boards (gzip -9 for the 199-game day). 2024-11-04: opening night, 199 finals, the busiest
+  real day (owner ruling D36's HTML budget; 1,770,598 bytes before gzip). 2026-11-03: 29 scheduled (`pre`) games. `mbb/scoreboard_budget.json`:
+  the rendered HTML length of the 2024-11-04 page and its budget (measured × 1.2), written by Task 6b Step 3. **Used by:**
+  `test/mbb/scoreboardSections.test.ts`, `test/mbb/scoreboardBudget.test.ts`. **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 6b Steps 1 and 3.
+
 
 
 ## `team-season-percentiles-cfb.json`

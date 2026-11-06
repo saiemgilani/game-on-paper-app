@@ -1,5 +1,5 @@
 import type { Zone } from "./aggregate";
-import type { Court } from "../../basketball/config";
+import type { Court, CourtEra } from "../../basketball/config";
 
 /**
  * NBA half court in the legacy shot frame (`x_legacy`/`y_legacy`): tenths of a foot, hoop centre
@@ -41,6 +41,34 @@ export const WNBA_COURT_2004 = { ...COURT, threeRadius: (20 * 12 + 6.25) / 1.2, 
  * never researched here: before `from` no arc is drawn or zoned.
  */
 export const WNBA_RESTRICTED_AREA = { from: 2013, radius: 40 } as const;
+
+/** Feet + inches -> legacy tenths of a foot. */
+const ft = (f: number, i = 0) => (f + i / 12) * 10;
+/** The NCAA three-point arc from 2019-20 (men) / 2021-22 (women): 22' 1 3/4" (Rule 1 Sec. 7 Art. 1), sdv-db's NEW_COURT radius. */
+export const NCAA_ARC_NEW = ft(22, 1.75);
+/**
+ * Owner ruling D45 / resolution R1 (amended by the owner 2026-10-12): the NCAA corner three, ONE constant in sdv-db (plan #7's
+ * NEW_COURT.three_corner_x) and GOP (plans #8-#11): the rulebook's "21 feet, 7 7/8 inches in the corners" (NCAA Men's 2026-27 and
+ * Women's 2025-26 and 2026-27 Rules Books, Rule 1 Sec. 7 Art. 1, p. 20) = 216.5625 tenths. Never changed on one side.
+ */
+export const NCAA_CORNER_X = (21 * 12 + 7.875) / 1.2;
+const ncaa = (arc: number, corner: number, restricted: number) =>
+  ({ ...COURT, laneHalfWidth: 60, threeRadius: arc, threeCornerX: corner, restrictedRadius: restricted }) as const;
+/**
+ * The NCAA men's court by season (END year), the NBA frame otherwise (rim 5' 3" off the end line, free-throw line 15' from the
+ * backboard). NCAA Rules Book, Rule 1: 12' lane (Sec. 6 Art. 1); three-point arc 22' 1 3/4" from 2019-20 with 21' 7 7/8" corners
+ * (Sec. 7 Art. 1; NCAA_ARC_NEW, NCAA_CORNER_X); 20' 9" from 2008-09 and 19' 9" before, each a full arc whose straight lines meet
+ * the end line at its radius; restricted arc (D32; eras owned by plan #7's sdv-db NCAA_RESTRICTED, mirrored per R5; Sec. 8 keeps
+ * "a radius of 4 feet") 3' from 2011-12, 4' from 2015-16, none before (radius 0 draws and zones nothing). Men's dates; plan #10
+ * builds the women's eras from the same two constants (22' 1 3/4" from 2021-22).
+ */
+export const NCAA_COURTS: readonly CourtEra[] = [
+  { from: 2003, court: ncaa(ft(19, 9), ft(19, 9), 0) },
+  { from: 2009, court: ncaa(ft(20, 9), ft(20, 9), 0) },
+  { from: 2012, court: ncaa(ft(20, 9), ft(20, 9), 30) },
+  { from: 2016, court: ncaa(ft(20, 9), ft(20, 9), 40) },
+  { from: 2020, court: ncaa(NCAA_ARC_NEW, NCAA_CORNER_X, 40) },
+];
 
 /** Height where the corner three meets the arc (NBA ~89.5, i.e. ~9 ft above the rim line). */
 export const threeBreakY = (court: Court = COURT) => Math.sqrt(court.threeRadius ** 2 - court.threeCornerX ** 2);

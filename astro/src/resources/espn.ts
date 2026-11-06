@@ -6,10 +6,12 @@ import { wrappedFetch } from "../utils/telemetry"
 import { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } from "../utils/config"
 import { LEAGUES, isBasketball, type League } from "../utils/league"
 import { BASKETBALL } from "../basketball/config"
+import { trimScoreboardEvents } from "../nba/scoreboard"
 
 export interface ESPNCoreScoreboardResponse {
     content: {
         sbData: ESPNScoreboardResponse & { day?: { date: string } }
+        dateParams?: { date?: string }
     }
 }
 
@@ -559,9 +561,10 @@ const OLD_DAY_SCOREBOARD_TTL = 60 * 60 * 24 * 14;
  * caller says it is `pastDay`; otherwise it gets the live TTL, and an empty day is never cached.
  * A KV read error is a cache miss. The live day comes from ESPN's body, never the server clock.
  */
-export async function getScoreboardForDay(league: League, espnDate: string | null, opts: { pastDay?: boolean; oldDay?: boolean } = {}): Promise<ScoreboardDay> {
+export async function getScoreboardForDay(league: League, espnDate: string | null, opts: { pastDay?: boolean; oldDay?: boolean; group?: string } = {}): Promise<ScoreboardDay> {
     const cfg = LEAGUES[league];
-    const liveKey = `scoreboard-day:${league}`;
+    // a grouped board (college: ESPN cdn `group=`) caches under its own keys; the ungrouped key is unchanged
+    const liveKey = `scoreboard-day:${league}${opts.group ? `:g${opts.group}` : ''}`;
     const key = espnDate ? `${liveKey}:${espnDate}` : liveKey;
     const isoDay = (d: string) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
     const liveTTL = (isBasketball(league) ? BASKETBALL[league].scoreboardRefresh : CURRENT_SEASON_CONFIG.scoreboardRefreshRate) * CACHE_TTL_MULTIPLIER;
@@ -571,16 +574,18 @@ export async function getScoreboardForDay(league: League, espnDate: string | nul
         return { ...cached, degraded: false };
     }
     try {
-        const url = `https://cdn.espn.com/core/${cfg.espnPath}/scoreboard?${cfg.scoreboardQuery}xhr=1&${espnDate ? `date=${espnDate}&` : ''}${Date.now()}`;
+        const url = `https://cdn.espn.com/core/${cfg.espnPath}/scoreboard?${cfg.scoreboardQuery}${opts.group ? `group=${opts.group}&` : ''}xhr=1&${espnDate ? `date=${espnDate}&` : ''}${Date.now()}`;
         const resp = await requestESPN(url);
         if (!resp.ok) throw new Error(`ESPN API: scoreboard request received ${resp.status}`);
         const body: ESPNCoreScoreboardResponse = await resp.json();
         const sb = body?.content?.sbData;
-        if (!espnDate && !sb?.day?.date) throw new Error('ESPN API: scoreboard response carried no day');
+        // a grouped body carries no sbData.day, live or dated; its content.dateParams.date is ESPN's day (probe 2026-10-18)
+        const espnDay = sb?.day?.date ?? (opts.group && /^\d{8}$/.test(body?.content?.dateParams?.date ?? '') ? isoDay(body!.content!.dateParams!.date!) : undefined);
+        if (!espnDate && !espnDay) throw new Error('ESPN API: scoreboard response carried no day');
         // a real empty day is `events: []` (measured: 2025-07-15, 2025-02-14); anything else is a bad body
         if (!Array.isArray(sb?.events)) throw new Error('ESPN API: scoreboard response carried no events list');
-        const day = espnDate ? isoDay(espnDate) : sb!.day!.date;
-        const events = sb!.events!;
+        const day = espnDate ? isoDay(espnDate) : espnDay!;
+        const events = opts.group ? trimScoreboardEvents(sb!.events!) : sb!.events!;
         const value = JSON.stringify({ day, events });
         if (espnDate) {
             if (events.length > 0) await safeCachePut(env.ESPN_API_CACHE, key, value, opts.pastDay ? (opts.oldDay ? OLD_DAY_SCOREBOARD_TTL : DATED_SCOREBOARD_TTL) : liveTTL, { fetchedAt: Date.now() });

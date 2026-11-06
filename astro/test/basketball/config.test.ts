@@ -20,7 +20,7 @@ describe('basketball league typing', () => {
             expect(PREFIXED_LEAGUES).toContain(lg);
             expect(BASKETBALL[lg].league).toBe(lg);
         }
-        expect(PREFIXED_LEAGUES).toEqual(['nfl', 'nba', 'wnba']); // order is splitLeague's try order; unchanged for the NBA
+        expect(PREFIXED_LEAGUES).toEqual(['nfl', 'nba', 'wnba', 'mbb']); // order is splitLeague's try order; unchanged for the NBA
     });
     test('isBasketball / basketball()', () => {
         expect(isBasketball('nba')).toBe(true);

@@ -125,6 +125,15 @@ export function parseRecord(raw: unknown): string | null {
     return block?.match(/summary['"]?\s*:\s*['"]([^'"]+)['"]/)?.[1] ?? null
 }
 
+/**
+ * `turnovers` is the players' turnovers. The NBA/WNBA box already says so (total = players + team); a college box counts
+ * the team's inside `turnovers` (total = turnovers, e.g. 13 with 3 team: players 10), so the team box's "(player + team)"
+ * read 13 (13 + 3) (self-review on #343). Data-driven: an NBA box with team turnovers never has total == turnovers.
+ */
+function playerTurnovers(turnovers: number | null, team: number | null, total: number | null): number | null {
+    return turnovers != null && team != null && team > 0 && total === turnovers ? turnovers - team : turnovers
+}
+
 function teamBox(r: Record<string, any> | null | undefined): NbaTeamBox | null {
     if (!r) return null
     const n = (k: string) => num(r[k])
@@ -133,7 +142,7 @@ function teamBox(r: Record<string, any> | null | undefined): NbaTeamBox | null {
         three_point_field_goals_made: n('three_point_field_goals_made'), three_point_field_goals_attempted: n('three_point_field_goals_attempted'),
         free_throws_made: n('free_throws_made'), free_throws_attempted: n('free_throws_attempted'), offensive_rebounds: n('offensive_rebounds'),
         defensive_rebounds: n('defensive_rebounds'), total_rebounds: n('total_rebounds'), assists: n('assists'), steals: n('steals'), blocks: n('blocks'),
-        turnovers: n('turnovers'), team_turnovers: n('team_turnovers'), total_turnovers: n('total_turnovers'), fouls: n('fouls'),
+        turnovers: playerTurnovers(n('turnovers'), n('team_turnovers'), n('total_turnovers')), team_turnovers: n('team_turnovers'), total_turnovers: n('total_turnovers'), fouls: n('fouls'),
         fast_break_points: r.fast_break_points ?? null, points_in_paint: r.points_in_paint ?? null, largest_lead: r.largest_lead ?? null,
     }
 }
