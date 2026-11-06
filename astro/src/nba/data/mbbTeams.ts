@@ -379,11 +379,14 @@ export const MBB_TEAMS: readonly Team[] = [
 ];
 
 // D-I programs outside the 366, with their D-I seasons (10+ games carrying a D-I conference id in that season's hoopR-mbb-data
-// schedule; every season first..last is one): Centenary, Savannah State, St. Francis Brooklyn. Colours from ESPN's team endpoint.
+// schedule; every season first..last is one): Centenary, Savannah State, St. Francis Brooklyn, and West Florida from 2027
+// (a 2027 mbb.team_group_seasons row and 2026-27 games, checked 2026-11-03; the women's list carries it the same way). Colours from
+// ESPN's team endpoint.
 export const MBB_OTHER_DI: readonly { team: Team; first: number; last: number }[] = [
     { team: { team_id: 2113, tricode: 'CENT', name: 'Centenary Louisiana Gentlemen', color: '#A20B36', espn_id: 2113 }, first: 2008, last: 2011 },
     { team: { team_id: 2542, tricode: 'SAV', name: 'Savannah State Tigers', color: '#280298', espn_id: 2542 }, first: 2012, last: 2019 },
     { team: { team_id: 2597, tricode: 'SFBK', name: 'St. Francis Brooklyn Terriers', color: '#113682', espn_id: 2597 }, first: 2003, last: 2023 },
+    { team: { team_id: 2697, tricode: 'UWF', name: 'West Florida Argonauts', color: '#087DC2', espn_id: 2697 }, first: 2027, last: 2027 },
 ];
 
 // ESPN's scoreboard conference groups in ESPN's dropdown order (cdn content.altSbDropdown.options, without 50 = Division I,
@@ -445,10 +448,11 @@ export function mbbFranchiseOf(tricode: string): number | undefined {
 
 /**
  * TeamModule.seasonsOf (R3): one of the 366 lists every season (as mbbTeamInSeason answers it in every season; who played D-I
- * that season is plan #9's withSeasonMembers), a departed program its measured D-I seasons first..last; undefined = unknown id.
+ * that season is plan #9's withSeasonMembers), another D-I program its measured D-I seasons first..last clamped to
+ * MBB_LAST_KNOWN_SEASON, as wbbSeasonsOf (West Florida runs to 2027, which no picker lists yet); undefined = unknown id.
  */
 export function mbbSeasonsOf(teamId: number): readonly number[] | undefined {
     if (BY_ESPN_ID.has(teamId)) return ALL_SEASONS;
     const o = MBB_OTHER_DI.find((x) => x.team.team_id === teamId);
-    return o ? span(o.first, o.last) : undefined;
+    return o ? span(o.first, Math.min(o.last, MBB_LAST_KNOWN_SEASON)) : undefined;
 }

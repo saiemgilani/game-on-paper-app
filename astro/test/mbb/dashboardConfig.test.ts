@@ -47,7 +47,7 @@ describe('the dashboard seasons and the source', () => {
     });
     test('the NBA and WNBA season lists did not change', () => {
         const nba = resolveBasketballSeason(fakeAstro('/nba/teams'), 'nba');
-        expect([nba.seasons[0], nba.seasons.at(-1)]).toEqual([1998, 2026]);
+        expect([nba.seasons[0], nba.seasons.at(-1)]).toEqual([1998, 2027]); // NBA rolled to 2026-27 (2026-11-03); the WNBA stays 2026
         expect(resolveBasketballSeason(fakeAstro('/wnba/teams'), 'wnba').seasons[0]).toBe(1997);
     });
     test('the college source and its flags; the NBA and WNBA objects gained no key', () => {

@@ -37,6 +37,7 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
 
 import { prepareNbaPlayer } from '../../src/routes/nba/player';
 import { PLAYER_CACHE } from '../../src/routes/nba/cache';
+import { LAST_KNOWN_SEASON } from '../../src/nba/seasonRange';
 
 function fakeAstro(path: string, id: string) {
     const cache: unknown[] = [];
@@ -82,7 +83,7 @@ describe('prepareNbaPlayer', () => {
         state.fail = new Set();
         if ('notFound' in r || 'unavailable' in r) throw new Error('expected params');
         expect(r.explorer.games).toBeNull();
-        expect(r.hisSeasons).toEqual([2026]);
+        expect(r.hisSeasons).toEqual([LAST_KNOWN_SEASON]); // a failed seasons read falls back to the current season
         expect(cache).toEqual([false]);
     });
     test('null game dates mean the per-game views are unavailable, page still cached', async () => {

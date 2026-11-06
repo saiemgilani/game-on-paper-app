@@ -156,7 +156,7 @@ describe('the nba league', () => {
             logoLeague: 'nba', teamCount: 30, defaultGroup: null, scoreboardQuery: '', regularSeasonWeeks: 0,
         });
         expect(LEAGUES.nba.seasons[0]).toBe(1998);
-        expect(LEAGUES.nba.seasons.at(-1)).toBe(2026);
+        expect(LEAGUES.nba.seasons.at(-1)).toBe(2027); // 2026-27, rolled 2026-11-03
         expect(LEAGUES.cfb.sport).toBe('football');
         expect(LEAGUES.nfl.sport).toBe('football');
         expect(LEAGUES.cfb.sdvSchema).toBe('cfb');
