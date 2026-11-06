@@ -14,9 +14,13 @@
 import type { BasketballLeague } from './league';
 import { numberOrNull } from './misc';
 
-export const BOARDS = ['impact', 'teams', 'lineups'] as const;
+export const BOARDS = ['impact', 'teams', 'lineups', 'value', 'poe'] as const;
 export type Board = (typeof BOARDS)[number];
-export const BOARD_LABEL: Record<Board, string> = { impact: 'Players: Impact', teams: 'Teams', lineups: 'Lineups' };
+export const BOARD_LABEL: Record<Board, string> = { impact: 'Players: Impact', teams: 'Teams', lineups: 'Lineups', value: 'Players: WAR and VORP', poe: 'Players: Points over expected' };
+/** BB-G27's boards, behind 'bball-war-boards': WAR / VORP (sdv-db player_war) and points over expected (shot_quality_season). */
+export const WAR_BOARDS: readonly Board[] = ['value', 'poe'];
+/** The boards a request offers: BB-G8's three, plus BB-G27's two with 'bball-war-boards' on. */
+export const boardsFor = (war: boolean): Board[] => BOARDS.filter((b) => war || !WAR_BOARDS.includes(b));
 
 export const BASES = ['pergame', 'per75', 'per100', 'totals'] as const;
 export type Basis = (typeof BASES)[number];
@@ -32,7 +36,7 @@ export const TEAM_GROUP_LABEL: Record<TeamGroup, string> = { ratings: 'Ratings',
 export const UNIT_SIZES = [5, 3, 2] as const;
 export type UnitSize = (typeof UNIT_SIZES)[number];
 
-export type Fmt = 'int' | 'dec1' | 'dec2' | 'signed1' | 'signed2' | 'pct' | 'rate3' | 'secs';
+export type Fmt = 'int' | 'dec1' | 'dec2' | 'signed1' | 'signed2' | 'pct' | 'rate3' | 'secs' | 'ppts';
 
 /** One column. `src` is the producer column: one name for a rate (every basis shows it), or one per basis for a count. */
 export interface Col {
@@ -54,8 +58,10 @@ export interface BoardSpec {
     cols: readonly Col[];
     defaultSort: string;
     defaultBasis: Basis;
-    /** the producer `_rank` column whose presence marks a qualifier; null: the board's own possessions gate (impact) */
+    /** the producer `_rank` column whose presence marks a qualifier; null: the board's own gate (`gate`, else impact's) */
     qualifiedBy: string | null;
+    /** BB-G27: the board's own gate when it is not impact's offensive possessions: a sample column and its per-league floor */
+    gate?: { col: string; min: Record<BasketballLeague, number> };
 }
 
 const C = (key: string, label: Col['label'], hover: string, src: Col['src'], fmt: Fmt, extra: Partial<Col> = {}): Col => ({ key, label, hover, src, fmt, ...extra });
@@ -85,6 +91,40 @@ const IMPACT_COLLEGE: readonly Col[] = [
     C('d_rapm', 'D', 'Defensive RAPM, per 100 possessions (positive is better)', 'drapm', 'signed1', { group: 'RAPM' }),
     C('rapm', 'Net', 'RAPM, per 100 possessions', 'rapm_net', 'signed1', { group: 'RAPM' }),
 ];
+
+/**
+ * BB-G27: WAR and VORP from sdv-db's player_war (BB-D26). WAR is never shown without its 90% interval: Low and High sit
+ * next to it. The pros add each source's WAR (the headline is their mean); college is box BPM alone.
+ */
+const VALUE: readonly Col[] = [
+    C('min', 'MIN', 'Minutes', 'min', 'int', { group: 'Sample' }),
+    C('poss', 'Poss', 'On-court possessions (offensive plus defensive, over 2)', 'poss', 'int', { group: 'Sample' }),
+    C('rating', 'Rating', 'Points per 100 possessions above a league-average player, anchored to his team', 'rating', 'signed1', { group: 'Value' }),
+    C('vorp', 'VORP', 'Value over replacement player (Basketball-Reference’s scale): a season one point per 100 above replacement is 1', 'vorp', 'dec1', { group: 'Value' }),
+    C('war', 'WAR', 'Wins above replacement, season total', 'war', 'dec1', { group: 'Value' }),
+    C('war_lo', 'Low', 'The low end of WAR’s 90% interval (a bootstrap over each team’s games)', 'war_lo', 'dec1', { group: 'WAR 90% interval', noShade: true }),
+    C('war_hi', 'High', 'The high end of WAR’s 90% interval', 'war_hi', 'dec1', { group: 'WAR 90% interval', noShade: true }),
+];
+const VALUE_PRO: readonly Col[] = [
+    ...VALUE,
+    C('war_bpm', 'BPM', 'WAR from box plus-minus alone', 'war_bpm', 'dec1', { group: 'WAR by source', noShade: true }),
+    C('war_rapm', 'RAPM', 'WAR from RAPM alone', 'war_rapm', 'dec1', { group: 'WAR by source', noShade: true }),
+    C('war_boban', 'BOBAN', 'WAR from BOBAN alone', 'war_boban', 'dec1', { group: 'WAR by source', noShade: true }),
+];
+/** BB-G27: points over expected from sdv-db's shot_quality_season (BB-D9), one row per player and team. Field goals only. */
+const POE: readonly Col[] = [
+    C('games', 'GP', 'Games with a field-goal attempt', 'games', 'int', { group: 'Sample' }),
+    C('attempts', 'FGA', 'Field-goal attempts', 'attempts', 'int', { group: 'Sample' }),
+    C('pts', 'PTS', 'Points from field goals', 'pts', 'int', { group: 'Points' }),
+    C('xpts', 'xPTS', 'Expected points: each shot’s make chance times its value, summed', 'xpts', 'dec1', { group: 'Points' }),
+    C('poe', 'POE', 'Points over expected: PTS minus xPTS', 'poe', 'signed1', { group: 'Points' }),
+    C('poe_se', '±', 'One standard error of POE, from the make chances alone', 'poe_se', 'dec1', { group: 'Points', noShade: true }),
+    C('xpps', 'xPTS/FGA', 'Expected points per shot: shot quality', 'xpps', 'dec2', { group: 'Per shot' }),
+    C('poe_per_shot', 'POE/FGA', 'Points over expected per shot', 'poe_per_shot', 'signed2', { group: 'Per shot' }),
+    C('fg_pct_oe', 'FG% OE', 'Field-goal percentage over expected: shot making', 'fg_pct_oe', 'ppts', { group: 'Per shot' }),
+];
+/** BB-G27's POE gate: about 4 FGA a game over a season (WAR's is impact's possessions gate, IMPACT_QUALIFIED_POSS). */
+export const POE_QUALIFIED_FGA: Record<BasketballLeague, number> = { nba: 300, wnba: 150, mbb: 125, wbb: 125 };
 
 const RATINGS: readonly Col[] = [
     C('games', 'GP', 'Games rated', 'games', 'int', { group: 'Sample' }),
@@ -151,13 +191,21 @@ const TEAM_SPECS: Record<TeamGroup, BoardSpec> = {
     flow: { cols: FLOW, defaultSort: 'avg_margin', defaultBasis: 'pergame', qualifiedBy: 'avg_margin_rank' },
 };
 
-/** The board's spec: the league picks the impact columns, the group the teams columns. */
-export function boardSpec(board: Board, league: BasketballLeague, group: TeamGroup): BoardSpec {
+/**
+ * The board's spec: the league picks the impact columns, the group the teams columns. `war` ('bball-war-boards' on) drops
+ * player_impact's WAR from the impact board: the WAR board shows player_war's with its interval, and player_impact's
+ * double-counts possessions (sdv-db docs/api.md).
+ */
+export function boardSpec(board: Board, league: BasketballLeague, group: TeamGroup, war = false): BoardSpec {
     if (board === 'teams') return TEAM_SPECS[group];
     if (board === 'lineups') return { cols: LINEUPS, defaultSort: 'net', defaultBasis: 'per100', qualifiedBy: 'net_rtg_rank' };
     const pro = league === 'nba' || league === 'wnba';
+    // season totals beside per-100 rates: one basis, and a qualifier is the board's own gate
+    if (board === 'value') return { cols: pro ? VALUE_PRO : VALUE, defaultSort: 'war', defaultBasis: 'totals', qualifiedBy: null, gate: { col: 'poss', min: IMPACT_QUALIFIED_POSS } };
+    if (board === 'poe') return { cols: POE, defaultSort: 'poe', defaultBasis: 'totals', qualifiedBy: null, gate: { col: 'attempts', min: POE_QUALIFIED_FGA } };
     // every impact measure is already per 100 possessions and WAR a season total: one basis, and a qualifier is the board's own gate
-    return { cols: pro ? IMPACT_PRO : IMPACT_COLLEGE, defaultSort: 'rapm', defaultBasis: 'per100', qualifiedBy: null };
+    const cols = pro ? (war ? IMPACT_PRO.filter((c) => c.key !== 'war') : IMPACT_PRO) : IMPACT_COLLEGE;
+    return { cols, defaultSort: 'rapm', defaultBasis: 'per100', qualifiedBy: null };
 }
 
 /** The producer column a column shows on a basis; null: the producer ships none for that basis (the cell is a dash). */
@@ -228,11 +276,11 @@ const pick = <T extends string | number>(list: readonly T[], v: string | null, d
  * `basisFallback` names what was asked (a typo or a basis this board has no columns for), so nothing falls through silently.
  * `pctAvailable` is hasPercentiles over the board's rows; without it the view is Values and `viewFallback` says so.
  */
-export function parseControls(sp: URLSearchParams, league: BasketballLeague, pctAvailable: (spec: BoardSpec, basis: Basis) => boolean): Controls {
-    const board = pick(BOARDS, sp.get('board'), 'impact');
+export function parseControls(sp: URLSearchParams, league: BasketballLeague, pctAvailable: (spec: BoardSpec, basis: Basis) => boolean, war = false): Controls {
+    const board = pick(boardsFor(war), sp.get('board'), 'impact');
     const group = pick(TEAM_GROUPS, sp.get('group'), 'ratings');
     const unit = pick(UNIT_SIZES, sp.get('unit'), 5);
-    const spec = boardSpec(board, league, group);
+    const spec = boardSpec(board, league, group, war);
     const asked = sp.get('basis');
     const offered = offeredBases(spec);
     const basis = offered.find((b) => b === asked) ?? spec.defaultBasis;
@@ -252,6 +300,7 @@ export const IMPACT_QUALIFIED_POSS: Record<BasketballLeague, number> = { nba: 20
 
 export function isQualified(row: Record<string, unknown>, spec: BoardSpec, league: BasketballLeague): boolean {
     if (spec.qualifiedBy) return numberOrNull(row[spec.qualifiedBy]) != null;
+    if (spec.gate) return (numberOrNull(row[spec.gate.col]) ?? 0) >= spec.gate.min[league];
     return (numberOrNull(row.off_poss) ?? 0) >= IMPACT_QUALIFIED_POSS[league];
 }
 
