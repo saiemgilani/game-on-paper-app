@@ -3,6 +3,8 @@
 // refactor, so these files are never regenerated from the branch. When main itself changes the NBA render (a header
 // island, a dependency bump), re-capture them ON MAIN: a detached worktree of main, with only this harness and its
 // fixtures copied in, then copy the snapshots back. First captured on 81dbaf1e; last re-captured on main 7e71f2d6.
+// player.html and team.html were re-captured on feat/basketball-square-bins, which changes the shot chart on purpose
+// (square bins, the distance link): that diff is the shot-chart island and its Squares button, nothing else.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';

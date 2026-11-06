@@ -70,12 +70,16 @@ export function shootingLine(shots: Pick<Shot, "shot_result" | "shot_value">[]):
   return lineOf(countFieldGoals(shots));
 }
 
+/**
+ * One lattice cell, hex or square (the name is from the hex era). It holds no geometry: the cell size travels beside it
+ * (`HexShotChartData.side`, `layoutHexes`' radius), so no reader can draw it with the wrong shape from the type alone.
+ */
 export interface HexBin extends Split {
-  /** Hex centre, legacy frame. */
+  /** Cell centre, legacy frame. */
   x: number;
   y: number;
   meanDistance: number;
-  /** The zone most of the hex's attempts fall in. */
+  /** The zone most of the cell's attempts fall in. */
   zone: Zone;
 }
 
@@ -85,13 +89,12 @@ export function onCourt(s: Pick<Shot, "x_legacy" | "y_legacy">): boolean {
   return Math.abs(s.x_legacy) <= COURT.halfWidth && s.y_legacy >= COURT.baselineY;
 }
 
-/** d3-hexbin over the legacy frame; `radiusTenths` = 10 is a 1 ft hex. Off-court coordinates are dropped. */
-export function hexbinShots(shots: ShotLite[], radiusTenths: number, court: Court = COURT): HexBin[] {
-  const bins = hexbin<ShotLite>()
-    .x((s) => s.x_legacy)
-    .y((s) => s.y_legacy)
-    .radius(radiusTenths)(shots.filter(onCourt));
-  return bins.map((b) => {
+/** Shots grouped into one cell, with the cell's centre in the legacy frame. */
+type Cell = ShotLite[] & { x: number; y: number };
+
+/** A cell's tallies: makes/attempts, mean distance and the zone most of its attempts fall in. */
+function summarize(cells: Cell[], court: Court): HexBin[] {
+  return cells.map((b) => {
     let distance = 0;
     const zones = new Map<Zone, number>();
     for (const s of b) {
@@ -100,9 +103,33 @@ export function hexbinShots(shots: ShotLite[], radiusTenths: number, court: Cour
       zones.set(z, (zones.get(z) ?? 0) + 1);
     }
     const zone = [...zones].reduce((a, c) => (c[1] > a[1] ? c : a))[0];
-    // `|| 0` folds d3-hexbin's -0 centres into 0 so equal hexes share one key.
+    // `|| 0` folds -0 centres into 0 so equal cells share one key.
     return { x: b.x || 0, y: b.y || 0, ...tally(b), meanDistance: distance / b.length, zone };
   });
+}
+
+/** d3-hexbin over the legacy frame; `radiusTenths` = 10 is a 1 ft hex. Off-court coordinates are dropped. */
+export function hexbinShots(shots: ShotLite[], radiusTenths: number, court: Court = COURT): HexBin[] {
+  const bins = hexbin<ShotLite>()
+    .x((s) => s.x_legacy)
+    .y((s) => s.y_legacy)
+    .radius(radiusTenths)(shots.filter(onCourt));
+  return summarize(bins, court);
+}
+
+/** sdvplot-js's squarebin: cells centred on the hoop lattice (i*side, j*side), so the rim is a cell centre. */
+export const squareKey = (x: number, y: number, side: number): [number, number] => [Math.round(x / side), Math.round(y / side)];
+
+/** Square bins over the legacy frame; `sideTenths` = 25 is a 2.5 ft square. Off-court coordinates are dropped. */
+export function squarebinShots(shots: ShotLite[], sideTenths: number, court: Court = COURT): HexBin[] {
+  const byKey = new Map<string, Cell>();
+  for (const s of shots.filter(onCourt)) {
+    const [i, j] = squareKey(s.x_legacy, s.y_legacy, sideTenths);
+    let cell = byKey.get(`${i},${j}`);
+    if (!cell) byKey.set(`${i},${j}`, (cell = Object.assign([] as ShotLite[], { x: i * sideTenths, y: j * sideTenths })));
+    cell.push(s);
+  }
+  return summarize([...byKey.values()], court);
 }
 
 /**
@@ -162,6 +189,55 @@ export function hexesVsLeague(player: ShotLite[], league: LeagueHexIndex, minLea
   const hexes = byCentre(league);
   return hexbinShots(player, league.radius, court).map((h) => {
     const l = hexes.get(`${h.x},${h.y}`);
+    return { ...h, leagueFgPct: l && l.attempts >= minLeague ? l.fgPct : league.zones[h.zone].fgPct };
+  });
+}
+
+/** A league cell's makes, back from its rounded FG%. */
+const makesOf = (c: LeagueHex) => (c.fgPct ?? 0) * c.attempts;
+
+// A pointy-top hex of circumradius 1 sampled on a 12 x 12 grid: the points each hex's attempts are spread over.
+const HEX_SAMPLES: [number, number][] = (() => {
+  const out: [number, number][] = [];
+  for (let a = 0; a < 12; a++) for (let b = 0; b < 12; b++) {
+    const x = -1 + (a + 0.5) / 6, y = -1 + (b + 0.5) / 6;
+    if (Math.abs(x) <= Math.sqrt(3) / 2 && Math.abs(y) <= 1 - Math.abs(x) / Math.sqrt(3)) out.push([x, y]);
+  }
+  return out;
+})();
+
+/**
+ * The league's squares, rebuilt from its hexes: each hex's attempts and makes spread evenly over its area, then summed per
+ * square. Off by a little only where a hex straddles a line the FG% jumps at (the arc), as the hexes already are.
+ */
+// ponytail: derived, because shot_league_context ships hexes only; a `square` kind in sdv-db's nba_shot_dashboards.py makes it exact
+export function leagueSquares(index: LeagueHexIndex, sideTenths: number): LeagueHex[] {
+  const acc = new Map<string, { x: number; y: number; attempts: number; makes: number }>();
+  const w = 1 / HEX_SAMPLES.length;
+  for (const h of index.hexes) {
+    const makes = makesOf(h);
+    for (const [sx, sy] of HEX_SAMPLES) {
+      const [i, j] = squareKey(h.x + sx * index.radius, h.y + sy * index.radius, sideTenths);
+      const k = `${i},${j}`;
+      const c = acc.get(k) ?? { x: i * sideTenths || 0, y: j * sideTenths || 0, attempts: 0, makes: 0 };
+      c.attempts += h.attempts * w;
+      c.makes += makes * w;
+      acc.set(k, c);
+    }
+  }
+  return [...acc.values()].map(({ x, y, attempts, makes }) => ({ x, y, attempts, fgPct: attempts > 0 ? makes / attempts : null }));
+}
+
+const squareKeys = new WeakMap<LeagueHexIndex, Map<number, Map<string, LeagueHex>>>();
+
+/** Player squares with the league FG% of the same square, falling back to the zone as `hexesVsLeague` does. */
+export function squaresVsLeague(player: ShotLite[], league: LeagueHexIndex, sideTenths: number, minLeague = LEAGUE_PRIOR_ATTEMPTS, court: Court = COURT): HexVsLeague[] {
+  let bySide = squareKeys.get(league);
+  if (!bySide) squareKeys.set(league, (bySide = new Map()));
+  let squares = bySide.get(sideTenths);
+  if (!squares) bySide.set(sideTenths, (squares = new Map(leagueSquares(league, sideTenths).map((c) => [`${c.x},${c.y}`, c]))));
+  return squarebinShots(player, sideTenths, court).map((h) => {
+    const l = squares.get(`${h.x},${h.y}`);
     return { ...h, leagueFgPct: l && l.attempts >= minLeague ? l.fgPct : league.zones[h.zone].fgPct };
   });
 }

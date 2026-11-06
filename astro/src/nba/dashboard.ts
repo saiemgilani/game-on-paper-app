@@ -5,7 +5,7 @@ import type { ShootingSignatureData } from "./charts/shootingSignature";
 import type { SideChartData } from "./charts/sideChart";
 import {
   fgPctByDistance,
-  hexesVsLeague,
+  squaresVsLeague,
   LEAGUE_PRIOR_ATTEMPTS,
   leagueHexIndex,
   shootingLine,
@@ -27,6 +27,8 @@ import type { ShotLite } from "./data/shots";
  */
 
 export const HEX_RADIUS = 15; // tenths of a foot
+/** Square side in tenths of a foot: 2.5 ft, about the area of a 1.5 ft hex. */
+export const SQUARE_SIDE = 25;
 export const BAR_BIN_FT = 3;
 
 /** League-wide aggregates every dashboard compares against. */
@@ -67,8 +69,8 @@ export function buildDashboard(subject: ShotLite[], league: LeagueContext, court
   const zones = statsByZone(located, court);
   return {
     hex: {
-      hexes: hexesVsLeague(located, league.hexIndex, LEAGUE_PRIOR_ATTEMPTS, court),
-      radius: HEX_RADIUS,
+      squares: squaresVsLeague(located, league.hexIndex, SQUARE_SIDE, LEAGUE_PRIOR_ATTEMPTS, court),
+      side: SQUARE_SIDE,
       zones: Object.fromEntries(ZONES.map((z) => [z, { player: zones[z], league: league.hexIndex.zones[z] }])) as HexShotChartData["zones"],
       // only a non-NBA court rides along: the NBA team page's island props stay byte-identical (plan #4's island rule)
       ...(court === COURT ? {} : { court }),

@@ -138,7 +138,7 @@ export function renderGameStrip(svg: SVGSVGElement, data: GameStripData, opts: G
     width - 2 * PAD,
     theme,
     ["click a game (or Tab to it, then Space) to add or drop it; faded: not in the charts below"],
-    [`game FG% vs ${pronoun} season FG% (points)`, `red: above ${pronoun} season rate · blue: below`],
+    [`game FG% vs ${pronoun} season FG% (points)`, `green: above ${pronoun} season rate, purple: below`],
   );
   setViewBox(svg, width, gridH + 8 + used + 4);
 

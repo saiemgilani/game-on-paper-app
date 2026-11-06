@@ -1,32 +1,34 @@
 import { quantile } from "d3-array";
 import { Delaunay } from "d3-delaunay";
-import { hexbin } from "d3-hexbin";
 import { scaleSqrt, type ScalePower } from "d3-scale";
 import { pointer, select, type Selection } from "d3-selection";
 import type { Court } from "../../basketball/config";
 import { shrunkDiff, type HexVsLeague, type Split, type Zone } from "../data/aggregate";
 import { COURT, toSvg, toSvgLength, zoneAreas, type Viewport } from "../data/court";
 import { courtViewport, DEFAULT_WIDTH, drawCourt } from "./court";
-import { fmtPct, fmtPts } from "../format";
-import { chartTheme, diffColor, drawDiffLegend, drawNotes, FONT_PX, motionMs, setViewBox, SHRINK_NOTE, tooltip, TOKENS, type ChartTheme, type G } from "./theme";
+import { emitDistance, onDistance } from "./link";
+import { fmtDec, fmtPct, fmtPts } from "../format";
+import { chartTheme, diffColor, drawDiffLegend, drawNotes, FONT_PX, motionMs, setViewBox, SHRINK_NOTE, tooltip, TOKENS, uniqueId, type ChartTheme, type G } from "./theme";
 
 export interface ZoneComparison {
   player: Split;
   league: Split;
 }
 
+// Square bins, the owner's call (2026-11-02), as sdvplot-js draws them. The file keeps its hex-era name; hexbinShots and
+// hexesVsLeague still exist, so a hex view is a data field and a mode away.
 export interface HexShotChartData {
-  /** Player hexes from `hexesVsLeague`, legacy frame. */
-  hexes: HexVsLeague[];
-  /** Hex radius in tenths of a foot (the radius the hexes were binned with). */
-  radius: number;
+  /** Player squares from `squaresVsLeague`, legacy frame. */
+  squares: HexVsLeague[];
+  /** Square side in tenths of a foot. */
+  side: number;
   /** `statsByZone` for the player and the league. */
   zones: Record<Zone, ZoneComparison>;
   /** The court the zones were cut on and the chart draws; absent = the NBA's COURT. */
   court?: Court;
 }
 
-export type HexMode = "raw" | "zones";
+export type HexMode = "squares" | "zones";
 
 export interface HexShotChartOptions {
   width: number;
@@ -53,6 +55,22 @@ export function colourDiff(makes: number, attempts: number, league: number | nul
   return league === null || attempts === 0 ? null : shrunkDiff(makes, attempts, league);
 }
 
+/** A square of side `s` px centred on the origin (sdvplot-js's squarePath). */
+export const squarePath = (s: number): string => `M${-s / 2},${-s / 2}h${s}v${s}h${-s}z`;
+
+/** Cells away from the linked distance fade to this opacity. */
+const DIM = 0.2;
+
+/**
+ * The 2021 Blazing the Nets sizing (Hexagon/index.js renderSize): a cell with one attempt is not drawn, and the busiest
+ * cell stops short of its lattice square so neighbours never touch (the sqrt-to-p95 scale tiled them edge to edge).
+ */
+export const MIN_DRAWN_ATTEMPTS = 2;
+export const SQUARE_FILL = 0.88;
+
+/** The pinned cell per chart, by its lattice centre, so a resize or theme redraw keeps it. */
+const pins = new WeakMap<SVGSVGElement, { x: number; y: number }>();
+
 export interface HexMark {
   hex: HexVsLeague;
   cx: number;
@@ -62,8 +80,9 @@ export interface HexMark {
 }
 
 /**
- * Pixel marks for the hexes inside the viewport: size is a sqrt scale of attempts capped at the
- * 95th percentile (so one busy rim hex does not shrink the rest), colour is the shrunk FG% vs league.
+ * Pixel marks for the cells inside the viewport: size is a sqrt scale of attempts capped at the
+ * 95th percentile (so one busy rim cell does not shrink the rest), colour is the shrunk FG% vs league.
+ * `radius` is a full-size mark in tenths (a hex's radius or a square's side), and `r` comes back in the same sense.
  */
 export function layoutHexes(
   hexes: HexVsLeague[],
@@ -128,7 +147,7 @@ function drawZones(root: G, data: HexShotChartData, v: Viewport, theme: ChartThe
     const { player: z, league } = data.zones[a.zone];
     const g = labels.append("g").attr("transform", `translate(${a.label.x},${a.label.y})${a.vertical ? " rotate(-90)" : ""}`);
     if (a.vertical) {
-      label(g, `${fmtPct(z.fgPct, 0)} · ${z.makes}/${z.attempts}`, -2);
+      label(g, `${fmtPct(z.fgPct, 0)}, ${z.makes}/${z.attempts}`, -2);
       label(g, `lg ${fmtPct(league.fgPct, 0)}`, FONT_PX);
     } else {
       label(g, fmtPct(z.fgPct, 0)).style("font-weight", "600");
@@ -143,68 +162,89 @@ export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, {
   const court = data.court ?? COURT;
   const theme = chartTheme(svg);
   const root = select(svg).append("g");
-  const shape = hexbin();
-  let hexes: ReturnType<typeof root.selectAll<SVGPathElement, HexMark>> | null = null;
+  const shape = squarePath;
+  let cells: ReturnType<typeof root.selectAll<SVGPathElement, HexMark>> | null = null;
 
   if (mode === "zones") {
     drawZones(root, data, v, theme, tooltip(root, v.width, v.height), court);
+    // Zones have no cells to pin: a pin from the squares view lets go.
+    if (pins.delete(svg)) emitDistance(svg, { ft: null }, { pin: false });
   } else {
     drawCourt(root, v, { court });
-    const { marks, cap, size } = layoutHexes(data.hexes, data.radius, v, theme);
+    const { marks, cap, size } = layoutHexes(data.squares.filter((c) => c.attempts >= MIN_DRAWN_ATTEMPTS), data.side * SQUARE_FILL, v, theme);
     const ms = animate ? motionMs(500) : 0;
-    hexes = root
+    cells = root
       .append("g")
       .selectAll<SVGPathElement, HexMark>("path")
       .data(marks)
       .join("path")
       .attr("transform", (m) => `translate(${m.cx},${m.cy})`)
-      .attr("d", (m) => shape.hexagon(ms ? 0 : m.r))
+      .attr("d", (m) => shape(ms ? 0 : m.r))
       .style("fill", (m) => m.fill)
-      // A full-strength outline keeps average (near-background) hexes visible: size carries meaning.
+      // A full-strength outline keeps average (near-background) cells visible: size carries meaning.
       .style("stroke", TOKENS.muted)
       .style("stroke-width", 0.85);
-    if (ms) hexes.transition().duration(ms).attr("d", (m) => shape.hexagon(m.r));
+    if (ms) cells.transition().duration(ms).attr("d", (m) => shape(m.r));
 
-    // Hover: nearest hex centre (Delaunay), within 18 px.
+    // Hover: nearest cell centre (Delaunay), within 18 px. A click pins the cell, and its distance, until the next click.
     const focus = root.append("path").style("fill", "none").style("stroke", TOKENS.fg).style("stroke-width", 1.5).style("display", "none");
     const tip = tooltip(root, v.width, v.height);
     const delaunay = Delaunay.from(marks, (m) => m.cx, (m) => m.cy);
+    const nearest = (event: PointerEvent): HexMark | undefined => {
+      const [px, py] = pointer(event, root.node());
+      const m = marks.length ? marks[delaunay.find(px, py)] : undefined;
+      return m && Math.hypot(m.cx - px, m.cy - py) <= 18 ? m : undefined;
+    };
+    const pin = pins.get(svg);
+    let pinned = pin && marks.find((m) => m.hex.x === pin.x && m.hex.y === pin.y);
+    const show = (m: HexMark | undefined) => {
+      const held = { pin: m !== undefined && m === pinned };
+      if (!m) {
+        focus.style("display", "none");
+        tip.hide();
+        emitDistance(svg, { ft: null }, held);
+        return;
+      }
+      const h = m.hex;
+      focus.style("display", null).attr("transform", `translate(${m.cx},${m.cy})`).attr("d", shape(Math.max(m.r, 7)));
+      tip.show(m.cx, m.cy, [
+        ZONE_LABELS[h.zone],
+        `${h.makes}/${h.attempts} FG, ${fmtPct(h.fgPct)}`,
+        `League ${fmtPct(h.leagueFgPct)}` +
+          (h.fgPct !== null && h.leagueFgPct !== null ? ` (${fmtPts(h.fgPct - h.leagueFgPct)})` : ""),
+        `${fmtDec(h.meanDistance)} ft` + (m === pinned ? " (click to unpin)" : ""),
+      ]);
+      emitDistance(svg, { ft: h.meanDistance, band: 1 }, held);
+    };
     root
       .append("rect")
       .attr("width", v.width)
       .attr("height", v.height)
       .style("fill", "transparent")
+      .style("cursor", "pointer")
       .on("pointermove", (event: PointerEvent) => {
-        const [px, py] = pointer(event, root.node());
-        const m = marks.length ? marks[delaunay.find(px, py)] : undefined;
-        if (!m || Math.hypot(m.cx - px, m.cy - py) > 18) {
-          focus.style("display", "none");
-          tip.hide();
-          return;
-        }
-        const h = m.hex;
-        focus.style("display", null).attr("transform", `translate(${m.cx},${m.cy})`).attr("d", shape.hexagon(Math.max(m.r, 4)));
-        tip.show(m.cx, m.cy, [
-          ZONE_LABELS[h.zone],
-          `${h.makes}/${h.attempts} FG, ${fmtPct(h.fgPct)}`,
-          `League ${fmtPct(h.leagueFgPct)}` +
-            (h.fgPct !== null && h.leagueFgPct !== null ? ` (${fmtPts(h.fgPct - h.leagueFgPct)})` : ""),
-          `${h.meanDistance.toFixed(1)} ft`,
-        ]);
+        if (!pinned) show(nearest(event));
       })
       .on("pointerleave", () => {
-        focus.style("display", "none");
-        tip.hide();
+        if (!pinned) show(undefined);
+      })
+      .on("click", (event: PointerEvent) => {
+        const m = nearest(event);
+        pinned = m && m !== pinned ? m : undefined;
+        if (pinned) pins.set(svg, { x: pinned.hex.x, y: pinned.hex.y });
+        else pins.delete(svg);
+        show(pinned ?? m);
       });
 
     // Legend rows: colour key first, then the size key.
     const legend = root.append("g").attr("transform", `translate(12,${v.height + 12})`);
     const used = drawDiffLegend(legend, 0, 0, width - 24, theme, [SHRINK_NOTE]);
-    const steps = [1, Math.max(2, Math.round(cap / 2)), cap];
+    // a sparse chart (cap 2 or 3) gets one or two keys, never a middle step past the cap
+    const steps = [...new Set([MIN_DRAWN_ATTEMPTS, Math.min(cap, Math.max(MIN_DRAWN_ATTEMPTS + 1, Math.round(cap / 2))), cap])];
     const key = legend.append("g").attr("transform", `translate(0,${used + 8})`);
     steps.forEach((n, i) => {
       const x = 12 + i * 34;
-      key.append("path").attr("transform", `translate(${x},10)`).attr("d", shape.hexagon(size(n))).style("fill", TOKENS.muted);
+      key.append("path").attr("transform", `translate(${x},10)`).attr("d", shape(size(n))).style("fill", TOKENS.muted);
       key
         .append("text")
         .attr("x", x)
@@ -214,8 +254,14 @@ export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, {
         .style("fill", TOKENS.muted)
         .text(i === steps.length - 1 ? `${n}+` : String(n));
     });
-    drawNotes(key, 118, 4, width - 24 - 118, ["hex size: attempts"]);
-    setViewBox(svg, width, v.height + 12 + used + 8 + 42);
+    const notes = drawNotes(key, 118, 4, width - 24 - 118, ["square size: attempts (single attempts not drawn)", "hover or click a cell to mark its distance on the other charts"]);
+    setViewBox(svg, width, v.height + 12 + used + 8 + Math.max(42, notes + 8));
+    if (pinned) show(pinned);
+    else if (pin) {
+      // The pinned cell is gone (new data): release the pin.
+      pins.delete(svg);
+      emitDistance(svg, { ft: null }, { pin: false });
+    }
   }
 
   if (mode === "zones") {
@@ -224,8 +270,30 @@ export function renderHexShotChart(svg: SVGSVGElement, data: HexShotChartData, {
     setViewBox(svg, width, v.height + 12 + used + 6);
   }
 
+  // The distance another chart is on (the 2021 site's linked visuals): a ring that far from the rim, and the cells near it stay lit.
+  const rim = toSvg({ x: 0, y: 0 }, v);
+  const clip = uniqueId("bn-court");
+  root.append("clipPath").attr("id", clip).append("rect").attr("width", v.width).attr("height", v.height);
+  const ring = root
+    .append("circle")
+    .attr("clip-path", `url(#${clip})`)
+    .attr("cx", rim.x)
+    .attr("cy", rim.y)
+    .attr("pointer-events", "none")
+    .style("fill", "none")
+    .style("stroke", TOKENS.fg)
+    .style("stroke-opacity", 0.55)
+    .style("stroke-width", 2)
+    .style("stroke-dasharray", "5 4")
+    .style("display", "none");
+  const unlink = onDistance(svg, ({ ft, band = 1 }) => {
+    ring.style("display", ft === null ? "none" : "inline").attr("r", ft === null ? 0 : toSvgLength(ft * 10, v));
+    cells?.style("opacity", (m) => (ft === null || Math.abs(m.hex.meanDistance - ft) <= band + 0.5 ? null : DIM));
+  });
+
   return () => {
-    hexes?.interrupt();
+    unlink();
+    cells?.interrupt();
     root.remove();
   };
 }
@@ -238,6 +306,7 @@ export function describeHex(data: HexShotChartData): string {
     const { player, league } = data.zones[z];
     return `${ZONE_LABELS[z]} ${player.makes}/${player.attempts} (${fmtPct(player.fgPct)}, league ${fmtPct(league.fgPct)})`;
   });
-  const attempts = data.hexes.reduce((a, h) => a + h.attempts, 0);
-  return `${attempts} attempts in ${data.hexes.length} hexes. By zone: ${zones.join("; ")}.`;
+  const attempts = data.squares.reduce((a, h) => a + h.attempts, 0);
+  const drawn = data.squares.filter((h) => h.attempts >= MIN_DRAWN_ATTEMPTS).length;
+  return `${attempts} attempts; ${drawn} ${fmtDec(data.side / 10)} ft squares with ${MIN_DRAWN_ATTEMPTS} or more. By zone: ${zones.join("; ")}.`;
 }
