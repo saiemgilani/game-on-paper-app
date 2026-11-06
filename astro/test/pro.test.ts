@@ -387,6 +387,56 @@ describe('the pages', () => {
         const res = await container.renderToResponse(Page, { params: { unit: 'K' }, request: new Request('https://gameonpaper.com/pro/positions/K'), locals: { preview: true, pro } as any }).catch(() => null);
         expect(res ? await res.text() : '').not.toContain('Download PDF');
     }, 60_000);
+
+    test('the role reports: the index links every kind; each kind renders its tables, PDF and limits', async () => {
+        const index = await render('../src/pages/pro/roles/index.astro', '/pro/roles');
+        for (const href of ['/pro/roles/team/1', '/pro/roles/collective/1', '/pro/roles/ad/1', '/pro/roles/agent/market', '/pro/roles/player/1']) {
+            expect(index, href).toContain(`href="${href}"`);
+        }
+        const page = (kind: string, key: string) => render('../src/pages/pro/roles/[kind]/[key].astro', `/pro/roles/${kind}/${key}`, { kind, key });
+        const team = await page('team', '1');
+        expect(team).toContain('id="pro-headlines"');
+        expect(team.indexOf('id="pro-headlines"')).toBeLessThan(team.indexOf('id="pro-role-unit-grid-table"'));
+        expect(team).toContain('href="/pro/file/pro/roles/team/1.pdf"');
+        expect(team).toContain('Fixture role limit two.');
+        const targets = team.split('id="pro-role-targets-table"')[1].split('</table>')[0];
+        expect(targets).toContain('href="/pro/players/2"');
+        expect(targets).toContain('<td class="text-left text-nowrap">georgia</td>');  // team column: left, through cleanTextForTeam
+        // a season with no rank prints a gap, not "null"
+        expect(team.split('id="pro-role-unit-grid-table"')[1].split('</table>')[0]).toContain('—');
+        const coll = await page('collective', '1');
+        for (const s of ['$12.50M', '$4.10M', '14/68', 'id="pro-role-retention-table"']) expect(coll, s).toContain(s);
+        const ad = await page('ad', '1');
+        // its own program's name is bold (per column, not the whole row)
+        const peers = ad.split('id="pro-role-peers-table"')[1].split('</table>')[0];
+        expect(peers.split('</tr>')[1]).toContain('<strong>');
+        expect(peers).not.toContain('fw-bold');
+        const agent = await page('agent', 'market');
+        for (const s of ['$2.65M', '0.23', 'Fixture State (0.85)']) expect(agent, s).toContain(s);
+        const player = await page('player', '1');
+        for (const s of ['Fixture Player', '$1.10M', '80% range 61 to 98', 'id="pro-role-career-table"']) expect(player, s).toContain(s);
+        // an unknown kind, a missing key or a traversal is a 404, never a shell
+        const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
+        const { default: Page } = await import('../src/pages/pro/roles/[kind]/[key].astro');
+        for (const [kind, key] of [['coach', '1'], ['team', '999'], ['team', '..'], ['toString', '1']]) {
+            const out = await container.renderToResponse(Page, { params: { kind, key }, request: new Request(`https://gameonpaper.com/pro/roles/${kind}/${key}`), locals: { preview: true, pro } as any })
+                .then(async (r) => `${r.status}:${await r.text()}`, (e) => `throw:${String(e)}`);
+            // the page rewrites to /404; the test container has no such route, so that rewrite is what throws
+            expect(out, `${kind}/${key}`).toMatch(/^throw:.*route \/404$/);
+        }
+    }, 60_000);
+
+    test('the Pro nav shows a viewer only what their tier opens', async () => {
+        const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
+        const { default: Nav } = await import('../src/components/pro/ProNav.astro');
+        const nav = (viewer: unknown) => container.renderToString(Nav, { locals: { pro: viewer } as any });
+        const fan = await nav({ email: 'fan@example.com', ...analyst });
+        for (const href of ['/pro/portal', '/pro/rosters', '/pro/positions', '/pro/market', '/pro/roles']) expect(fan, href).not.toContain(`href="${href}"`);
+        expect(fan).toContain('href="/pro/methodology"');
+        const coach = await nav(pro);
+        for (const href of ['/pro/portal', '/pro/rosters', '/pro/roles']) expect(coach, href).toContain(`href="${href}"`);
+        expect(await nav(null)).toContain('href="/pro/roles"');  // signed out: the whole menu
+    }, 30_000);
 });
 
 describe('valuation formatting', () => {
@@ -445,6 +495,11 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         for (const path of ['/pro/rosters', '/pro/rosters/194', '/pro/positions/QB', '/pro/market', '/pro/file/pro/2026/rosters/194.pdf', '/pro/file/pro/2026/market/market.pdf']) {
             expect(proAllows(a, path), path).toBe(false);
             expect(proAllows(pro, path), path).toBe(true);
+        }
+        for (const path of ['/pro/roles', '/pro/roles/team/194', '/pro/roles/agent/market', '/pro/file/pro/roles/collective/194.pdf']) {
+            expect(proAllows(a, path), path).toBe(false);
+            expect(proAllows(pro, path), path).toBe(true);
+            expect(proAllows({ ...base, tier: 'agency' }, path), path).toBe(true);
         }
         expect(proAllows(a, '/pro/file/pro/2026/valuation/valuation.pdf')).toBe(true);
         expect(proAllows(a, '/pro/rostersx')).toBe(true);

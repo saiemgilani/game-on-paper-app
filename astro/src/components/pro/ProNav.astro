@@ -1,18 +1,23 @@
 ---
-/** The Pro section's own row of links, under the page header. FilterGroup's pill markup. */
+/** The Pro section's own row of links, under the page header. FilterGroup's pill markup.
+ * A signed-in viewer sees only the sections their tier and add-ons open (utils/pro.ts
+ * proAllows), so no link bounces them to /pricing; a signed-out viewer sees them all. */
+import { proAllows } from '../../utils/pro';
+
 interface Props {
-    active?: 'players' | 'portal' | 'rosters' | 'positions' | 'market' | 'methodology'
+    active?: 'players' | 'portal' | 'rosters' | 'positions' | 'market' | 'roles' | 'methodology'
 }
 const { active } = Astro.props;
 const viewer = Astro.locals.pro ?? null;
-const links: [string, string, Props['active']][] = [
+const links: [string, string, Props['active']][] = ([
     ['/pro', 'Players', 'players'],
     ['/pro/portal', 'Portal Board', 'portal'],
     ['/pro/rosters', 'Rosters', 'rosters'],
     ['/pro/positions', 'Positions', 'positions'],
     ['/pro/market', 'Market', 'market'],
+    ['/pro/roles', 'Role reports', 'roles'],
     ['/pro/methodology', 'Methodology', 'methodology'],
-];
+] as [string, string, Props['active']][]).filter(([href]) => !viewer || proAllows(viewer, href));
 ---
 <div class="container mb-3">
     <div class="d-flex align-items-center flex-wrap gap-1" id="pro-nav">

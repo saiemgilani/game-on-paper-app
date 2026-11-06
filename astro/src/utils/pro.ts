@@ -36,10 +36,26 @@ export function proRequirement(path: string): { tiers?: ProTier[]; addon?: ProAd
     if (/^\/pro\/(portal|board)(\/|$)/.test(path) || /^\/pro\/file\/pro\/\d{4}\/portal\//.test(path)) return { addon: 'portal' };
     if (/^\/pro\/file\/pro\/\d{4}\/teams\//.test(path)) return { tiers: ['pro', 'program'] };
     if (/^\/pro\/file\/pro\/coaches\//.test(path)) return { addon: 'dossier' };
-    // the valuation reports (roster, position market, talent market): every tier above Analyst
-    if (/^\/pro\/(rosters|positions|market)(\/|$)/.test(path)
-        || /^\/pro\/file\/pro\/\d{4}\/(rosters|positions|market)\//.test(path)) return { tiers: ['pro', 'program', 'agency'] };
+    // the valuation reports (roster, position market, talent market) and the 2019-present role
+    // reports (team, collective, AD, agent, player): every tier above Analyst
+    if (/^\/pro\/(rosters|positions|market|roles)(\/|$)/.test(path)
+        || /^\/pro\/file\/pro\/\d{4}\/(rosters|positions|market)\//.test(path)
+        || /^\/pro\/file\/pro\/roles\//.test(path)) return { tiers: ['pro', 'program', 'agency'] };
     return null;
+}
+
+/** gop-pro roles.py: one report family per reader, keyed `pro/roles/<kind>/<key>.json`. */
+export const ROLE_KINDS = {
+    team: { title: 'Program History', reader: 'coaches and general managers' },
+    collective: { title: 'Budget and Allocation', reader: 'NIL collectives' },
+    ad: { title: 'Program Benchmark', reader: 'athletic directors' },
+    agent: { title: 'Market History', reader: 'agents and player representatives' },
+    player: { title: 'Career and Market', reader: 'players and families' },
+} as const;
+export type RoleKind = keyof typeof ROLE_KINDS;
+
+export function isRoleKind(k: unknown): k is RoleKind {
+    return typeof k === 'string' && Object.hasOwn(ROLE_KINDS, k);
 }
 
 export function proAllows(viewer: ProEntitlement, path: string): boolean {
