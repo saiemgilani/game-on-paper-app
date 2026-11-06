@@ -135,6 +135,9 @@ describe('coach tendency reads', () => {
         const page = (n: number) => () => new Response(JSON.stringify({ data: Array.from({ length: n }, (_, i) => ({ coach: `c${i}` })), next: null }), { status: 200 });
         respond = page(2000);
         expect(await sdv.retrieveCoachCareers({ league: 'nfl', columns: ['go_rate'] })).toEqual([]);
+        // one row short of the limit is a whole page: the guard is exactly the limit, not some lower cut
+        respond = page(1999);
+        expect(await sdv.retrieveCoachCareers({ league: 'nfl', columns: ['go_rate'] })).toHaveLength(1999);
         // 447 cfb careers (the field 400 cut short) all come back, through the default cfb request
         seen.length = 0;
         respond = page(447);
