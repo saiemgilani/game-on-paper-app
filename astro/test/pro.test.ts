@@ -181,9 +181,12 @@ describe('/pro/file', () => {
         expect(ok.headers.get('Content-Type')).toContain('text/csv');
         expect(ok.headers.get('Cache-Control')).toBe('no-store');
         expect((await ok.text()).split('\n')[0]).toContain('pass_EPAplay_band_mid');
-        for (const bad of ['pro/../secrets.json', 'other/x.json', 'pro/2026/players/1.exe', 'pro//x.pdf']) expect(isProKey(bad), bad).toBe(false);
+        for (const bad of ['pro/../secrets.json', 'other/x.json', 'pro/2026/players/1.exe', 'pro//x.pdf', 'pro/2026/players/1.json']) expect(isProKey(bad), bad).toBe(false);
         const missing: Response = await (GET as any)({ params: { key: 'pro/2026/players/999.pdf' }, locals: { pro: { email: 'a@b.co', ...live } } });
         expect(missing.status).toBe(404);
+        // a profile's JSON exists (and holds PFF arrays) but is never a download
+        const json: Response = await (GET as any)({ params: { key: 'pro/2026/players/1.json' }, locals: { pro: { email: 'a@b.co', ...live } } });
+        expect(json.status).toBe(404);
     });
 });
 

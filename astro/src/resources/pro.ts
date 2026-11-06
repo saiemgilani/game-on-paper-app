@@ -151,9 +151,13 @@ async function fixtureText(key: string): Promise<string | null> {
     return load ? ((await load()) as string) : null;
 }
 
-/** An R2 key a caller may ask for: under pro/, no traversal, no oddities. */
+/**
+ * An R2 key a viewer may download through /pro/file: a PDF or CSV under pro/, no traversal, no
+ * oddities. Never JSON: a profile's JSON carries PFF grades and counts, which no file may hand out
+ * (contract.md); pages read the JSON server side through proObject instead.
+ */
 export function isProKey(key: string): boolean {
-    return /^pro\/[A-Za-z0-9_\-/]+\.(json|pdf|csv)$/.test(key) && !key.includes('//') && !key.includes('..');
+    return /^pro\/[A-Za-z0-9_\-/]+\.(pdf|csv)$/.test(key) && !key.includes('//') && !key.includes('..');
 }
 
 /** A JSON artifact from the bucket, parsed; null when missing or unreadable. */
