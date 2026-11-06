@@ -66,7 +66,10 @@ const side = (c: any, score: number, other: number) => ({
 });
 // G12 ('spice-cues'): the row has no spice border, so the card's text cue is
 // the only place a phone reader gets it; it shares the one note line, where
-// only a long ESPN note truncates (bowl notes) and the cue never shrinks
+// only a long ESPN note truncates (bowl notes) and the cue never shrinks.
+// The cue is its own span after a ps-2 gap, as on the desktop card (its
+// "ms-auto ps-2" cue span), with no separator glyph; the space between the
+// spans only keeps the link name from running "Iron BowlRanked upset"
 const spiceLabel = isFeatureEnabled('spice-cues', Astro.locals) ? SPICE_LABEL[calculateSpiceLevel(game)] : null;
 const away = side(awayComp, awayScore, homeScore);
 const home = side(homeComp, homeScore, awayScore);
@@ -89,9 +92,8 @@ const home = side(homeComp, homeScore, awayScore);
   </span>
   {spiceLabel ? (
     <span class:list={["gb-note small d-flex justify-content-center overflow-hidden", isChamp ? "text-championship" : "text-muted"]}>
-      {gameNote && <span class="text-truncate">{gameNote}</span>}
-      {gameNote && <span class="flex-shrink-0 px-1">·</span>}
-      <span class="text-nowrap flex-shrink-0 text-muted">{spiceLabel}</span>
+      {gameNote && <span class="text-truncate">{gameNote}</span>}{gameNote && " "}
+      <span class:list={["text-nowrap flex-shrink-0 text-muted", { "ps-2": gameNote }]}>{spiceLabel}</span>
     </span>
   ) : gameNote && <span class:list={["gb-note small text-center text-truncate", isChamp ? "text-championship" : "text-muted"]}>{gameNote}</span>}
 </a>

@@ -303,18 +303,21 @@ describe('spice cues', () => {
     test('flag on: a row with an ESPN note and a cue keeps ONE note line', async () => {
         const html = await notedRow('Iron Bowl');
         expect([...html.matchAll(/class="gb-note/g)]).toHaveLength(1);
-        expect(html).toMatch(/<span class="text-truncate">Iron Bowl<\/span>\s*<span class="flex-shrink-0 px-1">·<\/span>\s*<span class="text-nowrap flex-shrink-0 text-muted">Ranked upset<\/span>/);
+        // the cue is its own span after a ps-2 gap (the desktop card's cue
+        // spacing), with no separator glyph between note and cue
+        expect(html).toMatch(/<span class="text-truncate">Iron Bowl<\/span> <span class="text-nowrap flex-shrink-0 text-muted ps-2">Ranked upset<\/span>/);
+        expect(html).not.toMatch(/[·•]/);
     });
 
     // Self-review on #360: bowl games carry the longest notes, and a single
     // text-truncate line cut the cue off at 320-375px. Only the note may
-    // shrink: it is the one truncating item; the separator and cue never shrink.
+    // shrink: it is the one truncating item; the cue never shrinks.
     test('flag on: a long bowl note truncates, the cue does not', async () => {
         const html = await notedRow('CFP Semifinal at the Allstate Sugar Bowl');
         const note = html.slice(html.indexOf('class="gb-note'), html.indexOf('</a>'));
         expect(note).toMatch(/^class="gb-note small d-flex justify-content-center overflow-hidden /);
         expect(note).toContain('<span class="text-truncate">CFP Semifinal at the Allstate Sugar Bowl</span>');
-        expect(note).toContain('<span class="text-nowrap flex-shrink-0 text-muted">Ranked upset</span>');
+        expect(note).toContain('<span class="text-nowrap flex-shrink-0 text-muted ps-2">Ranked upset</span>');
         // nothing but the note itself truncates
         expect([...note.matchAll(/text-truncate/g)]).toHaveLength(1);
     });
