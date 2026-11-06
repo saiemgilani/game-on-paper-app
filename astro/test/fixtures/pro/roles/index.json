@@ -1,0 +1,7 @@
+{"seasons": [2024, 2025, 2026], "rendered": "2026-11-05", "price_season": 2026, "reports": [
+ {"kind": "team", "key": "1", "title": "Fixture State", "team_id": 1, "team": "Fixture State", "conference": "Fixture Conference", "p4": true, "unit": null, "headline": "Fixture State: team headline one."},
+ {"kind": "collective", "key": "1", "title": "Fixture State", "team_id": 1, "team": "Fixture State", "conference": "Fixture Conference", "p4": true, "unit": null, "headline": "Collective headline one."},
+ {"kind": "ad", "key": "1", "title": "Fixture State", "team_id": 1, "team": "Fixture State", "conference": "Fixture Conference", "p4": true, "unit": null, "headline": "AD headline one."},
+ {"kind": "agent", "key": "market", "title": "Market", "team_id": null, "team": null, "conference": null, "p4": null, "unit": null, "headline": "Agent headline one."},
+ {"kind": "player", "key": "1", "title": "Fixture Player", "team_id": null, "team": "Fixture State", "conference": null, "p4": null, "unit": "QB", "headline": "Player headline one."}
+]}

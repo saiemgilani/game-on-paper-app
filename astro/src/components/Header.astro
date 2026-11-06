@@ -106,9 +106,12 @@ const lp = (p: string) => leaguePath(league, p);
                             {football && (<li><a href={lp("/game/matchup")} class="dropdown-item">Matchup Builder</a></li>)}
                             {/* behind the 'stat-search' flag: middleware 404s the page for everyone else */}
                             {football && isFeatureEnabled("stat-search", Astro.locals) && (<li><a href={lp("/search/seasons")} class="dropdown-item">Season Search</a></li>)}
+                            {league === 'cfb' && isFeaturePublic("playoff-projection", Astro.locals) && (<li><a href="/playoff" class="dropdown-item">Playoff Projection</a></li>)}
                             <li><a href="/glossary" class="dropdown-item">Glossary</a></li>
                             <li><a href="/data-sources" class="dropdown-item">Data & Sources</a></li>
                             <li><a href="/changelog" class="dropdown-item">Changelog</a></li>
+                            {/* only once 'pro' is public, like the NBA entry: the Header is on every cached page */}
+                            {league === 'cfb' && isFeaturePublic("pro", Astro.locals) && (<li><a href="/pro" class="dropdown-item">Game on Paper Pro</a></li>)}
                         </ul>
                     </li>
                 </ul>
