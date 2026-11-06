@@ -128,3 +128,51 @@ describe('flag on, no membership', () => {
         expect(html).not.toMatch(/#\d/);
     });
 });
+
+// The Container API has no cache provider or response headers, so the cache
+// policy is pinned on the loader with a stub Astro (as chartBuilder.render.test.ts does).
+describe('cache policy (flag on)', () => {
+    async function load(membership = true) {
+        const sdv = await import('../src/resources/sdv');
+        const spy = membership ? null : vi.spyOn(sdv, 'retrieveTeamSummaries').mockResolvedValue([]);
+        const set = vi.fn();
+        const headers = new Headers();
+        const { loadSeasonTeam } = await import('../src/routes/seasonTeam');
+        await loadSeasonTeam({
+            params: { year: '2025', id: '333' }, locals: { preview: true } as App.Locals,
+            url: new URL('https://gameonpaper.com/year/2025/team/333'), cache: { set }, response: { headers },
+        } as any, 'cfb');
+        spy?.mockRestore();
+        return { set, cacheControl: headers.get('Cache-Control') };
+    }
+
+    test('a good read leaves the cache policy alone', async () => {
+        const { set, cacheControl } = await load();
+        expect(set).not.toHaveBeenCalledWith(false);
+        expect(cacheControl).toBeNull();
+    });
+
+    test('a failed season read is never cached: cache.set(false) and no-store', async () => {
+        feed.fail = true;
+        const { set, cacheControl } = await load();
+        expect(set).toHaveBeenCalledWith(false);
+        expect(cacheControl).toBe('no-store');
+    });
+
+    test('a failed membership read (no ranks) is never cached either', async () => {
+        const { set, cacheControl } = await load(false);
+        expect(set).toHaveBeenCalledWith(false);
+        expect(cacheControl).toBe('no-store');
+    });
+});
+
+describe("GenericPanel's panel-controls slot", () => {
+    test('a panel without it renders the heading exactly as before (no row/col classes)', async () => {
+        const html = await render('cfb', '333', true);
+        // every other panel on the page: the pre-slot heading markup
+        const headings = [...html.matchAll(/<div class="panel-heading[^"]*">\s*<div class="panel-title[^"]*">/g)].map((m) => m[0].replace(/\s+/g, ' '));
+        expect(headings.length).toBeGreaterThan(1);
+        expect(headings.filter((h) => h.includes('row'))).toHaveLength(1);
+        expect(headings.filter((h) => !h.includes("row"))).toEqual(headings.filter((h) => !h.includes("row")).map(() => "<div class=\"panel-heading\"><div class=\"panel-title\">"));
+    });
+});
