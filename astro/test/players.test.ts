@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import {
     formatPlayerMetric, gameStatLine, isEspnAthleteId, isGsisId, isPlayerPath,
     GAME_PERCENTILE_MIN_PLAYS, gamePercentileGroup, seasonGamePercentileGroup, percentileFromBreaks, percentileOf, playerHref, playerPath, rollUpSeasons, SPLIT_PARTITIONS,
-    formatHeight, PLAYER_STAT_MINIMUMS, playerBoardSort, totalGameLog, unrankedSeasons, type SeasonRow,
+    formatHeight, PLAYER_STAT_MINIMUMS, playerBoardSort, totalGameLog, unrankedSeasons, watchLeader, type SeasonRow,
 } from '../src/utils/players';
 import { SDV_PLAYER_METRIC_CATEGORIES } from '../src/utils/constants';
 import { cleanField, cleanTextForTeam, isMemeTeam, joinWithAnd, numberOrNull } from '../src/utils/misc';
@@ -331,5 +331,33 @@ describe('the player board sorts from the dropdown config (one list, so they can
     });
     test('a metric the config does not know sorts by rank, as before', () => {
         expect(playerBoardSort('passing', 'nonsense')).toEqual({ sortBy: 'nonsense_rank', ranked: true });
+    });
+});
+
+describe('players to watch', () => {
+    // Kent State 2026 through week 9 (gameonpaper.com/year/2026/team/2309, captured 2026-10-30): the
+    // preview for 401866451 named Da'Realyst Clark (1 dropback, +2.07 EPA) over the starter, and a
+    // 7-carry back (+1.71) over the backs with the carries.
+    const passing = [
+        { passer_player_name: 'Dru DeShields', TEPA: -0.62, dropbacks: 201 },
+        { passer_player_name: 'Nolan Good', TEPA: -9.9, dropbacks: 7 },
+        { passer_player_name: 'Ethan Thanthanavong', TEPA: -0.76, dropbacks: 2 },
+        { passer_player_name: "Da'Realyst Clark", TEPA: 2.07, dropbacks: 1 },
+    ];
+    const rushing = [
+        { rusher_player_name: 'Brandon White', TEPA: -6.91, plays: 57 },
+        { rusher_player_name: 'Dru DeShields', TEPA: -3.87, plays: 44 },
+        { rusher_player_name: 'Hunter Hopperton', TEPA: 1.71, plays: 7 },
+    ];
+
+    test('the passer is the one with the most dropbacks, not the best total EPA', () => {
+        expect(watchLeader(passing, 'passing')?.passer_player_name).toBe('Dru DeShields');
+        const tied = passing.map((r) => ({ ...r, dropbacks: 10 }));
+        expect(watchLeader(tied, 'passing')?.passer_player_name).toBe("Da'Realyst Clark");
+    });
+
+    test('the rusher and receiver stay the most valuable by total EPA', () => {
+        expect(watchLeader(rushing, 'rushing')?.rusher_player_name).toBe('Hunter Hopperton');
+        expect(watchLeader([], 'receiving')).toBeNull();
     });
 });

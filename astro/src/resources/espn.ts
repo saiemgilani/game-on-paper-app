@@ -767,6 +767,9 @@ export interface ESPNRanking {
     id: string
     name: string
     shortName?: string
+    /** 'ap', 'usa' (coaches), 'cfp' (the playoff committee), ... */
+    type?: string
+    season?: { year?: number }
     headline?: string
     date?: string
     occurrence?: { displayValue?: string }
