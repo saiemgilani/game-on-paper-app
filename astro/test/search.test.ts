@@ -63,6 +63,12 @@ describe('rankHits', () => {
         expect(rankHits(Array.from({ length: 12 }, (_, i) => row('team', 1 + i / 100)), all)).toHaveLength(8);
     });
 
+    test('only keeps one type before the cap, so teams cannot crowd players out', () => {
+        const rows = [...Array.from({ length: 9 }, (_, i) => row('team', 1 + i / 100)), row('player', 0.5)];
+        expect(rankHits(rows, all).some((h) => h.type === 'player')).toBe(false);
+        expect(rankHits(rows, { ...all, only: 'player' }).map((h) => h.type)).toEqual(['player']);
+    });
+
     test('players:false drops every player; nfl:false drops every NFL row', () => {
         const rows = [row('player', 0.9), row('team', 0.8, { league: 'nfl' }), row('team', 0.7), row('game', 0.6, { league: 'nfl' })];
         expect(rankHits(rows, { players: false, nfl: true }).some((h) => h.type === 'player')).toBe(false);

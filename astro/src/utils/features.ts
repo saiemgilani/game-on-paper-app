@@ -190,6 +190,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404 and the
     // standings page has no link.
     'bball-nba-cup': 'preview',
+    // Player compare: /players/compare?ids=a,b&season=N and the /nfl twin, up to four player cards
+    // side by side, plus the Compare button on the player page's header card. Off: the page is
+    // the site's 404 and the player page has no button.
+    'player-compare': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
