@@ -90,6 +90,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // interval, from sdv-db's player_war (BB-D26) and, for the NBA from 2021-22, epv_player_games (BB-D24); the Impact
     // panel then drops player_impact's WAR. Off: no read and the player page is today's, byte for byte.
     'bball-war': 'preview',
+    // Basketball player compare (BB-G13) inside each league's flag: /<league>/players/compare?ids=a,b&season=N, football's
+    // compare page ('player-compare', #359) with up to four cards of the Impact, Value and shooting rows the player page
+    // reads, plus the Compare button on /<league>/players/[id]. Off: the page is the site's 404 and the player page is
+    // today's, byte for byte.
+    'bball-compare': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
