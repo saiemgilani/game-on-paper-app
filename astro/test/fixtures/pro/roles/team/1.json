@@ -1,0 +1,6 @@
+{"schema": 1, "seasons": [2024, 2025, 2026], "rendered": "2026-11-05", "price_season": 2026, "limits": ["Fixture role limit one.", "Fixture role limit two."], "role": "team", "team": {"team_id": 1, "team": "Fixture State", "conference": "Fixture Conference", "p4": true}, "headlines": ["Fixture State: team headline one.", "Team headline two."],
+ "unit_grid": [{"unit": "QB", "name": "Quarterbacks", "ranks": [40, 12, 3]}, {"unit": "WR", "name": "Wide receivers", "ranks": [80, null, 55]}],
+ "best_buys": [{"espn_id": 1, "name": "Fixture Player", "team": "Fixture State", "unit": "QB", "season": 2024, "price": 250000.0, "delivered": 2100000.0, "seasons_there": 3}],
+ "worst_buys": [{"espn_id": 9, "name": "Fixture Bust", "team": "Fixture State", "unit": "CB", "season": 2025, "price": 1500000.0, "delivered": 0.0, "seasons_there": 1}],
+ "needs": [{"unit": "CB", "name": "Cornerbacks", "proj_upct": 41.6, "need": 0.93, "ret_share": 0.48}],
+ "targets": [{"espn_id": 2, "name": "Fixture Receiver", "team": "Georgia", "team_id": 61, "unit": "WR", "class": "JR", "source": "HS", "pct": 71.0, "usd": 900000.0, "market_usd": 640000.0, "p_move": 0.31, "fit": 200000.0, "proj": 58.2}]}

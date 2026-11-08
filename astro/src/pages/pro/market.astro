@@ -1,0 +1,100 @@
+---
+/**
+ * Talent Market (agents, collectives, personnel offices): the web twin of gop-pro's
+ * market.typ, read from `pro/<season>/market/market.json`.
+ */
+import GenericPage from '../../layouts/GenericPage.astro';
+import Panel from '../../layouts/panel/GenericPanel.astro';
+import ProNav from '../../components/pro/ProNav.astro';
+import ReportFrame from '../../components/pro/ReportFrame.astro';
+import { formatUsd } from '../../utils/pro';
+import { PRO_SEASON, proObject } from '../../resources/pro';
+
+interface MarketDoc {
+    season: number; snapshot: string; rendered: string; headlines: string[]; limits: string[]
+    units: { unit: string; name: string; scarcity: number | null; jobs_opened: number | null; starter_entrants: number | null
+        p50: number | null; p75: number | null; p90: number | null; proj_p50: number | null; leaving: number | null
+        leaving_usd: number | null; hs_n: number; hs_blue: number; hs_blue_open: number; juco_n: number; juco_open: number
+        cycle_entrants: number | null; cycle_now_starting: number | null }[]
+    cycle_top: { name: string; position: string | null; from_team: string | null; now_team: string | null; stars: number | null
+        pct: number | null; prod_usd: number | null; proj_usd: number | null }[]
+    pull: { team: string; n: number; share: number }[]
+}
+
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
+const doc = await proObject<MarketDoc>(`pro/${PRO_SEASON}/market/market.json`);
+if (!doc) return Astro.rewrite('/404');
+const n = (v: number | null) => (v === null ? '—' : String(v));
+---
+<GenericPage title="Talent Market | Game on Paper Pro" subtitle={`${doc.season} talent market`} slug="/pro/market"
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Market', active: true }]} heading="Talent Market">
+    <ProNav active="market" />
+    <div class="container">
+        <h1 class="fs-3">Talent Market</h1>
+        <ReportFrame headlines={doc.headlines} limits={doc.limits} pdfHref={`/pro/file/pro/${doc.season}/market/market.pdf`}
+            snapshot={doc.snapshot} rendered={doc.rendered}>
+            <Panel id="pro-scarcity" title="Scarcity and price by position" show={true} class="mb-md-3">
+                <p slot="panel-subtitle" class="m-0 text-muted text-small">Scarcity: P4 starting jobs opened per starter-caliber portal entrant last cycle, 1.0 = average. Prices: P4 starters' production this season.</p>
+                <Fragment slot="panel-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="pro-scarcity-table">
+                            <thead><tr><th class="text-left">Position</th><th class="text-center">Scarcity</th><th class="text-center">Jobs opened</th><th class="text-center">Starter entrants</th>
+                                <th class="text-center">p50</th><th class="text-center">p75</th><th class="text-center">p90</th><th class="text-center">Next-yr p50</th>
+                                <th class="text-center">P4 starters leaving</th><th class="text-center">Leaving value</th></tr></thead>
+                            <tbody>{doc.units.map((u) => (
+                                <tr data-unit={u.unit}>
+                                    <td class="text-left text-nowrap"><a href={`/pro/positions/${u.unit}`}>{u.name}</a></td>
+                                    <td class:list={['text-center numeral', { 'text-danger fw-bold': (u.scarcity ?? 0) > 1 }]}>{u.scarcity === null ? '—' : u.scarcity.toFixed(2)}</td>
+                                    <td class="text-center numeral">{n(u.jobs_opened)}</td><td class="text-center numeral">{n(u.starter_entrants)}</td>
+                                    <td class="text-center numeral">{formatUsd(u.p50)}</td><td class="text-center numeral">{formatUsd(u.p75)}</td>
+                                    <td class="text-center numeral">{formatUsd(u.p90)}</td><td class="text-center numeral">{formatUsd(u.proj_p50)}</td>
+                                    <td class="text-center numeral">{n(u.leaving)}</td><td class="text-center numeral">{formatUsd(u.leaving_usd)}</td>
+                                </tr>
+                            ))}</tbody>
+                        </table>
+                    </div>
+                </Fragment>
+            </Panel>
+            <Panel id="pro-pipelines" title="Supply: high school, JUCO and last cycle's portal" show={true} class="mb-md-3">
+                <Fragment slot="panel-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="pro-pipelines-table">
+                            <thead><tr><th class="text-left">Position</th><th class="text-center">HS {doc.season + 1} signees</th><th class="text-center">Blue-chips</th>
+                                <th class="text-center">Blue-chips open</th><th class="text-center">JUCO</th><th class="text-center">JUCO open</th>
+                                <th class="text-center">Portal entrants matched</th><th class="text-center">Now starting</th></tr></thead>
+                            <tbody>{doc.units.map((u) => (
+                                <tr><td class="text-left text-nowrap">{u.name}</td><td class="text-center numeral">{u.hs_n}</td><td class="text-center numeral">{u.hs_blue}</td>
+                                    <td class="text-center numeral">{u.hs_blue_open}</td><td class="text-center numeral">{u.juco_n}</td><td class="text-center numeral">{u.juco_open}</td>
+                                    <td class="text-center numeral">{n(u.cycle_entrants)}</td><td class="text-center numeral">{n(u.cycle_now_starting)}</td></tr>
+                            ))}</tbody>
+                        </table>
+                    </div>
+                </Fragment>
+            </Panel>
+            <Panel id="pro-cycle" title="Last cycle's portal, one season on" show={true} class="mb-md-3">
+                <Fragment slot="panel-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="pro-cycle-table">
+                            <thead><tr><th class="text-left">Player</th><th class="text-center">Pos</th><th class="text-left">From</th><th class="text-left">Now</th>
+                                <th class="text-center">Stars</th><th class="text-center">Pct</th><th class="text-center">Production</th><th class="text-center">Projected</th></tr></thead>
+                            <tbody>{doc.cycle_top.map((r) => (
+                                <tr><td class="text-left text-nowrap">{r.name}</td><td class="text-center">{r.position ?? '—'}</td><td class="text-left">{r.from_team ?? '—'}</td>
+                                    <td class="text-left">{r.now_team ?? '—'}</td><td class="text-center">{r.stars ? `${r.stars}★` : '—'}</td>
+                                    <td class="text-center numeral">{r.pct === null ? '—' : Math.round(r.pct)}</td><td class="text-center numeral">{formatUsd(r.prod_usd)}</td>
+                                    <td class="text-center numeral">{formatUsd(r.proj_usd)}</td></tr>
+                            ))}</tbody>
+                        </table>
+                    </div>
+                </Fragment>
+            </Panel>
+            <Panel id="pro-pull" title="Who wins the portal: share of 4-5★ transfer commits" show={true} class="mb-md-3">
+                <Fragment slot="panel-body">
+                    <table class="table table-sm" id="pro-pull-table">
+                        <thead><tr><th class="text-left">Program</th><th class="text-center">Commits</th><th class="text-center">Share</th></tr></thead>
+                        <tbody>{doc.pull.map((r) => <tr><td class="text-left">{r.team}</td><td class="text-center numeral">{r.n}</td><td class="text-center numeral">{(r.share * 100).toFixed(1)}%</td></tr>)}</tbody>
+                    </table>
+                </Fragment>
+            </Panel>
+        </ReportFrame>
+    </div>
+</GenericPage>

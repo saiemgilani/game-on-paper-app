@@ -1,5 +1,9 @@
 # python/tests/test_nba_process_parity.py
-"""PR 0 gate: /nba/401585607/process returns the same JSON as on 81dbaf1e, plus the additive regulation_periods key."""
+"""Compare the full NBA process response with the captured baseline, excluding regulation_periods.
+
+The baseline is from 81dbaf1e. Only prior.home_team_spread was refreshed from
+06d88c0c, using the same ESPN capture and the locked SportsDataverse dependency.
+"""
 
 import base64
 import gzip

@@ -158,3 +158,13 @@ table {
   background: #66D582 !important;
   color: black;
 }
+/* the scoreboard's championship gold (index.css), for GenericPage pages too: the
+   playoff bracket's champion. ponytail: duplicated, not moved, since SchedulePage
+   loads index.css and not this file */
+.outline-championship {
+  border-color: #b3a369 !important;
+}
+
+.text-championship {
+  color: #b3a369 !important;
+}
