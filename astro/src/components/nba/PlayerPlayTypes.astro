@@ -1,0 +1,123 @@
+---
+// src/components/nba/PlayerPlayTypes.astro
+// BB-G19, behind 'bball-play-types': the NBA player page's Play types and Defense panels, from 2015-16. Play types: his
+// Synergy offense, each play type's frequency, possessions, PPP and league percentile as stats.nba.com publishes them
+// (sdv-db nba_stats.synergy). Defense: his hustle line, the play types he defended, and from 2017-18 his matchups by
+// position and the players he guarded most (matchups_rollup, matchups). Every number is the producer's (rule B6).
+import type { PlayerPlayTypes } from '../../routes/basketball/player';
+import { matchupRollup, playTypesPanel, topMatchups, type PlayTypeLine } from '../../utils/playerPlayTypes';
+import { fmtDec, fmtInt, fmtPct } from '../../nba/format';
+import { playerHref } from '../../nba/links';
+import { generateColorRampValue, ordinal } from '../../utils/misc';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+
+interface Props { data: PlayerPlayTypes; season: number; name: string; q: string }
+const { data, season, name, q } = Astro.props;
+const league = basketball(Astro.locals.league).league;
+const label = seasonLabelFor(league, season);
+const panel = data.synergy ? playTypesPanel(data.synergy) : null;
+const hustle = data.hustle?.[0] ?? null;
+const rollup = data.rollup ? matchupRollup(data.rollup) : null;
+const top = data.matchups ? topMatchups(data.matchups) : [];
+const dash = '—';
+const defenseEmpty = data.hustle !== null && !hustle && !(panel && panel.defense.length > 0) && data.rollup !== null && data.matchups !== null && !rollup && top.length === 0;
+const pctile = (l: PlayTypeLine) => (l.pct == null ? dash : ordinal(Math.round(l.pct * 100)));
+const shade = (l: PlayTypeLine) => generateColorRampValue(l.pct == null ? null : l.pct * 100, 100);
+const made = (m: number | null, a: number | null) => (m == null || a == null ? dash : `${fmtInt(m)}/${fmtInt(a)}`);
+const FREQ_NOTE = 'The share of his possessions that ended in this play type (on defense, of the possessions he defended). Synergy publishes a play type only above a volume floor, so the shares need not add up to 100%.';
+const PCT_NOTE = 'stats.nba.com’s percentile among the league’s players with this play type: higher is better at both ends (on defense, fewer points allowed).';
+const MATCHUP_NOTE = 'stats.nba.com’s matchup tracking: partial possessions are the share of each possession he was the closest defender, and the points and shots are his man’s on those possessions.';
+---
+<section id="play-types" aria-label="Play types" class="mb-4">
+  <h2 class="h5">Play types</h2>
+  {data.synergy === null ? (<p class="text-muted" id="play-types-unavailable">Play types are temporarily unavailable.</p>) : !panel || panel.offense.length === 0 ? (<p class="text-muted" id="play-types-empty">No {label} play types for {name}: Synergy publishes a play type only above a volume floor.</p>) : (<Fragment>
+  <p class="numeral small text-muted mb-2" id="play-types-sample">With {panel.team} &middot; {fmtInt(panel.gp)} GP{panel.otherTeams.length > 0 && (<Fragment> &middot; his {panel.otherTeams.join(' and ')} games are not included</Fragment>)}</p>
+  <div class="table-responsive col-lg-6 px-0">
+    <table class="table table-sm align-middle mb-0" id="play-types-table">
+      <caption class="small text-muted">Synergy play types, regular season, from stats.nba.com. Shading by percentile.</caption>
+      <thead><tr><th scope="col"></th><th scope="col" class="text-end"><abbr title={FREQ_NOTE}>Freq</abbr></th><th scope="col" class="text-end">Poss</th><th scope="col" class="text-end">PPP</th><th scope="col" class="text-end"><abbr title={PCT_NOTE}>Pctile</abbr></th></tr></thead>
+      <tbody>
+        {panel.offense.map((l) => (
+          <tr data-play-type={l.key}>
+            <th scope="row" class="text-nowrap fw-normal">{l.label}</th>
+            <td class="numeral text-end">{fmtPct(l.freq)}</td>
+            <td class="numeral text-end">{fmtInt(l.poss)}</td>
+            <td class:list={['numeral', 'text-end', shade(l)]}>{l.ppp == null ? dash : fmtDec(l.ppp, 2)}</td>
+            <td class="numeral text-end text-muted small">{pctile(l)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  </Fragment>)}
+</section>
+<section id="defense" aria-label="Defense" class="mb-4">
+  <h2 class="h5">Defense</h2>
+  {defenseEmpty && (<p class="text-muted" id="defense-empty">No {label} defense numbers for {name} yet.</p>)}
+  {data.hustle === null ? (<p class="small text-muted mb-2" id="hustle-unavailable">The hustle numbers are temporarily unavailable.</p>) : hustle && (
+  <p class="numeral small mb-2" id="hustle-line">Per game: <span class="fw-bold">{fmtDec(hustle.deflections, 1)}</span> deflections &middot; <span class="fw-bold">{fmtDec(hustle.contested_shots, 1)}</span> contested shots ({fmtDec(hustle.contested_shots_3_pt, 1)} threes) &middot; <span class="fw-bold">{fmtDec(hustle.charges_drawn, 1)}</span> charges drawn &middot; <span class="fw-bold">{fmtDec(hustle.def_loose_balls_recovered, 1)}</span> loose balls recovered &middot; <span class="fw-bold">{fmtDec(hustle.def_boxouts, 1)}</span> box-outs <span class="text-muted">(defensive; stats.nba.com hustle, {fmtInt(hustle.g)} GP)</span></p>
+  )}
+  {data.synergy !== null && panel && panel.defense.length > 0 && (
+  <div class="table-responsive col-lg-6 px-0 mb-3">
+    <table class="table table-sm align-middle mb-0" id="play-types-defense-table">
+      <caption class="small text-muted">Synergy play types he defended{panel.team && ` with ${panel.team}`}. Shading by percentile.</caption>
+      <thead><tr><th scope="col"></th><th scope="col" class="text-end"><abbr title={FREQ_NOTE}>Freq</abbr></th><th scope="col" class="text-end">Poss</th><th scope="col" class="text-end">PPP allowed</th><th scope="col" class="text-end"><abbr title={PCT_NOTE}>Pctile</abbr></th></tr></thead>
+      <tbody>
+        {panel.defense.map((l) => (
+          <tr data-play-type={l.key}>
+            <th scope="row" class="text-nowrap fw-normal">{l.label}</th>
+            <td class="numeral text-end">{fmtPct(l.freq)}</td>
+            <td class="numeral text-end">{fmtInt(l.poss)}</td>
+            <td class:list={['numeral', 'text-end', shade(l)]}>{l.ppp == null ? dash : fmtDec(l.ppp, 2)}</td>
+            <td class="numeral text-end text-muted small">{pctile(l)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  )}
+  {data.rollup === null || data.matchups === null ? (<p class="small text-muted mb-0" id="matchups-unavailable">Matchups are temporarily unavailable.</p>) : (rollup || top.length > 0) && (
+  <div class="row g-3" id="matchups">
+    {rollup && (
+    <div class="col-lg-6 table-responsive">
+      <table class="table table-sm align-middle mb-0" id="matchups-position-table">
+        <caption class="small text-muted"><abbr title={MATCHUP_NOTE}>Matchups</abbr> by his man’s position, regular-season totals.</caption>
+        <thead><tr><th scope="col">Guarding</th><th scope="col" class="text-end">Time</th><th scope="col" class="text-end">Poss</th><th scope="col" class="text-end">Pts</th><th scope="col" class="text-end">FG</th><th scope="col" class="text-end">3P</th></tr></thead>
+        <tbody>
+          {rollup.map(({ label: pos, row }) => (
+            <tr data-position={row.position}>
+              <th scope="row" class="fw-normal">{pos}</th>
+              <td class="numeral text-end">{fmtPct(row.percent_of_time)}</td>
+              <td class="numeral text-end">{fmtInt(row.partial_poss)}</td>
+              <td class="numeral text-end">{fmtInt(row.player_pts)}</td>
+              <td class="numeral text-end">{made(row.matchup_fgm, row.matchup_fga)}</td>
+              <td class="numeral text-end">{made(row.matchup_fg3_m, row.matchup_fg3_a)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    )}
+    {top.length > 0 && (
+    <div class="col-lg-6 table-responsive">
+      <table class="table table-sm align-middle mb-0" id="matchups-top-table">
+        <caption class="small text-muted">The players he guarded most, by partial possessions.</caption>
+        <thead><tr><th scope="col">Player</th><th scope="col" class="text-end">GP</th><th scope="col" class="text-end">Poss</th><th scope="col" class="text-end">Pts</th><th scope="col" class="text-end">FG</th><th scope="col" class="text-end">3P</th></tr></thead>
+        <tbody>
+          {top.map((m) => (
+            <tr>
+              <th scope="row" class="fw-normal text-nowrap"><a href={playerHref(m.off_player_id, q, league)}>{m.off_player_name ?? m.off_player_id}</a></th>
+              <td class="numeral text-end">{fmtInt(m.gp)}</td>
+              <td class="numeral text-end">{fmtDec(m.partial_poss, 1)}</td>
+              <td class="numeral text-end">{fmtInt(m.player_pts)}</td>
+              <td class="numeral text-end">{made(m.matchup_fgm, m.matchup_fga)}</td>
+              <td class="numeral text-end">{made(m.matchup_fg3_m, m.matchup_fg3_a)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    )}
+  </div>
+  )}
+</section>
