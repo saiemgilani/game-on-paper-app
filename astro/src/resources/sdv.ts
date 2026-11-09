@@ -1373,7 +1373,9 @@ export async function retrieveTeamOpponentSplits(season: number, teamId: string 
 // No season fallback loop: a season the tables lack renders as "no data".
 
 const COACH_TENDENCIES_TTL = 60 * 60 * 24 * 3;
-const COACH_ROW_LIMIT = 400;
+// cfb coach_careers has 447 head-coach rows (11-02); 400 silently dropped ~47. The API
+// leaves `next` null on a page cut short by `limit`, so a full page counts as truncated.
+const COACH_ROW_LIMIT = 2000;
 
 export interface SDVTeamTendency extends CoachRow {
     season: number
@@ -1416,7 +1418,10 @@ async function requestTendencyTable<T>(table: string, keys: string[], filters: R
     };
     try {
         const content: SDVAPIResponse<T> = await requestSDV(table, new URLSearchParams(payload), undefined, COACH_TENDENCIES_TTL, true, leagueSource(league));
-        return Array.isArray(content?.data) ? content.data : [];
+        const rows = Array.isArray(content?.data) ? content.data : [];
+        // a truncated board would rank against a partial field: fail loudly, never rank it
+        if (rows.length >= COACH_ROW_LIMIT) throw new Error(`${rows.length} rows hit the ${COACH_ROW_LIMIT}-row limit`);
+        return rows;
     } catch (err) {
         console.error(`ERROR while loading ${table} from SDV (${JSON.stringify(filters)}): ${err}`);
         return [];
