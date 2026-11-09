@@ -83,8 +83,9 @@ export const FLAGS: Record<string, FeatureState> = {
     // shot_quality_game / shot_quality_season (BB-D9). Off: no read and the three pages are today's, byte for byte.
     'bball-poe': 'preview',
     // The player page's Impact panel (BB-G6) inside each league's flag: RAPM, adjusted RAPM, SPM, BPM, BOBAN and WAR with
-    // their possessions from sdv-db's player_impact (NBA/WNBA), box BPM from player_value (college). Off: no read and the
-    // player page is today's, byte for byte.
+    // their possessions from sdv-db's player_impact (NBA/WNBA). Off: no read and the player page is today's, byte for byte.
+    // Stays 'preview' until the producer ships player_impact's <m>_rank / <m>_pct (Akshay on #408); the Rank columns and
+    // shading then appear with no GOP change. College's panel (box BPM, player_value) waits for BB-D16's crosswalk.
     'bball-impact': 'preview',
     // The player page's On/Off section (BB-G7) on /nba and /wnba/players/[id], inside each league's flag: his team on and
     // off the floor and his top teammates with and without him (sdv-db's player_on_off and player_wowy). College is not
