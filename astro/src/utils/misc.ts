@@ -2,6 +2,7 @@ import type { ESPNCompetition, ESPNScheduleEvent, ESPNTeam, ESPNCompetitor, ESPN
 import { MEME_LIST, SDV_BASE_METRIC_TITLES, FBS_CONFERENCES, SDV_TEAM_METRIC_CATEGORIES, TEAM_SEASON_PCTILES, NATIONAL_TRENDS_METRICS } from "./constants";
 import { espnLogoLeague, leaguePath, type League } from "./league";
 import { GLOBAL_GROUP_LIST } from "../resources/schedule"
+import type { ResolvedMetric } from "../resources/metricRegistry";
 
 export type RGBColor = { r: number, g: number, b: number};
 export const STANDARD_THEME_COLOR = "#2394fd"
@@ -830,7 +831,15 @@ export function generateColorRampValue(input: number | undefined | null, max: nu
     }
 }
 
-export function generateTeamMetricTitle(metric: string): string {
+const SIDE_PREFIX = { off: "Off", def: "Def", margin: "Net" } as const;
+
+/** `resolve` ('metric-registry', F13; chartBuilder.ts passes the registry's resolveMetric): its label first, so a
+ *  column the legacy lookup misses (pass_rate_off, xpass_rate_off, ... lose their pass_ prefix to the strip below)
+ *  still gets a title. A suffixed (_rank/_pct/_n) or unregistered column keeps the legacy title. Without it: the
+ *  legacy title only. A parameter, not an import, so the registry ships only in the chart builder's island. */
+export function generateTeamMetricTitle(metric: string, resolve?: (column: string) => ResolvedMetric | null): string {
+    const r = resolve?.(metric);
+    if (r && !r.suffix) return r.side ? `${SIDE_PREFIX[r.side]} ${r.label}` : r.label;
     const cleanedMetric = metric.replace("_def","").replace("_off","").replace("net_","").replace("off_","").replace("def_","").replace("_margin","").replace("_pass","").replace("_rush","").replace("pass_","").replace("rush_","")
 
     let title = SDV_BASE_METRIC_TITLES[cleanedMetric] || metric
@@ -901,14 +910,16 @@ export function formatNumberForMetric(metric: string, value: number): string {
 // bad for an offense when high, so good for a defense when high (turnovers_def are takeaways)
 const OFFENSE_WANTS_LOW = ["havoc", "play_stuffed", "third_down_distance", "turnovers"];
 
-export function shouldInvertSortForMetric(category: string, metric: string): boolean {
+/** `wantsLow` ('metric-registry', F13): chartBuilder.ts passes the registry's lower-is-better bases, which add
+ *  start_position (producers rank it ascending; the list above sorts and flips it as higher-is-better). */
+export function shouldInvertSortForMetric(category: string, metric: string, wantsLow: readonly string[] = OFFENSE_WANTS_LOW): boolean {
     // opponents MISSING field goals is the lucky outcome, so the lowest opp FG% leads
     if (metric == "luck_opp_fg_pct_def") return true;
     // fewer opponent series converted is the better defense
     if (metric == "series_conv_def") return true;
     // the stat with its side and _pass/_rush split taken off: havoc_def_pass -> havoc, def
     const [, stat, side] = metric.match(/^(.*?)(?:_(off|def)(?:_pass|_rush)?)?$/)!;
-    const exception = (s: string) => OFFENSE_WANTS_LOW.includes(stat) && (side === undefined || side === s);
+    const exception = (s: string) => wantsLow.includes(stat) && (side === undefined || side === s);
     return (category == "defensive" && !exception("def")) || (category == "offensive" && exception("off"))
 }
 
