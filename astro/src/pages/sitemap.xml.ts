@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro';
 import { retrieveAllTeams } from '../utils/teams';
 import { AVAILABLE_SEASONS, CURRENT_YEAR, METRIC_YEAR } from '../utils/constants';
-import { LEAGUES, teamCategoriesFor } from '../utils/league';
+import { BASKETBALL_LEAGUES, LEAGUES, leaguePath, teamCategoriesFor } from '../utils/league';
 import { LEADERBOARD_CATEGORIES, PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
 import { FLAGS } from '../utils/features';
-import { TEAMS } from '../nba/data/teams';
+import { BASKETBALL, hasTeamPages } from '../basketball/config';
 import { COACH_BOARD_SLUGS } from '../utils/coaches';
 import { seasonLastmod, urlsetXml, type SitemapEntry } from '../utils/sitemap';
 
@@ -22,9 +22,8 @@ function buildEntries(): SitemapEntry[] {
     // so the NFL is advertised only once the 'nfl' flag is public; until then
     // every /nfl URL is a 404 and a sitemap must never list one.
     const nflPublic = FLAGS['nfl'] === 'on';
-    // Same rule for the NBA surface (the block below) and the head-coach boards: a gated
+    // Same rule for each basketball league (the loop below) and the head-coach boards: a gated
     // route answers 404, so no URL is listed until its flag is public.
-    const nbaPublic = FLAGS['nba'] === 'on';
     // Player pages (`/players/<espn id>` and the /nfl twin, per season) are NOT
     // here: their ids are only in the Data API, which this prerendered file never
     // calls. They are the paginated `/sitemap-players-*.xml` files that
@@ -41,6 +40,7 @@ function buildEntries(): SitemapEntry[] {
         // file exists to protect. Verified per-URL against production.
         { loc: '/teams/', lastmod: today, changefreq: 'weekly', priority: '0.7' },
         { loc: '/rankings/', lastmod: today, changefreq: 'weekly', priority: '0.6' },
+        ...(FLAGS['playoff-projection'] === 'on' ? [{ loc: '/playoff', lastmod: today, changefreq: 'daily', priority: '0.6' }] : []),
         { loc: '/standings/', lastmod: today, changefreq: 'weekly', priority: '0.6' },
         { loc: '/glossary/', lastmod: today, changefreq: 'monthly', priority: '0.5' },
         { loc: '/data-sources/', lastmod: today, changefreq: 'monthly', priority: '0.4' },
@@ -72,15 +72,17 @@ function buildEntries(): SitemapEntry[] {
         for (let w = 1; w <= nfl.postseasonWeeks; w++) out.push({ loc: `/nfl/year/${year}/type/3/week/${w}`, lastmod, changefreq: freq, priority: '0.4' });
     }
 
-    // The NBA surface is read live from the Data API and sits behind the 'nba' flag; the fixed
-    // pages and the 30 team pages are listed once it is public. Player pages are not: this file
-    // makes no network calls, and the player ids are only in the API (the cfb/nfl player
-    // sitemaps read theirs at request time; see utils/sitemap).
-    if (nbaPublic) {
-        for (const p of ['/nba', '/nba/scoreboard', '/nba/players', '/nba/teams', '/nba/scatter', '/nba/leaders']) {
-            out.push({ loc: p, lastmod: today, changefreq: p === '/nba/scoreboard' ? 'hourly' : 'daily', priority: p === '/nba' ? '0.8' : '0.6' });
+    // Each basketball league's fixed pages (its landing plus the Header's pages) and team pages, once its flag is
+    // public: a gated route answers 404 and a sitemap must never list one. Player pages are not listed: this file
+    // makes no network calls, and the player ids are only in the API (see the player-pages note).
+    for (const lg of BASKETBALL_LEAGUES) {
+        if (FLAGS[lg] !== 'on') continue;
+        const cfg = BASKETBALL[lg];
+        for (const p of ['/', ...cfg.headerMenu.map((m) => m.path).filter((m) => m !== '/')]) {
+            out.push({ loc: leaguePath(lg, p), lastmod: today, changefreq: p === '/scoreboard' ? 'hourly' : 'daily', priority: p === '/' ? '0.8' : '0.6' });
         }
-        for (const t of TEAMS) out.push({ loc: `/nba/team/${t.team_id}`, lastmod: today, changefreq: 'weekly', priority: '0.5' });
+        // D43/D47: a league with a membership table lists its current-season members (every URL a 200); others every team
+        if (hasTeamPages(lg)) for (const id of cfg.currentMembers?.ids ?? cfg.teams.all.map((t) => t.team_id)) out.push({ loc: leaguePath(lg, `/team/${id}`), lastmod: today, changefreq: 'weekly', priority: '0.5' });
     }
 
     for (const year of AVAILABLE_SEASONS) {

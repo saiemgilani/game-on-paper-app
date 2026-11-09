@@ -25,7 +25,7 @@ const render = () => container.renderToString(Page, { request: new Request('http
 
 describe('/nba/game/[id] render', () => {
     test('a final game: title with scores, linescore, prior line once, six panels with bodies, breadcrumb', async () => {
-        prep.mockResolvedValueOnce({ game: fromProcessor(read('game_401766458_processor')) });
+        prep.mockResolvedValueOnce({ game: fromProcessor(read('game_401766458_processor'), 'nba') });
         const html = await render();
         expect(plain(html)).toContain('Atlanta 95 @ Orlando 120');
         expect(html).toContain('href="/nba/scoreboard"');
@@ -39,19 +39,19 @@ describe('/nba/game/[id] render', () => {
         for (const bad of ['NaN', 'null', 'undefined']) expect(body).not.toContain(bad);
     });
     test('shot charts: one per team, and the no-locations message when every shot is unlocated', async () => {
-        prep.mockResolvedValueOnce({ game: fromProcessor(read('game_401766458_processor')) });
+        prep.mockResolvedValueOnce({ game: fromProcessor(read('game_401766458_processor'), 'nba') });
         let html = await render();
         expect((html.match(/class="nba-chart"/g) ?? []).length).toBeGreaterThanOrEqual(2);
         expect(html).toContain('aria-pressed');
         const j = read('game_401766458_processor');
         for (const p of j.plays) { p.x_legacy = null; p.y_legacy = null; }
-        prep.mockResolvedValueOnce({ game: fromProcessor(j) });
+        prep.mockResolvedValueOnce({ game: fromProcessor(j, 'nba') });
         html = await render();
         expect(html).toContain('no shot locations for this game');
         expect(html).not.toContain('class="nba-chart"');
     });
     test('a null prior renders "no prior" without crashing', async () => {
-        prep.mockResolvedValueOnce({ game: { ...fromProcessor(read('game_401766458_processor')), prior: null } });
+        prep.mockResolvedValueOnce({ game: { ...fromProcessor(read('game_401766458_processor'), 'nba'), prior: null } });
         const html = await render();
         expect(html).toContain('no prior');
         expect(noScripts(html)).not.toContain('undefined');
@@ -68,14 +68,14 @@ describe('/nba/game/[id] render', () => {
         expect(html).not.toContain('id="wp"');
     });
     test('the Data API path: a real line, the spread source, no home-court sentence', async () => {
-        prep.mockResolvedValueOnce({ game: fromDataApi(read('game_401766458_api')) });
+        prep.mockResolvedValueOnce({ game: fromDataApi(read('game_401766458_api'), 'nba') });
         const body = noScripts(await render());
         expect(body).toContain('Line: ORL -6');
         expect(body).toContain('(from the spread)');
         expect(body).not.toContain('home-court');
     });
     test('the back link goes to the scoreboard day of the game (Eastern time)', async () => {
-        const game = fromProcessor(read('game_401766458_processor'));
+        const game = fromProcessor(read('game_401766458_processor'), 'nba');
         prep.mockResolvedValueOnce({ game: { ...game, date: '2026-10-22T01:00:00Z' } });
         expect(await render()).toContain('href="/nba/scoreboard?date=2026-10-21"');
         prep.mockResolvedValueOnce({ game: { ...game, date: '1990-01-01T00:00:00Z' } });
@@ -84,7 +84,7 @@ describe('/nba/game/[id] render', () => {
         expect(html).not.toContain('scoreboard?date=1990');
     });
     test('spread 0 is PK; a live game without detail does not print a bare "LIVE - "', async () => {
-        const game = fromProcessor(read('game_401766458_processor'));
+        const game = fromProcessor(read('game_401766458_processor'), 'nba');
         prep.mockResolvedValueOnce({ game: { ...game, prior: { ...game.prior!, homeTeamSpread: 0, gameSpreadAvailable: true, source: 'spread' } } });
         expect(noScripts(await render())).toContain('Line: PK');
         prep.mockResolvedValueOnce({ game: { ...game, prior: null, status: { ...game.status, completed: false, name: 'STATUS_IN_PROGRESS', detail: null } } });
@@ -135,7 +135,7 @@ describe('/nba/game/[id] render', () => {
         expect(src).toContain("Astro.rewrite('/404')");
     });
     test('four factors, team box and player boxes with TS%, usage, DNP reasons and dashes', async () => {
-        const game = fromProcessor(read('game_401766458_processor'));
+        const game = fromProcessor(read('game_401766458_processor'), 'nba');
         prep.mockResolvedValueOnce({ game });
         const body = noScripts(await render());
         for (const t of ['eFG%', 'ORtg', 'Pace', 'Fast break points', 'USG%', 'TS%']) expect(body).toContain(t);
@@ -148,7 +148,7 @@ describe('/nba/game/[id] render', () => {
         expect(body).not.toMatch(/>null<|>undefined<|NaN|null-null/);
     });
     test('four factors: bold marks the better side (lower TOV% wins), both tables scroll and name the metric column', async () => {
-        const game = fromProcessor(read('game_401766458_processor'));
+        const game = fromProcessor(read('game_401766458_processor'), 'nba');
         prep.mockResolvedValueOnce({ game });
         const body = noScripts(await render());
         const row = (label: string) => body.match(new RegExp(`<th scope="row"[^>]*>${label}</th>(.*?)</tr>`))![1];
@@ -160,7 +160,7 @@ describe('/nba/game/[id] render', () => {
         expect(body.match(/<span class="visually-hidden">Metric<\/span>/g)!.length).toBeGreaterThanOrEqual(2);
     });
     test('a null leading total collapses the parenthesised team-box cells to a single dash', async () => {
-        const g = fromProcessor(read('game_401766458_processor'));
+        const g = fromProcessor(read('game_401766458_processor'), 'nba');
         g.home.box!.total_rebounds = null; g.home.box!.total_turnovers = null;
         prep.mockResolvedValueOnce({ game: g });
         const body = noScripts(await render());
@@ -168,7 +168,7 @@ describe('/nba/game/[id] render', () => {
         expect(body).not.toContain('– + –');
     });
     test('null team-box counts and rates render dashes, not null or NaN', async () => {
-        const g = fromProcessor(read('game_401766458_processor'));
+        const g = fromProcessor(read('game_401766458_processor'), 'nba');
         g.home.box!.field_goals_made = null; g.home.box!.total_turnovers = null; g.home.rates!.efg_pct = null; g.home.rates!.game_minutes = null; g.away.rates!.game_minutes = null;
         prep.mockResolvedValueOnce({ game: g });
         const body = noScripts(await render());
@@ -178,13 +178,13 @@ describe('/nba/game/[id] render', () => {
     test('an overtime game labels OT and reports 53 minutes of pace', async () => {
         const j = read('game_401766458_processor');
         j.periods = 5; j.teams.home.rates.game_minutes = 53; j.teams.away.rates.game_minutes = 53; j.plays.push({ ...j.plays.at(-1), period_number: 5, wp_regime: 'ot', game_play_number: 9999 });
-        prep.mockResolvedValueOnce({ game: fromProcessor(j) });
+        prep.mockResolvedValueOnce({ game: fromProcessor(j, 'nba') });
         const html = await render();
         expect(html).toContain('>OT<');
         expect(html).toContain('per 53 minutes');
     });
     test('win probability: the chart island (no duplicate ids), the biggest plays and the plays table grouped by period', async () => {
-        const game = fromProcessor(read('game_401766458_processor'));
+        const game = fromProcessor(read('game_401766458_processor'), 'nba');
         prep.mockResolvedValueOnce({ game });
         const html = await render();
         const tag = [...html.matchAll(ISLAND)].map((m) => m[0]).find((t) => t.includes('/WinProbabilityChart.svelte"')) ?? '';
@@ -207,7 +207,7 @@ describe('/nba/game/[id] render', () => {
         expect(body).not.toContain(' · ');
     });
     test('win probability with no prior: footnote says so, nothing crashes', async () => {
-        prep.mockResolvedValueOnce({ game: { ...fromProcessor(read('game_401766458_processor')), prior: null } });
+        prep.mockResolvedValueOnce({ game: { ...fromProcessor(read('game_401766458_processor'), 'nba'), prior: null } });
         const html = noScripts(await render());
         expect(html).toContain('This game has no pregame prior.');
         expect(html).toContain('id="wp-section"');
@@ -219,7 +219,7 @@ describe('/nba/game/[id] render', () => {
         const last = j.plays.at(-1);
         j.plays.push({ ...last, period_number: 5, wp_regime: 'ot', game_play_number: 9998, home_win_prob: 0.4, wp_delta: 0.3, type_text: 'Jump Shot', text: 'OT swing play', id: 'ot1' });
         j.plays.push({ ...last, period_number: 6, wp_regime: 'ot', game_play_number: 9999, home_win_prob: 0.7, wp_delta: -0.35, type_text: 'Jump Shot', text: '2OT swing play', id: 'ot2' });
-        const game = fromProcessor(j);
+        const game = fromProcessor(j, 'nba');
         prep.mockResolvedValueOnce({ game });
         const html = await render();
         expect(html).toContain('Overtime');
@@ -236,7 +236,7 @@ describe('/nba/game/[id] render', () => {
         expect(src).not.toContain('allPeriodMarkers');
     });
     test('plays table: a final opens every period; a live game opens only the current one; the score header names the order', async () => {
-        const game = fromProcessor(read('game_401766458_processor'));
+        const game = fromProcessor(read('game_401766458_processor'), 'nba');
         prep.mockResolvedValueOnce({ game });
         const fin = await render();
         const det = (h: string) => [...h.matchAll(/<details( [^>]*)?>/g)].map((m) => m[1] ?? "");
@@ -252,7 +252,7 @@ describe('/nba/game/[id] render', () => {
 });
 
 describe('self-review round 1', () => {
-    const procGame = () => fromProcessor(read('game_401766458_processor'));
+    const procGame = () => fromProcessor(read('game_401766458_processor'), 'nba');
     test('the WP chart and the date hold their space before hydration; the linescore corner is named', async () => {
         prep.mockResolvedValueOnce({ game: procGame() });
         const html = await render();
@@ -267,7 +267,7 @@ describe('self-review round 1', () => {
     test('a missing shooting count is a dash, never 0-0; an ejected player is marked', async () => {
         const raw = read('game_401766458_processor');
         raw.players.home[0] = { ...raw.players.home[0], field_goals_made: null, ejected: true };
-        const g = fromProcessor(raw);
+        const g = fromProcessor(raw, 'nba');
         expect(g.home.players[0].fg).toBe('–');
         prep.mockResolvedValueOnce({ game: g });
         expect(await render()).toContain('title="Ejected"');

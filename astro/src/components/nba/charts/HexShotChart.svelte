@@ -3,8 +3,8 @@
     import type { Draw } from '../chartFrame';
     import ChartSvg from './ChartSvg.svelte';
     let { data, title }: { data: HexShotChartData; title: string } = $props();
-    let mode: HexMode = $state('raw');
-    const modes: { mode: HexMode; label: string }[] = [{ mode: 'raw', label: 'Raw' }, { mode: 'zones', label: 'Zones' }];
+    let mode: HexMode = $state('squares');
+    const modes: { mode: HexMode; label: string }[] = [{ mode: 'squares', label: 'Squares' }, { mode: 'zones', label: 'Zones' }];
     // read every input here, not inside the closure: that is what makes the derived change and Svelte call the action's update
     const draw: Draw = $derived.by(() => {
         const d = data, m = mode;

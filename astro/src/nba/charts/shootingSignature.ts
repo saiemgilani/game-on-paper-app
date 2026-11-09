@@ -1,6 +1,7 @@
 import { max } from "d3-array";
 import { scaleLinear } from "d3-scale";
 import { pointer, select } from "d3-selection";
+import { emitDistance, onDistance } from "./link";
 import { area, curveMonotoneX, line } from "d3-shape";
 import { shrunkDiff, type DistanceVsLeague } from "../data/aggregate";
 import { fmtPct, fmtPts } from "../format";
@@ -229,6 +230,7 @@ export function renderShootingSignature(
       const p = points[Math.max(0, Math.min(points.length - 1, Math.round(x.invert(px) / STEP)))];
       const b = data[Math.min(Math.round(p.distance), maxFt)];
       cursor.style("display", null).attr("transform", `translate(${x(p.distance)},0)`);
+      emitDistance(svg, { ft: p.distance, band: 0.5 });
       dot.attr("cy", y(p.fgPct ?? p.leagueFgPct ?? 0)).style("fill", p.fgPct !== null ? TOKENS.fg : TOKENS.muted);
       const text =
         `${b.distance} ft: ${b.makes}/${b.attempts}` +
@@ -246,7 +248,18 @@ export function renderShootingSignature(
     .on("pointerleave", () => {
       cursor.style("display", "none");
       readout.selectAll("tspan").remove();
+      emitDistance(svg, { ft: null });
     });
+  // another chart's distance: the same rule and dot, without the readout
+  const unlink = onDistance(svg, ({ ft }) => {
+    if (ft === null || ft > maxFt) {
+      cursor.style("display", "none");
+      return;
+    }
+    const p = points[Math.max(0, Math.min(points.length - 1, Math.round(ft / STEP)))];
+    cursor.style("display", "inline").attr("transform", `translate(${x(p.distance)},0)`);
+    dot.attr("cy", y(p.fgPct ?? p.leagueFgPct ?? 0)).style("fill", p.fgPct !== null ? TOKENS.fg : TOKENS.muted);
+  });
 
   const legend = root.append("g").attr("transform", `translate(${M.left},${bottom + FONT_PX + 18})`);
   const used = drawDiffLegend(legend, 0, 0, W - M.left - M.right, theme, [
@@ -256,6 +269,7 @@ export function renderShootingSignature(
   setViewBox(svg, W, bottom + FONT_PX + 18 + used + 6);
 
   return () => {
+    unlink();
     ribbon.interrupt();
     root.remove();
   };

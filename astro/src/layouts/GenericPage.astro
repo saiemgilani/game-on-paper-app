@@ -3,6 +3,7 @@ import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import Scripts from "../components/Scripts.astro";
 import { breadcrumbListJsonLd, jsonLdScript } from "../utils/seo";
+import { isBasketball } from "../utils/league";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
 export interface PageBreadcrumb { title: string, url?: string, active: boolean }
@@ -26,9 +27,11 @@ interface Props {
      * that shows a different year than its own JSON-LD says.
      */
     canonicalPath?: string
+    /** leave out the analytics script, for a page whose URL carries a secret (the magic-link landing). */
+    noAnalytics?: boolean
 }
 
-const { title, subtitle, slug, breadcrumbs, description, jsonLd, heading, canonicalPath } = Astro.props;
+const { title, subtitle, slug, breadcrumbs, description, jsonLd, heading, canonicalPath, noAnalytics } = Astro.props;
 const metaDescription = description || subtitle;
 // One <script> per object: a single tag holding an array is valid JSON-LD, but
 // some validators/extensions read r['@context'] per tag and throw on arrays.
@@ -80,7 +83,7 @@ function generateBreadcrumbsListHtml(): string {
         <link href="/assets/css/base.css" rel="stylesheet">
         <link href="/assets/css/nav-header.css" rel="stylesheet">
         <link href="/assets/css/dark-game.css" rel="stylesheet">
-        {Astro.locals.league === 'nba' && (<Fragment><link href="/assets/css/nba.css" rel="stylesheet"><link href="/assets/css/dark-nba.css" rel="stylesheet"></Fragment>)}
+        {isBasketball(Astro.locals.league) && (<Fragment><link href="/assets/css/nba.css" rel="stylesheet"><link href="/assets/css/dark-nba.css" rel="stylesheet"></Fragment>)}
         <meta http-equiv="content-type" content="text/html; charset=UTF-8">
         <meta http-equiv="x-ua-compatible" content="IE=edge,chrome=1">
         <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -105,12 +108,16 @@ function generateBreadcrumbsListHtml(): string {
         <meta name="title" content={title}>
         <meta name="medium" content="website">
         {structuredData.map((s) => <script type="application/ld+json" set:html={s} />)}
-        <!-- Privacy-friendly analytics by Plausible -->
-        <script is:inline async src="https://plausible.io/js/pa-Gf0VImJGO-MTdGnypPP3i.js"></script>
-        <script is:inline>
-          window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
-          plausible.init()
-        </script>
+        {!noAnalytics && (
+            <Fragment>
+                <!-- Privacy-friendly analytics by Plausible -->
+                <script is:inline async src="https://plausible.io/js/pa-Gf0VImJGO-MTdGnypPP3i.js"></script>
+                <script is:inline>
+                  window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+                  plausible.init()
+                </script>
+            </Fragment>
+        )}
     </head>
     <body>
         <Header />

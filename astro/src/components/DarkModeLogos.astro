@@ -10,11 +10,14 @@ const { teamIds } = Astro.props;
 // Dark logos through ESPN's resizing combiner. teamLogoUrl picks the path that exists:
 // NFL dark logos live under the team abbreviation, not the numeric id (this used to
 // fall back to the light NFL logo in dark mode for that reason).
+// A site-hosted logo (WNBA defunct franchises) is root-relative: it is served as-is, since
+// ESPN's combiner can't resize a file it doesn't host (and `new URL` needs an absolute URL).
 let teamIdCSS = teamIds.map(p => {
-    const path = new URL(teamLogoUrl(Astro.locals.league, p, true)).pathname;
+    const url = teamLogoUrl(Astro.locals.league, p, true);
+    const src = url.startsWith('/') ? url : `https://a.espncdn.com/combiner/i?img=${new URL(url).pathname}&h=120&w=120`;
     return `
     img.team-logo-${p} {
-        content: url('https://a.espncdn.com/combiner/i?img=${path}&h=120&w=120')
+        content: url('${src}')
     }
     `
 })
