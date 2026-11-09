@@ -176,6 +176,44 @@ The college twin of `nfl-summaries-2025.json`.
 board from these rows and reconciles each season row against the parts it is
 summed from.
 
+## `coach-situations.json`
+Real rows from the live Data API, captured 2026-11-02: head-coach (`role=HC`) `coach_tendencies` for CFB 2025
+(125) and NFL 2024 (32), and `coach_careers` for CFB (447) and NFL (165), each trimmed by `select` to the key
+columns plus the game-context columns the Situations board reads (`games_` / `wins_` / `win_rate_` for
+`after_bye`, `opener`, `one_score_game`, and in CFB `vs_ranked` with `epa_per_play_vs_ranked` /
+`def_epa_per_play_vs_ranked`). No hand edits. The NFL careers hold Bill Callahan (2,785 plays, 0 openers,
+`win_rate_opener` null), which is what the zero-openers test needs; the NFL tables carry no `*_vs_ranked` column
+(asking for one is a 400).
+
+**Used by:** `test/coaches.test.ts` (situations block) and `test/coachLeaderboards.render.test.ts`.
+
+**To regenerate**, from `astro/`, in one shell call so `SDV_AUTH_TOKEN` never leaves it:
+
+```bash
+SDV_AUTH_TOKEN="$(grep -E '^SDV_AUTH_TOKEN=' .dev.vars | head -1 | cut -d= -f2- | tr -d "\"'")" \
+node --input-type=module -e '
+const base = "https://data.sportsdataverse.org/v1";
+const get = async (p) => {
+  const r = await fetch(`${base}/${p}`, { headers: { Authorization: `Bearer ${process.env.SDV_AUTH_TOKEN}` } });
+  if (!r.ok) throw new Error(`${p}: ${r.status}`);
+  return (await r.json()).data;
+};
+const ctx = (l) => (l === "cfb" ? ["after_bye", "opener", "one_score_game", "vs_ranked"] : ["after_bye", "opener", "one_score_game"]);
+const metrics = (l) => [...ctx(l).flatMap((c) => [`games_${c}`, `wins_${c}`, `win_rate_${c}`]), ...(l === "cfb" ? ["epa_per_play_vs_ranked", "def_epa_per_play_vs_ranked"] : [])];
+const season = ["season", "pos_team_id", "pos_team", "coach", "role", "games", "plays", "drives"];
+const career = ["coach", "role", "teams", "seasons", "first_season", "last_season", "games", "plays", "drives"];
+const sel = (keys, l) => [...keys, ...metrics(l)].join(",");
+const out = {
+  cfb_coach_tendencies_2025: await get(`cfb/coach_tendencies?season=2025&role=HC&select=${sel(season, "cfb")}&limit=500`),
+  cfb_coach_careers: await get(`cfb/coach_careers?role=HC&select=${sel(career, "cfb")}&limit=2000`),
+  nfl_coach_tendencies_2024: await get(`nfl/coach_tendencies?season=2024&role=HC&select=${sel(season, "nfl")}&limit=500`),
+  nfl_coach_careers: await get(`nfl/coach_careers?role=HC&select=${sel(career, "nfl")}&limit=2000`),
+};
+(await import("node:fs")).writeFileSync("test/fixtures/coach-situations.json", JSON.stringify(out, null, 1) + "\n");
+for (const [k, v] of Object.entries(out)) console.log(k, v.length);
+'
+```
+
 ## `neighbors-ranked-rows.json`
 Real rows from the live Data API, captured 2026-09-26: every team's six
 nearby-rank metrics and ranks (NFL 2025, CFB 2024) and every ranked row of NFL 2024 receiving and CFB 2024 passing

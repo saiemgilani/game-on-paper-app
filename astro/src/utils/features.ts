@@ -145,6 +145,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // The Situations head-coach board (/coaches/situations, /year/N/coaches/situations and the /nfl
+    // twins, inside the 'coaches' gate): games and win rate after a bye, in openers, in one-score
+    // games and (CFB) vs ranked, from coach_tendencies / coach_careers. Off: the board select does
+    // not list it, its routes 404 and the sitemap leaves it out (utils/coaches.ts coachBoardSlugs).
+    'coach-situations': 'preview',
     // Game on Paper Pro: /pro/** (the paid player profiles, portal board and their
     // files), /pricing, the "Pro profile" link on the free player page and the
     // header's Pro entry. Gated in middleware like 'nfl': without the preview cookie

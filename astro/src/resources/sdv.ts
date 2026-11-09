@@ -1408,7 +1408,7 @@ const COACH_CAREER_KEYS = ['coach', 'role', 'teams', 'seasons', 'first_season', 
 
 async function requestTendencyTable<T>(table: string, keys: string[], filters: Record<string, string>, columns: string[] | undefined, league: League): Promise<T[]> {
     if (!LEAGUES[league].sdvEnabled) return [];
-    const metrics = columns && columns.length > 0 ? columns : coachMetricColumns();
+    const metrics = columns && columns.length > 0 ? columns : coachMetricColumns(league);
     const payload: Record<string, string> = {
         ...filters,
         select: [...new Set([...keys, ...metrics])].join(','),
