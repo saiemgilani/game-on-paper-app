@@ -20,7 +20,7 @@ const hustle = data.hustle?.[0] ?? null;
 const rollup = data.rollup ? matchupRollup(data.rollup) : null;
 const top = data.matchups ? topMatchups(data.matchups) : [];
 const dash = '—';
-const defenseEmpty = data.hustle !== null && !hustle && !(panel && panel.defense.length > 0) && data.rollup !== null && data.matchups !== null && !rollup && top.length === 0;
+const defenseEmpty = data.synergy !== null && data.hustle !== null && !hustle && !(panel && panel.defense.length > 0) && data.rollup !== null && data.matchups !== null && !rollup && top.length === 0;
 const pctile = (l: PlayTypeLine) => (l.pct == null ? dash : ordinal(Math.round(l.pct * 100)));
 const shade = (l: PlayTypeLine) => generateColorRampValue(l.pct == null ? null : l.pct * 100, 100);
 const made = (m: number | null, a: number | null) => (m == null || a == null ? dash : `${fmtInt(m)}/${fmtInt(a)}`);
@@ -76,7 +76,8 @@ const MATCHUP_NOTE = 'stats.nba.com’s matchup tracking: partial possessions ar
     </table>
   </div>
   )}
-  {data.rollup === null || data.matchups === null ? (<p class="small text-muted mb-0" id="matchups-unavailable">Matchups are temporarily unavailable.</p>) : (rollup || top.length > 0) && (
+  {(data.rollup === null || data.matchups === null) && (<p class="small text-muted mb-2" id="matchups-unavailable">{data.rollup === null && data.matchups === null ? 'Matchups are' : data.rollup === null ? 'Matchups by position are' : 'The players he guarded most are'} temporarily unavailable.</p>)}
+  {(rollup || top.length > 0) && (
   <div class="row g-3" id="matchups">
     {rollup && (
     <div class="col-lg-6 table-responsive">
@@ -88,7 +89,7 @@ const MATCHUP_NOTE = 'stats.nba.com’s matchup tracking: partial possessions ar
             <tr data-position={row.position}>
               <th scope="row" class="fw-normal">{pos}</th>
               <td class="numeral text-end">{fmtPct(row.percent_of_time)}</td>
-              <td class="numeral text-end">{fmtInt(row.partial_poss)}</td>
+              <td class="numeral text-end">{row.partial_poss == null ? dash : row.partial_poss.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
               <td class="numeral text-end">{fmtInt(row.player_pts)}</td>
               <td class="numeral text-end">{made(row.matchup_fgm, row.matchup_fga)}</td>
               <td class="numeral text-end">{made(row.matchup_fg3_m, row.matchup_fg3_a)}</td>

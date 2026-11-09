@@ -42,8 +42,8 @@ export interface SynergyRow {
     percentile: number | null;
 }
 const SYNERGY_SELECT = 'team_id,team_abbreviation,type_grouping,play_type,gp,poss,poss_pct,ppp,percentile';
-/** 11 offensive and 7 defensive play types a team, for up to four teams. */
-const SYNERGY_LIMIT = '80';
+/** 11 offensive and 7 defensive play types a team: room for six teams, more than anyone plays for in a season. */
+const SYNERGY_LIMIT = '120';
 
 export interface HustleRow {
     g: number | null;

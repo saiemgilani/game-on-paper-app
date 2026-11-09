@@ -153,7 +153,7 @@ describe('the reads', () => {
         sdv.from.mockResolvedValue([]);
         const base = { season: '2026', season_type: 'regular-season' };
         await R.retrievePlayerSynergy(2026, PID);
-        expect(sdv.from).toHaveBeenLastCalledWith(leagueSource('nba'), 'synergy', { ...base, player_id: String(PID), per_mode: 'totals', select: 'team_id,team_abbreviation,type_grouping,play_type,gp,poss,poss_pct,ppp,percentile', limit: '80' }, 21600, true, NBA_READ_TIMEOUT_MS);
+        expect(sdv.from).toHaveBeenLastCalledWith(leagueSource('nba'), 'synergy', { ...base, player_id: String(PID), per_mode: 'totals', select: 'team_id,team_abbreviation,type_grouping,play_type,gp,poss,poss_pct,ppp,percentile', limit: '120' }, 21600, true, NBA_READ_TIMEOUT_MS);
         await R.retrievePlayerHustle(2026, PID);
         expect(sdv.from.mock.lastCall!.slice(1, 3)).toEqual(['hustle_player', { ...base, player_id: String(PID), per_mode: 'pergame', select: 'g,min,deflections,contested_shots,contested_shots_3_pt,charges_drawn,def_loose_balls_recovered,def_boxouts', limit: '5' }]);
         await R.retrievePlayerMatchupRollup(2026, PID);
@@ -236,9 +236,19 @@ describe('the panels', () => {
         expect(down).toContain('id="matchups-unavailable"');
         expect(down).toContain('id="hustle-line"');
         expect(down).not.toContain('play-types-defense-table');
+        // one matchup read down: its line says so, and the other read's table still shows
+        expect(down).toContain('The players he guarded most are temporarily unavailable.');
+        expect(down).toContain('id="matchups-position-table"');
+        expect(down).toContain('3,237.6'); // partial possessions keep their decimal
+        expect(down).not.toContain('id="matchups-top-table"');
+        const rollupDown = await render({ ...MPJ, rollup: null });
+        expect(rollupDown).toContain('Matchups by position are temporarily unavailable.');
+        expect(rollupDown).toContain('id="matchups-top-table"');
         const none = await render({ synergy: [], hustle: [], rollup: [], matchups: [] });
         expect(none).toContain('id="play-types-empty"');
         expect(none).toContain('id="defense-empty"');
+        // a failed Synergy read is not "no defense numbers"
+        expect(await render({ synergy: null, hustle: [], rollup: [], matchups: [] })).not.toContain('defense-empty');
         const before = await render({ synergy: MPJ.synergy, hustle: MPJ.hustle }); // 2016-17: no matchup tables
         expect(before).not.toContain('matchups');
         expect(before).not.toContain('defense-empty');
