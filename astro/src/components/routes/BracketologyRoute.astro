@@ -128,7 +128,7 @@ const shownIds = view === 'bracket'
       <Fragment>
         <h2 class="fs-5 mt-4">Projected field</h2>
         {odds
-          ? <p class="small text-muted" id="bracket-game-odds">The field and seeds if the season ended today, from each team's résumé. Each number is the team's chance to win that game at a neutral site, from the two teams' adjusted efficiency margins this season. Regions follow the S-curve; the committee's bracketing rules are not applied.</p>
+          ? <p class="small text-muted" id="bracket-game-odds">The field and seeds if the season ended today, from each team's résumé. Each number is the team's chance to win that game at a neutral site, from the two teams' latest adjusted efficiency margins for the season (a finished season's include its tournament). Regions follow the S-curve; the committee's bracketing rules are not applied.</p>
           : <p class="small text-muted">The field and seeds if the season ended today, from each team's résumé. Each number is the team's chance to make the field on Selection Sunday. Regions follow the S-curve; the committee's bracketing rules are not applied.</p>}
         {field
           ? <PlayoffBracket rounds={rounds} names={names} abbrs={abbrs} league={league} href={href} pctTitle={odds ? 'Chance to win this game at a neutral site' : 'Chance to make the field on Selection Sunday'} label="Projected NCAA tournament bracket" />
