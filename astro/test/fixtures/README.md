@@ -765,3 +765,18 @@ children). 2026 season, captured 2026-10-18 with the `requestESPN` Safari UA. No
 
 **To regenerate:** re-fetch both URLs and gzip; the test pins the group ids, names and team counts, so a realignment
 change will need the assertion updated too.
+
+## `team-hub-cfb.json`, `team-hub-nfl.json`
+Real Data API rows for the team profile's history tables (`'team-hub'`), per team id:
+`team_summaries` from `/v1/<league>/team_summaries?team_id=<id>` (select trimmed to `season, team_id, pos_team,
+conference, division` and the six Seasons-table metrics with their `_rank`s) and `coach_tendencies` from
+`/v1/<league>/coach_tendencies?pos_team_id=<id>&role=HC` (`season, pos_team_id, pos_team, coach, role, games, plays`).
+CFB: Texas A&M (245, Big 12 to SEC in 2012, no 2023 coach row) and Kansas State (2306, Bill Snyder leaves after
+2005 and returns in 2009). NFL: Kansas City (12, two head coaches in 2011). Captured 2026-11-01; rows sorted, not
+edited. NFL rows carry today's conference and division on every season, which is why the NFL page has no
+Conference History.
+
+**Used by:** `test/teamHub.test.ts`.
+
+**To regenerate:** re-fetch both routes per team with the same `select`; 2026 rows grow during the season, so the
+2026 era and span counts in the test move with them.
