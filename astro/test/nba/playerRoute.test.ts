@@ -37,6 +37,7 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
 
 import { prepareNbaPlayer } from '../../src/routes/nba/player';
 import { PLAYER_CACHE } from '../../src/routes/nba/cache';
+import { LAST_KNOWN_SEASON } from '../../src/nba/seasonRange';
 
 function fakeAstro(path: string, id: string) {
     const cache: unknown[] = [];
@@ -82,7 +83,7 @@ describe('prepareNbaPlayer', () => {
         state.fail = new Set();
         if ('notFound' in r || 'unavailable' in r) throw new Error('expected params');
         expect(r.explorer.games).toBeNull();
-        expect(r.hisSeasons).toEqual([2026]);
+        expect(r.hisSeasons).toEqual([LAST_KNOWN_SEASON]); // a failed seasons read falls back to the current season
         expect(cache).toEqual([false]);
     });
     test('null game dates mean the per-game views are unavailable, page still cached', async () => {
@@ -94,17 +95,19 @@ describe('prepareNbaPlayer', () => {
         expect(r.explorer.games).toBeNull();
         expect(cache[0]).toMatchObject({ maxAge: 3600 });
     });
-    test('a shot whose game has no log row means the per-game views are unavailable', async () => {
+    test('a shot whose game has no log row means the per-game views are unavailable, and the page is not cached', async () => {
         const shotGames = new Set(shots.filter((s: any) => s.person_id === PID).map((s: any) => String(s.game_id)));
         const dropped = gameRows.findIndex((g: any) => shotGames.has(String(g.game_id)));
         expect(dropped).toBeGreaterThanOrEqual(0);
         for (const [label, rows] of [['no game rows', []], ['one game row dropped', gameRows.filter((_: any, k: number) => k !== dropped)]] as const) {
             state.games = rows as any[];
-            const { astro } = fakeAstro(`/nba/players/${PID}`, String(PID));
+            const { astro, cache, headers } = fakeAstro(`/nba/players/${PID}`, String(PID));
             const r = await prepareNbaPlayer(astro);
             state.games = null;
             if ('notFound' in r || 'unavailable' in r) throw new Error('expected params');
             expect(r.explorer.games, label).toBeNull();
+            expect(cache, label).toEqual([false]);
+            expect(headers.get('Cache-Control'), label).toBe('no-store');
         }
     });
 });

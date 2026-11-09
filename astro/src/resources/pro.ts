@@ -2,11 +2,15 @@
 // filters live in the existing SESSION KV under a `pro:` prefix; the reports gop-pro
 // renders live in the private `gop-pro` R2 bucket (binding PRO_BUCKET) and are only
 // ever read here, server side, after the entitlement check (gop-pro docs/contract.md).
+// The site writes only two small object families to the bucket, both outside `pro/`:
+// the download counter and spent-magic-link markers.
 //
 //   pro:ent:<email>      {tier, expires, team?}       written from /admin
-//   pro:tok:<hex>        <email>, 15-minute TTL       one magic link, deleted on use
+//   pro:tok:<hex>        <email>, 15-minute TTL       one magic link (spent by its R2 marker)
 //   pro:board:<email>    ["<entrantKey>", ...]        "Save to my board"
 //   pro:filters:<email>  {pos?, metric?, min?}        what the portal digest matches
+//   R2 quota/dl/<sha256(email)>.json  {day, n, month, pdf}   claimDownload's counter
+//   R2 auth/tok/<sha256(token)>.json  {n: sha256(nonce), at}  a spent magic link (swept daily)
 //
 // Outside a deployed Worker (astro dev, vitest) a missing R2 object falls back to the
 // synthetic fixtures under test/fixtures/pro/, so nothing local depends on the real
@@ -16,7 +20,7 @@ import { env } from 'cloudflare:workers';
 import { CURRENT_YEAR } from '../utils/constants';
 import {
     activeEntitlement, digestEntrants, digestText, parseBoardFilters, PRO_ANALYST_PDFS_PER_MONTH,
-    PRO_FILES_PER_DAY, PRO_TOKEN_TTL_S, type BoardEntrant, type BoardFilters, type ProEntitlement,
+    PRO_AUTH_RETRY_S, PRO_FILES_PER_DAY, PRO_TOKEN_TTL_S, type BoardEntrant, type BoardFilters, type ProEntitlement,
     type ProViewer,
 } from '../utils/pro';
 
@@ -24,6 +28,12 @@ import {
 export const PRO_SEASON = CURRENT_YEAR;
 
 const kv = (): KVNamespace => (env as any).SESSION;
+const bucket = (): R2Bucket | undefined => (env as any).PRO_BUCKET;
+
+async function sha256Hex(text: string): Promise<string> {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 export async function readEntitlement(email: string, now = Date.now()): Promise<ProEntitlement | null> {
     if (!email) return null;
@@ -55,37 +65,86 @@ export async function claimLoginSend(email: string): Promise<boolean> {
 }
 
 /**
- * The address a token was minted for, consuming it; null when unknown or expired.
- * ponytail: get-then-delete is not atomic across KV edges, so two clicks landing in
- * the same second at different PoPs could both log in -- the same address either
- * way. A Durable Object makes it strict if that ever matters.
+ * The address a token was minted for, spending it; null when unknown, expired, or spent.
+ *
+ * One use, strictly: spending a token is a create-only R2 write of its marker
+ * (`auth/tok/<sha256(token)>.json`, `etagDoesNotMatch: '*'`). R2 commits that atomically
+ * and strongly consistently, so two POSTs anywhere in the world can't both spend it (a KV
+ * get-then-delete could: KV has no compare-and-set and a delete takes up to 60 s to reach
+ * other PoPs). The KV entry is left to its 15-minute TTL, so nothing works past that.
+ *
+ * Retry-safe: `nonce` is the `__Host-gop_pro_auth` cookie the GET gave this browser. The marker
+ * keeps its hash, so the SAME browser may spend the token again within PRO_AUTH_RETRY_S
+ * of the first spend (a POST whose response was lost: closed tab, dropped connection).
+ * Any other browser, or the same one after the window, gets null. A GET never calls this.
  */
-export async function redeemLoginToken(token: string | null | undefined): Promise<string | null> {
-    if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
-    const key = `pro:tok:${token}`;
-    const email = await kv().get(key);
+export async function redeemLoginToken(token: string | null | undefined, nonce: string | null | undefined,
+                                       now = Date.now()): Promise<string | null> {
+    if (!token || !/^[0-9a-f]{64}$/.test(token) || !nonce || !/^[0-9a-f]{64}$/.test(nonce)) return null;
+    const email = await kv().get(`pro:tok:${token}`);
     if (!email) return null;
-    await kv().delete(key);
-    return email;
+    const b = bucket();
+    if (!b) return LOCAL ? email : null;  // no bucket outside a Worker: no one-time check locally
+    const key = `auth/tok/${await sha256Hex(token)}.json`;
+    const n = await sha256Hex(nonce);
+    if (await b.put(key, JSON.stringify({ n, at: now }), { onlyIf: { etagDoesNotMatch: '*' } })) return email;
+    // already spent: only the browser that spent it, and only inside the window
+    const prior = (await (await b.get(key))?.json().catch(() => null)) as { n?: string; at?: number } | null;
+    return prior?.n === n && typeof prior.at === 'number' && now - prior.at <= PRO_AUTH_RETRY_S * 1000 ? email : null;
+}
+
+/** Delete spent-magic-link markers older than a day (their tokens died after 15 minutes). */
+export async function sweepLoginMarkers(now = Date.now()): Promise<number> {
+    const b = bucket();
+    if (!b) return 0;
+    let swept = 0;
+    let cursor: string | undefined;
+    do {
+        const page = await b.list({ prefix: 'auth/tok/', cursor });
+        const old = page.objects.filter((o) => now - o.uploaded.getTime() > 86_400_000).map((o) => o.key);
+        if (old.length) { await b.delete(old); swept += old.length; }
+        cursor = page.truncated ? page.cursor : undefined;
+    } while (cursor);
+    return swept;
 }
 
 /**
  * Count one file download against the viewer's quotas; false = over quota (nothing counted).
- * Daily cap for everyone, plus Analyst's 10 PDFs a month. ponytail: KV read-then-write is not
- * atomic, so a burst of parallel requests can overshoot by a few -- a cap, not a meter.
+ * Daily cap for everyone, plus Analyst's 10 PDFs a month. The counter is one R2 object per
+ * viewer (`quota/dl/<sha256(email)>.json`, outside `pro/`, so isProKey never serves it and
+ * gop-pro's publish never touches it), advanced with R2's conditional put: R2 commits
+ * `etagMatches` / `etagDoesNotMatch: '*'` atomically, so two parallel downloads can't both
+ * take the last slot. KV can't do that (no compare-and-set, and a read can be up to 60 s
+ * stale at another PoP). Losing the race retries; persistent contention fails closed.
  */
 export async function claimDownload(viewer: ProViewer, key: string, now = new Date()): Promise<boolean> {
+    const b = bucket();
+    if (!b) return LOCAL;  // no bucket outside a Worker: no quota locally, none granted in production
     const day = now.toISOString().slice(0, 10);
-    const dayKey = `pro:dl:${viewer.email}:${day}`;
-    const monthKey = `pro:dlpdf:${viewer.email}:${day.slice(0, 7)}`;
-    const nDay = Number((await kv().get(dayKey)) ?? 0);
-    if (nDay >= PRO_FILES_PER_DAY) return false;
+    const month = day.slice(0, 7);
     const metered = viewer.tier === 'analyst' && key.endsWith('.pdf');
-    const nMonth = metered ? Number((await kv().get(monthKey)) ?? 0) : 0;
-    if (metered && nMonth >= PRO_ANALYST_PDFS_PER_MONTH) return false;
-    await kv().put(dayKey, String(nDay + 1), { expirationTtl: 2 * 86_400 });
-    if (metered) await kv().put(monthKey, String(nMonth + 1), { expirationTtl: 40 * 86_400 });
-    return true;
+    const objKey = `quota/dl/${await sha256Hex(viewer.email)}.json`;
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const cur = await b.get(objKey);
+        let q: { day?: string; n?: number; month?: string; pdf?: number } = {};
+        if (cur) {
+            // an unreadable counter must not read as zero (that would reset the day and the month);
+            // refuse, and replace it with a full one, so it clears itself at the next rollover
+            try { q = await cur.json(); } catch (err) {
+                console.error(`[pro quota] unreadable counter: ${err}`);
+                await b.put(objKey, JSON.stringify({ day, n: PRO_FILES_PER_DAY, month, pdf: PRO_ANALYST_PDFS_PER_MONTH }),
+                    { onlyIf: { etagMatches: cur.etag } });
+                return false;
+            }
+        }
+        const nDay = q.day === day ? Number(q.n) || 0 : 0;
+        const nMonth = q.month === month ? Number(q.pdf) || 0 : 0;
+        if (nDay >= PRO_FILES_PER_DAY || (metered && nMonth >= PRO_ANALYST_PDFS_PER_MONTH)) return false;
+        const next = JSON.stringify({ day, n: nDay + 1, month, pdf: nMonth + (metered ? 1 : 0) });
+        const put = await b.put(objKey, next, { onlyIf: cur ? { etagMatches: cur.etag } : { etagDoesNotMatch: '*' } });
+        if (put) return true;
+    }
+    return false;
 }
 
 export async function readBoard(email: string): Promise<string[]> {
@@ -151,9 +210,13 @@ async function fixtureText(key: string): Promise<string | null> {
     return load ? ((await load()) as string) : null;
 }
 
-/** An R2 key a caller may ask for: under pro/, no traversal, no oddities. */
+/**
+ * An R2 key a viewer may download through /pro/file: a PDF or CSV under pro/, no traversal, no
+ * oddities. Never JSON: a profile's JSON carries PFF grades and counts, which no file may hand out
+ * (contract.md); pages read the JSON server side through proObject instead.
+ */
 export function isProKey(key: string): boolean {
-    return /^pro\/[A-Za-z0-9_\-/]+\.(json|pdf|csv)$/.test(key) && !key.includes('//') && !key.includes('..');
+    return /^pro\/[A-Za-z0-9_\-/]+\.(pdf|csv)$/.test(key) && !key.includes('//') && !key.includes('..');
 }
 
 /** A JSON artifact from the bucket, parsed; null when missing or unreadable. */

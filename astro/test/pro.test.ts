@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
@@ -13,23 +13,31 @@ vi.mock('astro:env/server', () => ({
 vi.mock('astro:middleware', () => ({ defineMiddleware: (fn: unknown) => fn }));
 vi.mock('cloudflare:workers', async () => ({ env: (await import('./helpers/memKV')).memEnv }));
 
-import { SESSION } from './helpers/memKV';
+import { PRO_BUCKET, SESSION } from './helpers/memKV';
 import { onRequest } from '../src/middleware';
 import { mintPreviewCookie, PREVIEW_COOKIE } from '../src/utils/preview';
 import {
     describeFilters, digestEntrants, digestText, filterBoard, formatOdds, formatPffValue, formatProDelta, formatProMetric,
     formatUsd, mintProCookie, parseBoardFilters, PRO_COOKIE, PRO_TOKEN_TTL_S, proAllows, sortBoard, verifyProCookie, type BoardEntrant,
 } from '../src/utils/pro';
-import { claimDownload, claimLoginSend, createLoginToken, isProKey, latestBoard, redeemLoginToken, runProDigest } from '../src/resources/pro';
+import { claimDownload, claimLoginSend, createLoginToken, isProKey, latestBoard, redeemLoginToken, runProDigest, sweepLoginMarkers } from '../src/resources/pro';
+import { PRO_AUTH_RETRY_S, ROLE_KINDS } from '../src/utils/pro';
 
 const board: { entrants: BoardEntrant[] } = JSON.parse(readFileSync(new URL('./fixtures/pro/2026/portal/board.json', import.meta.url)).toString());
 const DAY = 86_400_000;
 const live = { tier: 'pro' as const, expires: new Date(Date.now() + 30 * DAY).toISOString(), addons: ['portal', 'dossier'] };
 const analyst = { tier: 'analyst' as const, expires: new Date(Date.now() + 30 * DAY).toISOString() };
 const lapsed = { tier: 'analyst', expires: new Date(Date.now() - DAY).toISOString() };
+/** Spend `n` of a viewer's daily downloads (on JSON keys, so Analyst's PDF meter stays put). */
+async function spend(viewer: any, n: number) {
+    for (let i = 0; i < n; i++) if (!(await claimDownload(viewer, `pro/2026/players/${i}.json`))) throw new Error(`claim ${i} refused`);
+}
 
 beforeEach(async () => {
     SESSION.m.clear();
+    PRO_BUCKET.m.clear();
+    PRO_BUCKET.lag = 0;
+    PRO_BUCKET.pageSize = Infinity;
     await SESSION.put('pro:ent:coach@example.edu', JSON.stringify(live));
     await SESSION.put('pro:ent:old@example.edu', JSON.stringify(lapsed));
     await SESSION.put('pro:ent:fan@example.com', JSON.stringify(analyst));
@@ -56,7 +64,7 @@ async function run(path: string, opts: { preview?: boolean; email?: string } = {
 
 describe('the middleware gate', () => {
     test("flag off: every Pro path and /pricing is the site's 404, even with an entitlement", async () => {
-        for (const p of ['/pro', '/pro/players/1', '/pro/portal', '/pro/methodology', '/pro/login', '/pro/file/pro/2026/players/1.pdf', '/pricing']) {
+        for (const p of ['/pro', '/pro/players/1', '/pro/portal', '/pro/methodology', '/pro/login', '/pro/file/pro/2026/players/1.pdf', '/pro/compare', '/pro/export', '/pricing']) {
             expect((await run(p, { email: 'coach@example.edu' })).rewrittenTo, p).toBe('/404');
         }
         // and nothing near it moves
@@ -72,9 +80,12 @@ describe('the middleware gate', () => {
             expect(res.headers.get('Location'), p).toBe('/pricing');
             expect(res.headers.get('Cache-Control'), p).toBe('no-store');
         }
-        const file = await run('/pro/file/pro/2026/players/1.pdf', { preview: true });
-        expect(file.res.status).toBe(403);
-        expect(file.res.headers.get('Location')).toBeNull();
+        for (const p of ['/pro/file/pro/2026/players/1.pdf', '/pro/export']) {
+            const file = await run(p, { preview: true });
+            expect(file.res.status, p).toBe(403);
+            expect(file.res.headers.get('Location'), p).toBeNull();
+        }
+        expect((await run('/pro/compare', { preview: true })).res.status).toBe(302);
         // the open ones render for anyone the flag lets in
         for (const p of ['/pro/login', '/pro/methodology', '/pricing']) {
             expect((await run(p, { preview: true })).rewrittenTo, p).toBeUndefined();
@@ -109,18 +120,67 @@ describe('the middleware gate', () => {
 });
 
 describe('the magic link', () => {
+    // two browsers' gop_pro_auth nonces
+    const A = 'a'.repeat(64);
+    const B = 'b'.repeat(64);
+
     test('a token works once', async () => {
         const t = await createLoginToken('coach@example.edu');
-        expect(await redeemLoginToken(t)).toBe('coach@example.edu');
-        expect(await redeemLoginToken(t)).toBeNull();
-        expect(await redeemLoginToken('not-a-token')).toBeNull();
+        expect(await redeemLoginToken(t, A)).toBe('coach@example.edu');
+        expect(await redeemLoginToken(t, B)).toBeNull();  // another browser: spent
+        expect(await redeemLoginToken('not-a-token', A)).toBeNull();
+        const u = await createLoginToken('coach@example.edu');
+        expect(await redeemLoginToken(u, null)).toBeNull();  // no nonce, no spend
+        expect(await redeemLoginToken(u, A)).toBe('coach@example.edu');
+        // the marker is keyed by a hash: no token and no address in the bucket
+        for (const [k, e] of PRO_BUCKET.m) {
+            expect(k).toMatch(/^auth\/tok\/[0-9a-f]{64}\.json$/);
+            expect(k + e.v).not.toContain(t);
+            expect(e.v).not.toContain('coach@');
+        }
     });
 
     test('a token dies after 15 minutes', async () => {
         vi.useFakeTimers({ now: Date.now() });
         const t = await createLoginToken('coach@example.edu');
         vi.setSystemTime(Date.now() + PRO_TOKEN_TTL_S * 1000 + 1);
-        expect(await redeemLoginToken(t)).toBeNull();
+        expect(await redeemLoginToken(t, A)).toBeNull();
+    });
+
+    test('one spend across locations: two browsers at once, exactly one signs in', async () => {
+        const t = await createLoginToken('coach@example.edu');
+        PRO_BUCKET.lag = 20;  // both read before either writes, as two PoPs can
+        const got = await Promise.all([A, B, 'c'.repeat(64)].map((n) => redeemLoginToken(t, n)));
+        expect(got.filter(Boolean)).toEqual(['coach@example.edu']);
+    });
+
+    test('retry window: the same browser may finish again for PRO_AUTH_RETRY_S, nobody else', async () => {
+        const t = await createLoginToken('coach@example.edu');
+        const at = Date.now();
+        expect(await redeemLoginToken(t, A, at)).toBe('coach@example.edu');
+        expect(await redeemLoginToken(t, B, at + 1000)).toBeNull();
+        expect(await redeemLoginToken(t, A, at + 60_000)).toBe('coach@example.edu');  // the lost response, retried
+        expect(await redeemLoginToken(t, A, at + PRO_AUTH_RETRY_S * 1000)).toBe('coach@example.edu');
+        expect(await redeemLoginToken(t, A, at + PRO_AUTH_RETRY_S * 1000 + 1)).toBeNull();
+    });
+
+    test('the daily sweep drops markers older than a day and keeps fresh ones', async () => {
+        await redeemLoginToken(await createLoginToken('coach@example.edu'), A);
+        await redeemLoginToken(await createLoginToken('coach@example.edu'), A);
+        await PRO_BUCKET.put('quota/dl/x.json', '{}');
+        const [old] = [...PRO_BUCKET.m.keys()];
+        PRO_BUCKET.m.get(old)!.uploaded = new Date(Date.now() - 86_400_000 - 1);
+        expect(await sweepLoginMarkers()).toBe(1);
+        expect(PRO_BUCKET.m.has(old)).toBe(false);
+        expect(PRO_BUCKET.m.size).toBe(2);  // the fresh marker and the quota counter stay
+    });
+
+    test('the sweep follows the cursor past a truncated listing', async () => {
+        const stale = new Date(Date.now() - 86_400_000 - 1);
+        for (let i = 0; i < 7; i++) PRO_BUCKET.m.set(`auth/tok/${i}.json`, { v: '{}', etag: `s${i}`, uploaded: i === 3 ? new Date() : stale });
+        PRO_BUCKET.pageSize = 2;
+        expect(await sweepLoginMarkers()).toBe(6);
+        expect([...PRO_BUCKET.m.keys()]).toEqual(['auth/tok/3.json']);
     });
 
     test('/pro/auth: a GET (an email scanner) spends nothing; the POST sets a cookie once', async () => {
@@ -134,22 +194,34 @@ describe('the magic link', () => {
             expect(html).toContain(`value="${t}"`);
         }
         expect(SESSION.m.has(`pro:tok:${t}`)).toBe(true);
+        expect(PRO_BUCKET.m.size).toBe(0);  // a GET writes nothing anywhere
         // the token is in this page's URL: its POST must not carry it as a Referer into request_log
         const page = await container.renderToResponse(Auth, { request: new Request(`https://gameonpaper.com/pro/auth?t=${t}`), locals });
         expect(page.headers.get('Referrer-Policy')).toBe('no-referrer');
         // nor may analytics send that URL to a third party
         expect(await page.text()).not.toContain('plausible.io');
-        const post = () => container.renderToResponse(Auth, {
-            request: new Request('https://gameonpaper.com/pro/auth', { method: 'POST', body: new URLSearchParams({ t }) }), locals,
+        // the GET hands this browser a nonce, and keeps one it already has
+        const set = page.headers.get('Set-Cookie') ?? '';
+        expect(set).toMatch(/^__Host-gop_pro_auth=[0-9a-f]{64}; Path=\/; Max-Age=900; HttpOnly; Secure; SameSite=Lax$/);
+        const nonce = set.split(';')[0].split('=')[1];
+        const kept = await container.renderToResponse(Auth, { request: new Request(`https://gameonpaper.com/pro/auth?t=${t}`, { headers: { cookie: `__Host-gop_pro_auth=${nonce}` } }), locals });
+        expect(kept.headers.get('Set-Cookie')).toBeNull();
+        const post = (n: string | null) => container.renderToResponse(Auth, {
+            request: new Request('https://gameonpaper.com/pro/auth', { method: 'POST', body: new URLSearchParams({ t }), headers: n ? { cookie: `__Host-gop_pro_auth=${n}` } : {} }), locals,
         });
-        const first = await post();
+        expect((await post(null)).headers.get('Location')).toBe('/pro/login?err=1');  // no nonce: nothing spent
+        expect(PRO_BUCKET.m.size).toBe(0);
+        const first = await post(nonce);
         expect(first.status).toBe(303);
         expect(first.headers.get('Location')).toBe('/pro');
         const cookie = (first.headers.get('Set-Cookie') ?? '').split(';')[0].split('=').slice(1).join('=');
         expect(await verifyProCookie(cookie, 'pro-secret')).toBe('coach@example.edu');
-        const again = await post();
-        expect(again.headers.get('Location')).toBe('/pro/login?err=1');
-        expect(again.headers.get('Set-Cookie')).toBeNull();
+        // its response lost, the same browser presses Sign in again and finishes
+        expect((await post(nonce)).headers.get('Location')).toBe('/pro');
+        // another browser with the same link does not
+        const other = await post('d'.repeat(64));
+        expect(other.headers.get('Location')).toBe('/pro/login?err=1');
+        expect(other.headers.get('Set-Cookie')).toBeNull();
         // a link with no token says so and offers a new one
         expect(await container.renderToString(Auth, { request: new Request('https://gameonpaper.com/pro/auth'), locals }))
             .toContain('href="/pro/login"');
@@ -181,10 +253,17 @@ describe('/pro/file', () => {
         expect(ok.headers.get('Content-Type')).toContain('text/csv');
         expect(ok.headers.get('Cache-Control')).toBe('no-store');
         expect((await ok.text()).split('\n')[0]).toContain('pass_EPAplay_band_mid');
-        for (const bad of ['pro/../secrets.json', 'other/x.json', 'pro/2026/players/1.exe', 'pro//x.pdf']) expect(isProKey(bad), bad).toBe(false);
+        for (const bad of ['pro/../secrets.json', 'other/x.json', 'pro/2026/players/1.exe', 'pro//x.pdf', 'pro/2026/players/1.json']) expect(isProKey(bad), bad).toBe(false);
         const missing: Response = await (GET as any)({ params: { key: 'pro/2026/players/999.pdf' }, locals: { pro: { email: 'a@b.co', ...live } } });
         expect(missing.status).toBe(404);
-    });
+        // a profile's JSON exists (and holds PFF arrays) but is never a download
+        const json: Response = await (GET as any)({ params: { key: 'pro/2026/players/1.json' }, locals: { pro: { email: 'a@b.co', ...live } } });
+        expect(json.status).toBe(404);
+        // at the cap: a 429, after closing the opened object's body
+        const full = { email: 'full@example.edu', ...live };
+        await spend(full, 150);
+        expect((await (GET as any)({ params: { key }, locals: { pro: full } })).status).toBe(429);
+    }, 30_000);
 });
 
 describe('formatting follows the contract', () => {
@@ -277,10 +356,10 @@ describe('the portal digest', () => {
 
 describe('the pages', () => {
     const pro = { email: 'coach@example.edu', ...live };
-    const render = async (file: string, url: string, params: Record<string, string> = {}) => {
+    const render = async (file: string, url: string, params: Record<string, string> = {}, viewer: unknown = pro) => {
         const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
         const { default: Page } = await import(/* @vite-ignore */ file);
-        return container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, pro } as any });
+        return container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, pro: viewer } as any });
     };
 
     test('the profile: bands, sample, change, PFF, volume, every note and the PDF link', async () => {
@@ -328,7 +407,7 @@ describe('the pages', () => {
         const rows = html.split('id="pro-board-table"')[1].split('</table>')[0].split('data-key=').slice(1);
         expect(rows[0]).toContain('$1.90M');  // highest projected value first
         expect(rows[0]).toContain('66 <span');
-        expect(rows[0]).toContain('71 · $2.10M');  // next season, actual
+        expect(rows[0]).toContain('71 / $2.10M');  // next season, actual
         expect(rows[1]).toContain('$420K');
         expect(html.split('id="pro-board-scarcity"')[1].split('</div>')[0]).toContain('QB 1.25');
         expect(html).toContain('id="pro-board-check-table"');
@@ -338,12 +417,30 @@ describe('the pages', () => {
 
     test('pricing: the tiers, "Contact us" with no payment link set, and the plain statements', async () => {
         const html = await render('../src/pages/pricing.astro', '/pricing');
-        for (const s of ['$29/mo', '$249/yr', '$179/mo', '$1,499/yr', 'P4 $7,500', '$1,995/yr', '$350', '$2,500 / $7,500', 'From $3,500']) expect(html, s).toContain(s);
+        for (const s of ['$29/mo', '$249/yr', '$179/mo', '$1,499/yr', 'P4 $7,500', '$1,995/yr', '$2,500 / $7,500', 'start at $3,500']) expect(html, s).toContain(s);
+        expect(html).not.toContain('$350');  // the single profile cost more than a year of Analyst; dropped
         expect(html).toContain('never reported NIL deals');
         expect(html).toContain('href="/pro/methodology"');
         expect(html).toContain('Contact us');
         expect(html).not.toContain('Subscribe</a>');
+        // each role report is named on the row of the cheapest plan that opens it (proRequirement), and
+        // Agency, the player side's organisation plan, names none of the program-side ones
+        const row = (t: string) => html.split(`<strong>${t}</strong>`)[1].split('</tr>')[0];
+        for (const [k, v] of Object.entries(ROLE_KINDS)) {
+            const path = `/pro/roles/${k}/1`;
+            expect(proAllows(analyst, path) ? row('Analyst') : row('Pro'), v.title).toContain(v.title);
+            if (!proAllows({ ...analyst, tier: 'agency' }, path)) expect(row('Agency'), v.title).not.toContain(v.title);
+        }
+        expect(row('Pro')).toContain('roster, position and market valuation');
+        for (const t of ['Agency', 'Program', 'Portal Board', 'Coach Dossier', 'Consulting']) expect(html, t).toContain(`<option value="${t}">`);
     }, 60_000);
+
+    test('no interpunct separators on the Pro pages (design-conventions: "replace dot")', () => {
+        const dir = new URL('../src/pages/pro/', import.meta.url);
+        const pages = (readdirSync(dir, { recursive: true }) as string[]).map((f) => f.replaceAll('\\', '/')).filter((f) => f.endsWith('.astro'));
+        expect(pages).toContain('players/[id].astro');  // the scan found the tree
+        for (const f of pages) expect(readFileSync(new URL(f, dir), 'utf8'), f).not.toContain('·');
+    });
 
     test('the profile valuation panel: tiles, routes, rushing over expected, labelled as a model', async () => {
         const html = await render('../src/pages/pro/players/[id].astro', '/pro/players/1', { id: '1' });
@@ -389,7 +486,14 @@ describe('the pages', () => {
     }, 60_000);
 
     test('the role reports: the index links every kind; each kind renders its tables, PDF and limits', async () => {
+        // an Analyst's index: agent and player reports, no program links that would bounce
+        const fanIndex = await render('../src/pages/pro/roles/index.astro', '/pro/roles', {}, { email: 'fan@example.com', ...analyst });
+        for (const href of ['/pro/roles/agent/market', '/pro/roles/player/1']) expect(fanIndex, href).toContain(`href="${href}"`);
+        for (const href of ['/pro/roles/team/1', '/pro/roles/collective/1', '/pro/roles/ad/1']) expect(fanIndex, href).not.toContain(`href="${href}"`);
+        expect(fanIndex).toContain('id="pro-roles-programs-locked"');
+        expect(fanIndex).toContain('priced in constant 2026-27 revenue-share dollars');  // no space lost at a line break
         const index = await render('../src/pages/pro/roles/index.astro', '/pro/roles');
+        expect(index).not.toContain('id="pro-roles-programs-locked"');
         for (const href of ['/pro/roles/team/1', '/pro/roles/collective/1', '/pro/roles/ad/1', '/pro/roles/agent/market', '/pro/roles/player/1']) {
             expect(index, href).toContain(`href="${href}"`);
         }
@@ -473,7 +577,12 @@ describe('the pages', () => {
         const evil = compareCsv([{ season: 2026, player: { espn_id: 9, name: '=HYPERLINK("x")', team: ' @t', team_id: null, position: 'QB' },
             metrics: [{ key: 'm', label: 'M', value: -0.5, n: 1, n_label: 'plays', band_lo: null, band_mid: null, band_hi: null, delta_eb: null }] }]).split('\r\n')[1];
         expect(evil.startsWith(`9,"'=HYPERLINK(""x"")",' @t,QB,2026,-0.5,`)).toBe(true);
-        await SESSION.put(`pro:dl:coach@example.edu:${new Date().toISOString().slice(0, 10)}`, '150');
+        const lead = (team: string) => compareCsv([{ season: 2026, player: { espn_id: 9, name: 'n', team, team_id: null, position: null }, metrics: [] }]).split('\r\n')[1].split(',')[2];
+        expect(lead('\tx')).toBe("'\tx");
+        expect(lead('\rx')).toBe(`"'\rx"`);
+        expect(lead('A&M')).toBe('A&M');
+        await spend(pro, 148);  // with the export above, one download left today
+        expect((await call('1')).status).toBe(200);
         expect((await call('1')).status).toBe(429);
     }, 30_000);
 
@@ -482,8 +591,9 @@ describe('the pages', () => {
         const { default: Nav } = await import('../src/components/pro/ProNav.astro');
         const nav = (viewer: unknown) => container.renderToString(Nav, { locals: { pro: viewer } as any });
         const fan = await nav({ email: 'fan@example.com', ...analyst });
-        for (const href of ['/pro/portal', '/pro/rosters', '/pro/positions', '/pro/market', '/pro/roles']) expect(fan, href).not.toContain(`href="${href}"`);
+        for (const href of ['/pro/portal', '/pro/rosters', '/pro/positions', '/pro/market']) expect(fan, href).not.toContain(`href="${href}"`);
         expect(fan).toContain('href="/pro/methodology"');
+        expect(fan).toContain('href="/pro/roles"');  // the agent and player reports are every tier's
         const coach = await nav(pro);
         for (const href of ['/pro/portal', '/pro/rosters', '/pro/roles']) expect(coach, href).toContain(`href="${href}"`);
         expect(await nav(null)).toContain('href="/pro/roles"');  // signed out: the whole menu
@@ -542,18 +652,50 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         expect(proAllows(pro, '/pro/file/pro/2026/teams/52.pdf')).toBe(true);
         expect(proAllows(pro, '/pro/file/pro/coaches/kirk-ferentz.pdf')).toBe(false);
         expect(proAllows({ ...pro, addons: ['dossier'] }, '/pro/file/pro/coaches/kirk-ferentz.pdf')).toBe(true);
-        // valuation reports: above Analyst; the methodology PDF and profile values are for every tier
-        for (const path of ['/pro/rosters', '/pro/rosters/194', '/pro/positions/QB', '/pro/market', '/pro/file/pro/2026/rosters/194.pdf', '/pro/file/pro/2026/market/market.pdf']) {
+        // plans split by side: roster and position valuation and the program-side role reports (an
+        // unknown kind too) are Pro and Program only; the talent market is above Analyst on both sides
+        const agency = { ...base, tier: 'agency' as const };
+        const program = { ...base, tier: 'program' as const };
+        for (const path of ['/pro/rosters', '/pro/rosters/194', '/pro/positions/QB', '/pro/file/pro/2026/rosters/194.pdf',
+            '/pro/roles/team/194', '/pro/roles/collective/194', '/pro/roles/ad/194', '/pro/file/pro/roles/collective/194.pdf',
+            '/pro/file/pro/roles/team/194.pdf', '/pro/roles/coach/1', '/pro/file/pro/roles/x/1.pdf']) {
             expect(proAllows(a, path), path).toBe(false);
+            expect(proAllows(agency, path), path).toBe(false);
+            expect(proAllows(pro, path), path).toBe(true);
+            expect(proAllows(program, path), path).toBe(true);
+        }
+        for (const path of ['/pro/market', '/pro/file/pro/2026/market/market.pdf']) {
+            expect(proAllows(a, path), path).toBe(false);
+            expect(proAllows(agency, path), path).toBe(true);
             expect(proAllows(pro, path), path).toBe(true);
         }
-        for (const path of ['/pro/roles', '/pro/roles/team/194', '/pro/roles/agent/market', '/pro/file/pro/roles/collective/194.pdf']) {
-            expect(proAllows(a, path), path).toBe(false);
+        // agent and player role reports for every tier
+        for (const path of ['/pro/roles', '/pro/roles/agent/market', '/pro/roles/player/4433971', '/pro/file/pro/roles/agent/market.pdf', '/pro/file/pro/roles/player/4433971.pdf']) {
+            expect(proAllows(a, path), path).toBe(true);
+            expect(proAllows(agency, path), path).toBe(true);
             expect(proAllows(pro, path), path).toBe(true);
-            expect(proAllows({ ...base, tier: 'agency' }, path), path).toBe(true);
         }
         expect(proAllows(a, '/pro/file/pro/2026/valuation/valuation.pdf')).toBe(true);
         expect(proAllows(a, '/pro/rostersx')).toBe(true);
+    });
+
+    test('the role gate holds through the middleware for any spelling of a program-side path', async () => {
+        await SESSION.put('pro:ent:fan@example.com', JSON.stringify(analyst));
+        const fan = (p: string) => run(p, { preview: true, email: 'fan@example.com' });
+        expect((await fan('/pro/roles/team/1')).res.headers.get('location')).toBe('/pricing');
+        expect((await fan('/pro/file/pro/roles/team/1.pdf')).res.status).toBe(403);
+        // encoded spellings never reach a route: they redirect to the canonical path, gated above
+        for (const [p, to] of [['/pro/file/pro/roles%2Fteam%2F1.pdf', '/pro/file/pro/roles/team/1.pdf'], ['/pro/%72oles/team/1', '/pro/roles/team/1']]) {
+            const r = await fan(p);
+            expect([r.res.status, r.res.headers.get('location'), r.rewrittenTo], p).toEqual([308, to, 'never-called']);
+        }
+        // odd shapes under roles/ fail closed; the index and the every-tier kinds pass
+        for (const p of ['/pro/roles/team', '/pro/roles//team/1', '/pro/file/pro/roles/team.pdf', '/pro/roles/x/1']) {
+            expect((await fan(p)).rewrittenTo, p).toBe('never-called');
+        }
+        for (const p of ['/pro/roles', '/pro/roles/', '/pro/roles/player/1', '/pro/roles/agent/market', '/pro/file/pro/roles/player/1.pdf']) {
+            expect((await fan(p)).rewrittenTo, p).toBe(undefined);  // next() was called: the request went through
+        }
     });
 
     test('the middleware enforces them: pages to /pricing, files and board posts 403', async () => {
@@ -576,7 +718,34 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         expect(await claimDownload(fan, 'pro/2026/players/11.pdf')).toBe(false);
         expect(await claimDownload(fan, 'pro/2026/players/11.json')).toBe(true);
         const coach = { ...live, email: 'coach@example.edu' } as any;
-        await SESSION.put(`pro:dl:coach@example.edu:${new Date().toISOString().slice(0, 10)}`, '150');
+        await spend(coach, 150);
         expect(await claimDownload(coach, 'pro/2026/players/1.pdf')).toBe(false);
-    });
+        // a new day starts a new count; the month's PDFs carry over
+        expect(await claimDownload(coach, 'pro/2026/players/1.pdf', new Date(Date.now() + DAY))).toBe(true);
+    }, 30_000);
+
+    test('an unreadable counter refuses the download instead of resetting the count, then clears at rollover', async () => {
+        const coach = { ...live, email: 'coach@example.edu' } as any;
+        await spend(coach, 150);
+        const [key] = [...PRO_BUCKET.m.keys()];
+        PRO_BUCKET.m.get(key)!.v = 'not json';
+        const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const today = new Date();
+        expect(await claimDownload(coach, 'pro/2026/players/1.pdf', today)).toBe(false);
+        expect(await claimDownload(coach, 'pro/2026/players/1.pdf', today)).toBe(false);  // still full today
+        const tomorrow = new Date(today.getTime() + 86_400_000);
+        expect(await claimDownload(coach, 'pro/2026/players/1.pdf', tomorrow)).toBe(true);  // not stuck for good
+        err.mockRestore();
+    }, 30_000);
+
+    test('parallel downloads cannot overshoot the daily cap', async () => {
+        const coach = { ...live, email: 'coach@example.edu' } as any;
+        await spend(coach, 148);
+        PRO_BUCKET.lag = 20;
+        // five at once with two slots left: exactly two get through (a read-then-write counter lets all five)
+        const got = await Promise.all([0, 1, 2, 3, 4].map((i) => claimDownload(coach, `pro/2026/players/p${i}.pdf`)));
+        expect(got.filter(Boolean)).toHaveLength(2);
+        expect(await claimDownload(coach, 'pro/2026/players/1.json')).toBe(false);
+        expect([...PRO_BUCKET.m.keys()]).toEqual([expect.stringMatching(/^quota\/dl\/[0-9a-f]{64}\.json$/)]);  // no address in the key
+    }, 30_000);
 });
