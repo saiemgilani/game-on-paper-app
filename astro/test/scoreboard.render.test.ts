@@ -240,3 +240,117 @@ describe('the compact row possession marker', () => {
         expect(rule('.game-banner .gb-logo')).not.toMatch(/gap:/);
     });
 });
+
+// G12 ('spice-cues'): the spice border gets words. With the flag on, a card
+// whose level draws a coloured border carries the label as text and as the
+// bordered element's name, the compact row (no border) carries the text, and
+// the legend reads the same SPICE_LABEL words in border order. Flag off, none
+// of it renders and the legend keeps its old wording.
+describe('spice cues', () => {
+    // ALA (#5, home) v unranked AUB, 4th quarter, 3:00 left, 24-17: the ranked
+    // upset check (3rd/4th, <= 7:30, one score) fires
+    function spicedEvent(id: string) {
+        const e: any = gameEvent(id, { completed: false, live: true, ballTeamId: '2' });
+        e.status = { period: 4, clock: 180, type: { id: '2', name: 'STATUS_IN_PROGRESS', completed: false, detail: '3:00 - 4th', shortDetail: '3:00 - 4th' } };
+        e.competitions[0].status = e.status;
+        return e;
+    }
+    async function page(locals: Record<string, unknown>) {
+        const { default: SchedulePage } = await import('../src/components/schedule/SchedulePage.astro');
+        return container.renderToString(SchedulePage, {
+            props: { season: 2026, week: 2, isScoreboard: true, games: [spicedEvent('405'), gameEvent('401', { completed: true })] },
+            request: new Request('https://gameonpaper.com/'),
+            locals,
+        });
+    }
+    const legend = (html: string) => [...html.slice(html.indexOf('Game border color guide')).matchAll(/<li><strong>(\w+)<\/strong> - ([^<]+)<\/li>/g)].map((m) => `${m[1]} - ${m[2]}`);
+
+    test('flag on: the spiced card names its border, the plain card does not', async () => {
+        const html = await page({ preview: true });
+        const grid = html.slice(html.indexOf('class="row mb-3'));
+        expect(grid).toMatch(/class="row border rounded m-2 mb-4 spice-level-ranked-upset" role="group" aria-label="Ranked upset"/);
+        expect(grid).toContain('<span class="text-small text-muted text-nowrap ms-auto ps-2">Ranked upset</span>');
+        // the final game draws the gray border and carries neither cue
+        expect(grid).toMatch(/class="row border rounded m-2 mb-4 spice-level-none">/);
+        expect([...grid.matchAll(/role="group" aria-label="/g)]).toHaveLength(1);
+        expect([...grid.matchAll(/text-muted text-nowrap ms-auto ps-2">Ranked upset/g)]).toHaveLength(1);
+    });
+
+    test('flag on: the compact row carries the words on its note line, and only the spiced row', async () => {
+        const html = await page({ preview: true });
+        const rows = html.slice(html.indexOf('game-compact-list'), html.indexOf('class="row mb-3'));
+        // both rows must be there, or slicing at a missing one (-1) would
+        // "find" no cue and pass vacuously
+        expect(rows).toContain('/game/405');
+        expect(rows).toContain('/game/401');
+        const spiced = rows.slice(rows.indexOf('/game/405'));
+        expect(spiced.slice(0, spiced.indexOf('</a>'))).toMatch(/<span class="gb-note small d-flex justify-content-center overflow-hidden text-muted">\s*<span class="text-nowrap flex-shrink-0 text-muted">Ranked upset<\/span>\s*<\/span>/);
+        const plain = rows.slice(rows.indexOf('/game/401'));
+        expect(plain.slice(0, plain.indexOf('</a>'))).not.toContain('gb-note');
+        // a row is a link whose name is its text; an aria-label would replace it
+        expect(rows).not.toContain('aria-label');
+    });
+
+    async function notedRow(headline: string, locals: Record<string, unknown> = { preview: true }) {
+        const { default: GameCompactRow } = await import('../src/components/schedule/GameCompactRow.astro');
+        const e = spicedEvent('406');
+        e.competitions[0].notes = [{ type: 'event', headline }];
+        return container.renderToString(GameCompactRow, {
+            props: { game: e }, request: new Request('https://gameonpaper.com/'), locals,
+        });
+    }
+
+    test('flag on: a row with an ESPN note and a cue keeps ONE note line', async () => {
+        const html = await notedRow('Iron Bowl');
+        expect([...html.matchAll(/class="gb-note/g)]).toHaveLength(1);
+        // the cue is its own span after a ps-2 gap (the desktop card's cue
+        // spacing), with no separator glyph between note and cue
+        expect(html).toMatch(/<span class="text-truncate">Iron Bowl<\/span> <span class="text-nowrap flex-shrink-0 text-muted ps-2">Ranked upset<\/span>/);
+        expect(html).not.toMatch(/[·•]/);
+    });
+
+    // Self-review on #360: bowl games carry the longest notes, and a single
+    // text-truncate line cut the cue off at 320-375px. Only the note may
+    // shrink: it is the one truncating item; the cue never shrinks.
+    test('flag on: a long bowl note truncates, the cue does not', async () => {
+        const html = await notedRow('CFP Semifinal at the Allstate Sugar Bowl');
+        const note = html.slice(html.indexOf('class="gb-note'), html.indexOf('</a>'));
+        expect(note).toMatch(/^class="gb-note small d-flex justify-content-center overflow-hidden /);
+        expect(note).toContain('<span class="text-truncate">CFP Semifinal at the Allstate Sugar Bowl</span>');
+        expect(note).toContain('<span class="text-nowrap flex-shrink-0 text-muted ps-2">Ranked upset</span>');
+        // nothing but the note itself truncates
+        expect([...note.matchAll(/text-truncate/g)]).toHaveLength(1);
+    });
+
+    test('flag off: the note line is the original single truncating span', async () => {
+        const html = await notedRow('CFP Semifinal at the Allstate Sugar Bowl', { preview: true, flagOverrides: { 'spice-cues': false } });
+        expect(html).toContain('<span class="gb-note small text-center text-truncate text-championship">CFP Semifinal at the Allstate Sugar Bowl</span>');
+        expect(html).not.toContain('Ranked upset');
+    });
+
+    test('flag on: the legend reads SPICE_LABEL, in border order', async () => {
+        const { SPICE_LABEL } = await import('../src/utils/misc');
+        expect(legend(await page({ preview: true }))).toEqual([
+            'Gray - normal',
+            `Green - ${SPICE_LABEL['close-late']}`,
+            `Yellow - ${SPICE_LABEL['ranked-upset']}`,
+            `Orange - ${SPICE_LABEL['ranked-close-late']}`,
+            `Red - ${SPICE_LABEL['fcs-upset']}`,
+        ]);
+    });
+
+    test('flag off: no cue anywhere and the legend keeps its wording', async () => {
+        for (const html of [await page({}), await page({ preview: true, flagOverrides: { 'spice-cues': false } })]) {
+            expect(html).toContain('spice-level-ranked-upset'); // the border itself is public
+            expect(html).not.toContain('aria-label="Ranked upset"');
+            expect(html).not.toContain('>Ranked upset</span>');
+            expect(legend(html)).toEqual([
+                'Gray - normal',
+                'Green - Close game late',
+                'Yellow - Ranked Upset',
+                'Orange - Ranked Opponents + close game late',
+                'Red - FCS Upset',
+            ]);
+        }
+    });
+});

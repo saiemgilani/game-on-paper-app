@@ -30,6 +30,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // Mobile scoreboard: one-line rows (GameCompactRow) instead of cards under
     // 768px. Desktop keeps the card grid either way.
     'scoreboard-compact': 'preview',
+    // G12: the scoreboard's spice border gets words -- a text cue on the card
+    // (and the compact row, which has no border), an accessible name on the
+    // bordered card, and a legend that reads the same SPICE_LABEL map.
+    'spice-cues': 'preview',
     // The whole NFL surface (pages/nfl/**, the header's league switch, the
     // sitemap's /nfl URLs). Gated once in middleware: a viewer without the
     // preview cookie gets the site's 404 for any /nfl path. Promote to 'on'
