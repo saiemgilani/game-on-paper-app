@@ -4,7 +4,8 @@
  * adjusted RAPM, SPM, BPM, WAR, BOBAN (BB-D11's `boban_*`; the deprecated `darko_*` aliases are never read) and the
  * possessions behind them. College: `player_value` (`mbb` / `wbb`, keyed by ESPN's athlete id): box BPM and minutes.
  * College RAPM (`ncaa_rapm`, `rapm_within_team`) is keyed by stats.ncaa.org ids the Data API cannot map to ESPN's, so
- * the page does not read it. Every number is the producer's (rule B6); a rank or percentile shows only when the row
+ * the page does not read it, and the college panel stays hidden until that crosswalk exists (BB-D16;
+ * utils/playerImpact.ts COLLEGE_IMPACT). Every number is the producer's (rule B6); a rank or percentile shows only when the row
  * carries the producer's `<m>_rank` / `<m>_pct`, so the read takes every column (no `select`).
  */
 import { retrieveRowsFrom } from './sdv';

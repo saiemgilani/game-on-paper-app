@@ -20,6 +20,7 @@ import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/play
 import { PLAYER_PLAY_STYLE_LEAGUES, retrievePlayerPlayStyle } from '../../resources/playStyles';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { isFeatureEnabled } from '../../utils/features';
+import { impactShown } from '../../utils/playerImpact';
 import type { BasketballLeague } from '../../utils/league';
 import { playerPlayStyles, type PlayStyleChip } from '../../utils/playStyles';
 import { playerCache, setCache, uncacheable } from './cache';
@@ -128,7 +129,8 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     }
 
     // BB-G6: the same rule as BB-G15's below, started first so the two reads run together
-    const impactP = isFeatureEnabled('bball-impact', Astro.locals) ? readPlayerImpact(league, season, personId) : undefined;
+    // college waits for BB-D16's crosswalk (utils/playerImpact.ts COLLEGE_IMPACT): no read, no key, no panel
+    const impactP = isFeatureEnabled('bball-impact', Astro.locals) && impactShown(isNcaaDashboards(league)) ? readPlayerImpact(league, season, personId) : undefined;
     // BB-G17: the same rule; the WNBA has no play-style table
     const stylesP = isFeatureEnabled('bball-play-styles', Astro.locals) && PLAYER_PLAY_STYLE_LEAGUES.includes(league) ? readPlayerPlayStyles(league, season, personId) : undefined;
     // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off

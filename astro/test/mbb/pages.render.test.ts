@@ -6,8 +6,8 @@ import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/containe
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 // BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
 vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
-// BB-G6's Impact panel reads the Data API with 'bball-impact' on (preview): never from a test
-vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => [] }));
+// BB-G6's Impact panel is hidden in college until BB-D16's crosswalk: a read here throws, which would put "unavailable" on the page
+vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => { throw new Error('a college impact read before BB-D16'); } }));
 // BB-G17's play-style chips read the Data API with 'bball-play-styles' on (preview): never from a test (no row: no chip)
 vi.mock('../../src/resources/playStyles', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playStyles')>()), retrievePlayerPlayStyle: async () => [], retrieveTeamPlayStyle: async () => [] }));
 import { BASKETBALL, courtFor } from '../../src/basketball/config';
@@ -122,6 +122,9 @@ describe('the MBB dashboard pages', () => {
     test('/mbb/players/<p26>: the season bars, the scope, the NCAA court, box-score USG%', async () => {
         const id = p26().person_id;
         const html = size('/mbb/players/[p26]', await page('players/[id].astro', `/mbb/players/${id}`, { id: String(id) }));
+        // 'bball-impact' is on here (preview: true), but college's Impact panel waits for BB-D16's crosswalk: no section, no link
+        expect(html).not.toContain('id="impact"');
+        expect(html).not.toContain('href="#impact"');
         mbbPage(html, '2025-26 regular season + postseason');
         expect(html).toContain('Among players with 40+ field-goal attempts this regular season + postseason;');
         expect(html).toContain('else stats.ncaa.org shot charts.'); // review Minor 3: not the NBA's "play-by-play shots"
