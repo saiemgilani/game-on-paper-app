@@ -4,12 +4,15 @@ import type { NbaSide } from '../../../resources/nbaGame';
 import { dash, orderPlayers } from '../../../nba/data/game';
 import { fmtDec, fmtPct } from '../../../nba/format';
 import { cleanAbbreviation } from '../../../utils/misc';
+import { PRO_LEAGUES, type BasketballLeague } from '../../../utils/league';
 
-interface Props { side: NbaSide; id: string }
-const { side, id } = Astro.props;
+interface Props { side: NbaSide; id: string; league: BasketballLeague }
+const { side, id, league } = Astro.props;
 const { starters, bench, dnp } = orderPlayers(side.players);
 const abbr = cleanAbbreviation(side.team);
-const cols = ['MIN', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'TOV', 'FG', '3PT', 'FT', 'TS%', 'USG%', '+/-'];
+// college box scores have no plus-minus at the source (playerBoxSelect): no always-dash column
+const pm = PRO_LEAGUES.includes(league);
+const cols = ['MIN', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'TOV', 'FG', '3PT', 'FT', 'TS%', 'USG%', ...(pm ? ['+/-'] : [])];
 const n = (v: number | null) => dash(v, (x) => String(Math.round(x)));
 ---
 <div class="table-responsive">
@@ -22,7 +25,7 @@ const n = (v: number | null) => dash(v, (x) => String(Math.round(x)));
                 <td class="text-end">{n(p.minutes)}</td><td class="text-end">{n(p.points)}</td><td class="text-end">{n(p.rebounds)}</td><td class="text-end">{n(p.assists)}</td>
                 <td class="text-end">{n(p.steals)}</td><td class="text-end">{n(p.blocks)}</td><td class="text-end">{n(p.turnovers)}</td>
                 <td class="text-end">{p.fg}</td><td class="text-end">{p.fg3}</td><td class="text-end">{p.ft}</td>
-                <td class="text-end">{dash(p.ts_pct, (x) => fmtPct(x, 1))}</td><td class="text-end">{dash(p.usg_pct, (x) => fmtDec(x, 1))}</td><td class="text-end">{p.plus_minus ?? '–'}</td>
+                <td class="text-end">{dash(p.ts_pct, (x) => fmtPct(x, 1))}</td><td class="text-end">{dash(p.usg_pct, (x) => fmtDec(x, 1))}</td>{pm && <td class="text-end">{p.plus_minus ?? '–'}</td>}
             </tr>
         ))}
         {dnp.map((p) => (

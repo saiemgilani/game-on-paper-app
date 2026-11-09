@@ -102,3 +102,17 @@ describe('classifyTarget: sdv data api', () => {
     expect(classifyTarget('https://example.com/thing')).toBe('other');
   });
 });
+
+describe('callerHeaders', () => {
+    test('forwards the visitor of the current request, and nothing outside one', async () => {
+        const { callerHeaders, createCollector, gopStorage } = await import('../src/utils/telemetry');
+        expect(callerHeaders()).toEqual({});
+        const c = createCollector();
+        c.client = { ip: '67.183.195.118', ua: 'crawler/1', page: '/game/401' };
+        expect(gopStorage.run(c, () => callerHeaders())).toEqual({
+            'X-GOP-Client-IP': '67.183.195.118', 'X-GOP-Client-UA': 'crawler/1', 'X-GOP-Page': '/game/401',
+        });
+        c.client = { ip: null, ua: '', page: '/' };
+        expect(gopStorage.run(c, () => callerHeaders())).toEqual({ 'X-GOP-Client-UA': '', 'X-GOP-Page': '/' });
+    });
+});

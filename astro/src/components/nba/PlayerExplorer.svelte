@@ -14,7 +14,7 @@
     import Timeline from './charts/Timeline.svelte';
     import VersusChart from './charts/VersusChart.svelte';
     import type { PlayerExplorerData as ExplorerData } from '../../routes/nba/explorer';
-    let { data, subject }: { data: ExplorerData; subject: string } = $props();
+    let { data, subject, pronoun = 'his', leagueLines = 'full regular season' }: { data: ExplorerData; subject: string; pronoun?: 'his' | 'her'; leagueLines?: string } = $props();
 
     const WINDOWS = [5, 10, 20] as const;
     const NO_GAMES = 'No games selected: choose games above (a preset, single games or a date window) to draw this.';
@@ -34,7 +34,7 @@
     const choose = (preset: GamePreset) => { if (games) selected = new Set(presetGames(games, preset)); };
     const activePreset = $derived(games ? GAME_PRESETS.find((p) => { const ids = presetGames(games, p); return ids.length === selected.size && ids.every((id) => selected.has(id)); }) : undefined);
     const view = $derived(selectedView(data, selected, dateWindow));
-    const dashboard = $derived(buildDashboard(view.shots, data.league));
+    const dashboard = $derived(buildDashboard(view.shots, data.league, data.court, data.placeholder ?? null));
     const rolling = $derived({ points: view.view ? rollingLines(view.view, n) : [], seasonFgPct: data.seasonFgPct, n });
     const line = $derived(shootingLine(view.shots));
     const neutral = games ? games.filter((g) => g.venue === 'neutral').length : 0;
@@ -42,7 +42,7 @@
     const first = games?.[0]?.date ?? '';
     const last = games?.[games.length - 1]?.date ?? '';
     const windowText = $derived(dateWindow ? `${fmtDate(dateWindow[0])} to ${fmtDate(dateWindow[1])}` : null);
-    const caption = $derived(`${games && view.view ? `${view.view.length} of ${games.length} games${windowText ? `, ${windowText}` : ''}` : 'Every game'}; league lines: full regular season.`);
+    const caption = $derived(`${games && view.view ? `${view.view.length} of ${games.length} games${windowText ? `, ${windowText}` : ''}` : 'Every game'}; league lines: ${leagueLines}.`);
     const onDate = (end: 0 | 1, value: string) => {
         drafts = end === 0 ? [value, drafts[1]] : [drafts[0], value];
         dateWindow = withTypedDate(dateWindow, end, value, first, last);
@@ -60,7 +60,7 @@
         <p class="mb-2 small numeral" aria-live="polite">
             {view.view?.length ?? 0} of {games.length} games{windowText ? ` · ${windowText}` : ''} · {fmtInt(line.makes)}/{fmtInt(line.attempts)} FG, {fmtPct(line.fgPct)} FG%, {fmtPct(line.efgPct)} eFG%
         </p>
-        <GameStrip data={{ games, seasonFgPct: data.seasonFgPct }} {selected} window={dateWindow} onToggle={toggle} title={`${subject} games`} />
+        <GameStrip data={{ games, seasonFgPct: data.seasonFgPct }} {selected} window={dateWindow} onToggle={toggle} title={`${subject} games`} {pronoun} />
         <div class="d-flex flex-wrap align-items-center gap-3 mt-3 mb-1">
             <p class="small text-muted mb-0">Drag across the timeline, or set the dates, to limit the charts to a date window.</p>
             <div class="d-flex flex-wrap align-items-center gap-2" role="group" aria-label="Date window">

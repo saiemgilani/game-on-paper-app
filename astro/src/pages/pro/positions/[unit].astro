@@ -1,0 +1,166 @@
+---
+/**
+ * Position Market for one unit (and, with no unit, the list of all ten): the web twin of
+ * gop-pro's position.typ, read from `pro/<season>/positions/<unit>.json`.
+ */
+import GenericPage from '../../../layouts/GenericPage.astro';
+import Panel from '../../../layouts/panel/GenericPanel.astro';
+import ProNav from '../../../components/pro/ProNav.astro';
+import ReportFrame from '../../../components/pro/ReportFrame.astro';
+import ValueTable from '../../../components/pro/ValueTable.astro';
+import { formatOdds, formatUsd, VALUE_UNITS, type ValuePlayer } from '../../../utils/pro';
+import { PRO_SEASON, proObject } from '../../../resources/pro';
+
+interface PositionDoc {
+    season: number; snapshot: string; rendered: string; unit: string; name: string; headlines: string[]; limits: string[]
+    kpi: { beta: number; beta_rank: number; budget: number; starter_median: number | null; scarcity: number | null
+        jobs_opened: number | null; entrants: number | null; replacement_pct: number; reliability: number
+        rmse_model: number | null; rmse_persist: number | null; cover80?: number | null; variant?: string }
+    price_curve: { pctile: number; usd: number | null }[]
+    aging: { yb: number; delta: number; n: number; p_still: number | null }[]
+    age_vs_class: { class: string; age_for_class: string; n: number; p_play: number; p_start: number; pct: number | null }[]
+    sources: { group: string; source: string; players: number; starters: number; starter_share: number | null; usd_per_starter: number | null }[]
+    routes: { route: string; stars: number; y0: number | null; y1: number | null; y2: number | null; y3: number | null }[]
+    top: ValuePlayer[]; next_season: ValuePlayer[]; young: ValuePlayer[]
+    backtest?: {
+        variants: { variant: string; n: number; rmse: number; bias: number; cover80: number }[]
+        unit_level: { variant: string; n: number; rmse: number }[]
+        z80: number | null; z80_moved: number | null; folds: number[] | null
+    }
+}
+
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
+const unit = (Astro.params.unit ?? '').toUpperCase();
+if (!(unit in VALUE_UNITS)) return Astro.rewrite('/404');
+const doc = await proObject<PositionDoc>(`pro/${PRO_SEASON}/positions/${unit}.json`);
+if (!doc) return Astro.rewrite('/404');
+const k = doc.kpi;
+const tiles: [string, string, string][] = [
+    ['Positional value', k.beta.toFixed(2), `team EPA / 1,000 plays / pct pt, #${k.beta_rank} of 10`],
+    ['P4 room budget', formatUsd(k.budget), 'model split of a P4 pool'],
+    ['Median P4 starter', formatUsd(k.starter_median), 'production, full-season pace'],
+    ['Scarcity index', k.scarcity === null ? '—' : k.scarcity.toFixed(2), `${k.jobs_opened ?? '—'} jobs / ${k.entrants ?? '—'} entrants`],
+    ['Projection check', String(k.rmse_model ?? '—'), `RMSE vs ${k.rmse_persist ?? '—'} naive, ${formatOdds(k.cover80)} in 80% range`],
+];
+const signed = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}`;
+---
+<GenericPage title={`${doc.name} Position Market | Game on Paper Pro`} subtitle={`${doc.season} position market`} slug={`/pro/positions/${unit}`}
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Positions', url: '/pro/positions', active: false }, { title: doc.name, active: true }]}
+    heading={`${doc.name} ${doc.season} Position Market`}>
+    <ProNav active="positions" />
+    <div class="container">
+        <div class="d-flex flex-wrap gap-1 mb-3" id="pro-units-nav">
+            {Object.keys(VALUE_UNITS).map((u) => (
+                <a href={`/pro/positions/${u}`} class:list={['btn btn-sm btn-outline-secondary', { active: u === unit }]}>{u}</a>
+            ))}
+        </div>
+        <h1 class="fs-3">{doc.name}</h1>
+        <ReportFrame headlines={doc.headlines} limits={doc.limits} pdfHref={`/pro/file/pro/${doc.season}/positions/${unit}.pdf`}
+            snapshot={doc.snapshot} rendered={doc.rendered}>
+            <div class="row g-2 mb-3" id="pro-kpis">
+                {tiles.map(([label, val, note]) => (
+                    <div class="col-lg col-md-4 col-6">
+                        <div class="border rounded p-2 h-100">
+                            <div class="text-muted text-small text-uppercase">{label}</div>
+                            <div class="fs-5 fw-bold numeral">{val}</div>
+                            <div class="text-muted text-small">{note}</div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+            <div class="row">
+                <div class="col-lg-6 col-12">
+                    <Panel id="pro-price-curve" title="Price curve: P4 starters" show={true} class="mb-md-3">
+                        <Fragment slot="panel-body">
+                            <table class="table table-sm" id="pro-price-table">
+                                <thead><tr><th class="text-left">Percentile</th><th class="text-center">Production (pace)</th></tr></thead>
+                                <tbody>{doc.price_curve.map((c) => <tr><td class="text-left">{c.pctile}th</td><td class="text-center numeral">{formatUsd(c.usd)}</td></tr>)}</tbody>
+                            </table>
+                        </Fragment>
+                    </Panel>
+                    <Panel id="pro-aging" title="Development curve" show={true} class="mb-md-3">
+                        <p slot="panel-subtitle" class="m-0 text-muted text-small">Same player, one season to the next (returning contributors only).</p>
+                        <Fragment slot="panel-body">
+                            <table class="table table-sm" id="pro-aging-table">
+                                <thead><tr><th class="text-left">Year</th><th class="text-center">Change</th><th class="text-center">Pairs</th><th class="text-center">Still playing</th></tr></thead>
+                                <tbody>{doc.aging.map((a) => (
+                                    <tr><td class="text-left">{a.yb} → {a.yb + 1}</td><td class:list={['text-center numeral', a.delta >= 0 ? 'text-success' : 'text-danger']}>{signed(a.delta)} pts</td>
+                                        <td class="text-center numeral">{a.n}</td><td class="text-center numeral">{formatOdds(a.p_still)}</td></tr>
+                                ))}</tbody>
+                            </table>
+                        </Fragment>
+                    </Panel>
+                </div>
+                <div class="col-lg-6 col-12">
+                    <Panel id="pro-age-class" title="Age vs class" show={true} class="mb-md-3">
+                        <p slot="panel-subtitle" class="m-0 text-muted text-small">Old / young: half a year or more from the class median.</p>
+                        <Fragment slot="panel-body">
+                            <table class="table table-sm" id="pro-age-class-table">
+                                <thead><tr><th class="text-left">Class</th><th class="text-left">For class</th><th class="text-center">n</th><th class="text-center">Plays</th><th class="text-center">Starts</th><th class="text-center">Pct</th></tr></thead>
+                                <tbody>{doc.age_vs_class.filter((a) => a.n >= 20).map((a) => (
+                                    <tr><td class="text-left">{a.class}</td><td class="text-left">{a.age_for_class}</td><td class="text-center numeral">{a.n}</td>
+                                        <td class="text-center numeral">{formatOdds(a.p_play)}</td><td class="text-center numeral">{formatOdds(a.p_start)}</td><td class="text-center numeral">{a.pct === null ? '—' : Math.round(a.pct)}</td></tr>
+                                ))}</tbody>
+                            </table>
+                        </Fragment>
+                    </Panel>
+                    <Panel id="pro-sources" title="Where starters come from" show={true} class="mb-md-3">
+                        <Fragment slot="panel-body">
+                            <table class="table table-sm" id="pro-sources-table">
+                                <thead><tr><th class="text-left">Tier</th><th class="text-left">Route</th><th class="text-center">Starters</th><th class="text-center">Share</th><th class="text-center">$ / starter</th></tr></thead>
+                                <tbody>{doc.sources.map((s) => (
+                                    <tr><td class="text-left">{s.group}</td><td class="text-left">{s.source}</td><td class="text-center numeral">{s.starters}</td>
+                                        <td class="text-center numeral">{formatOdds(s.starter_share)}</td><td class="text-center numeral">{formatUsd(s.usd_per_starter)}</td></tr>
+                                ))}</tbody>
+                            </table>
+                        </Fragment>
+                    </Panel>
+                </div>
+            </div>
+            <Panel id="pro-routes" title="Hit rates: signee starting at the 60th percentile or better" show={true} class="mb-md-3">
+                <p slot="panel-subtitle" class="m-0 text-muted text-small">By recruiting route and rating, per year in college. Signees needed for one ≈ 1 / hit rate.</p>
+                <Fragment slot="panel-body">
+                    <table class="table table-sm" id="pro-routes-table">
+                        <thead><tr><th class="text-left">Route</th><th class="text-center">Stars</th><th class="text-center">Year 0</th><th class="text-center">Year 1</th><th class="text-center">Year 2</th><th class="text-center">Year 3</th></tr></thead>
+                        <tbody>{doc.routes.map((r) => (
+                            <tr><td class="text-left">{r.route}</td><td class="text-center">{r.stars}★</td>{[r.y0, r.y1, r.y2, r.y3].map((h) => <td class="text-center numeral">{formatOdds(h)}</td>)}</tr>
+                        ))}</tbody>
+                    </table>
+                </Fragment>
+            </Panel>
+            {doc.backtest && doc.backtest.variants.length > 0 && (
+            <Panel id="pro-backtest" title="Backtest: how well this position projects" show={true} class="mb-md-3">
+                <p slot="panel-subtitle" class="m-0 text-muted text-small">Held-out seasons {(doc.backtest.folds ?? []).join(', ')}. Bold: the model in use. Ranges widen until 80% of held-out outcomes land inside (×{doc.backtest.z80 ?? '—'} sd; ×{doc.backtest.z80_moved ?? '—'} for players who change teams).</p>
+                <Fragment slot="panel-body">
+                    <div class="row">
+                        <div class="col-lg-7 col-12">
+                            <table class="table table-sm" id="pro-backtest-table">
+                                <thead><tr><th class="text-left">Player model</th><th class="text-center">n</th><th class="text-center">RMSE</th><th class="text-center">Bias</th><th class="text-center">In 80% range</th></tr></thead>
+                                <tbody>{doc.backtest.variants.map((b) => (
+                                    <tr data-variant={b.variant}><td class:list={['text-left', { 'fw-bold': b.variant === k.variant }]}>{b.variant}</td><td class="text-center numeral">{b.n}</td>
+                                        <td class="text-center numeral">{b.rmse}</td><td class="text-center numeral">{b.bias}</td><td class="text-center numeral">{formatOdds(b.cover80)}</td></tr>
+                                ))}</tbody>
+                            </table>
+                        </div>
+                        <div class="col-lg-5 col-12">
+                            <table class="table table-sm" id="pro-backtest-units">
+                                <thead><tr><th class="text-left">Unit model</th><th class="text-center">n</th><th class="text-center">RMSE</th></tr></thead>
+                                <tbody>{doc.backtest.unit_level.map((b) => <tr><td class="text-left">{b.variant}</td><td class="text-center numeral">{b.n}</td><td class="text-center numeral">{b.rmse}</td></tr>)}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                </Fragment>
+            </Panel>
+            )}
+            <Panel id="pro-top" title="Most valuable this season" show={true} class="mb-md-3">
+                <Fragment slot="panel-body"><ValueTable rows={doc.top} id="pro-top-table" /></Fragment>
+            </Panel>
+            <Panel id="pro-next" title="Highest projected value next season (returning)" show={true} class="mb-md-3">
+                <Fragment slot="panel-body"><ValueTable rows={doc.next_season} id="pro-next-table" /></Fragment>
+            </Panel>
+            <Panel id="pro-young" title="Best young contributors" show={true} class="mb-md-3">
+                <Fragment slot="panel-body"><ValueTable rows={doc.young} id="pro-young-table" /></Fragment>
+            </Panel>
+        </ReportFrame>
+    </div>
+</GenericPage>

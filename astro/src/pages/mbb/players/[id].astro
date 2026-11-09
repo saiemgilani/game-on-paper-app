@@ -1,0 +1,16 @@
+---
+// src/pages/mbb/players/[id].astro: an ESPN athlete id
+import NbaPlayerRoute from '../../../components/routes/NbaPlayerRoute.astro';
+import { prepareBasketballPlayer } from '../../../routes/basketball/player';
+import { unavailable } from '../../../routes/basketball/cache';
+
+const r = await prepareBasketballPlayer(Astro, 'mbb');
+if ('unavailable' in r) {
+    return unavailable('mbb');
+}
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+---
+
+<NbaPlayerRoute data={r} />
