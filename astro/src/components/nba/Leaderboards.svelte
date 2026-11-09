@@ -1,11 +1,12 @@
 <!-- src/components/nba/Leaderboards.svelte -->
 <script lang="ts">
-    // blazing-the-nets' Leaderboards.tsx on runes: pick the window and the board; the Nets are
-    // highlighted, shown below the top rows and the rest behind a <details>.
-    import { ACTIVE_DAYS, LEADER_LABELS, LEADER_METRICS, LEADER_WINDOWS, minAttempts, minThrees, type Boards, type LeaderMetric, type LeaderRow, type LeaderWindow } from '../../nba/data/leaders';
+    // blazing-the-nets' Leaderboards.tsx on runes: pick the window and the board; a featured team (the NBA's Nets) is
+    // highlighted, shown below the top rows and the rest behind a <details>; with none (netsTeamId null) those parts never render.
+    import { ACTIVE_DAYS, LEADER_LABELS, LEADER_METRICS, LEADER_WINDOWS, minAttempts, minThrees, NBA_LEADER_BARS, type Boards, type LeaderBars, type LeaderMetric, type LeaderRow, type LeaderWindow } from '../../nba/data/leaders';
     import { fmtDate, fmtInt, fmtPct, fmtPts } from '../../nba/format';
-    import { playerHref } from '../../nba/links';
-    let { boards, netsTeamId, seasonQuery }: { boards: Boards; netsTeamId: number; seasonQuery: string } = $props();
+    import { playerHref } from '../../nba/hrefs';
+    import type { BasketballLeague } from '../../utils/league';
+    let { boards, netsTeamId, seasonQuery, pronoun = 'his', bars = NBA_LEADER_BARS, league = 'nba', windows = LEADER_WINDOWS, windowNote = '', activeByTeam = false }: { boards: Boards; netsTeamId: number | null; seasonQuery: string; pronoun?: 'his' | 'her'; bars?: LeaderBars; league?: BasketballLeague; windows?: readonly LeaderWindow[]; windowNote?: string; activeByTeam?: boolean } = $props();
     /** Nets rows shown below the top 15; the rest sit in a <details>. */
     const NETS_SHOWN = 5;
     let n = $state<LeaderWindow>(10);
@@ -21,7 +22,7 @@
     <tr class:fw-bold={r.team_id === netsTeamId}>
         <td class="numeral">{r.rank}</td>
         <td class="text-truncate">
-            <a href={playerHref(r.person_id, seasonQuery)}>{r.name}</a>
+            <a href={playerHref(r.person_id, seasonQuery, league)}>{r.name}</a>
             <span class="d-block d-md-none small fw-normal text-muted">last game {fmtDate(r.window.to)}</span>
         </td>
         <td class="text-muted">{r.team}</td>
@@ -34,7 +35,7 @@
 
 <div class="d-flex flex-wrap align-items-center gap-2 mb-2" role="group" aria-label="Window">
     <span class="small text-muted">Last</span>
-    {#each LEADER_WINDOWS as w (w)}
+    {#each windows as w (w)}
         <button type="button" class="btn btn-sm btn-outline-secondary" class:active={n === w} aria-pressed={n === w} onclick={() => (n = w)}>{w} games</button>
     {/each}
 </div>
@@ -44,9 +45,9 @@
     {/each}
 </div>
 <p class="small text-muted">
-    Each player's last {n} games with a field-goal attempt (a full {n}-game window), {minAttempts(n)}+ FGA in it{metric === 'fg3Pct' ? ` and ${minThrees(n)}+ threes` : ''}.
-    {metric === 'improved' ? 'Most improved: window eFG% minus his season eFG%. ' : ''}
-    Active shooters only: last game within {ACTIVE_DAYS} days of the season's latest game. {board.eligible} players qualify.
+    Each player's last {n} games with a field-goal attempt (a full {n}-game window), {minAttempts(n, bars)}+ FGA in it{metric === 'fg3Pct' ? ` and ${minThrees(n, bars)}+ threes` : ''}.
+    {metric === 'improved' ? `Most improved: window eFG% minus ${pronoun} season eFG%. ` : ''}
+    Active shooters only: last game within {ACTIVE_DAYS} days of {activeByTeam ? `${pronoun} team's` : "the season's"} latest game. {board.eligible} players qualify.{windowNote}
 </p>
 <div class="table-responsive">
     <table class="table table-sm" id="nba-leaders">

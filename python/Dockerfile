@@ -60,6 +60,12 @@ ENV SDV_PY_HTTP_RETRIES=3
 # and the total Retry-After sleep per call (sportsdataverse default 180s); read by
 # sportsdataverse-py from sportsdataverse-py#1034 on, ignored before it
 ENV SDV_PY_HTTP_MAX_WAIT=20
+# One polars thread per request. polars sizes its pool to every core, so 8 gunicorn
+# workers x 8 polars threads ran 64 busy threads on 8 cores under crawler load
+# (2026-11-03): requests passed the 120s timeout, gunicorn killed the workers, and the
+# work was redone. Workers already scale with cores (gunicorn.conf.py). Same reasoning
+# as sportsdataverse's OMP/BLAS default of 1 (sportsdataverse-py#563).
+ENV POLARS_MAX_THREADS=1
 
 COPY *.py ./
 # the share card's Chivo (share_card.py)

@@ -1,0 +1,33 @@
+---
+/**
+ * A 0-100 percentile track, the web twin of gop-pro templates/profile.typ's `band()`:
+ * the 80% band shaded from `lo` to `hi`, a tick at `mid`. Without `lo`/`hi` it is the
+ * PDF's `pct-dot()`, a single tick (PFF grades are ranked, not banded). A null `mid`
+ * says "no band" (contract.md). Colours are the Bootstrap progress bar's, so the dark
+ * half comes from dark-index.css like every other bar on the site.
+ */
+import { roundNumber } from '../../utils/misc';
+
+interface Props {
+    mid: number | null
+    lo?: number | null
+    hi?: number | null
+}
+const { mid, lo = null, hi = null } = Astro.props;
+const clamp = (v: number) => Math.min(100, Math.max(0, v));
+const banded = lo !== null && hi !== null;
+const label = mid === null ? 'no band'
+    : banded ? `${roundNumber(lo, 0, 0)} to ${roundNumber(hi, 0, 0)}` : `${roundNumber(mid, 0, 0)}th percentile`;
+---
+{mid === null
+    ? <span class="text-muted text-small">no band</span>
+    : (
+    <div class="d-flex align-items-center gap-2">
+        <div class="progress position-relative flex-grow-1" style="height: 10px; min-width: 120px" role="img"
+            aria-label={banded ? `80% band, percentiles ${label}, middle ${roundNumber(mid, 0, 0)}` : label}>
+            {banded && <div class="progress-bar position-absolute h-100" style={`left: ${clamp(lo!)}%; width: ${Math.max(1, clamp(hi!) - clamp(lo!))}%; opacity: 40%`}></div>}
+            <div class="progress-bar position-absolute h-100" style={`left: calc(${clamp(mid)}% - 1px); width: 2px`}></div>
+        </div>
+        <span class="text-muted text-small text-nowrap numeral">{label}</span>
+    </div>
+    )}
