@@ -11,6 +11,13 @@ import type { League } from '../src/utils/league';
 // served as mock data; the help itself renders on the college boards only, since the glossary copy is the college one.
 const fx = JSON.parse(readFileSync(new URL('./fixtures/nfl-summaries-2025.json', import.meta.url)).toString());
 
+// No read reaches the network: anything the resource mocks below leave to the real module
+// (meta, games, splits, percentiles, boards) answers an empty body, and is recorded.
+const net = vi.hoisted(() => ({ calls: [] as string[] }));
+vi.mock('../src/utils/telemetry', async (orig) => ({
+    ...(await orig<typeof import('../src/utils/telemetry')>()),
+    wrappedFetch: async (url: string) => (net.calls.push(String(url)), new Response('{"data":[]}', { status: 200, headers: { 'content-type': 'application/json' } })),
+}));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     retrieveTeamSummaries: async () => fx.team_summaries,
