@@ -26,15 +26,26 @@ export interface ImpactPanel {
     projection: { rating: number; sd: number | null } | null;
 }
 
+/**
+ * College's panel waits for an ESPN↔NCAA player crosswalk (BB-D16; Akshay on #408): college RAPM is keyed by stats.ncaa.org
+ * ids the ESPN-keyed page cannot reach, and box BPM alone is not the panel. Off: no read and no panel on /mbb and /wbb
+ * player pages. Everything below still handles college, so re-enabling it is this one line.
+ */
+export const COLLEGE_IMPACT = false;
+/** Whether the player page reads and shows the panel for this league (pro always; college behind COLLEGE_IMPACT). */
+export const impactShown = (college: boolean) => !college || COLLEGE_IMPACT;
+
 type Spec = readonly [label: string, hover: string, off: string | null, def: string | null, net: string];
 
 /**
- * The NBA/WNBA measures, from `player_impact`. Adjusted RAPM shows its net number only: the producer's o_adj_rapm and
- * d_adj_rapm carry an offset of about +11 / -11 per 100 (their sum, adj_rapm, is right), so the split would mislead.
+ * The NBA/WNBA measures, from `player_impact`, every one with its offense / defense / net trio where the producer has it
+ * (adjusted RAPM included, for consistency with RAPM: the producer centres o_adj_rapm / d_adj_rapm, so the page shows them
+ * as read). BPM's O/D split carried the team's net rating in obpm until sdv-py #1114 traced it to nba_bpm's team adjust;
+ * the player_impact republish carries the fix, and the page reads whatever the producer ships.
  */
 const PRO: readonly Spec[] = [
     ['RAPM', 'Regularized adjusted plus-minus: the ridge on/off impact on team scoring, per 100 possessions', 'o_rapm', 'd_rapm', 'rapm'],
-    ['Adj. RAPM', 'RAPM shrunk toward a box-score prior, per 100 possessions (net only)', null, null, 'adj_rapm'],
+    ['Adj. RAPM', 'RAPM shrunk toward a box-score prior, per 100 possessions', 'o_adj_rapm', 'd_adj_rapm', 'adj_rapm'],
     ['SPM', 'Statistical plus-minus: box-score features fit to the season’s RAPM, per 100 possessions', 'ospm', 'dspm', 'spm'],
     ['BPM', 'Box plus-minus, per 100 possessions', 'obpm', 'dbpm', 'bpm'],
     ['BOBAN', 'Bayesian Online Box-Augmented Net: a Kalman-filtered estimate of current skill across his seasons, per 100 possessions', null, null, 'boban_filtered_skill'],
