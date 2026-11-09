@@ -14,6 +14,8 @@ export const GET: APIRoute = async ({ params, locals }) => {
     const file = isProKey(key) ? await proFile(key) : null;
     if (!file) return new Response('Not found', { status: 404, headers });
     if (!(await claimDownload(locals.pro, key))) {
+        // the object was opened before the claim: don't leave its stream hanging (a local fixture is a string)
+        if (file.body instanceof ReadableStream) await file.body.cancel();
         return new Response('Download limit reached for today (or this month on Analyst). See /pricing.', { status: 429, headers });
     }
     return new Response(file.body, {

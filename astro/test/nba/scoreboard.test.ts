@@ -37,17 +37,17 @@ describe('statusLine', () => {
 describe('parseDateParam', () => {
     const today = '2026-10-11';
     test('absent is today; a valid day in range passes', () => {
-        expect(parseDateParam(null, today)).toEqual({ ok: true, date: today });
-        expect(parseDateParam('2025-04-15', today)).toEqual({ ok: true, date: '2025-04-15' });
+        expect(parseDateParam(null, today, '1997-10-01')).toEqual({ ok: true, date: today });
+        expect(parseDateParam('2025-04-15', today, '1997-10-01')).toEqual({ ok: true, date: '2025-04-15' });
     });
     test('format, calendar and range failures name their reason', () => {
-        expect(parseDateParam('20250415', today)).toEqual({ ok: false, reason: 'format' });
-        expect(parseDateParam("2025-04-15' OR 1=1", today)).toEqual({ ok: false, reason: 'format' });
-        expect(parseDateParam('2025-02-30', today)).toEqual({ ok: false, reason: 'calendar' });
-        expect(parseDateParam('1997-09-30', today)).toEqual({ ok: false, reason: 'range' });
-        expect(parseDateParam('1997-10-01', today)).toEqual({ ok: true, date: '1997-10-01' });
-        expect(parseDateParam('2026-10-25', today)).toEqual({ ok: true, date: '2026-10-25' });
-        expect(parseDateParam('2026-10-26', today)).toEqual({ ok: false, reason: 'range' });
+        expect(parseDateParam('20250415', today, '1997-10-01')).toEqual({ ok: false, reason: 'format' });
+        expect(parseDateParam("2025-04-15' OR 1=1", today, '1997-10-01')).toEqual({ ok: false, reason: 'format' });
+        expect(parseDateParam('2025-02-30', today, '1997-10-01')).toEqual({ ok: false, reason: 'calendar' });
+        expect(parseDateParam('1997-09-30', today, '1997-10-01')).toEqual({ ok: false, reason: 'range' });
+        expect(parseDateParam('1997-10-01', today, '1997-10-01')).toEqual({ ok: true, date: '1997-10-01' });
+        expect(parseDateParam('2026-10-25', today, '1997-10-01')).toEqual({ ok: true, date: '2026-10-25' });
+        expect(parseDateParam('2026-10-26', today, '1997-10-01')).toEqual({ ok: false, reason: 'range' });
     });
 });
 
@@ -115,12 +115,12 @@ describe('dayNav is never localised', () => {
 
 describe('parseDateParam boundaries', () => {
     test('a non-leap February 29 is a calendar error', () => {
-        expect(parseDateParam('2025-02-29', '2026-10-11')).toEqual({ ok: false, reason: 'calendar' });
+        expect(parseDateParam('2025-02-29', '2026-10-11', '1997-10-01')).toEqual({ ok: false, reason: 'calendar' });
     });
     test('today + 14 is in range and today + 15 is out, across a month boundary', () => {
         const today = '2026-10-17';
-        expect(parseDateParam('2026-10-31', today)).toEqual({ ok: true, date: '2026-10-31' });
-        expect(parseDateParam('2026-11-01', today)).toEqual({ ok: false, reason: 'range' });
+        expect(parseDateParam('2026-10-31', today, '1997-10-01')).toEqual({ ok: true, date: '2026-10-31' });
+        expect(parseDateParam('2026-11-01', today, '1997-10-01')).toEqual({ ok: false, reason: 'range' });
     });
 });
 

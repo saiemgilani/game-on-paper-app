@@ -36,11 +36,11 @@ const doc = await proObject<PositionDoc>(`pro/${PRO_SEASON}/positions/${unit}.js
 if (!doc) return Astro.rewrite('/404');
 const k = doc.kpi;
 const tiles: [string, string, string][] = [
-    ['Positional value', k.beta.toFixed(2), `team EPA / 1,000 plays / pct pt · #${k.beta_rank} of 10`],
+    ['Positional value', k.beta.toFixed(2), `team EPA / 1,000 plays / pct pt, #${k.beta_rank} of 10`],
     ['P4 room budget', formatUsd(k.budget), 'model split of a P4 pool'],
     ['Median P4 starter', formatUsd(k.starter_median), 'production, full-season pace'],
     ['Scarcity index', k.scarcity === null ? '—' : k.scarcity.toFixed(2), `${k.jobs_opened ?? '—'} jobs / ${k.entrants ?? '—'} entrants`],
-    ['Projection check', String(k.rmse_model ?? '—'), `RMSE vs ${k.rmse_persist ?? '—'} naive · ${formatOdds(k.cover80)} in 80% range`],
+    ['Projection check', String(k.rmse_model ?? '—'), `RMSE vs ${k.rmse_persist ?? '—'} naive, ${formatOdds(k.cover80)} in 80% range`],
 ];
 const signed = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}`;
 ---

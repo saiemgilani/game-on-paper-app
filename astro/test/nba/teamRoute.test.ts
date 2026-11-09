@@ -43,7 +43,7 @@ describe('prepareNbaTeam', () => {
         expect(r.team.name).toBe('Brooklyn Nets');
         expect(r.line.attempts).toBe(mine.length);
         expect(r.line.makes).toBe(mine.filter((s) => s.shot_result === 'Made').length);
-        expect(Object.keys(r.dashboard).sort()).toEqual(['bars', 'hex', 'sides', 'signature']);
+        expect(Object.keys(r.dashboard!).sort()).toEqual(['bars', 'hex', 'sides', 'signature']);
         expect(r.roster.length).toBe(apiSeasonPlayerRows().filter((x) => x.team_id === NETS_TEAM_ID).length);
         expect(r.roster[0].fga).toBeGreaterThanOrEqual(r.roster[1].fga);
         expect(r.sort).toBe('fga');

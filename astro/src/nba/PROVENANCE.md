@@ -1,28 +1,29 @@
-# src/nba: carried over from blazing-the-nets
+# src/nba: GOP-owned basketball library (forked from blazing-the-nets)
 
-Copied from https://github.com/saiemgilani/blazing-the-nets at `6566c158` (main, 2026-10-09) by the
-plan `ClaudeCowork/plans/2026-10-09-nba-shots-gop-pr1.md`, Task 3. Rules:
+Forked from https://github.com/saiemgilani/blazing-the-nets at `6566c158` (main, 2026-10-09,
+`6566c158937a75cc49ccac9e5fd138557597c706`) by the plan `ClaudeCowork/plans/2026-10-09-nba-shots-gop-pr1.md`, Task 3.
 
-- The copied files are blazing's `lib/` with the `.ts` import extensions stripped and nothing
-  else changed. A behaviour change goes to blazing first, then is re-copied.
-- Rewritten here, type-only: `data/shots.ts`, `data/players.ts` (their parquet readers stay in
-  blazing). New here: `seasons.ts` (the pure part of blazing's), `adapters.ts`,
-  `tables.ts` (GOP-side, rewritten from blazing `lib/pageData.ts`'s `playerRows`/`rosterRows`/`teamLines`
-  and `lib/data/teams.ts`'s `teamsFromShots` over `shot_season_players` rows); `adapters.ts`'s
-  `seasonPlayerGamesFromRows` is rewritten from `lib/pageData.ts`'s `seasonPlayerGames` over `shot_player_games` rows.
-- Adapted: `links.ts` is blazing's `lib/links.ts` with the `/nba` path prefixes (`/players/` ->
-  `/nba/players/`, `/teams/` -> `/nba/team/`), GOP indentation and a shorter `seasonQuery`
-  comment; `seasonQuery` and `withParams` are unchanged. A re-copy diffs it against upstream.
-- Not copied: `data/releases.ts`, `data/rosters.ts`, `pageData.ts`, `routes.ts`, `ui.ts`
-  (the Data API, `routes/nba/*.ts` and Bootstrap replace them).
-- Tests: `test/nba/*.test.ts` are blazing's `test/{aggregate,charts,court,explorer,views}.test.ts`
-  on vitest, over `test/fixtures/nba/*.json` (the same real rows as blazing's parquet fixtures).
+**This code is owned by Game on Paper (spec `ClaudeCowork/specs/2026-10-11-basketball-leagues-design.md`, D5,
+2026-10-11).** blazing-the-nets is no longer upstream: behaviour changes are made here, reviewed here, and are not
+sent to blazing first; blazing is not changed and nothing is re-copied from it. The directory keeps its name; it
+serves every basketball league through `src/basketball/config.ts` (the per-league config) and `src/basketball/periods.ts`.
 
-| copied file | blazing path |
+What the fork started from (kept as history; the files have since diverged where GOP's tests say so):
+
+| file here at the fork | blazing path at `6566c158` |
 | --- | --- |
 | charts/*.ts | lib/charts/*.ts |
 | data/aggregate.ts, data/court.ts, data/games.ts, data/leaders.ts, data/ranks.ts, data/scatter.ts, data/teams.ts (minus readTeams) | lib/data/… |
 | dashboard.ts, debounce.ts, format.ts, scatterMetrics.ts, selection.ts, table.ts, seasonRange.ts | lib/… |
+| links.ts | lib/links.ts, with the `/nba` prefixes (now league-aware: `leaguePath`) |
+
+Written in GOP from the start: `data/shots.ts`, `data/players.ts` (type-only rewrites), `seasons.ts`, `adapters.ts`
+(apart from the function below), `data/game.ts`, `scoreboard.ts`. Rewritten in GOP from blazing functions, over the Data
+API's `shot_*` rows: `tables.ts` (from `lib/pageData.ts`'s `playerRows`/`rosterRows`/`teamLines` and `lib/data/teams.ts`'s
+`teamsFromShots`, over `shot_season_players` rows) and `adapters.ts`'s `seasonPlayerGamesFromRows` (from `lib/pageData.ts`'s
+`seasonPlayerGames`, over `shot_player_games` rows). Not carried over: blazing's `data/releases.ts`, `data/rosters.ts`,
+`pageData.ts`, `routes.ts`, `ui.ts`. Tests: `test/nba/*.test.ts` began as blazing's
+`test/{aggregate,charts,court,explorer,views}.test.ts` on vitest over `test/fixtures/nba/*.json`.
 
 ## CHAR_PX
 
@@ -38,7 +39,6 @@ used to wrap and space labels without measuring). Measured 2026-10-10 on the loc
   blazingthenets.com's chart text measures the same 5.556 on the same machine (its stack also
   resolves to Segoe UI), and the rendered 11 px chart labels average 4.977 px per character on both.
 
-The constant is not a GOP divergence: both sites draw with the same font and the same 6.2. If
-6.2 is to change (it over-estimates widths by about 10% for system-ui on Windows, so labels wrap
-early rather than overflow), that is a blazing-first change, then a re-copy; `theme.ts` stays
-verbatim here.
+The constant is not (yet) a GOP divergence: both sites draw with the same font and the same 6.2.
+If 6.2 is to change (it over-estimates widths by about 10% for system-ui on Windows, so labels
+wrap early rather than overflow), the change is made and reviewed here like any other GOP change.

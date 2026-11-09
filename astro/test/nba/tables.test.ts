@@ -9,7 +9,7 @@ const api = apiSeasonPlayerRows();
 
 describe('teamsFromSeasonRows', () => {
     test('one entry per team_id in the rows, sorted by tricode, with the season name', () => {
-        const teams = teamsFromSeasonRows(api, 2026);
+        const teams = teamsFromSeasonRows(api, 2026, 'nba');
         expect(teams.length).toBe(30);
         expect(teams.map((t) => t.tricode)).toEqual([...teams.map((t) => t.tricode)].sort());
         const bkn = teams.find((t) => t.team_id === NETS_TEAM_ID)!;
@@ -18,12 +18,12 @@ describe('teamsFromSeasonRows', () => {
     });
     test('a former name follows the season, not the current one', () => {
         const njn = api.filter((r) => r.team_id === NETS_TEAM_ID).map((r) => ({ ...r, season: 2010, team_tricode: 'NJN' }));
-        const [t] = teamsFromSeasonRows(njn, 2010);
+        const [t] = teamsFromSeasonRows(njn, 2010, 'nba');
         expect(t.tricode).toBe('NJN');
         expect(t.name).toBe('New Jersey Nets');
     });
     test('an unlisted team_id still appears, named by its tricode', () => {
-        const [t] = teamsFromSeasonRows([{ ...api[0], team_id: 1, team_tricode: 'XXX' }], 2026);
+        const [t] = teamsFromSeasonRows([{ ...api[0], team_id: 1, team_tricode: 'XXX' }], 2026, 'nba');
         expect(t).toMatchObject({ team_id: 1, tricode: 'XXX', name: 'XXX' });
     });
 });
