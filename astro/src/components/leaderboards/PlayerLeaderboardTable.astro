@@ -9,17 +9,22 @@ import PlayerLink from '../player/PlayerLink.astro';
 import { percentileOf } from '../../utils/players';
 import "bootstrap-icons/font/bootstrap-icons.css";
 
-interface Props {
-    season: number
-    category: string
-    metric: string
-    rows?: SDVPlayerSummary[] // a stamped page reads its rows itself (pinned to its stamp)
-}
+type Props = { category: string; metric: string } & (
+    /** a season board; a stamped page reads its rows itself (pinned to its stamp) and passes them */
+    | { allTime?: false; season: number; rows?: SDVPlayerSummary[] }
+    /** the all-time board (S17): always passes its rows, which span seasons, so Rk is the position,
+     *  a Season column joins, and links open each row's own season */
+    | { allTime: true; season?: undefined; rows: SDVPlayerSummary[] }
+);
 
-const { season, category, metric, rows } = Astro.props;
+const props = Astro.props;
+const { category, metric } = props;
+const allTime = props.allTime === true;
+const season = props.season;
 const { sortBy, ranked: isMetricRanked } = playerBoardSort(category, metric);
 
-let content: SDVPlayerSummary[] = rows ?? await retrievePlayerSummaries(season, category as SummaryType, null, sortBy, isMetricRanked, 150, season, Astro.locals.league);
+let content: SDVPlayerSummary[] = props.allTime ? props.rows
+    : props.rows ?? await retrievePlayerSummaries(props.season, category as SummaryType, null, sortBy, isMetricRanked, 150, props.season, Astro.locals.league);
 content = content.filter((p: any) => {
     const nonNullValue = retrieveValue(p, metric) != null && retrieveValue(p, metric) != "NA"
     const nonNullRank = retrieveValue(p, `${metric}_rank`) != null && retrieveValue(p, `${metric}_rank`) != "NA"
@@ -81,6 +86,7 @@ if (category == "passing") {
                     <thead>
                         <th class="text-right" colspan="1">Rk</th>
                         <th class="text-left" colspan="1">Player</th>
+                        {allTime && (<th class="text-center" colspan="1">Season</th>)}
                         <th class="text-left" colspan="1">Team</th>
                         <th class="text-center" colspan="1">Games</th>
                         {
@@ -93,9 +99,10 @@ if (category == "passing") {
                         {
                             content.map((p, i) => (
                                 <tr>
-                                    <td class="text-right" colspan="1">{isMetricRanked ? formatRank(parseFloat(retrieveValue(p, metric + `_rank`))) : (i + 1)}</td>
-                                    <td class="text-left" colspan="1"><PlayerLink id={p.player_id} season={season}><strong>{cleanField(p, nameField)}</strong></PlayerLink></td>
-                                    <td class="text-left" colspan="1"><a href={leaguePath(Astro.locals.league, `/year/${season}/team/${p.team_id}`)}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, nameField)}`} title={p.pos_team}/><span>{cleanField(p, "pos_team")}</span></a></td>
+                                    <td class={`text-right${allTime ? " numeral" : ""}`} colspan="1">{isMetricRanked && !allTime ? formatRank(parseFloat(retrieveValue(p, metric + `_rank`))) : (i + 1)}</td>
+                                    <td class="text-left" colspan="1"><PlayerLink id={p.player_id} season={allTime ? p.season : season}><strong>{cleanField(p, nameField)}</strong></PlayerLink></td>
+                                    {allTime && (<td class="text-center numeral" colspan="1">{p.season}</td>)}
+                                    <td class="text-left" colspan="1"><a href={leaguePath(Astro.locals.league, `/year/${allTime ? p.season : season}/team/${p.team_id}`)}><img class={`img-fluid team-logo-${p.team_id} me-2`} width="20px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${p.team_id}.png`} alt={`ESPN team id ${p.team_id} ${cleanField(p, nameField)}`} title={p.pos_team}/><span>{cleanField(p, "pos_team")}</span></a></td>
                                     <Fragment set:html={generateMetricCell(p, category, "games")} />
                                     <Fragment set:html={generateMetricRow(p)} />
                                 </tr>

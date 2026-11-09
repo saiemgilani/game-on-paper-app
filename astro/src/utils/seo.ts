@@ -354,6 +354,16 @@ export const PLAYER_LEADERBOARD_COPY: Record<string, Omit<LeaderboardCopy, 'intr
 
 export const PLAYER_LEADERBOARD_CATEGORIES = Object.keys(PLAYER_LEADERBOARD_COPY);
 
+/** Copy for the all-time player boards (S17): `first`/`last` are the span the board covers. */
+export const playerAllTimeCopy = (category: string, l: League | undefined, first: number, last: number) => {
+    const c = category.charAt(0).toUpperCase() + category.slice(1);
+    return {
+        h1: `All-Time ${c} Leaders`,
+        title: `All-Time ${sportTitle(l)} ${c} Leaders, ${first} to ${last} | Game on Paper`,
+        description: `The top 100 ${poolNoun(l)} ${category} seasons from ${first} to ${last}, each qualified in its own season, ranked by total EPA, EPA per play, success rate and yards.`,
+    };
+};
+
 /**
  * Copy for the head-coach boards. `season` is null on the careers page, which
  * pools every season a coach has led. The words here are the words people

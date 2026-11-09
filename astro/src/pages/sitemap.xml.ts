@@ -134,6 +134,10 @@ function buildEntries(): Entry[] {
         for (const b of COACH_BOARD_SLUGS) {
             out.push({ loc: lp(`/coaches/${b}`), lastmod: today, changefreq: 'weekly', priority: '0.6' });
         }
+        // the all-time player boards pool every season, like the careers boards; a gated route 404s
+        if (FLAGS['all-time-leaderboards'] === 'on') {
+            for (const c of PLAYER_LEADERBOARD_CATEGORIES) out.push({ loc: lp(`/all-time/players/${c}`), lastmod: today, changefreq: 'weekly', priority: '0.6' });
+        }
         for (const team of retrieveAllTeams(league)) {
             out.push({
                 loc: lp(`/team/${team.team_id}`),

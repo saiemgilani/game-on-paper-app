@@ -131,6 +131,12 @@ export function isPlayerPath(pathname: string): boolean {
     return /^\/players\/[^/]+/.test(p);
 }
 
+/** The all-time player boards' URLs, both leagues: the namespace the 'all-time-leaderboards' flag gates. */
+export function isAllTimePath(pathname: string): boolean {
+    const p = pathname === '/nfl' || pathname.startsWith('/nfl/') ? pathname.slice(4) || '/' : pathname;
+    return /^\/all-time(\/|$)/.test(p);
+}
+
 export function playerPath(league: League | undefined, espnId: string | number, season?: number | null): string {
     const base = leaguePath(league, `/players/${espnId}`);
     return season ? `${base}?season=${season}` : base;

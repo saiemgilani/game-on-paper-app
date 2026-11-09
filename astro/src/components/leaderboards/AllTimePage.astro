@@ -1,0 +1,74 @@
+---
+/**
+ * The all-time player boards (S17): the season board's page, table and dropdown, over
+ * the top 100 qualified player-seasons of every season the table holds. The span the
+ * board states is ALL_TIME_SPAN's first season to METRIC_YEAR.
+ */
+import FreshnessStamp from "../FreshnessStamp.astro";
+import type { SDVPlayerSummary } from "../../resources/sdv";
+import type { freshnessStamp } from "../../utils/freshness";
+import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
+import { leaguePath } from "../../utils/league";
+import PlayerLeaderboardTable from "./PlayerLeaderboardTable.astro";
+import { toTitleCase } from "../../utils/misc";
+import PlayerMetricDropdown from "../dropdowns/PlayerMetricDropdown.svelte";
+import { datasetJsonLd, playerAllTimeCopy } from "../../utils/seo";
+import { PLAYER_STAT_MINIMUMS } from "../../utils/players";
+import { METRIC_YEAR, SDV_PLAYER_METRIC_CATEGORIES } from "../../utils/constants";
+import { ALL_TIME_SPAN } from "../../routes/allTime";
+
+interface Props {
+    category: string
+    metric: string
+    /** read by the page (routes/allTime.ts loadAllTime), which also sets the cache policy; null = unavailable */
+    rows: SDVPlayerSummary[] | null
+    stamp: ReturnType<typeof freshnessStamp> | null
+}
+
+const { category, metric, rows, stamp } = Astro.props;
+const league = Astro.locals.league === 'nfl' ? 'nfl' : 'cfb';
+const first = ALL_TIME_SPAN[league][category];
+
+const categoryTitle = toTitleCase(category);
+const metricTitle = SDV_PLAYER_METRIC_CATEGORIES[category][metric]?.title ?? metric;
+const copy = playerAllTimeCopy(category, league, first, METRIC_YEAR);
+const pageUrl = leaguePath(league, `/all-time/players/${category}`);
+const dataset = datasetJsonLd({
+    name: copy.h1,
+    description: copy.description,
+    url: pageUrl,
+    season: `${first}/${METRIC_YEAR}`,
+    league,
+    variables: ["EPA per play", "total EPA", "success rate", "explosiveness"],
+});
+
+const breadcrumbs: PageBreadcrumb[] = [
+    { title: "All-Time", active: false },
+    { title: `${categoryTitle}`, url: pageUrl, active: true },
+];
+
+const statMinimum = (PLAYER_STAT_MINIMUMS[category] ?? "")
+    + " (adapted from <a href='https://www.pro-football-reference.com/about/minimums.htm'>Pro Football Reference</a>)."
+---
+
+<GenericPage title={copy.title} subtitle={`${categoryTitle} across every season, ${first} to ${METRIC_YEAR}`} description={copy.description} slug={pageUrl} breadcrumbs={breadcrumbs} jsonLd={[dataset]}>
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-lg-6 col-12 mb-3 mb-lg-0">
+                <h1 class="h3">{copy.h1}</h1>
+                <p class="m-0 text-muted"><strong>Seasons covered:</strong> {first} to {METRIC_YEAR}.{league === 'cfb' && " Data shown is from FBS vs FBS games only."}{league === 'nfl' && " Regular season games only."}</p>
+                <p class="m-0 mb-2 text-muted text-small">The top 100 player-seasons by {metricTitle}, each one qualified in its own season. Cells are shaded by the player's percentile within his own season. Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>, may differ from ESPN due to data availability/quality. Note: metrics are <strong>not</strong> adjusted for quality of opponent or garbage time. To qualify, <Fragment set:html={statMinimum} /></p>
+                {
+                    (category == "receiving" && league == "cfb") && (<p class="m-0 mb-2 text-muted text-small"><strong>Note: </strong> ESPN does not consistently mark targeted receivers for incomplete passes, which affects Catch %, EPA/target and Yards/Target averages.</p>)
+                }
+                <FreshnessStamp stamp={stamp} />
+            </div>
+            <div class="ms-auto col-lg-6 col-12">
+                <PlayerMetricDropdown client:idle season={null} category={category} metric={metric} league={league} allTime={true} />
+            </div>
+        </div>
+    </div>
+    {rows === null
+        ? <div class="container"><p class="m-0 mb-3 text-muted text-small" id="all-time-unavailable">This leaderboard is unavailable right now. Try again in a few minutes.</p></div>
+        : <PlayerLeaderboardTable category={category} metric={metric} rows={rows} allTime={true} />}
+</GenericPage>
