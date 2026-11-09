@@ -27,7 +27,7 @@ describe('gameShotChart', () => {
 });
 
 describe('renderGameShotChart on the real fixture', () => {
-    const game = fromProcessor(JSON.parse(readFileSync('test/fixtures/nba/game_401766458_processor.json').toString()));
+    const game = fromProcessor(JSON.parse(readFileSync('test/fixtures/nba/game_401766458_processor.json').toString()), 'nba');
     const toShots = (teamId: string): GameShot[] => shotsOf(game.plays, Number(teamId)).map((p) => ({
         x: p.xLegacy!, y: p.yLegacy!, made: p.scoringPlay, value: p.scoreValue || (/three point/i.test(p.text) ? 3 : 2), label: p.text, period: p.period }));
     test('the viewBox height is the viewport height, and only shots on the drawn court get a mark', () => {

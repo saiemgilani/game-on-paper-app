@@ -1,0 +1,66 @@
+---
+// The football pregame's Players to Watch card (components/game/PlayersToWatch.astro), from the Data API's season rows:
+// each team's top scorers with their TS% and usage. A team with no rows this season yet renders "No season data yet."
+import { basketball, seasonLabelFor } from '../../../basketball/config';
+import { playersToWatch } from '../../../basketball/parity';
+import { retrieveSeasonPlayerRows } from '../../../resources/nbaShots';
+import { playerHref, teamHrefFromEspn } from '../../../nba/links';
+import { fmtDec, fmtPct } from '../../../nba/format';
+import { cleanAbbreviation } from '../../../utils/misc';
+import { teamLogoUrl } from '../../../utils/league';
+import DarkModeLogos from '../../DarkModeLogos.astro';
+
+interface Props {
+    homeTeam: { id: string | number; abbreviation?: string; displayName?: string }
+    awayTeam: { id: string | number; abbreviation?: string; displayName?: string }
+    season: number
+}
+const { homeTeam, awayTeam, season } = Astro.props;
+const cfg = basketball(Astro.locals.league);
+const league = cfg.league;
+// one season read for both teams; a failed read costs the card, never the page
+const rows = await retrieveSeasonPlayerRows(season, league).catch(() => []);
+const watch = (t: Props['homeTeam']) => {
+    const team = cfg.teams.byEspnId(Number(t.id));
+    return team ? playersToWatch(rows, team.team_id) : [];
+};
+const sides = [{ team: awayTeam, rows: watch(awayTeam) }, { team: homeTeam, rows: watch(homeTeam) }];
+---
+{sides.some((s) => s.rows.length > 0) && (
+<DarkModeLogos teamIds={[awayTeam.id, homeTeam.id]} />
+<div class="row mb-3">
+    <div class="col-lg-2 d-none d-lg-block"></div>
+    <div class="col-lg-8 col-md-12 margin-override">
+        <div class="card border rounded">
+            <div class="card-body py-3">
+                <h2 class="fs-5 mb-1">Players to Watch</h2>
+                <p class="small text-muted mb-3">Season scoring leaders with true shooting and usage, {seasonLabelFor(league, season)}.</p>
+                <div class="row gy-3">
+                    {sides.map(({ team, rows: players }) => {
+                        const href = teamHrefFromEspn(team, league, season);
+                        const name = (
+                            <span class="d-flex align-items-center gap-2">
+                                <img class={`team-logo-${team.id}`} width="20" height="20" src={teamLogoUrl(league, team.id, false, season)} alt="" />
+                                <span>{cleanAbbreviation(team as any)}</span>
+                            </span>
+                        );
+                        return (
+                            <div class="col-md-6 col-12">
+                                <p class="fw-bold mb-2">{href ? <a class="text-decoration-none text-reset" href={href}>{name}</a> : name}</p>
+                                {players.length === 0
+                                    ? (<p class="small text-muted m-0">No season data yet.</p>)
+                                    : players.map((p) => (
+                                        <p class="small mb-1">
+                                            <a href={playerHref(p.personId, '', league)}><strong>{p.name}</strong></a>
+                                            <span class="text-muted d-block">{fmtDec(p.ptsPg)} pts/g, {fmtPct(p.tsPct)} TS, {fmtPct(p.usgPct)} USG, {p.gp} GP</span>
+                                        </p>
+                                    ))}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+)}

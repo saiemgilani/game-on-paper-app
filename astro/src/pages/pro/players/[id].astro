@@ -61,13 +61,13 @@ const pdfHref = `/pro/file/pro/${doc.season}/players/${p.espn_id}.pdf`;
 const val = doc.value ?? null;
 const r0 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : String(Math.round(v)));
 const ageNote = (v: NonNullable<ProProfile['value']>) =>
-    v.age_basis + (v.age_for_class === null ? '' : ` · ${v.age_for_class >= 0 ? '+' : ''}${v.age_for_class} y vs class`);
+    v.age_basis + (v.age_for_class === null ? '' : `, ${v.age_for_class >= 0 ? '+' : ''}${v.age_for_class} y vs class`);
 const valueTiles: [string, string, string][] = val ? [
     ['Production (pace)', formatUsd(val.production_usd_pace), val.var === null ? 'this season' : `this season, ${val.var} EPA over a backup`],
-    ['Projected next season', formatUsd(val.projected_usd), `as a starter · 80%: ${formatUsd(val.projected_usd_lo)}–${formatUsd(val.projected_usd_hi)}`],
-    ['Next-season percentile', r0(val.projection.pct), `80%: ${r0(val.projection.lo)}–${r0(val.projection.hi)} · starts ${formatOdds(val.p_start_next)}`],
+    ['Projected next season', formatUsd(val.projected_usd), `as a starter, 80%: ${formatUsd(val.projected_usd_lo)}–${formatUsd(val.projected_usd_hi)}`],
+    ['Next-season percentile', r0(val.projection.pct), `80%: ${r0(val.projection.lo)}–${r0(val.projection.hi)}, starts ${formatOdds(val.p_start_next)}`],
     ['Age', val.age === null ? '—' : String(val.age), ageNote(val)],
-    ['Replace via portal', formatOdds(val.replacement.p_land), `${val.replacement.equiv_entrants ?? '—'} equal entrants last cycle · scarcity ${val.scarcity ?? '—'}`],
+    ['Replace via portal', formatOdds(val.replacement.p_land), `${val.replacement.equiv_entrants ?? '—'} equal entrants last cycle, scarcity ${val.scarcity ?? '—'}`],
 ] : [];
 const breadcrumbs = [
     { title: 'Pro', url: '/pro', active: false },
@@ -113,7 +113,7 @@ const breadcrumbs = [
         {val && (
         <Panel id="pro-value" title="Valuation" show={true} class="mb-md-3">
             <p slot="panel-subtitle" class="m-0 text-muted text-small">
-                {val.unit} · {val.source}{val.stars ? ` · ${val.stars}★ recruit` : ''}{val.class_year ? ` · class of ${val.class_year}` : ''}.
+                {val.unit}, {val.source}{val.stars ? `, ${val.stars}★ recruit` : ''}{val.class_year ? `, class of ${val.class_year}` : ''}.
                 Model estimates at revenue-share rates, not reported deals.
             </p>
             <Fragment slot="panel-body">
@@ -131,7 +131,7 @@ const breadcrumbs = [
                 {val.replacement.routes.length > 0 && (
                     <p class="text-muted text-small mb-1" id="pro-value-routes">
                         Other routes to a {val.replacement.target_pct}th-percentile starter: {val.replacement.routes.map((r) =>
-                            `${r.route} ${r.stars}★ by year ${r.by_year + 1}: ${formatOdds(r.hit)} hit, ~${r.signees_needed} signees`).join(' · ')}
+                            `${r.route} ${r.stars}★ by year ${r.by_year + 1}: ${formatOdds(r.hit)} hit, ~${r.signees_needed} signees`).join('; ')}
                     </p>
                 )}
                 {val.qb_rushing && val.qb_rushing.var !== null && (

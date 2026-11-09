@@ -1,13 +1,14 @@
 <script>
 import Chart from 'chart.js/auto';
-import { leagueFromLocation, teamLogoUrl } from '../../utils/league';
+import { leagueFromLocation, retryLightLogoOnce, teamLogoUrl } from '../../utils/league';
 import {LineController} from "chart.js";
 import { cleanAbbreviation, roundNumber, getNumberWithOrdinal, translateValue, getCurrentViewport, adjustTeamColorsForContrast, hexToRgb, waitForElement } from '../../utils/misc';
 import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
 import { GradientFillLineController, chartGridLines } from '../../resources/chart'
+import { wpMarkerGate, wpMarkerTitle } from '../../basketball/periods';
 import { exportTime, wpExportFooter } from '../../utils/chartExport'
 
-const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null, showOdds = true, allPeriodMarkers = false, exportMeta = null } = $props()
+const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, spanShade = null, colors = null, showOdds = true, allPeriodMarkers = false, regulationPeriods = 4, periodKind = 'quarter', season = null, exportMeta = null } = $props()
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
 
@@ -215,10 +216,10 @@ async function generateChart() {
         const prevPlay = plays[j];
         const curPlay = plays[i];
 
-        if (!prevPlay || ((parseInt(prevPlay.period) < parseInt(curPlay.period)) && (allPeriodMarkers || parseInt(curPlay.period) <= 5))) {
+        if (!prevPlay || ((parseInt(prevPlay.period) < parseInt(curPlay.period)) && wpMarkerGate(parseInt(curPlay.period), allPeriodMarkers, regulationPeriods))) {
             const per = parseInt(curPlay.period)
-            // allPeriodMarkers (NBA): every overtime gets its own marker, OT then 2OT, 3OT...; football keeps one OT marker
-            const title = per < 5 ? `Q${curPlay.period}` : (allPeriodMarkers && per > 5 ? `${per - 4}OT` : `OT`);
+            // allPeriodMarkers (basketball): every overtime gets its own marker, OT then 2OT, 3OT...; football keeps one OT marker
+            const title = wpMarkerTitle(per, allPeriodMarkers, regulationPeriods, periodKind);
 
             if (Object.keys(periodTracks).includes(title)) {
                 continue;
@@ -318,14 +319,11 @@ async function generateChart() {
                     }
 
                     if (!homeImage.src) {
-                        homeImage.src = teamLogoUrl(leagueFromLocation(), homeTeam.id, isDarkMode);
+                        homeImage.src = teamLogoUrl(leagueFromLocation(), homeTeam.id, isDarkMode, season);
                     }
 
                     // a missing dark variant must not cost the chart its logo: retry the light one once
-                    homeImage.onerror = () => {
-                        const light = teamLogoUrl(leagueFromLocation(), homeTeam.id, false);
-                        if (homeImage.src !== light) homeImage.src = light;
-                    };
+                    homeImage.onerror = () => retryLightLogoOnce(homeImage, teamLogoUrl(leagueFromLocation(), homeTeam.id, false, season), location.href);
                     homeImage.onload = () => {                                            // when the image loads
                         chart.homeTeamImage = homeImage;                                    // save it as a property so it can be accessed from the draw method
                         chart.render();                                                 // and force re-render to include it
@@ -343,14 +341,11 @@ async function generateChart() {
                     }
 
                     if (!awayImage.src) {
-                        awayImage.src = teamLogoUrl(leagueFromLocation(), awayTeam.id, isDarkMode);
+                        awayImage.src = teamLogoUrl(leagueFromLocation(), awayTeam.id, isDarkMode, season);
                     }
 
                     // a missing dark variant must not cost the chart its logo: retry the light one once
-                    awayImage.onerror = () => {
-                        const light = teamLogoUrl(leagueFromLocation(), awayTeam.id, false);
-                        if (awayImage.src !== light) awayImage.src = light;
-                    };
+                    awayImage.onerror = () => retryLightLogoOnce(awayImage, teamLogoUrl(leagueFromLocation(), awayTeam.id, false, season), location.href);
                     awayImage.onload = () => {                                            // when the image loads
                         chart.awayTeamImage = awayImage;                                    // save it as a property so it can be accessed from the draw method
                         chart.render();                                                 // and force re-render to include it
