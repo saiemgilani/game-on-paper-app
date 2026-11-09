@@ -6,33 +6,17 @@ import { LEADERBOARD_CATEGORIES, PLAYER_LEADERBOARD_CATEGORIES } from '../utils/
 import { FLAGS } from '../utils/features';
 import { BASKETBALL, hasTeamPages } from '../basketball/config';
 import { COACH_BOARD_SLUGS } from '../utils/coaches';
+import { seasonLastmod, urlsetXml, type SitemapEntry } from '../utils/sitemap';
 
 // Prerendered: this is built once at deploy time from local data (teams.json +
 // the season list) and costs nothing to serve. Deliberately makes no network
 // calls -- a sitemap that fetched schedules would itself become a load source
-// every time a crawler asked for it.
+// every time a crawler asked for it. The pages that need the Data API's ids
+// (players) get their own files, listed beside this one in /sitemap-index.xml.
+// `lastmod` is the whole point of this file: see `seasonLastmod` in utils/sitemap.
 export const prerender = true;
 
-const ORIGIN = 'https://gameonpaper.com';
-
-/**
- * `lastmod` is the whole point of this file.
- *
- * Googlebot was fetching 407 distinct game pages in 12 hours -- essentially all
- * cache misses, each costing a full model run -- because with no sitemap it
- * discovers by exhaustive crawling and re-crawls to test freshness. A finished
- * season cannot change, so pinning its pages to a date in the past tells Google
- * to stop re-fetching them. Note Crawl-delay in robots.txt does NOT apply to
- * Googlebot; it ignores that directive, so lastmod is the real control.
- */
-function seasonLastmod(year: number): string {
-    // seasons end in early January; anything before CURRENT_YEAR is frozen
-    return year < CURRENT_YEAR ? `${year + 1}-01-15` : new Date().toISOString().slice(0, 10);
-}
-
-type Entry = { loc: string; lastmod: string; changefreq: string; priority: string };
-
-function buildEntries(): Entry[] {
+function buildEntries(): SitemapEntry[] {
     const today = new Date().toISOString().slice(0, 10);
     // This file is prerendered -- there is no viewer to hold a preview cookie --
     // so the NFL is advertised only once the 'nfl' flag is public; until then
@@ -40,15 +24,11 @@ function buildEntries(): Entry[] {
     const nflPublic = FLAGS['nfl'] === 'on';
     // Same rule for each basketball league (the loop below) and the head-coach boards: a gated
     // route answers 404, so no URL is listed until its flag is public.
-    // TODO(player-pages): when FLAGS['player-pages'] flips to 'on', add the
-    // player URLs here -- `/players/<espn id>` and the /nfl twin, per season.
-    // They are NOT emitted while the flag is 'preview' for the same reason the
-    // NFL and coach URLs are not: a gated route answers 404 and a sitemap must
-    // never list one. The block needs a seasoned, paginated source of ids (the
-    // pages multiply the URL count ~100x, see `gop_seo_authority_gap`), which
-    // this prerendered file cannot fetch -- it makes no network calls by
-    // design. Land that source before flipping the flag.
-    const out: Entry[] = [
+    // Player pages (`/players/<espn id>` and the /nfl twin, per season) are NOT
+    // here: their ids are only in the Data API, which this prerendered file never
+    // calls. They are the paginated `/sitemap-players-*.xml` files that
+    // /sitemap-index.xml lists, under the same flag rule.
+    const out: SitemapEntry[] = [
         { loc: '/', lastmod: today, changefreq: 'hourly', priority: '1.0' },
         ...(nflPublic ? [
             { loc: '/nfl', lastmod: today, changefreq: 'hourly', priority: '0.8' },
@@ -160,16 +140,7 @@ function buildEntries(): Entry[] {
 // enumerating them would mean fetching every week of every season at build time.
 // Crawlers still reach them from the week pages, which are listed here.
 export const GET: APIRoute = () => {
-    const body =
-        `<?xml version="1.0" encoding="UTF-8"?>\n` +
-        `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-        buildEntries().map((e) =>
-            `  <url><loc>${ORIGIN}${e.loc}</loc><lastmod>${e.lastmod}</lastmod>` +
-            `<changefreq>${e.changefreq}</changefreq><priority>${e.priority}</priority></url>`
-        ).join('\n') +
-        `\n</urlset>\n`;
-
-    return new Response(body, {
+    return new Response(urlsetXml(buildEntries()), {
         headers: {
             'Content-Type': 'application/xml; charset=utf-8',
             'Cache-Control': 'public, max-age=3600',

@@ -44,4 +44,5 @@ Disallow: /api/
 Disallow: /cfb/
 Disallow: /game/matchup
 
-Sitemap: https://gameonpaper.com/sitemap.xml
+# The index lists /sitemap.xml and the paginated player sitemaps.
+Sitemap: https://gameonpaper.com/sitemap-index.xml
