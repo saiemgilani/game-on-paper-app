@@ -145,6 +145,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // Method notes (IF-3): every advanced panel says its population in one voice (utils/methodNotes.ts). The
+    // season team page's player tables and Profile panel carry the season note; the game page's Team Stats title
+    // carries the game note as a hover. Off: today's hand-typed subtitles. Promote once the copy is reviewed.
+    'method-notes': 'preview',
     // Game on Paper Pro: /pro/** (the paid player profiles, portal board and their
     // files), /pricing, the "Pro profile" link on the free player page and the
     // header's Pro entry. Gated in middleware like 'nfl': without the preview cookie
