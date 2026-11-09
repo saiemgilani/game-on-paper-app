@@ -148,7 +148,13 @@ describe('the page-side step', () => {
         expect(reads.war.mock.calls.map((c) => c.slice(0, 3)).sort()).toEqual([['nba', 2026, MPJ], ['nba', 2026, CLOWNEY]]);
         expect(r.entries.map((e) => e.id)).toEqual([String(MPJ), String(CLOWNEY), '999']);
         expect(r.entries[2]).toEqual({ id: '999', missing: true });
-        expect(set).toHaveBeenLastCalledWith(expect.objectContaining({ maxAge: 3600, tags: ['nba'] }));
+        expect(set).toHaveBeenLastCalledWith(false); // the id with no row: never cached
+        const { set: clean } = await prep('nba', `?ids=${MPJ},${CLOWNEY}&season=2026`);
+        expect(clean).toHaveBeenLastCalledWith(expect.objectContaining({ maxAge: 3600, tags: ['nba'] }));
+    });
+    test('a zero-padded id is the same player: one card, canonical spelling', async () => {
+        const { r } = await prep('nba', `?ids=0${MPJ},${MPJ}&season=2026`);
+        expect('entries' in r && r.entries.map((e) => e.id)).toEqual([String(MPJ)]);
     });
     test("a failed Value read is that card's dashes and an uncached page; a failed season read is the 503", async () => {
         reads.war.mockImplementation(async () => { throw new Error('Data API 502'); });

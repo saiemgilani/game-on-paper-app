@@ -53,7 +53,8 @@ export async function prepareBasketballCompare(Astro: AstroGlobal, league: Baske
         return { notFound: true };
     }
     const { season, seasons, current } = resolveBasketballSeason(Astro, league);
-    const ids = parseCompareIds(Astro.url.searchParams.getAll('ids').join(','));
+    // the season tables key on numbers: `01629008` is 1629008, so canonical spellings, deduped (one card per player)
+    const ids = [...new Set(parseCompareIds(Astro.url.searchParams.getAll('ids').join(',')).map((id) => String(Number(id))))];
     let rows;
     try {
         rows = await retrieveSeasonPlayerRows(season, league);
@@ -70,7 +71,10 @@ export async function prepareBasketballCompare(Astro: AstroGlobal, league: Baske
     let degraded = rows.length === 0; // not ingested yet: never hold the empty page for the cache window
     const entries = await Promise.all(ids.map(async (id): Promise<BasketballCompareEntry> => {
         const player = players.get(Number(id));
-        if (!player) return { id, missing: true };
+        if (!player) {
+            degraded = true; // a stale id or a transient omission: never hold the nameless card for the cache window
+            return { id, missing: true };
+        }
         const [impact, war] = await Promise.all([
             withImpact ? readPlayerImpact(league, season, player.person_id) : undefined,
             withWar ? readDecorative('WAR', league, season, player.person_id, retrievePlayerWar) : undefined,
