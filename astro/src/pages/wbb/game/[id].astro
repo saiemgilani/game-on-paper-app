@@ -1,0 +1,16 @@
+---
+// src/pages/wbb/game/[id].astro: plan #4's basketball game route for women's college basketball.
+import NbaGameRoute from '../../../components/routes/NbaGameRoute.astro';
+import { prepareBasketballGame } from '../../../routes/basketball/game';
+import { unavailable } from '../../../routes/basketball/cache';
+
+const r = await prepareBasketballGame(Astro, 'wbb');
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+if ('unavailable' in r) {
+    return unavailable('wbb', 'This game is temporarily unavailable. Please try again shortly.');
+}
+---
+
+<NbaGameRoute data={r} />
