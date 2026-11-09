@@ -191,6 +191,10 @@ describe('teamLogoSrc', () => {
     expect(teamLogoSrc('cfb', 251, true)).toBe(teamLogoUrl('cfb', 251, true));
     expect(teamLogoSrc('nfl', 999, true, 64)).toBe('https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/999.png&w=64&h=64');
   });
+  test('a site-hosted WNBA logo is returned as-is, never through the combiner', () => {
+    for (const id of ['2', '7', '12']) expect(teamLogoSrc('wnba', id, false, 64)).toBe(teamLogoUrl('wnba', id, false));
+    expect(teamLogoSrc('wnba', '2', false, 64)).toMatch(/^\/assets\/img\/wnba\//);
+  });
   test('the college special images apply to college ids only', () => {
     expect(teamLogoSrc('nfl', '61', false)).toBe('https://a.espncdn.com/i/teamlogos/nfl/500/61.png');
   });

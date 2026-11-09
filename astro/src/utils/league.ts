@@ -233,7 +233,8 @@ const espnCombiner = (path: string, w: number, h: number) => `https://a.espncdn.
 /**
  * The image a chart draws for a team (roadmap F14): a college special image first (the dark map when `dark`,
  * else the light one, as ChartBuilder picks today), otherwise `teamLogoUrl`, sized through ESPN's combiner
- * when `size` is given. A special image is a local asset and is never resized.
+ * when `size` is given. A special image, or a logo the site hosts itself (the WNBA's defunct franchises), is a local
+ * asset and is never resized.
  */
 export function teamLogoSrc(league: League | undefined, teamId: string | number, dark: boolean, size?: number): string {
     const id = String(teamId);
@@ -242,7 +243,8 @@ export function teamLogoSrc(league: League | undefined, teamId: string | number,
         if (special) return special;
     }
     const url = teamLogoUrl(league, id, dark);
-    return size ? espnCombiner(new URL(url).pathname, size, size) : url;
+    // a site-hosted logo is root-relative: the combiner only resizes ESPN's own, and new URL() would throw on it
+    return size && url.startsWith('https://') ? espnCombiner(new URL(url).pathname, size, size) : url;
 }
 
 const HEADSHOT_DIR: Record<League, string> = { cfb: 'college-football', nfl: 'nfl', nba: 'nba', wnba: 'wnba', mbb: 'mens-college-basketball', wbb: 'womens-college-basketball' };
