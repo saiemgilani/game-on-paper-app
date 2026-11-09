@@ -16,6 +16,13 @@ export const PRO_COOKIE = 'gop_pro';
 export const PRO_COOKIE_TTL_S = 30 * 24 * 60 * 60;
 /** A magic link is good for 15 minutes and one use (resources/pro.ts redeemLoginToken). */
 export const PRO_TOKEN_TTL_S = 15 * 60;
+/** After a token is spent, the browser that spent it may finish again for this long: a
+ * sign-in whose response never arrived. Any other browser is refused at once. */
+export const PRO_AUTH_RETRY_S = 5 * 60;
+/** The per-browser nonce cookie /pro/auth's GET sets, which ties a spent token to its browser. */
+// __Host-: the browser takes it only Secure, host-only and Path=/, so a sibling *.gameonpaper.com
+// host can't plant a nonce of its own choosing for this one to reuse
+export const PRO_AUTH_NONCE_COOKIE = '__Host-gop_pro_auth';
 export const PRO_TIERS = ['analyst', 'pro', 'program', 'agency'] as const;
 export type ProTier = typeof PRO_TIERS[number];
 
@@ -28,7 +35,7 @@ export interface ProEntitlement { tier: ProTier; expires: string; team?: string;
 
 /**
  * What a /pro path needs beyond a live entitlement (gop-pro spec v2 §3): the Portal Board
- * and its files and saved boards are the add-on; Scout Pack files are Pro seat / Program;
+ * and its files and saved boards are the add-on; Scout Pack files are Pro / Program;
  * Coach Dossiers are bought separately. Everything else (profiles, search, methodology)
  * is open to any tier. null = no extra requirement.
  */
@@ -36,21 +43,31 @@ export function proRequirement(path: string): { tiers?: ProTier[]; addon?: ProAd
     if (/^\/pro\/(portal|board)(\/|$)/.test(path) || /^\/pro\/file\/pro\/\d{4}\/portal\//.test(path)) return { addon: 'portal' };
     if (/^\/pro\/file\/pro\/\d{4}\/teams\//.test(path)) return { tiers: ['pro', 'program'] };
     if (/^\/pro\/file\/pro\/coaches\//.test(path)) return { addon: 'dossier' };
-    // the valuation reports (roster, position market, talent market) and the 2019-present role
-    // reports (team, collective, AD, agent, player): every tier above Analyst
-    if (/^\/pro\/(rosters|positions|market|roles)(\/|$)/.test(path)
-        || /^\/pro\/file\/pro\/\d{4}\/(rosters|positions|market)\//.test(path)
-        || /^\/pro\/file\/pro\/roles\//.test(path)) return { tiers: ['pro', 'program', 'agency'] };
+    // Plans split by side of the deal (pricing): Pro and Program are the program side, Analyst and
+    // Agency the player side. Roster and position valuation are program-side; the talent market is
+    // for both sides above Analyst.
+    if (/^\/pro\/(rosters|positions)(\/|$)/.test(path)
+        || /^\/pro\/file\/pro\/\d{4}\/(rosters|positions)\//.test(path)) return { tiers: ['pro', 'program'] };
+    if (/^\/pro\/market(\/|$)/.test(path) || /^\/pro\/file\/pro\/\d{4}\/market\//.test(path)) return { tiers: ['pro', 'program', 'agency'] };
+    // a role report (page or file) opens by its reader: the agent and player reports to every tier,
+    // the program-side ones (team, collective, AD) to Pro and Program. Anything else under roles/ (an
+    // unknown kind, an empty segment, a bare /roles/team) is closed; only the index itself is open.
+    const role = /^\/pro\/(?:file\/pro\/)?roles\/(.+)$/.exec(path);
+    const kind = role?.[1].split(/[/.]/)[0];
+    if (role && !(isRoleKind(kind) && ROLE_KINDS[kind].everyTier)) return { tiers: ['pro', 'program'] };
     return null;
 }
 
-/** gop-pro roles.py: one report family per reader, keyed `pro/roles/<kind>/<key>.json`. */
+/**
+ * gop-pro roles.py: one report family per reader, keyed `pro/roles/<kind>/<key>.json`.
+ * `everyTier`: open to Analyst too, because its readers (agents, families) are Analyst's buyers (spec §3).
+ */
 export const ROLE_KINDS = {
-    team: { title: 'Program History', reader: 'coaches and general managers' },
-    collective: { title: 'Budget and Allocation', reader: 'NIL collectives' },
-    ad: { title: 'Program Benchmark', reader: 'athletic directors' },
-    agent: { title: 'Market History', reader: 'agents and player representatives' },
-    player: { title: 'Career and Market', reader: 'players and families' },
+    team: { title: 'Program History', reader: 'coaches and general managers', everyTier: false },
+    collective: { title: 'Budget and Allocation', reader: 'NIL collectives', everyTier: false },
+    ad: { title: 'Program Benchmark', reader: 'athletic directors', everyTier: false },
+    agent: { title: 'Market History', reader: 'agents and player representatives', everyTier: true },
+    player: { title: 'Career and Market', reader: 'players and families', everyTier: true },
 } as const;
 export type RoleKind = keyof typeof ROLE_KINDS;
 
@@ -356,8 +373,9 @@ export function compareMetricRows(docs: CompareProfile[]): { key: string; label:
 
 const csvCell = (v: unknown): string => {
     if (v === null || v === undefined || (typeof v === 'number' && !Number.isFinite(v))) return '';
-    // a text cell a spreadsheet would run as a formula gets a leading quote (numbers keep their sign)
-    const s = typeof v === 'string' && /^\s*[=+\-@]/.test(v) ? `'${v}` : String(v);
+    // a text cell a spreadsheet would run as a formula (= + - @, or a leading tab or CR, OWASP's
+    // list) gets a leading quote; numbers keep their sign
+    const s = typeof v === 'string' && /^(\s*[=+\-@]|[\t\r])/.test(v) ? `'${v}` : String(v);
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
@@ -376,7 +394,7 @@ export function compareCsv(docs: CompareProfile[]): string {
         const by = new Map((d.metrics ?? []).map((m) => [m.key, m]));
         const v = d.value ?? null;
         return [d.player.espn_id, cleanTextForTeam(d.player.name, d.player.team_id), cleanTextForTeam(d.player.team, d.player.team_id), d.player.position, d.season,
-            ...metrics.flatMap((k) => {
+            ...metrics.flatMap((k): (string | number | null)[] => {
                 const m = by.get(k);
                 return m ? [m.value, m.n, m.band_lo, m.band_mid, m.band_hi, m.delta_eb] : ['', '', '', '', '', ''];
             }),

@@ -141,7 +141,7 @@ const columns: [BoardSort | null, string, string][] = [
                                     <td class="text-center numeral d-none d-md-table-cell" colspan="1">{formatUsd(e.value?.prod_usd)}</td>
                                     <td class="text-center numeral text-nowrap" colspan="1">{e.value ? <span>{r0(e.value.proj)} <span class="text-muted text-small">({r0(e.value.proj_lo)}–{r0(e.value.proj_hi)})</span></span> : '—'}</td>
                                     <td class="text-center numeral" colspan="1">{e.value ? <abbr title={e.value.at_destination ? 'Projected at his destination' : 'Projected at an average destination'}>{formatUsd(e.value.proj_usd)}</abbr> : '—'}</td>
-                                    {showRealized && <td class="text-center numeral text-nowrap d-none d-lg-table-cell" colspan="1">{e.value?.realized ? <span>{r0(e.value.realized.pct)} · {formatUsd(e.value.realized.prod_usd)}</span> : '—'}</td>}
+                                    {showRealized && <td class="text-center numeral text-nowrap d-none d-lg-table-cell" colspan="1">{e.value?.realized ? <span>{r0(e.value.realized.pct)} / {formatUsd(e.value.realized.prod_usd)}</span> : '—'}</td>}
                                     <td class="text-center" colspan="1">
                                         <form method="post" action="/pro/board" class="mb-0">
                                             <input type="hidden" name="key" value={key} />
