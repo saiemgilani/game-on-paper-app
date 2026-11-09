@@ -1,0 +1,82 @@
+{
+ "schema": 1,
+ "season": 2026,
+ "snapshot": "20261103T044249Z",
+ "rendered": "2026-11-03",
+ "player": {
+  "espn_id": 2,
+  "name": "Fixture Receiver",
+  "team": "Fixture Tech",
+  "team_id": 3,
+  "position": "WR",
+  "position_group": "WR",
+  "pff_position": null,
+  "jersey": "11",
+  "class": "JR",
+  "height_in": 71.0,
+  "weight_lb": 185.0,
+  "conference": "Fixture Conference",
+  "division": "fbs",
+  "transferred": false,
+  "prev_team_id": 3
+ },
+ "metrics": [
+  {
+   "key": "rec_EPAplay",
+   "label": "EPA per target",
+   "value": 0.41,
+   "n": 88,
+   "n_label": "targets",
+   "qualified": true,
+   "eb": 0.33,
+   "band_lo": 55.0,
+   "band_mid": 78.0,
+   "band_hi": 92.0,
+   "prev_eb": 0.21,
+   "delta_eb": 0.12,
+   "delta_band_mid": 18.0
+  },
+  {
+   "key": "rec_catchpct",
+   "label": "Catch rate",
+   "value": 0.705,
+   "n": 88,
+   "n_label": "targets",
+   "qualified": true,
+   "eb": 0.68,
+   "band_lo": 40.0,
+   "band_mid": 61.0,
+   "band_hi": 83.0,
+   "prev_eb": 0.617,
+   "delta_eb": 0.063,
+   "delta_band_mid": 9.0
+  },
+  {
+   "key": "rush_EPAplay",
+   "label": "EPA per rush",
+   "value": -0.12,
+   "n": 6,
+   "n_label": "rushes",
+   "qualified": false,
+   "eb": 0.02,
+   "band_lo": null,
+   "band_mid": null,
+   "band_hi": null,
+   "prev_eb": null,
+   "delta_eb": null,
+   "delta_band_mid": null
+  }
+ ],
+ "pff": [],
+ "volume": [
+  {"label": "Targets", "value": 88},
+  {"label": "Catches", "value": 62},
+  {"label": "Rec yds", "value": 911},
+  {"label": "Rec TD", "value": 7.0},
+  {"label": "Rushes", "value": 6}
+ ],
+ "notes": [
+  {"key": "no_pff", "text": "No PFF grade: player not matched to PFF or under 100 snaps."},
+  {"key": "below_qualifier", "text": "Below the qualifying sample for at least one metric: its band is wide."}
+ ]
+}

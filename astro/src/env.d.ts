@@ -23,6 +23,8 @@ declare namespace App {
         league?: import('./utils/league').League;
         /** 'final-score-first' chip label for this game, set by routes/game.ts; null = no chip */
         firstFinal?: string | null;
+        /** the Pro entitlement, resolved by the middleware on /pro paths; null = none or expired */
+        pro?: import('./utils/pro').ProViewer | null;
     }
   interface SessionData {
     favorites?: {
