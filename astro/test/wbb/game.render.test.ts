@@ -6,6 +6,12 @@ import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { BASKETBALL } from '../../src/basketball/config';
 
 const prep = vi.fn();
+// No live Data API (test/helpers/networkGuard.ts): the reads left unmocked, the /v1/meta
+// ingest stamp among them, get an empty answer and stay on their unversioned keys.
+vi.mock('../../src/utils/telemetry', async (orig) => ({
+    ...(await orig<typeof import('../../src/utils/telemetry')>()),
+    wrappedFetch: async () => new Response('{"data":[]}', { status: 200 }),
+}));
 vi.mock('../../src/routes/basketball/game', async (orig) => ({ ...(await orig<typeof import('../../src/routes/basketball/game')>()), prepareBasketballGame: (...a: unknown[]) => prep(...a) }));
 const summary = vi.fn();
 vi.mock('../../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../../src/resources/espn')>()), retrieveGameSummary: (...a: unknown[]) => summary(...a) }));

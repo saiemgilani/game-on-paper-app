@@ -11,6 +11,12 @@ A third league, `nba` (`astro/src/pages/nba/**`, behind the `'nba'` flag), rende
 - Astro needs Node >= 22.23.4 (`astro/package.json` engines). Node here is often older, so `astro check` / `astro build` / `astro dev`
   can't run locally — **CI covers the templates**. What runs locally:
   `cd astro && npx vitest run` and `cd python && pytest`. Run both before a PR.
+- Vitest never reaches the network: `astro/test/helpers/networkGuard.ts` (a
+  `setupFiles` entry) replaces the global `fetch` and fails the test, naming the URL,
+  on any non-localhost read, even one the code under test catches. A partial
+  `vi.mock` of `src/resources/sdv` that spreads the real module still reads
+  `/v1/meta` and every function it doesn't override: stub `wrappedFetch` in
+  `src/utils/telemetry` too (the `{"data":[]}` mock in `explicitRoutes.test.ts`).
 - Never claim a rendered change works from the code alone. Exercise it: vitest
   for logic, and a **visual check** (below) for anything a person sees.
 
