@@ -9,7 +9,8 @@
     let { data, subject, subjectLabel = 'Player' }: { data: DashboardData; subject: string; subjectLabel?: 'Player' | 'Team' } = $props();
 </script>
 
-<div class="row g-3">
+<!-- data-shot-link: hovering a distance on one chart marks it on the others (nba/charts/link.ts) -->
+<div class="row g-3" data-shot-link>
     <div class="col-12 col-md-6"><NbaPanel id="nba-hex" title="Shot chart"><HexShotChart data={data.hex} title={`${subject} shot chart`} /></NbaPanel></div>
     <div class="col-12 col-md-6"><NbaPanel id="nba-signature" title="Shooting signature"><ShootingSignature data={data.signature} title={`${subject} FG% by distance vs league`} /></NbaPanel></div>
     <div class="col-12 col-md-6"><NbaPanel id="nba-share" title="Shot proportion by distance"><DistanceBars data={data.bars} metric="share" {subjectLabel} title={`${subject} share of shots by distance vs league`} /></NbaPanel></div>

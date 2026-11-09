@@ -1,0 +1,9 @@
+{
+ "season": 2026,
+ "snapshot": "20261103T044249Z",
+ "rendered": "2026-11-03",
+ "players": [
+  {"espn_id": 1, "name": "Fixture Player", "team": "Fixture State", "team_id": 1, "position": "QB"},
+  {"espn_id": 2, "name": "Fixture Receiver", "team": "Fixture Tech", "team_id": 3, "position": "WR"}
+ ]
+}

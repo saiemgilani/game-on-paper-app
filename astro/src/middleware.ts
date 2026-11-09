@@ -5,20 +5,57 @@ import {
 } from './utils/telemetry';
 import { checkBasicAuth } from './resources/admin';
 import {
-  PREVIEW_COOKIE, PREVIEW_LINK_PARAM, PREVIEW_PATH_PREFIX, previewSetCookie,
+  PREVIEW_COOKIE, PREVIEW_LINK_PARAM, PREVIEW_PATH_PREFIX, keepPreviewSurface, previewSetCookie,
   readCookie, verifyPreviewCookie, verifyPreviewLink,
 } from './utils/preview';
+import { PRO_COOKIE, isOpenProPath, isProPath, proAllows, verifyProCookie } from './utils/pro';
+import { readEntitlement } from './resources/pro';
 import { ADMIN_COOKIE, verifyAdminCookie } from './utils/adminSession';
 import { applyAdminView } from './utils/adminView';
 import { legacyCfbTarget, staleRedirectTarget } from './utils/legacyCfb';
 import { FLAGS, isFeatureEnabled } from './utils/features';
+import { LEAGUES, PREFIXED_LEAGUES } from './utils/league';
 import { isCoachBoardPath } from './utils/coaches';
 import { isAllTimePath, isPlayerPath } from './utils/players';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
 
+/**
+ * The path Astro will route, in the URL parser's canonical spelling. Astro fully
+ * decodes the pathname before matching a route (core/app/base.js
+ * safeDecodePathname), while every gate below reads the raw url.pathname. Decoding
+ * the same way here and redirecting to the canonical spelling makes every gate (admin,
+ * feature flags, Pro) see exactly the path the router will match. null = malformed encoding.
+ */
+export function canonicalPath(pathname: string): string | null {
+  let cur: string;
+  try { cur = decodeURIComponent(pathname); } catch { return null; } // the raw path itself is malformed
+  for (let i = 0; i < 3; i++) { // %2561 -> %61 -> a: decode until stable, like Astro
+    let next: string;
+    try { next = decodeURIComponent(cur); } catch { break; } // a literal % (from %25) ends decoding
+    if (next === cur) break;
+    cur = next;
+  }
+  // One leading slash: a decoded // or a backslash must never read as a host (protocol-relative Location).
+  // Setting .pathname (not parsing a URL) keeps the rest of the path a path; a decoded ? or #
+  // is re-encoded by the setter instead of starting a query or fragment.
+  const u = new URL('http://x/');
+  // the setter leaves a literal % as is, so escape it (else /a%25zz -> /a%zz, a 400 next hop)
+  u.pathname = cur.replace(/^[/\\]+/, '/').replace(/%/g, '%25');
+  return u.pathname;
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
+
+  // Gates below compare url.pathname; make it the router's view first (see canonicalPath).
+  if (url.pathname.includes('%')) {
+    const canon = canonicalPath(url.pathname);
+    if (canon === null) return new Response('Bad request', { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    if (canon !== url.pathname) {
+      return new Response(null, { status: 308, headers: { Location: canon + url.search, 'Cache-Control': 'no-store' } });
+    }
+  }
 
   // Preview magic link: ?preview_key=<signed token> on any URL sets the
   // preview cookie and lands on the uncacheable /preview surface (the clean
@@ -128,12 +165,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // same job the /admin block does below -- not a route rewrite: the URL and
   // the page file stay one-to-one.
   const effectivePath = previewRewrite ? new URL(previewRewrite, url).pathname : url.pathname;
-  if ((effectivePath === '/nfl' || effectivePath.startsWith('/nfl/')) && !isFeatureEnabled('nfl', context.locals)) {
-    previewRewrite = '/404';
-  }
-  // The NBA surface is its own 'preview' namespace (utils/features.ts), gated the same way.
-  if ((effectivePath === '/nba' || effectivePath.startsWith('/nba/')) && !isFeatureEnabled('nba', context.locals)) {
-    previewRewrite = '/404';
+  // Each prefixed league (the NFL, every basketball league) is its own 'preview' namespace, gated by the
+  // flag named after its slug: a viewer without access gets the site's 404 for the whole prefix.
+  for (const lg of PREFIXED_LEAGUES) {
+    const prefix = LEAGUES[lg].urlPrefix;
+    if ((effectivePath === prefix || effectivePath.startsWith(prefix + '/')) && !isFeatureEnabled(lg, context.locals)) {
+      previewRewrite = '/404';
+    }
   }
   // The head-coach boards are a 'preview' feature of their own, for both
   // leagues -- the same namespace gate, so a public /coaches or
@@ -151,6 +189,30 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // The all-time player boards (/all-time/players/<category> and the /nfl twin): same gate.
   if (isAllTimePath(effectivePath) && !isFeatureEnabled('all-time-leaderboards', context.locals)) {
     previewRewrite = '/404';
+  }
+  // Game on Paper Pro: /pro/** and /pricing are one more 'preview' namespace. Past
+  // the flag, a /pro path other than login/auth/logout/methodology needs a live
+  // entitlement: the signed gop_pro cookie names an address, KV says what it bought
+  // (resolved once here onto locals.pro, and only on /pro paths, so no public page
+  // pays a KV read). No entitlement: pages go to /pricing, files get a bare 403 --
+  // never a redirect that could hint at the object behind it.
+  const proPath = isProPath(effectivePath);
+  if ((proPath || effectivePath === '/pricing') && !isFeatureEnabled('pro', context.locals)) {
+    previewRewrite = '/404';
+  } else if (proPath) {
+    const email = await verifyProCookie(
+      readCookie(context.request.headers.get('cookie'), PRO_COOKIE), getSecret('PRO_COOKIE_SECRET'));
+    const ent = email ? await readEntitlement(email) : null;
+    context.locals.pro = ent && email ? { ...ent, email } : null;
+    // No entitlement, or one whose tier/add-ons don't cover this path (utils/pro.ts proRequirement).
+    const allowed = context.locals.pro && proAllows(context.locals.pro, effectivePath);
+    if (!allowed && !isOpenProPath(effectivePath)) {
+      const headers = { 'Cache-Control': 'no-store' };
+      if (effectivePath.startsWith('/pro/file/') || effectivePath === '/pro/board' || effectivePath === '/pro/export') {
+        return new Response('Forbidden', { status: 403, headers });
+      }
+      return new Response(null, { status: 302, headers: { ...headers, Location: keepPreviewSurface('/pricing', url.pathname) } });
+    }
   }
 
   if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
@@ -181,14 +243,22 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
+  // The visitor rides on the collector whether or not this Worker ships telemetry: the API
+  // logs its own request rows, and callerHeaders() attributes them from here.
+  const collector = createCollector();
+  collector.game_id = (url.pathname.match(GAME_ID_RE) || [])[1] ?? null;
+  collector.client = {
+    ip: clientIp(context.request.headers, safeClientAddress(context)),
+    ua: context.request.headers.get('user-agent') ?? '',
+    page: url.pathname,
+  };
+
   const key = getSecret('GOP_INGEST_KEY') ?? '';
   const enabled = (getSecret('TELEMETRY_ENABLED') ?? '1') !== '0' && !!key;
   if (!enabled || url.pathname.startsWith('/api/client-log')) {
-    return withPreviewCacheGuard(context, await next(previewRewrite as any));
+    return withPreviewCacheGuard(context, await gopStorage.run(collector, () => next(previewRewrite as any)));
   }
 
-  const collector = createCollector();
-  collector.game_id = (url.pathname.match(GAME_ID_RE) || [])[1] ?? null;
   const t0 = Date.now();
   let response: Response;
   try {
@@ -273,8 +343,9 @@ export function withPreviewCacheGuard(context: any, response: Response): Respons
   // its flag state overridden per request (?view=live renders the public page
   // while locals.preview is false), so the preview test alone no longer covers
   // it. Same reason as the others: a cached copy would reach the wrong viewer.
+  // Pro pages are per subscriber, and a HIT would skip the entitlement check.
   if (context.locals?.preview === true || context.locals?.adminAuthed === true
-      || isAdmin || carriesPreviewKey || isPreviewPath) {
+      || isAdmin || carriesPreviewKey || isPreviewPath || isProPath(url.pathname)) {
     try { context.cache?.set(false); } catch { /* cache provider absent in dev */ }
     response.headers.set('Cache-Control', 'no-store');
     if (isPreviewPath) response.headers.set('X-Robots-Tag', 'noindex');

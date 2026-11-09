@@ -1196,3 +1196,43 @@ describe('nearby ranks on the player page', () => {
         expect(block).toContain('data-nb-key="00-0031381"');
     }, 60_000);
 });
+
+describe('the Game on Paper Pro link (behind the pro flag)', () => {
+    // The free page is public and cached: with 'pro' off it must render exactly what it
+    // rendered before the link existed, so the flag has to be the ONLY difference.
+    const renderWith = async (locals: Record<string, unknown>, league: 'cfb' | 'nfl' = 'cfb') => {
+        const { default: Page } = await import(
+            league === 'nfl' ? '../src/pages/nfl/players/[id].astro' : '../src/pages/players/[id].astro');
+        const id = league === 'nfl' ? '16800' : '4433971';
+        return container.renderToString(Page, {
+            params: { id },
+            request: new Request(`https://gameonpaper.com${league === 'nfl' ? '/nfl' : ''}/players/${id}?season=2024`),
+            locals: { league, ...locals } as any,
+        });
+    };
+    // Astro islands carry a random uid per render; nothing else may differ
+    const stable = (html: string) => html.replace(/uid="[^"]*"/g, '');
+    const cta = /<a class="btn btn-sm btn-outline-secondary text-nowrap" href="\/pro\/players\/4433971" id="player-pro-cta"[^>]*>Pro profile<\/a>/;
+    // the override makes 'pro' public for the request, so the Header's Pro entry shows too
+    const headerEntry = '<li><a href="/pro" class="dropdown-item">Game on Paper Pro</a></li>';
+
+    test('flag off: no link, and the page is the flag-on page minus that one element', async () => {
+        const off = await renderWith({});
+        expect(off).not.toContain('player-pro-cta');
+        expect(off).not.toContain('href="/pro');
+        const on = await renderWith({ flagOverrides: { pro: true } });
+        expect(on).toMatch(cta);
+        expect(on).toContain(headerEntry);
+        expect(stable(on.replace(cta, '').replace(headerEntry, ''))).toBe(stable(off));
+    }, 60_000);
+
+    test('a preview viewer gets the link but not the Header entry, which waits for the flag to be public', async () => {
+        const preview = await renderWith({ preview: true });
+        expect(preview).toMatch(cta);
+        expect(preview).not.toContain(headerEntry);
+    }, 60_000);
+
+    test('the NFL twin never gets it: Pro is college only', async () => {
+        expect(await renderWith({ preview: true }, 'nfl')).not.toContain('player-pro-cta');
+    }, 60_000);
+});

@@ -1,0 +1,24 @@
+---
+/** Position Markets: the ten valuation units; each links to its report. */
+import GenericPage from '../../../layouts/GenericPage.astro';
+import ProNav from '../../../components/pro/ProNav.astro';
+import { VALUE_UNITS } from '../../../utils/pro';
+import { PRO_SEASON } from '../../../resources/pro';
+
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
+---
+<GenericPage title="Position Markets | Game on Paper Pro" subtitle={`${PRO_SEASON} position markets`} slug="/pro/positions"
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Positions', active: true }]} heading="Position Markets">
+    <ProNav active="positions" />
+    <div class="container mb-4">
+        <h1 class="fs-3">Position Markets</h1>
+        <p>
+            One report per position group across all of FBS: what the position is worth to a team, its price curve, how players
+            develop year to year, age versus class, where starters come from (high school, portal, JUCO, walk-on), hit rates by
+            star rating, and how scarce starter-caliber players were in the last portal cycle.
+        </p>
+        <ul id="pro-positions">
+            {Object.entries(VALUE_UNITS).map(([u, name]) => <li><a href={`/pro/positions/${u}`}>{name}</a></li>)}
+        </ul>
+    </div>
+</GenericPage>
