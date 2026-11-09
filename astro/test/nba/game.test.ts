@@ -5,8 +5,8 @@ import type { NbaPlay } from '../../src/resources/nbaGame';
 import { biggestPlays, dash, orderPlayers, shotsOf, wpChartPlays } from '../../src/nba/data/game';
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/nba/${name}.json`, import.meta.url)).toString());
-const proc = fromProcessor(read('game_401766458_processor'));
-const api = fromDataApi(read('game_401766458_api'));
+const proc = fromProcessor(read('game_401766458_processor'), 'nba');
+const api = fromDataApi(read('game_401766458_api'), 'nba');
 
 /**
  * game_play_number 440 and 441 (sequence 658 and 659) are logged after the technical free throw at sequence 738.
@@ -68,7 +68,7 @@ describe('NbaGame adapters', () => {
     test('a null rate stays null; it is never coerced to 0 or NaN', () => {
         const rows = read('game_401766458_api');
         rows.game_team_rates[0] = { ...rows.game_team_rates[0], efg_pct: null, tov_pct: null, orb_pct: undefined, ft_rate: NaN };
-        const g = fromDataApi(rows);
+        const g = fromDataApi(rows, 'nba');
         const r = [g.home.rates, g.away.rates].find((x) => x!.efg_pct === null)!;
         expect([r.efg_pct, r.tov_pct, r.orb_pct, r.ft_rate]).toEqual([null, null, null, null]);
         const dnp = g.away.players.concat(g.home.players).filter((p) => p.did_not_play);
@@ -110,7 +110,7 @@ describe('overtime', () => {
         j.plays.at(-1).wp_regime = 'ot';
         j.plays.at(-1).period_number = 5;
         for (const ha of ['home', 'away']) j.teams[ha].rates.game_minutes = 53;
-        const g = fromProcessor(j);
+        const g = fromProcessor(j, 'nba');
         expect([g.periods, g.hasOvertime, g.plays.at(-1)!.wpRegime, g.plays.at(-1)!.period, g.home.rates!.game_minutes, g.away.rates!.game_minutes]).toEqual([5, true, 'ot', 5, 53, 53]);
         expect(g.plays[0].wpRegime).toBe('reg');
     });
@@ -119,9 +119,9 @@ describe('overtime', () => {
         rows.play_wp.at(-1).wp_regime = 'ot';
         rows.pbp.at(-1).period_number = 5;
         for (const r of rows.game_team_rates) r.game_minutes = 53;
-        const g = fromDataApi(rows);
+        const g = fromDataApi(rows, 'nba');
         expect([g.periods, g.hasOvertime, g.plays.at(-1)!.wpRegime, g.plays.at(-1)!.period, g.home.rates!.game_minutes, g.away.rates!.game_minutes]).toEqual([5, true, 'ot', 5, 53, 53]);
-        expect(fromDataApi(read('game_401766458_api')).hasOvertime).toBe(false);
+        expect(fromDataApi(read('game_401766458_api'), 'nba').hasOvertime).toBe(false);
     });
 });
 
@@ -132,7 +132,7 @@ describe('nothing is invented', () => {
         rows.game_team_rates[0].total_turnovers = null;
         rows.team_box[0].assists = null;
         delete rows.team_box[0].steals;
-        const g = fromDataApi(rows);
+        const g = fromDataApi(rows, 'nba');
         const rates = [g.home.rates!, g.away.rates!].find((r) => r.game_minutes === null)!;
         expect([rates.game_minutes, rates.total_turnovers]).toEqual([null, null]);
         const box = [g.home.box!, g.away.box!].find((b) => b.assists === null)!;
@@ -141,13 +141,13 @@ describe('nothing is invented', () => {
         delete j.teams.home.rates.game_minutes;
         j.teams.home.rates.total_turnovers = null;
         delete j.teams.home.box.blocks;
-        const p = fromProcessor(j);
+        const p = fromProcessor(j, 'nba');
         expect([p.home.rates!.game_minutes, p.home.rates!.total_turnovers, p.home.box!.blocks]).toEqual([null, null, null]);
     });
     test('no play_wp rows means no prior, not a home-court 0.5', () => {
         const rows = read('game_401766458_api');
         rows.play_wp = [];
-        const g = fromDataApi(rows);
+        const g = fromDataApi(rows, 'nba');
         expect(g.prior).toBeNull();
         expect(g.plays.every((p) => p.homeWinProb === null)).toBe(true);
     });

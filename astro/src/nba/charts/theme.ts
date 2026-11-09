@@ -1,5 +1,4 @@
-import { scaleDiverging, scaleLinear } from "d3-scale";
-import { interpolateRdBu } from "d3-scale-chromatic";
+import { scaleLinear } from "d3-scale";
 import type { Selection } from "d3-selection";
 import "d3-transition";
 import { LEAGUE_PRIOR_ATTEMPTS } from "../data/aggregate";
@@ -32,7 +31,7 @@ export const DIFF_DOMAIN = 0.15;
 export const SHRINK_NOTE = `colour shrunk toward the league rate (${LEAGUE_PRIOR_ATTEMPTS}-attempt prior)`;
 
 /** The colour key in words; every diff legend prints it. */
-export const DIFF_WORDS = "red: above league · blue: below";
+export const DIFF_WORDS = "green: above league, purple: below";
 
 export type ChartTheme = "light" | "dark";
 
@@ -44,17 +43,17 @@ export function chartTheme(el: Element): ChartTheme {
   return getComputedStyle(el).getPropertyValue("--theme").trim() === "dark" ? "dark" : "light";
 }
 
-// RdBu reversed = above league red, below league blue (colour-blind safe; the 2021 site's
-// red-below / green-above scale was not). Light mode keeps RdBu's near-white centre.
-const lightDiff = scaleDiverging<string>((t) => interpolateRdBu(1 - t))
-  .domain([-DIFF_DOMAIN, 0, DIFF_DOMAIN])
-  .clamp(true);
+// The site's good/bad ramp (hulk-bg-level-0..9 in public/assets/css/nav-header.css): purple below league, green above,
+// white in the middle. The owner's call (2026-11-02): one colour scheme across football and basketball, never red/green.
+const RAMP_LIGHT = ["#AF52DE", "#C37DE6", "#D7A8EE", "#EBD3F6", "#FFFFFF", "#CCF1D5", "#99E3AC", "#66D582", "#34C759"];
+const rampDomain = RAMP_LIGHT.map((_, i) => -DIFF_DOMAIN + (i * 2 * DIFF_DOMAIN) / (RAMP_LIGHT.length - 1));
+const lightDiff = scaleLinear<string>().domain(rampDomain).range(RAMP_LIGHT).clamp(true);
 // Dark mode: the centre is a neutral grey near the card surface (#151515), so an average mark
-// recedes and only real differences stand out; the ends are RdBu's mid blue and red.
+// recedes and only real differences stand out; the ends are the dark theme's ramp ends (dark-game.css hulk-bg-level-0/9).
 export const DARK_NEUTRAL = "#303030";
 const darkDiff = scaleLinear<string>()
   .domain([-DIFF_DOMAIN, 0, DIFF_DOMAIN])
-  .range([interpolateRdBu(0.85), DARK_NEUTRAL, interpolateRdBu(0.15)])
+  .range(["#BF5AF2", DARK_NEUTRAL, "#30D158"])
   .clamp(true);
 
 /** Colour for a FG% difference (fraction) in the given theme; null (no league figure) is the muted token. */
