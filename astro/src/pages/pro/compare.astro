@@ -1,0 +1,156 @@
+---
+/**
+ * Compare up to four player profiles side by side (the Analyst tier's "compare"):
+ * `?ids=1,2,3` from the URL, so a comparison is a shareable link. Players are added
+ * through the same plain GET search as /pro (`?q=`), with no script. Every number is
+ * formatted as on the profile; the CSV beside it is /pro/export.
+ */
+import GenericPage from '../../layouts/GenericPage.astro';
+import Panel from '../../layouts/panel/GenericPanel.astro';
+import ProNav from '../../components/pro/ProNav.astro';
+import { cleanTextForTeam, roundNumber } from '../../utils/misc';
+import {
+    compareMetricRows, formatOdds, formatProDelta, formatProMetric, formatUsd, parseCompareIds, PRO_COMPARE_MAX,
+    type CompareProfile,
+} from '../../utils/pro';
+import { PRO_SEASON, proObject } from '../../resources/pro';
+
+interface ProIndex { players: { espn_id: number; name: string | null; team: string | null; team_id: number | null; position: string | null }[] }
+
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
+const ids = parseCompareIds(Astro.url.searchParams.get('ids'));
+const docs = (await Promise.all(ids.map((id) => proObject<CompareProfile>(`pro/${PRO_SEASON}/players/${id}.json`))))
+    .filter((d): d is CompareProfile => d !== null);
+const shown = docs.map((d) => String(d.player.espn_id));
+const href = (list: string[]) => (list.length ? `/pro/compare?ids=${list.join(',')}` : '/pro/compare');
+const q = (Astro.url.searchParams.get('q') ?? '').trim();
+const HITS = 20;
+const full = shown.length >= PRO_COMPARE_MAX;
+const index = q.length >= 2 && !full ? await proObject<ProIndex>(`pro/${PRO_SEASON}/players/index.json`) : null;
+const hits = (index?.players ?? [])
+    .filter((r) => !shown.includes(String(r.espn_id)) && `${r.name ?? ''} ${r.team ?? ''}`.toLowerCase().includes(q.toLowerCase()))
+    .slice(0, HITS);
+const rows = compareMetricRows(docs);
+const name = (d: CompareProfile) => cleanTextForTeam(d.player.name ?? `Player ${d.player.espn_id}`, d.player.team_id);
+const r0 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : roundNumber(v, 0, 0));
+const valueRows: [string, (d: CompareProfile) => string][] = [
+    ['Unit', (d) => d.value?.unit ?? '—'],
+    ['Production (pace)', (d) => formatUsd(d.value?.production_usd_pace)],
+    ['Projected next season', (d) => formatUsd(d.value?.projected_usd)],
+    ['Next-season percentile', (d) => r0(d.value?.projection?.pct)],
+    ['&emsp;&emsp;80% range', (d) => (d.value?.projection?.lo == null ? '—' : `${r0(d.value.projection.lo)} to ${r0(d.value.projection.hi)}`)],
+    ['Starts next season', (d) => formatOdds(d.value?.p_start_next)],
+    ['Age', (d) => (d.value?.age == null ? '—' : String(d.value.age))],
+];
+---
+<GenericPage title="Compare players | Game on Paper Pro" subtitle={`${PRO_SEASON} player profiles side by side`} slug="/pro/compare"
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Compare', active: true }]} heading="Compare players">
+    <ProNav active="compare" />
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+            <h1 class="fs-3 mb-0">Compare players</h1>
+            {docs.length > 0 && <a class="btn btn-sm btn-outline-secondary text-nowrap" href={`/pro/export?ids=${shown.join(',')}`} id="pro-export">Download CSV</a>}
+        </div>
+        <p class="text-muted text-small">Up to {PRO_COMPARE_MAX} players, {PRO_SEASON}. The CSV holds the derived metrics, percentile bands and valuation; PFF grades stay on the profiles.</p>
+
+        {full
+            ? <p class="text-muted text-small" id="pro-compare-full">{PRO_COMPARE_MAX} players is the most a comparison holds. Remove one to add another.</p>
+            : (
+            <form method="get" action="/pro/compare" class="d-flex gap-2 mb-3" role="search" id="pro-compare-form">
+                {shown.length > 0 && <input type="hidden" name="ids" value={shown.join(',')} />}
+                <label class="visually-hidden" for="pro-compare-q">Add a player or team</label>
+                <input class="form-control" type="search" id="pro-compare-q" name="q" value={q} placeholder="Add a player or team" minlength="2" />
+                <button class="btn btn-sm btn-outline-secondary" type="submit">Search</button>
+            </form>
+            )}
+        {q.length >= 2 && !full && (
+            hits.length === 0
+                ? <p class="text-muted" id="pro-compare-no-hits">No {PRO_SEASON} profile matches "{q}".</p>
+                : (
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm" id="pro-compare-hits">
+                        <thead><tr><th class="text-left">Player</th><th class="text-center">Pos</th><th class="text-left">Team</th><th class="text-center"></th></tr></thead>
+                        <tbody>
+                            {hits.map((r) => (
+                                <tr>
+                                    <td class="text-left"><strong>{cleanTextForTeam(r.name, r.team_id)}</strong></td>
+                                    <td class="text-center">{r.position}</td>
+                                    <td class="text-left">{cleanTextForTeam(r.team, r.team_id)}</td>
+                                    <td class="text-center"><a href={href([...shown, String(r.espn_id)])}>Add</a></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {hits.length === HITS && <p class="text-muted text-small">The first {HITS} matches. Narrow the search for more.</p>}
+                </div>
+                )
+        )}
+
+        {docs.length === 0
+            ? <p class="text-muted" id="pro-compare-empty">Search for a player to start a comparison, or open a profile and choose Compare.</p>
+            : (
+            <Fragment>
+                <Panel id="pro-compare-efficiency" title="Efficiency" show={true} class="mb-md-3">
+                    <p slot="panel-subtitle" class="m-0 text-muted text-small">Each metric, then its 80% percentile band among qualifying players at the position, its sample and its change vs last season.</p>
+                    <Fragment slot="panel-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm" id="pro-compare-table">
+                                <thead>
+                                    <tr>
+                                        <th class="text-left">Metric</th>
+                                        {docs.map((d, i) => (
+                                            <th class="text-center" data-player={d.player.espn_id}>
+                                                <a href={`/pro/players/${d.player.espn_id}`}>{name(d)}</a>
+                                                <div class="text-muted text-small fw-normal">{[d.player.position, d.player.team && cleanTextForTeam(d.player.team, d.player.team_id)].filter(Boolean).join(', ')}</div>
+                                                <a class="text-small fw-normal" href={href(shown.filter((_, j) => j !== i))}>Remove</a>
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.map((r) => (
+                                        <Fragment>
+                                            <tr data-metric={r.key}>
+                                                <td class="text-left text-nowrap">{r.label}</td>
+                                                {r.cells.map((m) => <td class="text-center numeral">{m === null ? '—' : formatProMetric(m.key, m.value)}</td>)}
+                                            </tr>
+                                            <tr data-metric-band={r.key}>
+                                                <td class="text-left text-nowrap text-muted">&emsp;&emsp;80% band</td>
+                                                {r.cells.map((m) => <td class="text-center numeral text-muted">{m === null || m.band_mid === null ? '—' : `${roundNumber(m.band_lo, 0, 0)} to ${roundNumber(m.band_hi, 0, 0)}`}</td>)}
+                                            </tr>
+                                            <tr data-metric-n={r.key}>
+                                                <td class="text-left text-nowrap text-muted">&emsp;&emsp;Sample</td>
+                                                {r.cells.map((m) => <td class="text-center numeral text-muted">{m === null || m.n === null ? '—' : `${roundNumber(m.n, 0, 0)} ${m.n_label}`}</td>)}
+                                            </tr>
+                                            <tr data-metric-change={r.key}>
+                                                <td class="text-left text-nowrap text-muted">&emsp;&emsp;Change vs last season</td>
+                                                {r.cells.map((m) => <td class="text-center numeral text-muted">{m === null || m.delta_eb === null ? '—' : formatProDelta(m.key, m.delta_eb)}</td>)}
+                                            </tr>
+                                        </Fragment>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Fragment>
+                </Panel>
+                <Panel id="pro-compare-value" title="Valuation" show={true} class="mb-md-3">
+                    <p slot="panel-subtitle" class="m-0 text-muted text-small">Model estimates at revenue-share rates, not reported deals. <a href="/pro/methodology#valuation">How they are made</a>.</p>
+                    <Fragment slot="panel-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm" id="pro-compare-value-table">
+                                <thead>
+                                    <tr><th class="text-left"></th>{docs.map((d) => <th class="text-center">{name(d)}</th>)}</tr>
+                                </thead>
+                                <tbody>
+                                    {valueRows.map(([label, f]) => (
+                                        <tr><td class="text-left text-nowrap" set:html={label} />{docs.map((d) => <td class="text-center numeral">{f(d)}</td>)}</tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Fragment>
+                </Panel>
+            </Fragment>
+            )}
+    </div>
+</GenericPage>

@@ -1,0 +1,160 @@
+---
+/**
+ * Roster Valuation for one program: the web twin of gop-pro's roster.typ, read from
+ * `pro/<season>/rosters/<team_id>.json`. Middleware has checked the tier.
+ */
+import GenericPage from '../../../layouts/GenericPage.astro';
+import Panel from '../../../layouts/panel/GenericPanel.astro';
+import ProNav from '../../../components/pro/ProNav.astro';
+import ReportFrame from '../../../components/pro/ReportFrame.astro';
+import ValueTable from '../../../components/pro/ValueTable.astro';
+import { cleanTextForTeam } from '../../../utils/misc';
+import { formatOdds, formatUsd, type ValuePlayer } from '../../../utils/pro';
+import { PRO_SEASON, proObject } from '../../../resources/pro';
+
+interface Unit {
+    unit: string; name: string; roster: number; starters: number; unit_pct: number | null; fbs_rank: number | null
+    fbs_n: number; prod_usd: number | null; peer_median: number | null; conf_median: number | null
+    proj_usd: number | null; departing_usd: number | null; departing_starters: number; scarcity: number | null
+    replace_odds: number | null
+    /** projected unit percentile next season and its sd (gop-pro unit projection) */
+    proj_upct?: number | null; proj_upct_sd?: number | null
+}
+interface Mix { key: string; players: number; starters: number; prod_usd: number | null; vs_talent: number | null; age: number | null }
+interface RosterDoc {
+    season: number; snapshot: string; rendered: string; headlines: string[]; limits: string[]
+    team: { team_id: number; team: string; conference: string | null; group: string }
+    kpi: { prod_usd: number; rank: number; of: number; proj_usd: number; departing_usd: number; roster: number
+        starters: number; age: number | null; usd_per_spot: number; usd_per_spot_peer: number }
+    units: Unit[]; strengths: string[]; weaknesses: string[]; by_source: Mix[]; by_class: Mix[]
+    top: ValuePlayer[]; next_core: ValuePlayer[]
+    departing: (ValuePlayer & { equiv_entrants: number | null; p_land: number | null })[]
+}
+
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
+const id = Astro.params.id ?? '';
+const doc = /^\d+$/.test(id) ? await proObject<RosterDoc>(`pro/${PRO_SEASON}/rosters/${id}.json`) : null;
+if (!doc) return Astro.rewrite('/404');
+const team = cleanTextForTeam(doc.team.team, doc.team.team_id);
+const k = doc.kpi;
+const signed = (v: number | null) => (v === null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}`);
+const tiles: [string, string, string][] = [
+    ['On-field value (pace)', formatUsd(k.prod_usd), `${k.rank} of ${k.of} ${doc.team.group}`],
+    ['Projected next season', formatUsd(k.proj_usd), 'returning, as starters × odds'],
+    ['Likely departing', formatUsd(k.departing_usd), 'final-season starters'],
+    ['Value per roster spot', formatUsd(k.usd_per_spot), `${doc.team.group} median ${formatUsd(k.usd_per_spot_peer)}`],
+    ['Roster', String(k.roster), `${k.starters} starters, avg age ${k.age ?? '—'}`],
+];
+const tone = (u: string) => (doc.strengths.includes(u) ? 'text-success fw-bold' : doc.weaknesses.includes(u) ? 'text-danger fw-bold' : '');
+---
+<GenericPage title={`${team} Roster Valuation | Game on Paper Pro`} subtitle={`${doc.season} roster valuation`} slug={`/pro/rosters/${id}`}
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Rosters', url: '/pro/rosters', active: false }, { title: team, active: true }]}
+    heading={`${team} ${doc.season} Roster Valuation`}>
+    <ProNav active="rosters" />
+    <div class="container">
+        <h1 class="fs-3">{team} <span class="text-muted fs-5">{doc.team.conference} / {doc.team.group}</span></h1>
+        <ReportFrame headlines={doc.headlines} limits={doc.limits} pdfHref={`/pro/file/pro/${doc.season}/rosters/${id}.pdf`}
+            snapshot={doc.snapshot} rendered={doc.rendered}>
+            <div class="row g-2 mb-3" id="pro-kpis">
+                {tiles.map(([label, val, note]) => (
+                    <div class="col-lg col-md-4 col-6">
+                        <div class="border rounded p-2 h-100">
+                            <div class="text-muted text-small text-uppercase">{label}</div>
+                            <div class="fs-5 fw-bold numeral">{val}</div>
+                            <div class="text-muted text-small">{note}</div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <Panel id="pro-units" title="Position groups" show={true} class="mb-md-3">
+                <p slot="panel-subtitle" class="m-0 text-muted text-small">Green: top-3 unit by FBS rank; red: bottom-3. Scarcity 1.0 = an average position's market.</p>
+                <Fragment slot="panel-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="pro-units-table">
+                            <thead>
+                                <tr>
+                                    <th class="text-left">Unit</th><th class="text-center">Starters</th><th class="text-center">Unit pct</th>
+                                    <th class="text-center">FBS rank</th><th class="text-center">Production</th><th class="text-center">Peer median</th>
+                                    <th class="text-center">Conf. median</th><th class="text-center"><abbr title="Projected unit percentile next season, from its level and the playing time expected back; ± one sd">Next yr pct</abbr></th><th class="text-center">Departing</th><th class="text-center">Scarcity</th>
+                                    <th class="text-center"><abbr title="Chance of landing at least one portal entrant of equal projected level">Replace odds</abbr></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {doc.units.map((u) => (
+                                    <tr data-unit={u.unit}>
+                                        <td class={`text-left text-nowrap ${tone(u.unit)}`}>{u.name}</td>
+                                        <td class="text-center numeral">{u.starters}</td>
+                                        <td class="text-center numeral">{u.unit_pct === null ? '—' : Math.round(u.unit_pct)}</td>
+                                        <td class="text-center numeral">{u.fbs_rank === null ? '—' : `${u.fbs_rank}/${u.fbs_n}`}</td>
+                                        <td class="text-center numeral">{formatUsd(u.prod_usd)}</td>
+                                        <td class="text-center numeral">{formatUsd(u.peer_median)}</td>
+                                        <td class="text-center numeral">{formatUsd(u.conf_median)}</td>
+                                        <td class="text-center numeral text-nowrap">{u.proj_upct == null ? '—' : <span>{Math.round(u.proj_upct)} <span class="text-muted text-small">±{Math.round(u.proj_upct_sd ?? 0)}</span></span>}</td>
+                                        <td class="text-center numeral">{u.departing_starters ? `${formatUsd(u.departing_usd)} (${u.departing_starters})` : '—'}</td>
+                                        <td class="text-center numeral">{u.scarcity === null ? '—' : u.scarcity.toFixed(2)}</td>
+                                        <td class="text-center numeral">{formatOdds(u.replace_odds)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Fragment>
+            </Panel>
+
+            <div class="row">
+                {[['Roster by acquisition route', 'Route', doc.by_source, 'pro-by-source'], ['Roster by class', 'Class', doc.by_class, 'pro-by-class']].map(([title, head, rows, tid]) => (
+                    <div class="col-lg-6 col-12">
+                        <Panel id={`${tid}-panel`} title={title as string} show={true} class="mb-md-3">
+                            <p slot="panel-subtitle" class="m-0 text-muted text-small">vs talent: percentile above or below what players of the same position, rating and year usually post.</p>
+                            <Fragment slot="panel-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm" id={tid as string}>
+                                        <thead><tr><th class="text-left">{head}</th><th class="text-center">Players</th><th class="text-center">Starters</th><th class="text-center">Production</th><th class="text-center">vs talent</th><th class="text-center">Age</th></tr></thead>
+                                        <tbody>
+                                            {(rows as Mix[]).map((m) => (
+                                                <tr><td class="text-left">{m.key}</td><td class="text-center numeral">{m.players}</td><td class="text-center numeral">{m.starters}</td>
+                                                    <td class="text-center numeral">{formatUsd(m.prod_usd)}</td><td class="text-center numeral">{signed(m.vs_talent)}</td><td class="text-center numeral">{m.age ?? '—'}</td></tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </Fragment>
+                        </Panel>
+                    </div>
+                ))}
+            </div>
+
+            <Panel id="pro-top" title="Most valuable players this season" show={true} class="mb-md-3">
+                <Fragment slot="panel-body"><ValueTable rows={doc.top} id="pro-top-table" showTeam={false} /></Fragment>
+            </Panel>
+
+            <Panel id="pro-departing" title="Likely departing starters" show={true} class="mb-md-3">
+                <p slot="panel-subtitle" class="m-0 text-muted text-small">Equal entrants: last cycle's portal entrants within 7.5 percentile points at his position.</p>
+                <Fragment slot="panel-body">
+                    {doc.departing.length === 0
+                        ? <p class="m-0 text-muted text-small">No starter is likely in his final season.</p>
+                        : (
+                        <div class="table-responsive">
+                            <table class="table table-sm" id="pro-departing-table">
+                                <thead><tr><th class="text-left">Player</th><th class="text-center">Unit</th><th class="text-center">Production</th><th class="text-center">Pct</th><th class="text-center">Equal entrants</th><th class="text-center">Replace odds</th></tr></thead>
+                                <tbody>
+                                    {doc.departing.map((r) => (
+                                        <tr><td class="text-left"><a href={`/pro/players/${r.espn_id}`}>{r.name}</a></td><td class="text-center">{r.unit}</td>
+                                            <td class="text-center numeral">{formatUsd(r.prod_usd)}</td><td class="text-center numeral">{r.pct === null ? '—' : Math.round(r.pct)}</td>
+                                            <td class="text-center numeral">{r.equiv_entrants ?? '—'}</td><td class="text-center numeral">{formatOdds(r.p_land)}</td></tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        )}
+                </Fragment>
+            </Panel>
+
+            <Panel id="pro-next-core" title="Who carries next season" show={true} class="mb-md-3">
+                <p slot="panel-subtitle" class="m-0 text-muted text-small">Returning players by projected value (as a starter, times the chance he starts and returns).</p>
+                <Fragment slot="panel-body"><ValueTable rows={doc.next_core} id="pro-next-core-table" showTeam={false} /></Fragment>
+            </Panel>
+        </ReportFrame>
+    </div>
+</GenericPage>

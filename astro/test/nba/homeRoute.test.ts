@@ -17,6 +17,7 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
 }));
 
 import { prepareNbaHome } from '../../src/routes/nba/home';
+import { LAST_KNOWN_SEASON } from '../../src/nba/seasonRange';
 
 function fakeAstro(path: string) {
     const cache: unknown[] = [];
@@ -30,7 +31,7 @@ describe('prepareNbaHome', () => {
         const r = await prepareNbaHome(astro);
         expect('unavailable' in r).toBe(false);
         if ('unavailable' in r) return;
-        expect(r.season).toBe(2026);
+        expect(r.season).toBe(LAST_KNOWN_SEASON);
         expect(r.q).toBe('');
         expect(r.roster.length).toBe(players.length);
         expect(r.roster[0].attempts).toBeGreaterThanOrEqual(r.roster[1].attempts);
@@ -40,7 +41,7 @@ describe('prepareNbaHome', () => {
     test('test_bad_season_resolves_to_current', async () => {
         for (const p of ['/nba?season=1996', '/nba?season=abc', '/nba?season=20260']) {
             const r = await prepareNbaHome(fakeAstro(p).astro);
-            expect('unavailable' in r ? null : r.season, p).toBe(2026);
+            expect('unavailable' in r ? null : r.season, p).toBe(LAST_KNOWN_SEASON);
         }
         const r = await prepareNbaHome(fakeAstro('/nba?season=2013').astro);
         expect('unavailable' in r ? null : r.q).toBe('?season=2013');

@@ -3,6 +3,10 @@ export const prerender = false;
 
 import GenericPage from "../../layouts/GenericPage.astro";
 import { QA_WINDOWS } from "../../utils/adminQa";
+import { PRO_ADDONS, PRO_TIERS } from "../../utils/pro";
+
+// the Pro entitlement form's last result, handed back by its 303
+const proStatus = Astro.url.searchParams.get("pro");
 
 const title = `Admin | Game on Paper`;
 const subtitle = "Operational dashboards for Game on Paper";
@@ -51,6 +55,22 @@ const subtitle = "Operational dashboards for Game on Paper";
         </form>
         <p class="small admin-muted mb-0 mt-1">Purging ids also resets each game's regression-guard mark. The API-layer cache is keyed on the deploy and needs no purge.</p>
       </div>
+    </div>
+    {/* Game on Paper Pro entitlements, entered by hand after payment (pages/admin/api/pro-entitlement.ts) */}
+    <div class="card mb-2" id="pro-entitlements"><h6 class="admin-label mt-0">Pro entitlements</h6>
+      <form method="post" action="/admin/api/pro-entitlement" class="d-flex flex-wrap gap-2 align-items-center">
+        <input class="form-control form-control-sm w-auto" name="email" type="email" placeholder="email" size="28" required />
+        <select class="form-select form-select-sm w-auto" name="tier">
+          {PRO_TIERS.map((t) => <option value={t}>{t}</option>)}
+        </select>
+        <input class="form-control form-control-sm w-auto" name="expires" type="date" title="Access runs to the end of this day, UTC" />
+        <input class="form-control form-control-sm w-auto" name="team" placeholder="team (Program only)" size="18" />
+        {PRO_ADDONS.map((a) => <label class="small"><input type="checkbox" name="addons" value={a} /> {a}</label>)}
+        <button class="btn btn-sm btn-outline-primary" type="submit" name="action" value="save">Add / extend</button>
+        <button class="btn btn-sm btn-outline-danger" type="submit" name="action" value="remove" formnovalidate>Remove</button>
+        {proStatus && <span class="small admin-muted" id="pro-entitlement-result">{proStatus}</span>}
+      </form>
+      <p class="small admin-muted mb-0 mt-1">Look one up: <code>/admin/api/pro-entitlement?email=…</code></p>
     </div>
     <h6 class="admin-label">Last 60 minutes</h6>
     <div class="grid2">

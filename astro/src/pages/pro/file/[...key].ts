@@ -1,0 +1,28 @@
+import type { APIRoute } from 'astro';
+import { claimDownload, isProKey, proFile } from '../../../resources/pro';
+
+export const prerender = false;
+
+// /pro/file/<R2 key>: streams a Pro PDF or CSV from the private bucket to an
+// entitled viewer. The middleware already answered 403 to anyone else; the check
+// is repeated here so the route is safe on its own. Never a redirect to the raw
+// object -- the bucket has no public URL, and the Worker is the only reader.
+export const GET: APIRoute = async ({ params, locals }) => {
+    const headers = { 'Cache-Control': 'no-store' };
+    if (!locals.pro) return new Response('Forbidden', { status: 403, headers });
+    const key = params.key ?? '';
+    const file = isProKey(key) ? await proFile(key) : null;
+    if (!file) return new Response('Not found', { status: 404, headers });
+    if (!(await claimDownload(locals.pro, key))) {
+        // the object was opened before the claim: don't leave its stream hanging (a local fixture is a string)
+        if (file.body instanceof ReadableStream) await file.body.cancel();
+        return new Response('Download limit reached for today (or this month on Analyst). See /pricing.', { status: 429, headers });
+    }
+    return new Response(file.body, {
+        headers: {
+            ...headers,
+            'Content-Type': file.contentType,
+            'Content-Disposition': `attachment; filename="${key.split('/').slice(-3).join('-')}"`,
+        },
+    });
+};
