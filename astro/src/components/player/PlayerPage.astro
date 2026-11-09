@@ -48,6 +48,7 @@ import { SPLIT_PERCENTILE_MIN_PLAYS } from '../../resources/sdv';
 import { cfbTeamIdByName } from '../../utils/teams';
 import { livePlayerGames } from '../../utils/liveQa';
 import { isFeatureEnabled } from '../../utils/features';
+import { compareHref } from '../../utils/compare';
 
 interface Props {
     player: SDVPlayer
@@ -221,6 +222,10 @@ const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
                                         <option value={playerPath(league, player.espn_id, y)} selected={y === season}>{y}</option>
                                     ))}
                                 </select>
+                                {isFeatureEnabled('player-compare', Astro.locals) && (
+                                    <a class="btn btn-sm btn-outline-secondary" id="player-compare-link"
+                                        href={compareHref(league, [String(player.espn_id)], season)}>Compare</a>
+                                )}
                                 {/* Game on Paper Pro ('pro' flag; nothing at all renders while it is off).
                                     One href for every viewer, so a cached page is right for all of them:
                                     /pro sends anyone without an entitlement on to /pricing. */}

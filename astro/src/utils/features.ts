@@ -145,6 +145,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // Player compare: /players/compare?ids=a,b&season=N and the /nfl twin, up to four player cards
+    // side by side, plus the Compare button on the player page's header card. Off: the page is
+    // the site's 404 and the player page has no button.
+    'player-compare': 'preview',
     // Game on Paper Pro: /pro/** (the paid player profiles, portal board and their
     // files), /pricing, the "Pro profile" link on the free player page and the
     // header's Pro entry. Gated in middleware like 'nfl': without the preview cookie
