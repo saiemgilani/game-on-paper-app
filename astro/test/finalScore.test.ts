@@ -132,8 +132,9 @@ describe('game route + GameHeader chip', () => {
      * with the locals the route left behind, as the page does. `schedule` answers the chip's
      * Data API reads.
      */
-    const run = async (league: 'cfb' | 'nfl', on: boolean, schedule: () => any[] | number) => {
+    const run = async (league: 'cfb' | 'nfl', on: boolean, schedule: () => any[] | number, date?: string) => {
         const game = loadGzJson(FIXTURES[league]);
+        if (date) game.header.competitions[0].date = date;
         espn.page = { gameId: Number(game.header.id), gamepackageJSON: { header: game.header } };
         net.urls = [];
         net.process = game;
@@ -148,7 +149,7 @@ describe('game route + GameHeader chip', () => {
         expect(r.game, 'the fixture loaded').toBeTruthy();
         const { default: GameHeader } = await import('../src/components/game/GameHeader.astro');
         const html = await container.renderToString(GameHeader, { props: { game: r.game }, locals });
-        return { html, game, locals, cached: cacheCalls.at(-1) !== false && headers.get('Cache-Control') !== 'no-store',
+        return { html, game, locals, cached: cacheCalls.at(-1) !== false && headers.get('Cache-Control') !== 'no-store', cache: cacheCalls.at(-1) as any,
             reads: net.urls.filter((u) => u.includes('schedule?')).length };
     };
     const chips = (html: string) => [...html.matchAll(/<span class="badge bg-secondary">([^<]+)<\/span>/g)].map((m) => m[1]);
@@ -178,6 +179,15 @@ describe('game route + GameHeader chip', () => {
             const r = await run(league, true, () => 500);
             expect(chips(r.html)).toEqual([]);
             expect(r.cached).toBe(false);
+        });
+        test(`[${league}] a game that just ended and is not in the table yet caches for an hour, not the year`, async () => {
+            const fresh = await run(league, true, () => [], new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString());
+            expect(chips(fresh.html)).toEqual([]);
+            expect(fresh.cached).toBe(true);
+            expect(fresh.cache.maxAge).toBe(60 * 60);
+            // an old game with no rows is outside the population (e.g. FBS vs FCS): the final-game policy
+            const old = await run(league, true, () => []);
+            expect(old.cache.maxAge).toBe(60 * 60 * 24 * 7 * 52);
         });
     }
 });
