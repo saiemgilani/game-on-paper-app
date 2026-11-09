@@ -809,3 +809,33 @@ changes), BOS 113 at DET 121 (401909088), MIN 88 at PHX 84 (401856902), Sam Hous
 **Used by:** `test/gameFlow.test.ts`.
 
 **To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `garbage-time-{nba-0022300718,wbb-401824983,wnba-1022600001,nba-0022600001}.json.gz`
+One game's possession log with BB-D7's flags and sportsdataverse-py's own situational splits for that game, the oracle
+for BB-G2's garbage-time toggle (`utils/garbageTime.ts`). Built on 2026-11-08 with sportsdataverse-py `origin/main`
+64b22369 from the sportsdataverse-data releases (no Data API read), as `{league, game_id, espnGameId, note, teams,
+possessions, oracle, names}`:
+
+- **The pros** (`load_{nba,wnba}_stats_possessions`, `_pbp`, `_schedules`, filtered to the game): `possessions` is the
+  release's rows with `nba_possession_flags.add_possession_flags` appended (`seconds_to_first_shot`, `is_transition`,
+  `is_garbage_time`), which is what `{nba,wnba}_stats.possessions` serves once the producers' wiring (hoopR-nba-stats-data
+  #54, wehoop-wnba-stats-data #28) is republished. `teams` is the stats schedule's home and away.
+- **College** (`load_ncaa_wbb_possessions(2026)` filtered to `espn_game_id`, `load_wbb_schedule(2026)`): the release's
+  rows as they are; bigballR's `is_garbage_time` is already in them. `teams` is the ESPN home and away ids.
+- **`oracle`**: `situational_team`, `situational_player` and `situational_lineup` (`_common/situational_splits.py`) on
+  `nba_situation_rows(...)` / `ncaa_situation_rows(...)` for the game, the `all` and `garbage` families only
+  (`top_n=1` and empty ratings: the `opponent` family is not kept).
+- **`names`**: for the 2023-24 game only (no BB-G1 capture covers it), `load_nba_stats_player_boxscores(2023)`'s
+  `person_id, first_name, family_name, name_i`.
+
+Games: TOR 100 at NOP 138, 2024-02-05 (`0022300718`, the game with the most garbage possessions, 53 of 193, in sdv-py's
+committed BB-D7 corpus `tests/fixtures/bb_possession_flags/nba_possessions_2024.parquet`); GW 50 at Temple 86 (ESPN
+401824983, 14 of 140, the `impact-box-wbb-2026` game); CON 75 at NY 106 (1022600001) and BOS 113 at DET 121
+(0022600001), the BB-G1 pro games, neither with garbage time (bigballR's rule also needs three or fewer starters on).
+The log's whole-game counts against stats.nba.com's team box (`load_*_stats_team_boxscores`): FGA, 3PA and FGM equal; FTA
+within one (the log leaves the defense's technical free throws out); rebounds higher (the log counts team rebounds).
+
+**Used by:** `test/garbageTime.test.ts`.
+
+**To regenerate:** rerun those calls in an sdv-py checkout of `origin/main` (polars, no network beyond the GitHub
+release assets), write `{...}` above with `json.dumps(..., default=str)` and gzip (`mtime=0`).
