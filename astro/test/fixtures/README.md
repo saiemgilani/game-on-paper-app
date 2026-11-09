@@ -385,7 +385,18 @@ Record panel on `/nfl/year/2025/team/6`, and the TeamCard's `7-9-1 (Div: 4-2)`).
   - `_api.json` is one object with a key per table (`schedule`, `pbp`, `team_box`, `player_box`, `play_wp`, `game_team_rates`, `game_player_rates`), read from a LOCAL sdv-db Data API over a local full-history warehouse loaded from the real `hoopR-nba-data` release parquet; `play_wp` and `game_*_rates` were built by the sdv-db `nba_game_pages` build (sdv-db PR #142, head 128093f) scoring with sdv-py PR #749. Its prior is the stored 6.0 line (`spread`, 0.6604). The schedule's `*_linescores` / `*_records` are Python-repr strings (single quotes, newline separators), not JSON.
   - Known, asserted differences: win probability differs across sources by design (different priors); `game_play_number` 440 and 441 carry 109-87 in the API (hoopR) and 108-87 in the processor (ESPN raw, sdv-py).
   - **To regenerate:** processor, run the Flask app in `python/` (`uv run --no-sync flask --app app run`) and `curl` the route with the base64 bearer token; API, repeat the seven reads against a Data API that has `play_wp` and `game_*_rates` built, `limit=5000`, `game_id=401766458` (`id=` for `schedule`).
+- `nba/game_401705127_processor.json`: New York at Philadelphia, 2025-01-15, Final/OT (five periods each side). The
+  live body of `GET /nba/401705127/process`, captured 2026-10-25 through the Flask test client (`app.app.test_client()`,
+  `uv sync --frozen` venv) over ESPN's live summary; no edits. The game is the overtime final on
+  `nba/scoreboard-20250115.json`. **Used by:** `test/nba/byteIdentity.render.test.ts` (the `game-overtime` state,
+  self-review on #324), snapshotted on 7c8ac627 (pre-refactor source).
+  **To regenerate:** the same test-client call; never regenerate the snapshot on the refactor branch.
 - `nba/scoreboard-20250115.json`: ESPN cdn NBA scoreboard for 2025-01-15 (`https://cdn.espn.com/core/nba/scoreboard?xhr=1&date=20250115`), trimmed to 4 of 11 events (incl. a Final/OT), competitor `statistics` and `linescores` removed. Captured 2026-10-11. A dated request carries no `sbData.day`.
+- `nba/shots_2003_njn.json.gz`: New Jersey's 2003 regular-season shots (team 1610612751, `game_id` 002…), the six lite columns,
+  from hoopR-nba-stats-data `nba_stats/shots/parquet/shots_2003.parquet` (commit `fe3e515f`), the
+  release the Data API ingests. 6,585 shots, 2,078 at the hoop centre (0, 0), the NBA's 1998–2010 placeholder. Captured
+  2026-10-18. **Used by:** `test/basketball/placeholder.test.ts` (the NBA has no `placeholderLocation`, so these stay in
+  every NBA chart: D29 / R4). **To regenerate:** `plans/2026-10-11-wnba-shots-gop.md` Task 3 Step 0.
 
 ## `team-tendencies-cfb-333-2025.json` / `team-tendencies-nfl-12-2025.json`
 The Data API's `GET /v1/{cfb|nfl}/team_tendencies?season=2025&pos_team_id={333|12}`
@@ -417,6 +428,306 @@ written out longhand) and `test/teamSplits.render.test.ts` (the panel's rank cel
 and caption).
 
 **To regenerate:** repeat the two requests with the current `teamSplitColumns`.
+
+## `nba/pregame_401898403.json`
+A real *scheduled* NBA game page: Cleveland at Orlando (401898403), 2026-27
+preseason, `STATUS_SCHEDULED`, tip 2026-10-13T23:00Z.
+
+**Provenance (2026-10-12):** captured from
+`cdn.espn.com/core/nba/playbyplay?gameId=401898403&xhr=1&render=false&userab=18`
+(the body `retrieveGamePage` returns) with the `requestESPN` User-Agent, then
+trimmed to `{ gameId, gamepackageJSON: { header } }` (the only part the NBA
+pregame path reads). No hand edits inside `header`.
+
+**Used by:** `test/nba/byteIdentity.render.test.ts` (the `pregame` state; spec
+D15: real fixtures only).
+
+**To regenerate:** do not; the snapshot pins this exact page. A new capture
+needs a new id and a new snapshot in its own PR.
+
+## `wnba/`
+
+- `wnba/sdv_db_wnba_courts.json`: `{ courts }` = sdv-db's WNBA court eras (`sdv_db.nba_shot_dashboards.WNBA_COURTS`, plan #3 Task 5, which
+  cites the WNBA restricted-area adoption season: `WNBA_RESTRICTED_FROM = 2013`, `WNBA_RESTRICTED_RADIUS = 40`), printed in GOP's `Court`
+  key names by `plans/2026-10-11-wnba-games-gop.md` Task 1 Step 0 from sdv-db `6391dda` (branch `feat/bball-derived-builds`; the court
+  definitions are identical on sdv-db `origin/main` `fd9b268`, `nba_shot_dashboards.py:144-148`), captured 2026-10-18. First era 0 is
+  written as 1997. **Used by:** `test/wnba/config.test.ts` (GOP's `BASKETBALL.wnba.courts` must equal it era for era) and plan #6's
+  `test/wnba/courts.test.ts`. **To regenerate:** the same command after a plan #3 court change; GOP's eras must follow in the same PR.
+  `placeholder` = `{ x, y, through }` read from sdv-db's WNBA `located` predicate by plans/2026-10-11-wnba-shots-gop.md Task 3 Step 0 (R22).
+- `wnba/team_crosswalk_2002_2026.json`: the distinct (ESPN team id, ESPN name, stats.wnba.com team id, stats tricode) rows of
+  wehoop-wnba-data `wnba/crosswalk/parquet/wnba_team_crosswalk_{2002..2026}.parquet` (commit 62b7ca5a; the table is unchanged from
+  5d64639c, built 2026-10-11 by `wehoop::wnba_team_crosswalk()`, matched on game dates), with each row's first and last season. 28 rows.
+  Captured 2026-10-18. **Used by:** `test/wnba/teams.test.ts` (the team module is this table). **To regenerate:** the polars group-by in
+  `plans/2026-10-11-wnba-games-gop.md` Task 1 Step 1 over a newer checkout; a new franchise is a new row.
+- `wnba/team_seasons_1997_2026.json`: each (stats.wnba.com team id, tricode) pair's first and last season with regular-season
+  (`102…` game id) shots in wehoop-wnba-stats-data `wnba_stats/shots/parquet/shots_{1997..2026}.parquet` (commit 2d052bc, the
+  team_id 0 rows left out). Every pair's seasons are contiguous. 27 rows. Captured 2026-10-18 (plan #6 final-review fix, Important 2).
+  **Used by:** `test/wnba/teamsBySeason.test.ts` (`WNBA_FIRST_SEASONS`, `WNBA_DEFUNCT.from` and `wnbaSeasonsOf` are this table).
+  **To regenerate:** a polars scan of those files, filter the `102` prefix and `team_id != 0`, unique (season, team_id, team_tricode),
+  group by (team_id, team_tricode), min / max season.
+- `wnba/game_<id>_processor.json` and `wnba/game_<id>_api.json` for 401736287 (Golden State at Chicago, 2025-08-01, 73-66, four quarters),
+  401736289 (Los Angeles at Seattle, 2025-08-01, 108-106, double overtime), 250603003 (New York at Detroit, 2005-06-03, 66-68, two halves
+  and one overtime) and 401736325 (Seattle vs Atlanta at Rogers Arena, Vancouver, 2025-08-15, 80-78, neutral site). Captured 2026-10-18.
+  - `_processor.json`: the live body of `GET /wnba/<id>/process` (`python/`, sdv-py `game_page_frames(final, league="wnba")` at the
+    `python/uv.lock` commit `b4229f1c`). No pickcenter on any of the four, so the prior is `hfa`, or `neutral` (0.5) for 401736325.
+  - `_api.json`: one object per table (`schedule`, `pbp`, `team_box`, `player_box`, `play_wp`, `game_team_rates`, `game_player_rates`),
+    read with exactly `resources/nbaGames.ts`'s `SEL` columns from a LOCAL sdv-db Data API over a local warehouse loaded from the
+    wehoop-wnba-data release parquet (commit `f0856757`, which carries wehoop-wnba-data #33 `aba90e67`: the 2002-2022 schedules
+    republished with `*_records` / `*_linescores` filled from each game's final; every other input file is byte-identical to
+    `82e2d218`), `play_wp` and `game_*_rates` built by the sdv-db WNBA game-page build (`6391dda`) scoring with sdv-py `cd6f7f25`
+    (the same game-page code as the lock's `b4229f1c`). `*_linescores` / `*_records` are Python-repr strings (spec §3.5).
+  - Known, asserted differences (`test/wnba/game.test.ts`): `RELEASE_SCORE_ROWS` (rows where the published running score has not been
+    rebuilt yet; spec D7) is empty: none remained at capture, 401736325's rows 126-127 included. `RELEASE_SOURCE_FACTS` names the
+    release-vs-live source facts of 250603003, read from ESPN's raw 2005 final: its boxscore carries 19 team stats and neither
+    `fast_break_points` nor `points_in_paint` (null in the release, reported by the live box), and Erin Thorn (510) is `active: false`
+    with every stat `--` (release `points`, `rebounds`, `assists`, `steals`, `blocks`, `turnovers` null, `fg` / `fg3` / `ft` `–` and
+    `plus_minus` `--`; the live box now prints 0 / `0-0` / `0`). The Data API side is asserted absent on exactly those fields and the
+    processor present. Everything else is asserted equal: plays, scores, shot coordinates, WP, the prior, team box, rates,
+    linescores, records, and every player field except the identity strings `name`, `short_name` and `jersey`, which are not
+    compared (ESPN renamed 401736325's 3054590 Nia Coffey to Nia Brodie; the live 2005 box has no jerseys where the release does).
+  - **To regenerate:** `plans/2026-10-11-wnba-games-gop.md` Task 3 Steps 1-3.
+- `wnba/espn_page_401736287.json` and `wnba/pregame_401918306.json`: ESPN cdn game pages
+  (`https://cdn.espn.com/core/wnba/playbyplay?gameId=<id>&xhr=1&render=false&userab=18`, User-Agent: `resources/espn.ts`
+  `requestESPN`'s Safari UA; a Chrome UA gets an AWS WAF challenge, 202 with an empty body), trimmed to
+  `{ gameId, gamepackageJSON: { header } }` (the only keys the route and the pregame page read). 401736287 is the final of Task 3's
+  pair, captured 2026-10-18T23:43Z. 401918306 (WNBA Finals Game 2, Atlanta Dream at Golden State Valkyries, home GS, tip
+  2026-10-20T00:00Z) was captured 2026-10-18T22:12Z while `STATUS_SCHEDULED` and staged in ClaudeCowork
+  `plans/2026-10-11-bball-fixtures-staging/wnba_pregame_401918306.json` (commit `fcfc0971`); the plan's 401918305 went final on
+  2026-10-17 before its summary was staged, so this is the plan's own fallback. `wnba/pregame_401918306_summary.json` is
+  `{ pickcenter }` (one provider) of `https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/summary?event=401918306`, captured at
+  the same time and staged beside it (`wnba_pregame_401918306_summary.json`, same commit). **Used by:** `test/wnba/gameRoute.test.ts`,
+  `test/wnba/game.render.test.ts`. **To regenerate:** `plans/2026-10-11-wnba-games-gop.md` Task 4 Step 1 (a pregame page can only be
+  taken before tip-off; never flip a final's status, D15).
+- `wnba/scoreboard-20250801.json` and `wnba/scoreboard-20050603.json`: ESPN cdn WNBA scoreboards
+  (`https://cdn.espn.com/core/wnba/scoreboard?xhr=1&date=<YYYYMMDD>`, User-Agent: `resources/espn.ts` `requestESPN`'s Safari UA),
+  captured 2026-10-18T23:55Z, every event kept, trimmed to `{ content: { sbData: { events } } }` with competitor `statistics` and
+  `linescores` removed (as `nba/scoreboard-20250115.json`). 2025-08-01: five finals, one double overtime (401736289), Golden State's
+  new ESPN id 129689. 2005-06-03: two finals in the halves era (`format.regulation.periods` 2), one in overtime (250603003, period 3;
+  ESPN's own `status.type.detail` says "Final", GOP's `Final/OT` comes from the period and the regulation, D14); the board spells
+  WAS / TUL / NYL (ESPN ids 16 / 3 / 9, today wsh / dal / ny). A dated request carries no `sbData.day`. **Used by:**
+  `test/wnba/scoreboard.test.ts`, `test/wnba/scoreboard.render.test.ts`, `test/mbb/scoreboardGroups.test.ts` (2025-08-01 keeps the event
+  `links` and competition `highlights|headlines|geoBroadcasts` `trimScoreboardEvents` drops). **To regenerate:** `plans/2026-10-11-wnba-games-gop.md`
+  Task 5 Step 1 (with the Safari UA; a 202 with an empty body is a WAF challenge, never an empty board).
+- `wnba/scoreboard-20020615.json`: the same ESPN cdn WNBA scoreboard for 2002-06-15 (same URL, UA and trim), captured
+  2026-10-19T01:31Z: six finals with three defunct franchises ESPN serves no logo for, Cleveland (2) and Miami (7), and the
+  2000-02 Portland Fire, which ESPN files under the 2026 Fire's id 132052 (`POR`). The board also has Utah (15, `UTH`) and
+  Orlando (10, `ORL`), relocated franchises with no ESPN logo. **Used by:** `test/wnba/scoreboard.render.test.ts`.
+  **To regenerate:** the request above with `date=20020615`.
+- `wnba/dashboards/*`: the WNBA shot dashboards' Data API reads, verbatim (`.data` of each response, `.gz` = gzip of the same
+  JSON), from a LOCAL sdv-db Data API over a local warehouse loaded from the real wehoop-wnba-stats-data / wehoop-wnba-data
+  release parquet (`wnba_stats` 2d052bc, `wnba` from the wehoop-wnba-data checkout, HEAD f0856757 at capture; the
+  TypeScript-oracle side reads hoopR-nba-stats-data fe3e515f), the three `wnba_stats.shot_*` tables built by sdv-db
+  `wnba_shot_dashboards` (sdv-db 6391dda, plan 2026-10-11-bball-derived-builds-sdv-db; season stats from
+  `wnba_stats.player_stats_advanced` + `player_stats_base`, the leaguedash assets, D19; crosswalk floor 2002, D18). Captured
+  2026-10-19T02:05Z. Queries are `resources/nbaShots.ts`'s: `shots` with `game_id__like=102%` and the six lite columns
+  (`shots_2003` adds `person_id,team_id`: every 2003 regular-season shot, for the SQL-vs-TypeScript parity test;
+  `shots_2026_origin` adds `x_legacy=0&y_legacy=0`: every 2026 regular-season shot at the hoop centre, genuine after the
+  placeholder seasons, R22), `shot_league_context` / `shot_season_players` by season, `shot_player_games` by season (2026) or
+  person (the 2003 player), `limit=50000`. Seattle (1611661328) is plan #3 Task 6's team. Players: the 2026 one is Seattle's
+  most-attempts shooter (1643428), the 2003 one the season's most-attempts shooter without a headshot (100682).
+  Facts the tests pin: 28,436 regular-season shots in 2003 (Seattle 2,045), Seattle 2,112 in 2008 and 3,061 in 2026; season
+  attempts 28,436 / 31,006 / 38,535 / 45,296 (2003 / 2008 / 2025 / 2026); one `team_id` 0 row in 2025; 5,677 2003 shots at
+  (0, 0) (Seattle 424), counted in the 2003 league total's `placeholder_shots`. **Used by:** `test/wnba/dashboardFixtures.ts`.
+  **To regenerate:** plan 2026-10-11-wnba-shots-gop Task 2 (local warehouse, local API, `capture_wnba_dashboards.py`).
+- `mbb/teams_2026.json`: ESPN's core D-I list for 2026 (owner ruling D34),
+  `https://sports.core.api.espn.com/v2/sports/basketball/leagues/mens-college-basketball/seasons/2026/types/2/groups/50/teams?limit=500`
+  (2026-10-18, `count` 366, ids from each item's `$ref`), with `espn_abbreviation` / `espn_display_name` / `color` from
+  `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=1000` or, for the five ids it lacks
+  (42, 88, 2511, 2598, 2815), `…/mens-college-basketball/teams/<id>` (2026-10-18, requestESPN's Safari UA; colour '#'-prefixed,
+  upper-cased; none: #888888). `mbb/other_di.json`: the 3 ids that have a D-I season (10+ games with one of the 32 D-I conference
+  ids) in hoopR-mbb-data `mbb/schedules/parquet/mbb_schedule_{2003..2026}.parquet` (commit 55d7a2a23) but are not in the 366, with
+  first/last such season (every season between is one), the abbreviation and name of the last such season's schedule rows
+  (St. Francis Brooklyn: SFBK in 2023, SFNY before) and the colour of `…/mens-college-basketball/teams/<id>`. `mbb/season_games.json`:
+  per season, the median / p10 / p90 completed regular-season (`season_type` 2) games of those D-I team-seasons.
+  `mbb/games_in_scope.json`: per season, the median / max completed regular-season + postseason (`season_type` 2 or 3) games of the
+  same team-seasons (D44). `mbb/conferences_2026.json`: `content.altSbDropdown.options` of
+  `https://cdn.espn.com/core/mens-college-basketball/scoreboard?xhr=1` (2026-10-18, requestESPN's Safari UA) as
+  `{id: data.group, label}`, 33 rows. **Used by:** `test/mbb/teams.test.ts`, `test/mbb/config.test.ts`. **To regenerate:**
+  `mbb_teams.py` with its ESPN captures in `mbb-probe/`, both in ClaudeCowork `ledgers/2026-10-19-bball-mbb-games-gop/` (plan #8 Task 1 Step 1's script plus `mbbSeasonsOf`; it also writes `astro/src/nba/data/mbbTeams.ts`).
+- `mbb/leader_bars.json`: per season 2019-2026, league-average regular-season (`season_type` 2) FGA per team game for the 366 D-I teams
+  (hoopR-mbb-data `mbb/team_box/parquet/team_box_<season>.parquet`, commit 55d7a2a23) and for the NBA (hoopR-nba-data
+  `nba/team_box/parquet/team_box_<season>.parquet`, commit 3aa30da7e), their ratio, and the bars `max(1, round(5 × ratio))` /
+  `max(1, round(3 × ratio))` (owner ruling D31). **Used by:** `test/mbb/config.test.ts`. **To regenerate:** `mbb_leader_bars.py` in ClaudeCowork `ledgers/2026-10-19-bball-mbb-games-gop/` (plan #8 Task 1 Step 1b).
+- `mbb/game_<id>_processor.json` and `mbb/game_<id>_api.json` for 401808271 (Alabama at Tennessee, 2026-02-28, 71-69), 401820775 (NC State at
+  Notre Dame, 2026-02-28, 90-96, one overtime), 401744223 (Old Dominion vs Texas State at Pensacola Bay Center, 2025-03-07, 64-61, neutral)
+  and 401829457 (Coastal Carolina vs North Dakota at Western Hall, 2025-11-23, 75-58, neutral); `mbb/game_401706366_processor.json` (Western
+  Michigan at Akron, 2025-02-12, 92-105; every field-goal attempt at ESPN's (25, 0)). Dates are the schedule's UTC dates. Captured 2026-10-18.
+  - `_processor.json`: the live body of `GET /mbb/<id>/process` (`python/`, sdv-py `game_page_frames(final, league="mbb")` at the
+    `python/uv.lock` commit `b4229f1c`, with plan #1's score rebuild). ESPN carries a DraftKings line for 401808271 (Tennessee favored
+    by 5.5, `home_team_spread` 5.5, pregame home win probability 0.688) and 401820775 (NC State favored by 6.5, -6.5, 0.2812), prior `spread`; none for the others
+    (`neutral` 0.5 for the two neutral-site games, `hfa` 0.6029 for 401706366).
+  - `_api.json`: one object per table (`schedule`, `pbp`, `team_box`, `player_box`, `play_wp`, `game_team_rates`, `game_player_rates`),
+    read with exactly `resources/nbaGames.ts`'s `SEL` columns (`player_box` through `playerBoxSelect('mbb')`, which leaves out
+    `plus_minus` and `reason`: hoopR-mbb-data's player box has neither) from a LOCAL sdv-db Data API over a local warehouse loaded from
+    the hoopR-mbb-data release parquet (commit `55d7a2a23`, after the owner's 2026-10-18 republish of plan #1's score rebuild),
+    `play_wp` / `game_*_rates` built by sdv-db's `mbb_game_pages` (`6391dda`) scoring with sdv-py `cd6f7f25` (the lock's `b4229f1c`
+    differs in the game-page code only by #900's guard for a non-object `format`). The release has no line for any 2024-2026 game,
+    so those priors are `hfa` or `neutral` (Decision 8). `*_linescores` / `*_records` are Python-repr strings (spec §3.5).
+  - Known, asserted differences (`test/mbb/game.test.ts`): none. `RELEASE_SCORE_ROWS` is empty and `SWAPPED_RELEASE` is null: after the
+    republish, 401744223's rows 458-461 read 59-61 as in the rebuild, and 401829457's release rows read UND 58 - CCU 75 to the last
+    row, so all four pairs are in the parity gate (spec D7, post-republish).
+  - **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 3 Steps 1-3 (on the droplet: the local cluster via `sdvdb-safe.sh local`,
+    the API on 127.0.0.1:18000, the processor on 127.0.0.1:5177, the capture script with `playerBoxSelect`'s rule; ruling R16).
+- `mbb/lines_by_season.json`: per season, the number of games and of games with `game_spread_available` true in hoopR-mbb-data
+  `mbb/pbp/parquet/play_by_play_<season>.parquet` (commit 55d7a2a23), and `linesFromSeason`, the first season from which every season
+  through 2023 has lined games (2024-2026 lack lines in the release: owner ruling D33's producer issue). Owner ruling D39.
+  **Used by:** `test/mbb/lineNote.test.ts`. **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 5 Step 0.
+- `mbb/espn_page_401820775.json` and `mbb/pregame_401920982.json`: ESPN cdn game pages
+  (`https://cdn.espn.com/core/mens-college-basketball/playbyplay?gameId=<id>&xhr=1&render=false&userab=18`, the GOP `requestESPN` UA),
+  captured 2026-10-18, trimmed to `{ gameId, gamepackageJSON: { header } }`. 401820775 is Task 3's OT final; 401920982 (Villanova vs Notre Dame,
+  neutral, scheduled 2026-11-01T14:30Z) was `STATUS_SCHEDULED` when captured. `mbb/pregame_401920982_summary.json` is `{ pickcenter }` of
+  `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary?event=401920982` at the same time (no providers yet).
+  **Used by:** `test/mbb/gameRoute.test.ts`, `test/mbb/game.render.test.ts`. **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 5 Step 1.
+- `mbb/scoreboard-<YYYYMMDD>-<group>.json`: ESPN cdn men's college scoreboards
+  (`https://cdn.espn.com/core/mens-college-basketball/scoreboard?<group=…&>xhr=1&date=<YYYYMMDD>`, the GOP `requestESPN` Safari UA), captured
+  2026-10-18, every event kept, reduced to `content.{sbData, altSbDropdown, dateParams}`, and from each event the keys no card reads removed
+  (`links`, `competitions[].highlights|headlines|geoBroadcasts`, `competitors[].statistics|linescores`: what `trimScoreboardEvents` drops before
+  caching). 2025-02-22: `top25` (no group; 15 events, every one with a ranked team), `all` (`group=50`, 131 events, 8 in overtime,
+  1,318,786 bytes), `g8` (Big 12, 6). 2024-11-04 `g30` (UAC, 8; three opponents ESPN has no logo for: UNTD 126794, AL 484, ARBA 2027).
+  2025-04-06 `top25`: empty (no ranked team played); 2025-04-06 `all` (`group=50`): its one D-I game, unranked (owner ruling D35's
+  real no-ranked-games day). A grouped body has no `sbData.day`. **Used by:** `test/mbb/scoreboardGroups.test.ts`, `test/mbb/scoreboard.test.ts`,
+  `test/mbb/scoreboard.render.test.ts`, `test/mbb/scoreboardRoute.test.ts`. **To regenerate:** Task 6 Step 1 of `plans/2026-10-11-mbb-games-gop.md`.
+- `mbb/scoreboard-20241104-all.json.gz` / `mbb/scoreboard-20261103-all.json`: ESPN cdn men's college D-I boards
+  (`https://cdn.espn.com/core/mens-college-basketball/scoreboard?group=50&xhr=1&date=<YYYYMMDD>`, the GOP `requestESPN` Safari UA), captured
+  2026-10-19, reduced and trimmed exactly as the Task 6 boards (gzip -9 for the 199-game day). 2024-11-04: opening night, 199 finals, the busiest
+  real day (owner ruling D36's HTML budget; 1,770,598 bytes before gzip). 2026-11-03: 29 scheduled (`pre`) games. `mbb/scoreboard_budget.json`:
+  the rendered HTML length of the 2024-11-04 page and its budget (measured × 1.2), written by Task 6b Step 3. **Used by:**
+  `test/mbb/scoreboardSections.test.ts`, `test/mbb/scoreboardBudget.test.ts`. **To regenerate:** `plans/2026-10-11-mbb-games-gop.md` Task 6b Steps 1 and 3.
+- `mbb/dashboards/*`: the men's college shot dashboards' fixtures. (a) `ncaa_fixture_shot_rows.json` is sdv-db's committed
+  `tests/fixtures/ncaa_shot_dashboards/mbb/shot_rows.json` (sdv-db 6c2d393, file last changed in 7c64c30 = #167, plan
+  2026-10-11-ncaa-shots-sdv-db Task 5; sha256 beabaf96e0e32d6b5484ea4a3c9ff50a5c23d41d487c8555e8c1be69d4a62454), byte for byte: the
+  SQL's own `shot_rows` (1,719 rows) for Texas's three 2018-19 contests and twelve 2025-26 games of real release rows;
+  `ncaa_fixture_league_context.json` (465 rows) is sdv-db's `ncaa_shot_dashboards.select_league_context(schema, 'mbb')` over exactly
+  those rows (all six kinds), written by `ncaa_fixture_context.py` (plan 2026-10-11-mbb-shots-gop Task 2 Step 3). (b) Every other
+  `.json` / `.json.gz` (gzip of the same JSON) is the `.data` of a LOCAL sdv-db Data API response (sdv-db 6c2d393, `serve` on
+  127.0.0.1) over a local warehouse loaded from the real release parquet, per its `api.ingest_manifest`: `ncaa_shots` /
+  `ncaa_schedule` 2019–2026 on 2026-10-12 (ncaa-mbb-hoops-data 9238abb; its 2019 and 2026 shot files hold 257,291 and 740,861
+  rows = `shot_coverage.source_shots`), `schedule` / `player_box` / `team_box` on 2026-10-12 (hoopR-mbb-data 63b1918 / d697cba),
+  `team_group_seasons` / `group_seasons` on 2026-10-18 (sportsdataverse-data `mbb_groups`), the five `mbb.shot_*` tables built by
+  sdv-db `ncaa_shot_dashboards` (7c64c30) on 2026-10-12, captured 2026-10-19 with `resources/nbaShots.ts`'s queries: `shot_rows`
+  by person with the six lite columns, by team (Texas, 251) with the six plus `person_id` (for the parity test), and no game-id
+  filter (regular season + postseason, D23); `shot_season_players` / `shot_league_context` by season; `shot_player_games` by
+  person, the 2026 latest game date (`order=-game_date&limit=1`) and the leaders' 49-day read (`game_date__gte` = latest − 48 days,
+  49 dates inclusive); `shot_coverage` (every season); `team_group_seasons` / `group_seasons` (`level=conference`) by season;
+  `schedule` (`select=home_id,away_id`) by season. Players: Texas's most-attempts shooter in 2026 (Dailyn Swain, 4848625, 395
+  attempts) and in 2018-19 (Kerwin Roach, 3947250, 38). `leaders_window_rows.json`, `postseason_games.json` and
+  `placeholder_check.json` are psql output of `measure_mbb.sql` (Task 2 Step 2) on the same warehouse: the largest player-game count
+  in any 42/49/56-date window per season, type-3 games per season, and the densest shot location per season.
+  **Used by:** `test/mbb/dashboardFixtures.ts` (and every MBB dashboard test through it). **To regenerate:** plan
+  2026-10-11-mbb-shots-gop Task 2 (local warehouse, local API, the three scratch scripts).
+- `wbb/core_2026.json`: ESPN's core D-I women's team list, verbatim
+  (`https://sports.core.api.espn.com/v2/sports/basketball/leagues/womens-college-basketball/seasons/2026/types/2/groups/50/teams?limit=500`,
+  captured 2026-10-19 with requestESPN's Safari UA, `count` 357; owner ruling D34). `wbb/teams_2026.json`: one row per core id, `{id, ab, name, color}` from
+  `https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/teams/<id>` (abbreviation, displayName, color
+  '#'-prefixed and upper-cased; none missing). `wbb/other_di.json`: the 15 ids with a D-I season (10+ games with one of the 33 women's D-I
+  conference ids: ESPN's 32 dropdown ids plus 43, the D-I Independents, which the 2026 dropdown omits because no program is independent
+  in 2026; plan #11 ruling R-S11) in wehoop-wbb-data `wbb/schedules/parquet/wbb_schedule_{2003..2027}.parquet` (commit 1d5e0668e) that are
+  not in the core list, with first/last such season and the same team-endpoint fields. Each program's D-I seasons must be contiguous
+  first..last; a gap is admitted only for a season with 10+ games and no conference id recorded at all (Centenary 2113, 2003-04..2006-07,
+  between its 2002-03 independent season and its D-I conference seasons). `wbb/season_games.json`: per season 2003-2026, the median / p10 / p90 completed
+  regular-season (`season_type` 2) games of those D-I team-seasons; `wbb/games_in_scope.json`: the same with the postseason (`season_type` 2 or 3, D44). `wbb/conferences_2026.json`: `content.altSbDropdown.options` of
+  `https://cdn.espn.com/core/womens-college-basketball/scoreboard?xhr=1` (2026-10-19) as `{id: data.group, label}`, 33 rows.
+  `wbb/leader_bars.json`: per season 2019-2026, league-average regular-season FGA per team game for that season's D-I teams
+  (wehoop-wbb-data `wbb/team_box/parquet/team_box_<season>.parquet`, commit 1d5e0668e) and for the NBA (hoopR-nba-data
+  `nba/team_box/parquet/team_box_<season>.parquet`, commit 3aa30da7e), their ratio, and `max(1, round(5 × ratio))` / `max(1, round(3 × ratio))`
+  (owner ruling D31). Plan #11 (R-S11, GOP d9543830) regenerated `other_di.json`, `season_games.json` and `games_in_scope.json` with
+  group 43 counted (Hartford 42 last 2022 -> 2023; Birmingham-Southern 3, Savannah State 2542 and Centenary 2113 first -> 2003; new
+  Morris Brown 2417 and Winston-Salem State 2736; team counts rise in the seasons with independents, medians unchanged except games in
+  scope 2007 31 -> 30). **Used by:** `test/wbb/teams.test.ts`, `test/wbb/config.test.ts`. **To regenerate:** ClaudeCowork
+  `ledgers/2026-10-19-bball-wbb-games-gop/wbb_teams.py` (ClaudeCowork commit 4bad5e4c; writes these fixtures and `src/nba/data/wbbTeams.ts`
+  from its `wbb-probe/` captures) and `wbb_leader_bars.py`, as plan 2026-10-11-wbb-games-gop Task 1 Steps 0, 1 and 1b.
+- `wbb/game_<id>_processor.json` and `wbb/game_<id>_api.json` for 401827362 (Kansas at TCU, 2026-01-29, 77-79), 401805076 (UTEP at Louisiana
+  Tech, 2026-03-08, 87-91, one overtime), 401856459 (Hofstra vs Charleston, 2026-03-15, CAA final, 56-68, neutral), 400550784 (Rutgers at
+  UTEP, 2014-04-05, WNIT final, 56-54, two halves) and 273130043 (Stanford at Yale, 2007-11-09, 100-44, two halves, no turnovers recorded);
+  `wbb/game_401702870_processor.json` (Duke at South Florida, 2024-12-21, 56-65; every field-goal attempt at ESPN's (25, 0)). Dates are the
+  schedule's UTC dates. Captured 2026-10-19.
+  - `_processor.json`: the live body of `GET /wbb/<id>/process` (`python/`, sdv-py `game_page_frames(final, league="wbb")` at the
+    `python/uv.lock` commit `b4229f1c`, with plan #1's score rebuild and plan #2's D12 rule). ESPN carries a DraftKings line for 401827362
+    (TCU favored by 15.5, `home_team_spread` 15.5, pregame home win probability 0.8986), prior `spread`; none for the others (`neutral` 0.5
+    for 401856459, `hfa` 0.586 for the rest).
+  - `_api.json`: one object per table (`schedule`, `pbp`, `team_box`, `player_box`, `play_wp`, `game_team_rates`, `game_player_rates`),
+    read with exactly `resources/nbaGames.ts`'s `SEL` columns (`player_box` through `playerBoxSelect('wbb')`, which leaves out `plus_minus`
+    and `reason`: wehoop-wbb-data's player box has neither) from a LOCAL sdv-db Data API over a local warehouse loaded from the
+    wehoop-wbb-data release parquet (2014 and 2026 at commit `1d5e0668e`, after the owner's 2026-10-18 republish of plan #1's score rebuild,
+    2009-2027; 2008 from the release before it, which the republish did not cover), `play_wp` / `game_*_rates` built by sdv-db's
+    `wbb_game_pages` (`6391dda`) scoring with sdv-py `cd6f7f25`. The release has no line for any 2016-2026 game, so those priors are `hfa`
+    or `neutral` (Decision 8, D33). `*_linescores` / `*_records` are Python-repr strings (spec §3.5).
+  - Known, asserted differences (`test/wbb/game.test.ts`): `RELEASE_SCORE_ROWS` is empty (after the republish no running-score row differs,
+    400550784's halves-era rows included; spec D7). `RELEASE_FIELD_GAPS` (ruling R-W15) names the fields the release lacks or defines
+    differently, and the test asserts exactly those differ: 400550784 and 273130043, both sides, `records` and `linescores` (null / empty in
+    the release: wehoop-wbb-data's schedules carry them only from 2024, measured on the local warehouse 2002-2026) and `fast_break_points` /
+    `points_in_paint` (null in the release: its team box carries them only from 2024, measured 2004-2026); 273130043 also `total_rebounds`
+    (the release counts team rebounds: Stanford 55 = 50 + 5, Yale 33 = 32 + 1, the team-rebound rows in the play-by-play) and player
+    `minutes` (null in the release, 0 from the processor, for all 5 + 5 players).
+  - **Used by:** `test/wbb/game.test.ts`, `test/wbb/shots.test.ts` (401702870 among them), `test/wbb/gameRoute.test.ts`,
+    `test/wbb/game.render.test.ts` (401702870 among them).
+  - **To regenerate:** `plans/2026-10-11-wbb-games-gop.md` Task 3 Steps 1-3 (on the droplet: the local cluster via `sdvdb-safe.sh local`, the
+    API on 127.0.0.1:18000, the processor on 127.0.0.1:5177, ClaudeCowork `ledgers/2026-10-19-bball-wbb-games-gop/capture_wbb_games.py`).
+- `wbb/game_310950245_processor.json`: Notre Dame vs Texas A&M, 2011-04-05, the national final, two halves. The live body of
+  `GET /wbb/310950245/process`, captured 2026-10-25 through the Flask test client (`app.app.test_client()`, `python/` venv
+  `uv sync --frozen` at the `uv.lock` sdv-py `b4229f1c`) over ESPN's live summary; no edits. The 2009-2012 legacy turnover shape:
+  each team box carries `turnovers` 0, `total_turnovers` 0 and its whole count under `team_turnovers` (Texas A&M 18, Notre Dame 16),
+  as sdv-py `mbb_team_ratings._turnovers` documents; the rates carry 18 and 16. **Used by:** `test/wbb/game.render.test.ts`
+  (self-review on #343). **To regenerate:** the same test-client call.
+- `wbb/espn_page_401805076.json` and `wbb/pregame_401920983.json`: ESPN cdn game pages
+  (`https://cdn.espn.com/core/womens-college-basketball/playbyplay?gameId=<id>&xhr=1&render=false&userab=18`, the GOP `requestESPN` Safari UA),
+  trimmed to `{ gameId, gamepackageJSON: { header } }`. 401805076 (captured 2026-10-19T07:44Z) is Task 3's OT final; 401920983 (Notre Dame vs Villanova,
+  neutral, Palazzo dello Sport, scheduled 2026-11-01T17:00Z, season 2027) was captured `STATUS_SCHEDULED` on 2026-10-12T07:29Z into
+  `ClaudeCowork/plans/2026-10-11-bball-fixtures-staging/wbb_pregame_401920983.json`. `wbb/pregame_401920983_summary.json` is `{ pickcenter }`
+  (empty) of `https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/summary?event=401920983` at the same time
+  (staging `wbb_pregame_401920983_summary.json`). **Used by:** `test/wbb/gameRoute.test.ts`, `test/wbb/game.render.test.ts`.
+  **To regenerate:** `plans/2026-10-11-wbb-games-gop.md` Task 5 Step 1.
+- `wbb/scoreboard-<YYYYMMDD>-<group>.json`: ESPN cdn women's college scoreboards
+  (`https://cdn.espn.com/core/womens-college-basketball/scoreboard?<group=…&>xhr=1&date=<YYYYMMDD>`, the GOP `requestESPN` Safari UA), captured
+  2026-10-19, every event kept, reduced to `content.{sbData, altSbDropdown, dateParams}`, and from each event the keys no card reads removed (`links`,
+  `competitions[].highlights|headlines|geoBroadcasts`, `competitors[].statistics|linescores`: what `trimScoreboardEvents` drops before
+  caching). 2026-02-07: `top25` (no group; 6 events, each with a ranked team), `all` (`group=50`, 138 events: 130 finals, 6 in one
+  overtime, 1 in two, 1 postponed (401813842); 1,427,955 bytes), `g8` (Big 12, 7). 2024-11-04 `all` (opening night, 161 events: 157 in regulation,
+  3 in overtime, 1 canceled (401716378); the busiest WBB day in the releases; 34 competitors ESPN has no logo for, all non-D-I, e.g. Meredith
+  111956; 1,568,033 bytes; the D36 HTML-size budget day). 2025-04-02: `top25` empty (no ranked team played) and `all` (3 events: the WBIT final
+  and two WNIT semifinals; the D35 fallback day). 2014-02-08 `all` (captured 2026-10-19 with the same URL, UA and trim; a halves-era D-I day, `format.regulation.periods` 2 on all 118 events: 111 Final, 5 Final/OT at period 3, 2 Final/2OT at period 4, e.g. 400512272; history carries finals only, so no live `H1` / end-of-half text; 702,955 bytes). A grouped or empty body has no `sbData.day`. `wbb/scoreboard_budget.json`: the rendered HTML
+  length of the 2024-11-04 page and its budget (measured × 1.2), written by `MEASURE_SCOREBOARD_BUDGET=1` (as `mbb/scoreboard_budget.json`).
+  **Used by:** `test/wbb/scoreboardGroups.test.ts`, `test/wbb/scoreboard.test.ts`, `test/wbb/scoreboard.render.test.ts`,
+  `test/wbb/scoreboardDay.render.test.ts`. **To regenerate:** Task 6 Step 1 of `plans/2026-10-11-wbb-games-gop.md`.
+- `wbb/dashboards/*`: the women's college shot dashboards' fixtures. (a) `ncaa_fixture_shot_rows.json` is sdv-db's committed
+  `tests/fixtures/ncaa_shot_dashboards/wbb/shot_rows.json` (sdv-db 6c2d393, file last changed in 7c64c30 = #167, plan
+  2026-10-11-ncaa-shots-sdv-db Task 5; sha256 242c6b94503a1e27d37bc635e59f885e6250ed5812c432c86aefe17a0b74203c), byte for byte: the
+  SQL's own `shot_rows` (254 rows) for South Carolina's NCAA contests 1989192 (2020-21) and 2125095 (2021-22), real release rows with
+  corner-band threes either side of the women's arc move; `ncaa_fixture_league_context.json` (273 rows) is sdv-db's
+  `ncaa_shot_dashboards.select_league_context(schema, 'wbb')` over exactly those rows (all six kinds), written by
+  `wbb_fixture_context.py` (plan 2026-10-11-wbb-shots-gop Task 2 Step 3). (b) Every other `.json` / `.json.gz` (gzip of the same
+  JSON) is the `.data` of a LOCAL sdv-db Data API response (sdv-db 6c2d393, `serve` on 127.0.0.1) over a local warehouse loaded
+  from the real release parquet, per its `api.ingest_manifest`: `ncaa_shots` 2019–2026 on 2026-10-12 (ncaa-wbb-hoops-data ff5e192,
+  shot files last changed in 523abfd; its 2019 and 2026 shot files hold 236,067 and 708,038 rows = `shot_coverage.source_shots`),
+  `schedule` on 2026-10-12/19 (wehoop-wbb-data b86f451b; both release commits are as recorded at planning time, since the ingest manifest stores digests and dates, not commits), `team_group_seasons` / `group_seasons` on 2026-10-19
+  (sportsdataverse-data `wbb_groups`), the five `wbb.shot_*` tables built by sdv-db `ncaa_shot_dashboards` (7c64c30) on 2026-10-12,
+  captured 2026-10-19 with `resources/nbaShots.ts`'s queries: `shot_rows` by person with the six lite columns, by team (South
+  Carolina, 2579) with the six plus `person_id` (for the parity test), and no game-id filter (regular season + postseason, D23);
+  `shot_season_players` / `shot_league_context` by season (2019, 2022, 2026); `shot_player_games` by person, the 2026 latest game
+  date (`order=-game_date&limit=1`, 2026-04-05) and the leaders' 49-day read (`game_date__gte` = latest − 48 days = 2026-02-16, 49
+  dates inclusive, R-S2); `shot_coverage` (every season); `team_group_seasons` (2019, 2021, 2022, 2026) / `group_seasons`
+  (`level=conference`; 2019, 2022, 2026); `schedule` (`select=home_id,away_id`; 2019, 2021, 2022, 2026). Players: South Carolina's
+  most-attempts shooter in 2026 (Joyce Edwards, 5239100, 538 attempts) and in 2018-19 (Mikiah Herbert Harrigan, 4065759, 41).
+  `leaders_window_rows.json`, `postseason_games.json`, `placeholder_check.json` and `unlinked_programs.json` are psql output of
+  `measure_wbb.sql` (Task 2 Step 2) on the same warehouse: the largest player-game count in any 42/49/56-date window per season,
+  type-3 games per season, the densest shot location per season, and per season the D-I reference programs with no shot the
+  release links to ESPN plus the NCAA team names with 600+ unlinked shots (Decision 8). The games-in-scope medians are
+  `wbb/games_in_scope.json` (plan #10; R-S9). **Used by:** `test/wbb/dashboardFixtures.ts` (and every WBB dashboard test through
+  it). **To regenerate:** plan 2026-10-11-wbb-shots-gop Task 2 (local warehouse, local API, the three scripts under ClaudeCowork
+  `ledgers/2026-10-19-bball-wbb-shots-gop/`).
+  (c) `new_orleans_shots_2026.json` (ruling R-S14): the `.data` of the same local API (sdv-db 6c2d393, `serve` on 127.0.0.1, same
+  warehouse), captured 2026-10-19 with `retrieveTeamShots`'s query for New Orleans (2443) in 2025-26:
+  `/v1/wbb/shot_rows?season=2026&team_id=2443&select=game_id,x_legacy,y_legacy,shot_distance,shot_value,shot_result&limit=50000`,
+  992 rows (348 made, every one placed), written compactly as the other `.data` files (sha256
+  81e0f916ddb9da6a058bac0df4e116d7eea0975328dbb3bbee2658a27c955e08). New Orleans has no `shot_season_players` row in any captured
+  season (the release names no player on its shots; 2019 / 2022 / 2026 hold 317 / 768 / 992 placed shots). **Used by:**
+  `test/wbb/membership.test.ts`, `test/wbb/pages.render.test.ts` (the team page decides on membership + placed shots, not player rows).
+  **To regenerate:** the same curl against a local `sdv-db-api serve` with a throwaway read key.
+
+
+
+
+
 
 ## `team-season-percentiles-cfb.json`
 The Data API's `GET https://data.sportsdataverse.org/v1/cfb/team_summaries/percentiles`

@@ -22,18 +22,18 @@ class FakeResizeObserver {
     fire(width: number) { this.cb([{ contentRect: { width } }]); }
 }
 
-test('switching the hex mode redraws through the action', () => {
+test('switching the shot chart mode redraws through the action', () => {
     (globalThis as any).ResizeObserver = FakeResizeObserver;
     window.matchMedia = (() => ({ matches: false, addEventListener() {}, removeEventListener() {} })) as any;
     const zero = { attempts: 0, makes: 0, fgPct: null };
     const zones = Object.fromEntries(ZONES.map((z) => [z, { player: zero, league: zero }])) as any;
     const target = document.body.appendChild(document.createElement('div'));
-    const app = mount(HexShotChart, { target, props: { data: { hexes: [], radius: 15, zones }, title: 't' } });
+    const app = mount(HexShotChart, { target, props: { data: { squares: [], side: 25, zones }, title: 't' } });
     flushSync(); // actions attach in an effect
     const render = vi.mocked(renderHexShotChart);
     FakeResizeObserver.last!.fire(300);
     expect(render).toHaveBeenCalledTimes(1);
-    expect(render.mock.calls[0][2]).toMatchObject({ width: 300, mode: 'raw', animate: true });
+    expect(render.mock.calls[0][2]).toMatchObject({ width: 300, mode: 'squares', animate: true });
     [...target.querySelectorAll('button')].find((b) => b.textContent === 'Zones')!.click();
     flushSync();
     expect(render).toHaveBeenCalledTimes(2);

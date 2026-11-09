@@ -43,7 +43,7 @@ const tiles: [string, string, string][] = [
     ['Projected next season', formatUsd(k.proj_usd), 'returning, as starters × odds'],
     ['Likely departing', formatUsd(k.departing_usd), 'final-season starters'],
     ['Value per roster spot', formatUsd(k.usd_per_spot), `${doc.team.group} median ${formatUsd(k.usd_per_spot_peer)}`],
-    ['Roster', String(k.roster), `${k.starters} starters · avg age ${k.age ?? '—'}`],
+    ['Roster', String(k.roster), `${k.starters} starters, avg age ${k.age ?? '—'}`],
 ];
 const tone = (u: string) => (doc.strengths.includes(u) ? 'text-success fw-bold' : doc.weaknesses.includes(u) ? 'text-danger fw-bold' : '');
 ---
@@ -52,7 +52,7 @@ const tone = (u: string) => (doc.strengths.includes(u) ? 'text-success fw-bold' 
     heading={`${team} ${doc.season} Roster Valuation`}>
     <ProNav active="rosters" />
     <div class="container">
-        <h1 class="fs-3">{team} <span class="text-muted fs-5">{doc.team.conference} · {doc.team.group}</span></h1>
+        <h1 class="fs-3">{team} <span class="text-muted fs-5">{doc.team.conference} / {doc.team.group}</span></h1>
         <ReportFrame headlines={doc.headlines} limits={doc.limits} pdfHref={`/pro/file/pro/${doc.season}/rosters/${id}.pdf`}
             snapshot={doc.snapshot} rendered={doc.rendered}>
             <div class="row g-2 mb-3" id="pro-kpis">
