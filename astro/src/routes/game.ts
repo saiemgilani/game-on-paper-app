@@ -16,6 +16,7 @@ import { retrieveProcessedGame, type ProcessedGame } from '../resources/python';
 import { getGameCacheConfig } from '../utils/config';
 import { isFeatureEnabled } from '../utils/features';
 import { SOURCE_PARAM } from '../utils/adminView';
+import { gameSource } from '../utils/sourceOverride';
 import { LEAGUES, leaguePath, type League } from '../utils/league';
 import { warmShareCards } from './shareCard';
 
@@ -51,11 +52,15 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
     // its cache key are byte-for-byte what they are today.
     const sourceSwitch = isFeatureEnabled('source-switch', Astro.locals);
     // `?source=` is an ADMIN tool (utils/adminView.ts), so it needs BOTH the
-    // flag path and an authenticated admin session. A viewer holding only a
-    // preview cookie sends the same request they send today.
-    const source = (sourceSwitch && Astro.locals.adminAuthed === true)
-        ? Astro.url.searchParams.get(SOURCE_PARAM) ?? undefined
-        : undefined;
+    // flag path and an authenticated admin session. Without one, the game's
+    // pinned override (utils/sourceOverride.ts, KV) decides; with neither, the
+    // request is the one it is today.
+    const explicitSource = (sourceSwitch && Astro.locals.adminAuthed === true)
+        ? Astro.url.searchParams.get(SOURCE_PARAM)
+        : null;
+    const source = await gameSource(league, id, sourceSwitch, explicitSource);
+    // only a pin falls back to ESPN when the processor refuses it; an admin's ?source= errors
+    const pinned = !explicitSource;
     let espnGame: ESPNPlayByPlayResponse | null = null;
     let game: ProcessedGame | null = null;
     let headerFallback = false;
@@ -69,7 +74,7 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
             // resources/espn.ts on the 403s), and its payload carries the same
             // `header` the page reads. Render from that instead of 500ing into
             // "Game Not Found".
-            game = await retrieveProcessedGame(id, 30, league, source);
+            game = await retrieveProcessedGame(id, 30, league, source, pinned);
             espnGame = { gameId: Number(id), gamepackageJSON: { header: game.header } };
             headerFallback = true;
         }
@@ -93,7 +98,7 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
 
         const config = getGameCacheConfig(espnGame.gamepackageJSON.header.competitions[0].date, espnGame.gamepackageJSON.header.competitions[0].status)
         if (!game && !ESPN_INVALID_GAME_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name)) {
-            game = await retrieveProcessedGame(id, config.maxAge || 30, league, source);
+            game = await retrieveProcessedGame(id, config.maxAge || 30, league, source, pinned);
         }
 
         if (guarded.regressed || headerFallback) {
@@ -107,7 +112,7 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
             // 'share-card' (preview): keep this game's played card in KV, drawn from the game
             // just processed, after the page is sent (routes/shareCard.ts)
             if (game && isFeatureEnabled('share-card', Astro.locals)) {
-                (Astro.locals as any).cfContext?.waitUntil?.(warmShareCards(id, league, espnGame.gamepackageJSON.header, game));
+                (Astro.locals as any).cfContext?.waitUntil?.(warmShareCards(id, league, espnGame.gamepackageJSON.header, game, source));
             }
         }
     } catch (e: any) {

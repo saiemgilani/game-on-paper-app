@@ -186,14 +186,15 @@ are byte-for-byte what they are today. An admin's render is forced
 uncacheable by `withPreviewCacheGuard`, for the same reason a preview render
 is: a cached copy would be served to the wrong viewer.
 
-The three that exist, all on the game page and all in
-`astro/src/utils/adminView.ts`, composable in any combination:
+The four that exist, all on the game page (the first three in
+`astro/src/utils/adminView.ts`), composable in any combination:
 
 | Control | Parameter | What it does |
 |---|---|---|
 | View | `?view=live\|preview` | The base flag state for this request only. `live` renders what an anonymous visitor gets (every `'preview'` entry off) even while the admin holds a preview cookie; `preview` renders them all on. It lands on `locals.preview`, so every `isFeatureEnabled` call follows it: the classic/v2 twin choice in `GameRoute.astro` and the middleware's `nfl` / `coaches` namespace gates included |
 | Flags | `?flags=game-page-v2:off,coaches:on` | Per-flag overrides on top of that base, via `locals.flagOverrides`. Anything that is not exactly `name:on` or `name:off` is dropped |
 | Source | `?source=<name>` | Which feed the API processed the game from. Needs an admin session **and** the `'source-switch'` flag; the list is the sportsdataverse-py contract's registry, read from `GET /{league}/{id}/sources` |
+| Pin | *Pin <source>* / *Unpin* beside the source select | A durable per-game source override: kept in KV (`source-override:<league>:<id>` in `ESPN_API_CACHE`, no expiry) until removed here or from `/admin` → Games → *Source overrides*. Every viewer's game page, share card and player-log QA badge for that game then process from it, wherever `'source-switch'` is on; an admin's explicit `?source=` still wins. Set/remove go through `POST /admin/api/source-override`, validated against the game's registry, purge the page and card, and land in `admin_audit` as `source-override` (`utils/sourceOverride.ts`). Kept share cards are keyed per source. **When `'source-switch'` is promoted**, purge every pinned game (`/admin` → Purge, ids from the overrides table): pages cached while the flag was off never read the pin. Once promoted, purge a pinned game again a minute after changing its pin, since KV takes up to 60 s to reach every colo and a colo still reading the old value can re-cache the page |
 
 One interaction to know: on the uncacheable `/preview/<path>` surface the
 middleware sets `locals.preview = true` before the admin block runs, so
