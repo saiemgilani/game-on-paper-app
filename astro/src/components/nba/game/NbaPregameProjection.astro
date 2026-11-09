@@ -3,7 +3,7 @@
 // for basketball. The favourite, the expected margin and its win chance from the producer's ratings and closed form
 // (utils/pregameProjection.ts); each side's rating, its rank and games, and the home edge it carries.
 import { basketball, seasonLabelFor } from '../../../basketball/config';
-import { cleanAbbreviation, roundNumber } from '../../../utils/misc';
+import { cleanAbbreviation, generateMarginalString, roundNumber } from '../../../utils/misc';
 import { teamLogoUrl } from '../../../utils/league';
 import { pct } from '../../../utils/playoff';
 import type { PregameProjection } from '../../../routes/basketball/game';
@@ -22,7 +22,7 @@ const homeFav = margin >= 0;
 const fav = homeFav ? homeTeam : awayTeam;
 const favProb = homeFav ? homeWinProb : 1 - homeWinProb;
 const metric = college ? 'adjusted efficiency margin' : 'adjusted net rating';
-const signed = (x: number) => `${x > 0 ? '+' : ''}${roundNumber(x, 2, 1)}`;
+const signed = (x: number) => generateMarginalString(x, 2, 1);
 const sideText = (t: Props['homeTeam'], r: PregameProjection['home']) =>
     `${cleanAbbreviation(t as any)} ${signed(r.rating)}${r.rank != null ? ` (#${roundNumber(r.rank, 0, 0)})` : ''}${r.games != null ? `, ${r.games} ${r.games === 1 ? 'game' : 'games'}` : ''}`;
 const edge = p.neutral ? 'neutral site, no home edge' : `home court ${signed(hfa)} pts`;

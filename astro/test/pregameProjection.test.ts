@@ -48,6 +48,7 @@ vi.mock('../src/resources/bracketology', async (orig) => ({
 }));
 
 import NbaPreGamePage from '../src/components/nba/game/NbaPreGamePage.astro';
+import NbaGameRoute from '../src/components/routes/NbaGameRoute.astro';
 import BracketologyRoute from '../src/components/routes/BracketologyRoute.astro';
 import { prepareBasketballGame, type PregameProjection } from '../src/routes/basketball/game';
 import { prepareBracketology } from '../src/routes/basketball/bracketology';
@@ -172,6 +173,19 @@ describe('prepareBasketballGame: the pregame card', () => {
         expect(r.projection).toBeNull();
         expect(headers.get('Cache-Control') ?? '').not.toMatch(/no-store/);
     });
+    test("on, a day-out game keeps the pregame's hold, which is inside the ratings' 6 h window", async () => {
+        // utils/config getGameCacheConfig holds every scheduled game an hour (its "within one day" test reads `.days` of a
+        // millisecond diff, always 0), so the card is never older than the ratings it reads; if that ever grows past the
+        // ratings' window, this test is the reminder to cap the pregame page
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-11-08T16:00:00Z')); // MARQ at MICH tips 2026-11-11
+        try {
+            espn.page = FX.pages['401909524'];
+            const on = fakeAstro('mbb', '401909524', ON);
+            await prepareBasketballGame(on.astro, 'mbb');
+            expect(on.cache.map((c: any) => c.maxAge)).toEqual([60 * 60]);
+        } finally { vi.useRealTimers(); }
+    });
     test('on, a failed read: no card, never held', async () => {
         espn.page = FX.pages['401911739'];
         api.fail = true;
@@ -213,6 +227,15 @@ describe('NbaPregameProjection', () => {
         expect(html).toMatch(/<span>CLE by 1\.8<\/span>/);
         expect(html).toContain('55% by adjusted net rating, 2026-27');
         expect(html).toContain('home court +2.2 pts');
+    });
+    test("through NbaGameRoute: the route's prep reaches the card", async () => {
+        espn.page = FX.pages['401909524'];
+        const data = await prepareBasketballGame(fakeAstro('mbb', '401909524', ON).astro, 'mbb');
+        const html = await container.renderToString(NbaGameRoute, { props: { data }, locals: { league: 'mbb' } as App.Locals });
+        expect(html).toMatch(/id="pregame-projection"[\s\S]*<span>MICH by 4\.8<\/span>/);
+        espn.page = FX.pages['401909524'];
+        const off = await prepareBasketballGame(fakeAstro('mbb', '401909524', OFF).astro, 'mbb');
+        expect(await container.renderToString(NbaGameRoute, { props: { data: off }, locals: { league: 'mbb' } as App.Locals })).not.toContain('pregame-projection');
     });
     test('no projection: no card', async () => {
         const html = await container.renderToString(NbaPreGamePage, { props: { espnGame: FX.pages['401909524'], projection: null }, locals: { league: 'mbb' } as App.Locals });
