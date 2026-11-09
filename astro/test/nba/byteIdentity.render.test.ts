@@ -86,8 +86,8 @@ beforeEach(() => { for (const m of [...Object.values(games), ...Object.values(es
 
 async function page(path: string, url: string, params: Record<string, string> = {}, flagOverrides?: Record<string, boolean>) {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/nba/${path}`);
-    // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture' and BB-G1's Impact box and BB-G28's Game flow behind 'bball-impact-box' and 'bball-game-flow': all off here, so these pages stay byte for byte main's
-    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-playoff-picture': false, 'bball-impact-box': false, 'bball-game-flow': false, ...flagOverrides } } as App.Locals }));
+    // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture', BB-G1's Impact box, BB-G28's Game flow and BB-G18's pregame Projection behind 'bball-impact-box', 'bball-game-flow' and 'bball-pregame-projection': all off here, so these pages stay byte for byte main's
+    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-playoff-picture': false, 'bball-impact-box': false, 'bball-game-flow': false, 'bball-pregame-projection': false, ...flagOverrides } } as App.Locals }));
 }
 const snap = (name: string) => `./__byte_identity__/${name}.html`;
 const finalPage = { gameId: 401766458, gamepackageJSON: { header: proc.header } };

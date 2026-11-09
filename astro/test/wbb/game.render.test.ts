@@ -51,7 +51,7 @@ const islandProps = (h: string, component: string) => [...h.matchAll(/<astro-isl
     .map((t) => unser([0, JSON.parse((t.match(/ props="([^"]*)"/)?.[1] ?? '{}').replace(/&quot;/g, '"').replace(/&amp;/g, '&'))]));
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
-const render = (id: string) => container.renderToString(Page, { request: new Request(`https://gameonpaper.com/wbb/game/${id}`), params: { id }, locals: { preview: true, league: 'wbb' } as App.Locals });
+const render = (id: string) => container.renderToString(Page, { request: new Request(`https://gameonpaper.com/wbb/game/${id}`), params: { id }, locals: { preview: true, league: 'wbb', flagOverrides: { 'bball-pregame-projection': false } } as unknown as App.Locals });
 
 /** Every distinct team-page link on the page, sorted. */
 const teamLinks = (h: string) => [...new Set([...h.matchAll(/href="(\/wbb\/team\/[^"]*)"/g)].map((m) => m[1]))].sort();
@@ -200,7 +200,7 @@ describe('/wbb/game/[id] render (real captures)', () => {
     });
     test('the processor-unavailable answer is a 503 naming the game', async () => {
         prep.mockResolvedValueOnce({ unavailable: true });
-        const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/wbb/game/401805076'), params: { id: '401805076' }, locals: { preview: true, league: 'wbb' } as App.Locals });
+        const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/wbb/game/401805076'), params: { id: '401805076' }, locals: { preview: true, league: 'wbb', flagOverrides: { 'bball-pregame-projection': false } } as unknown as App.Locals });
         expect([res.status, res.headers.get('Cache-Control'), await res.text()]).toEqual([503, 'no-store', 'This game is temporarily unavailable. Please try again shortly.']);
     });
 });
