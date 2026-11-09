@@ -1,6 +1,9 @@
 // One game, one shape, two sources. The adapters rename and group; the numbers are Python's
 // (sportsdataverse.nba.nba_game_page), live through the processor or nightly through sdv-db.
 import type { ESPNGameHeader } from './espn';
+import { regulationFor, type PeriodKind, type Regulation } from '../basketball/config';
+import type { BasketballLeague } from '../utils/league';
+import { wnbaEraTricode } from '../nba/data/wnbaTeams';
 
 /** A count the source did not report stays null; the page renders a dash, never an invented 0. */
 export interface NbaTeamBox {
@@ -47,9 +50,14 @@ export interface NbaGame {
     date: string
     venue: string | null
     periods: number
+    /** the season's END year (ESPN header season.year / schedule season); picks the court and the regulation fallback */
+    season: number | null
+    /** regulation periods (4 quarters, 2 halves), from the game's own data, else its league's season rule */
+    regulation: number
+    periodKind: PeriodKind
     /** `homeTeamSpread` is a real line only when `gameSpreadAvailable`; otherwise it is the 2.5 default and the UI hides it. */
     /** null when the source has no win-probability rows to take a prior from; nothing is invented. */
-    prior: { homeWinProb: number; source: 'spread' | 'hfa'; homeTeamSpread: number | null; gameSpreadAvailable: boolean } | null
+    prior: { homeWinProb: number; source: PriorSource; homeTeamSpread: number | null; gameSpreadAvailable: boolean } | null
     home: NbaSide
     away: NbaSide
     plays: NbaPlay[]
@@ -64,11 +72,18 @@ export interface NbaProcessorPayload {
     venue?: string | null
     teamInfo: { home: Record<string, any>; away: Record<string, any> }
     status: { name: string; completed: boolean; period: number | null; display_clock: string | null; detail: string | null }
-    prior: { home_win_prob: number; source: 'spread' | 'hfa'; home_team_spread: number | null; game_spread_available: boolean }
+    prior: { home_win_prob: number; source: PriorSource; home_team_spread: number | null; game_spread_available: boolean }
     periods: number
+    regulation_periods?: number | null
     teams: Record<'home' | 'away', { team_id: number; box: Record<string, any> | null; rates: Record<string, any> | null; linescores: (number | null)[] }>
     players: Record<'home' | 'away', Record<string, any>[]>
     plays: Record<string, any>[]
+}
+
+/** sdv-py's prior source: a real line ('spread'), a lineless neutral site ('neutral', prior 0.5) or the league's home-court edge ('hfa'). */
+export type PriorSource = 'spread' | 'hfa' | 'neutral';
+export function priorSource(v: unknown): PriorSource {
+    return v === 'spread' || v === 'neutral' ? v : 'hfa';
 }
 
 /** The seven Data API reads for one game (resources/nbaGames.ts). */
@@ -80,6 +95,16 @@ export interface DataApiGameRows {
 /** A Data API boolean: the warehouse can hand one back as the string 'True'/'true', which `=== true` would read as false. */
 export const isTrue = (v: unknown): boolean => v === true || v === 'True' || v === 'true';
 const num = (v: unknown): number | null => (v == null || v === '' || Number.isNaN(Number(v)) ? null : Number(v))
+
+/** The regulation an ingested game was played to: the schedule's format_regulation_periods, else the season rule. */
+export function scheduleRegulation(row: Record<string, any> | undefined, league: BasketballLeague): Regulation {
+    return regulationFor(league, num(row?.season), row?.format_regulation_periods)
+}
+
+/** The periods an ingested final must have plays in: its regulation, or more when the schedule says it went to overtime. */
+export function requiredPeriods(row: Record<string, any> | undefined, regulation: number): number {
+    return Math.max(regulation, Number(row?.status_period ?? regulation) || regulation)
+}
 const pair = (m: unknown, a: unknown): string => (num(m) == null || num(a) == null ? '–' : `${num(m)}-${num(a)}`) // a missing count is a dash, never 0-0
 
 /**
@@ -100,6 +125,20 @@ export function parseRecord(raw: unknown): string | null {
     return block?.match(/summary['"]?\s*:\s*['"]([^'"]+)['"]/)?.[1] ?? null
 }
 
+/**
+ * `turnovers` is the players' turnovers. The NBA/WNBA box already says so (total = players + team); a college box counts
+ * the team's inside `turnovers` (total = turnovers, e.g. 13 with 3 team: players 10), so the team box's "(player + team)"
+ * read 13 (13 + 3) (self-review on #343). Data-driven: an NBA box with team turnovers never has total == turnovers.
+ *
+ * ESPN's 2009-2012 WBB box files the team's whole count under team_turnovers with turnovers and total_turnovers both 0
+ * (sdv-py mbb_team_ratings._turnovers; the 2011 final: 0 / 18 / 0, rates 18). That is the total, with no player/team split.
+ */
+function turnoverSplit(turnovers: number | null, team: number | null, total: number | null): Pick<NbaTeamBox, 'turnovers' | 'team_turnovers' | 'total_turnovers'> {
+    if (turnovers === 0 && total === 0 && team != null && team > 0) return { turnovers: null, team_turnovers: null, total_turnovers: team }
+    const players = turnovers != null && team != null && team > 0 && total === turnovers ? turnovers - team : turnovers
+    return { turnovers: players, team_turnovers: team, total_turnovers: total }
+}
+
 function teamBox(r: Record<string, any> | null | undefined): NbaTeamBox | null {
     if (!r) return null
     const n = (k: string) => num(r[k])
@@ -108,7 +147,7 @@ function teamBox(r: Record<string, any> | null | undefined): NbaTeamBox | null {
         three_point_field_goals_made: n('three_point_field_goals_made'), three_point_field_goals_attempted: n('three_point_field_goals_attempted'),
         free_throws_made: n('free_throws_made'), free_throws_attempted: n('free_throws_attempted'), offensive_rebounds: n('offensive_rebounds'),
         defensive_rebounds: n('defensive_rebounds'), total_rebounds: n('total_rebounds'), assists: n('assists'), steals: n('steals'), blocks: n('blocks'),
-        turnovers: n('turnovers'), team_turnovers: n('team_turnovers'), total_turnovers: n('total_turnovers'), fouls: n('fouls'),
+        ...turnoverSplit(n('turnovers'), n('team_turnovers'), n('total_turnovers')), fouls: n('fouls'),
         fast_break_points: r.fast_break_points ?? null, points_in_paint: r.points_in_paint ?? null, largest_lead: r.largest_lead ?? null,
     }
 }
@@ -143,51 +182,76 @@ function play(r: Record<string, any>, wp: Record<string, any> | undefined = r): 
     }
 }
 
-export function fromProcessor(j: NbaProcessorPayload): NbaGame {
+/** ESPN's abbreviation, except a WNBA franchise's tricode of that season where it differs (DET for id 3 in 2005, not ESPN's TUL). */
+const eraAbbreviation = (league: BasketballLeague, id: unknown, season: number | null, abbr: string): string =>
+    (league === 'wnba' ? wnbaEraTricode(Number(id), season) : undefined) ?? abbr
+
+/**
+ * R-W16: "not recorded" read from the data, not from a season constant. Early college boxes (ESPN's 2008 WBB box, D12) send 0
+ * for counts nobody kept. A final in which every player who has a minutes value shows 0 recorded no minutes; a team whose box
+ * says 0 turnovers while sdv-py nulled its rates' total_turnovers (the D12 signal) recorded no turnovers. Those become null, so
+ * the page shows a dash. No NBA, WNBA or MBB fixture matches either signature (test/wbb/game.render.test.ts pins the 2008 game).
+ */
+function blankUnrecorded(g: NbaGame): NbaGame {
+    if (!g.status.completed) return g // a live game at the tip really has 0 minutes and 0 turnovers
+    const mins = [g.home, g.away].flatMap((s) => s.players.map((p) => p.minutes)).filter((m) => m != null)
+    const noMinutes = mins.length > 0 && mins.every((m) => m === 0)
+    for (const s of [g.home, g.away]) {
+        const noTurnovers = s.box?.total_turnovers === 0 && s.rates?.total_turnovers == null
+        if (noTurnovers) s.box = { ...s.box!, turnovers: null, team_turnovers: null, total_turnovers: null }
+        if (noMinutes || noTurnovers) s.players = s.players.map((p) => ({ ...p, minutes: noMinutes ? null : p.minutes, turnovers: noTurnovers ? null : p.turnovers }))
+    }
+    return g
+}
+
+export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague): NbaGame {
     const comp = j.header.competitions[0]
+    const season = j.header?.season?.year ?? null
     const side = (ha: 'home' | 'away'): NbaSide => {
         const c = comp.competitors.find((x) => x.homeAway === ha)!
         const t = j.teams[ha]
         const ti = j.teamInfo[ha]
         const record = c.record?.find((x) => x.type === 'total') ?? c.record?.[0]
         return {
-            team: { id: String(ti.id), abbreviation: ti.abbreviation, displayName: ti.displayName, location: ti.location, name: ti.name, color: ti.color ?? null, alternateColor: ti.alternateColor ?? null, logo: ti.logos?.[0]?.href ?? null },
+            team: { id: String(ti.id), abbreviation: eraAbbreviation(league, ti.id, season, ti.abbreviation), displayName: ti.displayName, location: ti.location, name: ti.name, color: ti.color ?? null, alternateColor: ti.alternateColor ?? null, logo: ti.logos?.[0]?.href ?? null },
             score: num(c.score), winner: c.winner === true, records: record?.summary ?? null,
             linescores: t.linescores, box: teamBox(t.box), rates: teamRates(t.rates), players: j.players[ha].map(playerRow),
         }
     }
-    return {
+    const reg = regulationFor(league, season, j.regulation_periods)
+    return blankUnrecorded({
         id: String(j.gameId), source: 'processor',
         status: { name: j.status.name, completed: j.status.completed, period: j.status.period, displayClock: j.status.display_clock, detail: j.status.detail },
-        date: comp.date, venue: j.venue ?? null, periods: j.periods,
-        prior: { homeWinProb: j.prior.home_win_prob, source: j.prior.source, homeTeamSpread: j.prior.home_team_spread, gameSpreadAvailable: j.prior.game_spread_available },
-        home: side('home'), away: side('away'), plays: j.plays.map((r) => play(r)), hasOvertime: j.periods > 4,
-    }
+        date: comp.date, venue: j.venue ?? null, periods: j.periods, season, regulation: reg.periods, periodKind: reg.kind,
+        prior: { homeWinProb: j.prior.home_win_prob, source: priorSource(j.prior.source), homeTeamSpread: j.prior.home_team_spread, gameSpreadAvailable: j.prior.game_spread_available },
+        home: side('home'), away: side('away'), plays: j.plays.map((r) => play(r)), hasOvertime: j.periods > reg.periods,
+    })
 }
 
-export function fromDataApi(rows: DataApiGameRows): NbaGame {
+export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague): NbaGame {
     const s = rows.schedule[0]
     const wpByN = new Map(rows.play_wp.map((w) => [num(w.game_play_number), w]))
     const plays = [...rows.pbp].sort((a, b) => (num(a.game_play_number) ?? 0) - (num(b.game_play_number) ?? 0)).map((r) => play(r, wpByN.get(num(r.game_play_number))))
-    const periods = Math.max(4, ...plays.map((p) => p.period))
+    const reg = scheduleRegulation(s, league)
+    const periods = Math.max(reg.periods, ...plays.map((p) => p.period))
     const wp0 = rows.play_wp[0]
     const p0 = rows.pbp[0]
     const side = (ha: 'home' | 'away'): NbaSide => {
         const tid = num(s[`${ha}_id`])
         const prates = new Map(rows.game_player_rates.filter((p) => num(p.team_id) === tid).map((p) => [num(p.athlete_id), p]))
         return {
-            team: { id: String(tid), abbreviation: s[`${ha}_abbreviation`], displayName: s[`${ha}_display_name`], location: s[`${ha}_location`], name: s[`${ha}_name`], color: s[`${ha}_color`] ?? null, alternateColor: s[`${ha}_alternate_color`] ?? null, logo: s[`${ha}_logo`] ?? null },
+            team: { id: String(tid), abbreviation: eraAbbreviation(league, tid, num(s.season), s[`${ha}_abbreviation`]), displayName: s[`${ha}_display_name`], location: s[`${ha}_location`], name: s[`${ha}_name`], color: s[`${ha}_color`] ?? null, alternateColor: s[`${ha}_alternate_color`] ?? null, logo: s[`${ha}_logo`] ?? null },
             score: num(s[`${ha}_score`]), winner: isTrue(s[`${ha}_winner`]), records: parseRecord(s[`${ha}_records`]),
             linescores: parseLinescores(s[`${ha}_linescores`]),
             box: teamBox(rows.team_box.find((b) => num(b.team_id) === tid)), rates: teamRates(rows.game_team_rates.find((b) => num(b.team_id) === tid)),
             players: rows.player_box.filter((p) => num(p.team_id) === tid).map((p) => playerRow({ ...p, ...(prates.get(num(p.athlete_id)) ?? {}) })),
         }
     }
-    return {
+    return blankUnrecorded({
         id: String(s.id), source: 'data_api',
         status: { name: s.status_type_name, completed: isTrue(s.status_type_completed), period: num(s.status_period), displayClock: s.status_display_clock ?? null, detail: s.status_type_detail ?? null },
-        date: s.date, venue: s.venue_full_name ?? null, periods,
-        prior: num(wp0?.pregame_home_prob) == null ? null : { homeWinProb: num(wp0.pregame_home_prob)!, source: wp0.prior_source === 'spread' ? 'spread' : 'hfa', homeTeamSpread: num(p0?.home_team_spread), gameSpreadAvailable: isTrue(p0?.game_spread_available) },
-        home: side('home'), away: side('away'), plays, hasOvertime: periods > 4,
-    }
+        date: s.date, venue: s.venue_full_name ?? null, periods, season: num(s.season), regulation: reg.periods, periodKind: reg.kind,
+        prior: num(wp0?.pregame_home_prob) == null ? null : { homeWinProb: num(wp0.pregame_home_prob)!, source: priorSource(wp0.prior_source), homeTeamSpread: num(p0?.home_team_spread), gameSpreadAvailable: isTrue(p0?.game_spread_available) },
+        home: side('home'), away: side('away'), plays, hasOvertime: periods > reg.periods,
+    })
 }

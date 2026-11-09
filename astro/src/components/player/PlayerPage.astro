@@ -221,6 +221,12 @@ const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
                                         <option value={playerPath(league, player.espn_id, y)} selected={y === season}>{y}</option>
                                     ))}
                                 </select>
+                                {/* Game on Paper Pro ('pro' flag; nothing at all renders while it is off).
+                                    One href for every viewer, so a cached page is right for all of them:
+                                    /pro sends anyone without an entitlement on to /pricing. */}
+                                {league === 'cfb' && isFeatureEnabled('pro', Astro.locals) && (
+                                    <a class="btn btn-sm btn-outline-secondary text-nowrap" href={`/pro/players/${player.espn_id}`} id="player-pro-cta">Pro profile</a>
+                                )}
                             </div>
                         </div>
                     </div>

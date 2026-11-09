@@ -66,17 +66,20 @@ export function getGameCacheConfig(date: string, status: ESPNStatus): CacheOptio
 }
 
 /**
- * getGameCacheConfig for an NBA game page: the live branch follows the NBA's own all-year refresh
- * (NBA_SCOREBOARD_REFRESH), not the football SEASON_MODE switch; a final that reached here came from
- * the processor (a Data API-served final is cached by the route for a year), so it gets one day;
- * every branch carries the `nba` purge tag.
+ * getGameCacheConfig for a basketball game page: the live branch follows the league's all-year refresh (the football
+ * SEASON_MODE switch would slow it in the off-season, which is basketball's season); a final that reached here came from
+ * the processor (a Data API-served final is cached by the route for a year), so it gets one day; every branch carries `tag`.
  */
-export function getNbaGameCacheConfig(date: string, status: ESPNStatus): CacheOptions {
+export function getBasketballGameCacheConfig(date: string, status: ESPNStatus, refresh: number, tag: string): CacheOptions {
     const base = getGameCacheConfig(date, status);
-    const tags = [...(base.tags ?? []), 'nba'];
+    const tags = [...(base.tags ?? []), tag];
     if (status.type.completed) return { maxAge: 60 * 60 * 24, tags };
-    if (tags.includes('game-in-progress')) return { maxAge: NBA_SCOREBOARD_REFRESH, swr: NBA_SCOREBOARD_REFRESH * CACHE_TTL_MULTIPLIER, tags };
+    if (tags.includes('game-in-progress')) return { maxAge: refresh, swr: refresh * CACHE_TTL_MULTIPLIER, tags };
     return { ...base, tags };
+}
+
+export function getNbaGameCacheConfig(date: string, status: ESPNStatus): CacheOptions {
+    return getBasketballGameCacheConfig(date, status, NBA_SCOREBOARD_REFRESH, 'nba');
 }
 
 export function getScheduleCacheConfig(date: Date, season: string | number, seasontype: string | number, week: string | number, hasActiveGames: boolean, league: League = 'cfb'): CacheOptions {

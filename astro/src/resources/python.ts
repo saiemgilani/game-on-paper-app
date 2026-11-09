@@ -1,6 +1,6 @@
 import { getSecret } from "astro:env/server"
 import type { ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNStatus, ESPNTeam, ESPNWinProbability } from "./espn"
-import { wrappedFetch } from "../utils/telemetry"
+import { callerHeaders, wrappedFetch } from "../utils/telemetry"
 import { type League } from "../utils/league"
 import { CARD_MAX_AGE, cardState, type CardState, type CardVariant } from "../utils/shareTags"
 
@@ -1427,7 +1427,9 @@ export async function requestProcessor(path: string, cacheTTL: number, query = '
             ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
             headers: {
                 "Authorization": `Bearer ${encodedToken}`,
-                "Referer": "gameonpaper.com" 
+                "Referer": "gameonpaper.com",
+                // who the call is for; cacheKey below is explicit, so these never split the cache
+                ...callerHeaders(),
             },
             cf: {
                 cacheEverything: true,

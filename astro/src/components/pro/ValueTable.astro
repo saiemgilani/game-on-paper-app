@@ -1,0 +1,43 @@
+---
+/** A valuation report's player rows (reports.py player_row): the PDFs' player table. */
+import { cleanTextForTeam } from '../../utils/misc';
+import { formatUsd, type ValuePlayer } from '../../utils/pro';
+
+interface Props { rows: ValuePlayer[]; id: string; showTeam?: boolean }
+const { rows, id, showTeam = true } = Astro.props;
+const r0 = (v: number | null) => (v === null ? '—' : String(Math.round(v)));
+---
+<div class="table-responsive">
+    <table class="table table-sm" id={id}>
+        <thead>
+            <tr>
+                <th class="text-left" colspan="1">Player</th>
+                {showTeam && <th class="text-left" colspan="1">Team</th>}
+                <th class="text-center" colspan="1">Unit</th>
+                <th class="text-center" colspan="1">Class</th>
+                <th class="text-center" colspan="1">Route</th>
+                <th class="text-center" colspan="1">Stars</th>
+                <th class="text-center" colspan="1"><abbr title="Quality percentile this season at the unit">Pct</abbr></th>
+                <th class="text-center" colspan="1"><abbr title="Projected percentile next season, 80% range">Next season</abbr></th>
+                <th class="text-center" colspan="1"><abbr title="This season's value above a typical backup at a full-season pace, at revenue-share rates">Production</abbr></th>
+                <th class="text-center" colspan="1"><abbr title="Next season's projected value as a starter">Projected</abbr></th>
+            </tr>
+        </thead>
+        <tbody>
+            {rows.map((r) => (
+                <tr data-player={r.espn_id}>
+                    <td class="text-left text-nowrap" colspan="1"><a href={`/pro/players/${r.espn_id}`}>{r.name}</a></td>
+                    {showTeam && <td class="text-left text-nowrap" colspan="1">{cleanTextForTeam(r.team, null)}</td>}
+                    <td class="text-center" colspan="1">{r.unit}</td>
+                    <td class="text-center" colspan="1">{r.class ?? '—'}</td>
+                    <td class="text-center" colspan="1">{r.source}</td>
+                    <td class="text-center" colspan="1">{r.stars ? `${r.stars}★` : '—'}</td>
+                    <td class="text-center numeral" colspan="1">{r0(r.pct)}</td>
+                    <td class="text-center numeral text-nowrap" colspan="1">{r0(r.proj)} <span class="text-muted text-small">({r0(r.proj_lo)}–{r0(r.proj_hi)})</span></td>
+                    <td class="text-center numeral" colspan="1">{formatUsd(r.prod_usd)}</td>
+                    <td class="text-center numeral" colspan="1">{formatUsd(r.proj_usd)}</td>
+                </tr>
+            ))}
+        </tbody>
+    </table>
+</div>
