@@ -11,10 +11,21 @@ import { getBasketballGameCacheConfig } from '../../utils/config';
 import { isFeatureEnabled } from '../../utils/features';
 import { SOURCE_PARAM } from '../../utils/adminView';
 import { gopStorage } from '../../utils/telemetry';
-import type { BasketballLeague } from '../../utils/league';
+import { PRO_LEAGUES, type BasketballLeague } from '../../utils/league';
 import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBox';
 import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
+import { retrieveSeasonRatings } from '../../resources/pregameProjection';
+import { projectGame, type Projection, type TeamRating } from '../../utils/pregameProjection';
 import { seasonCache, setCache, uncacheable } from './cache';
+
+/** BB-G18's pregame card: each side's producer rating and the producer's projection from them. */
+export interface PregameProjection {
+    season: number;
+    neutral: boolean;
+    home: TeamRating;
+    away: TeamRating;
+    projection: Projection;
+}
 
 /** The admin source tool's data (components/nba/game/NbaAdminSourceTools.astro); only an admin on the 'source-switch' path gets it. */
 export interface BasketballSourceTools {
@@ -26,7 +37,9 @@ export interface BasketballSourceTools {
     espn: NbaGame | null
 }
 
-export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { pregame: true; espnGame: ESPNPlayByPlayResponse }
+export type BasketballGamePrep = { notFound: true } | { unavailable: true }
+    /** `projection`: BB-G18, only with 'bball-pregame-projection' on; null when the read failed or a side has no rating (no card) */
+    | { pregame: true; espnGame: ESPNPlayByPlayResponse; projection?: PregameProjection | null }
     /** `impact`: BB-G1, only with 'bball-impact-box' on and a final; null when a read failed (the panel says so) */
     /** `flow`: BB-G28, only with 'bball-game-flow' on and a final; null when its read failed (the lead chart still draws) */
     | { game: NbaGame; sourceTools?: BasketballSourceTools; impact?: ImpactBoxReads | null; flow?: GameFlowReads | null };
@@ -80,6 +93,11 @@ function degraded(id: string, message: string, league: BasketballLeague): void {
 
 export async function prepareBasketballGame(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballGamePrep> {
     const r = await prepareGame(Astro, league);
+    // BB-G18: a pregame page with the flag on spends one season ratings read; off, nothing is read and the page is today's
+    if ('pregame' in r) {
+        if (!isFeatureEnabled('bball-pregame-projection', Astro.locals)) return r;
+        return { ...r, projection: await readProjection(Astro, league, r.espnGame) };
+    }
     // read only once a final will render: a 404, 503, pregame or live page never spends the reads, and flag off is today's page.
     // The producer's tables are per season, so a game with no season has nothing to read (no panel, not "unavailable").
     if (!('game' in r) || !r.game.status.completed || r.game.season == null) return r;
@@ -95,6 +113,41 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     if (impact === null || flow === null) uncacheable(Astro);
     else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away))) setCache(Astro, seasonCache(league));
     return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}) };
+}
+
+/**
+ * The pregame card's data from the ESPN header: the season, the neutral-site flag and the two ESPN team ids, mapped to the
+ * ratings' keys (college: the ESPN id; the pros: the stats id from the league's team list). null when a side has no rating
+ * (a non-D-I opponent, a season with no rated game yet) or the read failed; a failed read is never held.
+ */
+async function readProjection(Astro: AstroGlobal, league: BasketballLeague, espnGame: ESPNPlayByPlayResponse): Promise<PregameProjection | null> {
+    const header = espnGame.gamepackageJSON.header;
+    const comp: any = header.competitions[0];
+    const season = Number(header.season?.year);
+    if (!Number.isInteger(season)) return null;
+    const side = (ha: 'home' | 'away') => comp.competitors.find((c: any) => c.homeAway === ha)?.team?.id;
+    const key = (espnId: unknown): string | null => {
+        if (espnId == null) return null;
+        if (!PRO_LEAGUES.includes(league)) return String(espnId);
+        const team = BASKETBALL[league].teams.byEspnId(Number(espnId));
+        return team ? String(team.team_id) : null;
+    };
+    const homeKey = key(side('home'));
+    const awayKey = key(side('away'));
+    if (!homeKey || !awayKey) return null;
+    let ratings: Map<string, TeamRating>;
+    try {
+        ratings = await retrieveSeasonRatings(league, season);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} ratings for game ${espnGame.gameId}: ${e}, ${e?.stack}`);
+        uncacheable(Astro);
+        return null;
+    }
+    const home = ratings.get(homeKey);
+    const away = ratings.get(awayKey);
+    const neutral = comp.neutralSite === true;
+    const projection = home && away ? projectGame(league, home, away, neutral) : null;
+    return home && away && projection ? { season, neutral, home, away, projection } : null;
 }
 
 /** A game panel's reads (BB-G1's Impact box, BB-G28's Game flow) by the season and the ESPN ids; null when any failed. */

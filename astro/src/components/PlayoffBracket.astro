@@ -5,7 +5,9 @@ import { leaguePath, teamLogoUrl, type League } from '../utils/league';
 
 /** A team's slot, or (college) a First Four slot: its label names the pair whose winner takes it, with no number.
  *  A later-round slot of a game still to be played (the NBA Cup's knockout) has no seed either. */
-type Slot = BracketSlot | { seed?: number; label: string };
+/** BB-G18: a team slot's number may be unknown (a team drawn against a First Four pair), printed as a dash. */
+type TeamSlot = Omit<BracketSlot, 'pct'> & { pct: number | null };
+type Slot = TeamSlot | { seed?: number; label: string };
 
 interface Props {
     rounds: { name: string; games: [Slot, Slot][] }[]
@@ -29,7 +31,7 @@ const {
 } = Astro.props;
 const name = (id: string) => names[id] ?? id;
 const abbr = (id: string) => abbrs[id] ?? name(id);
-const isTeam = (s: Slot): s is BracketSlot => !('label' in s);
+const isTeam = (s: Slot): s is TeamSlot => !('label' in s);
 const TITLE = 'Chance to win the title, if the projected field holds';
 // the CFP's four rounds keep the stylesheet's column count; any other bracket sets its own
 const cols = rounds.length === 4 ? undefined : `--bracket-rounds: ${rounds.length}`;
@@ -51,7 +53,7 @@ const cols = rounds.length === 4 ? undefined : `--bracket-rounds: ${rounds.lengt
                                             ? <a href={href(s.teamId)}><img class={`team-logo-${s.teamId} me-2`} width="20" height="20" src={teamLogoUrl(league, s.teamId, false)} alt="" />{name(s.teamId)}</a>
                                             : <Fragment><img class={`team-logo-${s.teamId} me-2`} width="20" height="20" src={teamLogoUrl(league, s.teamId, false)} alt="" />{name(s.teamId)}</Fragment>}
                                     </td>
-                                    <td class="text-center numeral bracket-pct" title={pctTitle}>{pct(s.pct)}</td>
+                                    <td class="text-center numeral bracket-pct" title={pctTitle}>{s.pct == null ? '—' : pct(s.pct)}</td>
                                 </tr>
                             ) : (
                                 <tr class="bracket-slot">
@@ -97,7 +99,7 @@ const cols = rounds.length === 4 ? undefined : `--bracket-rounds: ${rounds.lengt
                                     <td class="text-left text-nowrap"><span class="text-muted numeral me-1">{s.seed}</span>{href(s.teamId)
                                         ? <a href={href(s.teamId)}><img class={`team-logo-${s.teamId} me-1`} width="18" height="18" src={teamLogoUrl(league, s.teamId, false)} alt="" />{abbr(s.teamId)}</a>
                                         : <Fragment><img class={`team-logo-${s.teamId} me-1`} width="18" height="18" src={teamLogoUrl(league, s.teamId, false)} alt="" />{abbr(s.teamId)}</Fragment>}</td>
-                                    <td class="text-center numeral" title={pctTitle}>{pct(s.pct)}</td>
+                                    <td class="text-center numeral" title={pctTitle}>{s.pct == null ? '—' : pct(s.pct)}</td>
                                 </>
                             ) : (
                                 <td class="text-left text-nowrap text-muted" colspan="2"><span class="numeral me-1">{s.seed}</span>{s.label}</td>

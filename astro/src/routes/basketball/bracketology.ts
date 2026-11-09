@@ -9,6 +9,9 @@ import { retrieveLatestSnapshot, retrieveSnapshot, type CollegeSnapshot } from '
 import { collegeSeasonOf, pickSnapshot, type SnapshotPick } from '../../utils/bracketology';
 import { LEAGUES, type BasketballLeague } from '../../utils/league';
 import { seasonCache, setCache, uncacheable } from './cache';
+import { retrieveSeasonRatings } from '../../resources/pregameProjection';
+import { isFeatureEnabled } from '../../utils/features';
+import type { TeamRating } from '../../utils/pregameProjection';
 
 export const VIEWS = [
     { key: 'bracket', label: 'Bracket' },
@@ -27,6 +30,8 @@ export interface BracketologyParams {
     view: BracketologyView;
     /** a conference_id from the snapshot, or null for every conference */
     conference: string | null;
+    /** BB-G18: the season's ratings for the bracket's game odds, only with 'bball-pregame-projection' on and the bracket view; null when the read failed */
+    ratings?: Map<string, TeamRating> | null;
 }
 
 export type BracketologyPrep = { unavailable: true } | BracketologyParams;
@@ -55,5 +60,15 @@ export async function prepareBracketology(Astro: AstroGlobal, league: Basketball
     else uncacheable(Astro);
     const conf = sp.get('conference');
     const conference = conf && data?.sims.some((r) => String(r.conference_id) === conf) ? conf : null;
-    return { league, seasons, current, pick, data, view, conference };
+    // BB-G18: the bracket's numbers become game odds from the season's ratings; off (or another view) reads nothing
+    if (!data || view !== 'bracket' || !isFeatureEnabled('bball-pregame-projection', Astro.locals)) return { league, seasons, current, pick, data, view, conference };
+    let ratings: Map<string, TeamRating> | null = null;
+    try {
+        ratings = await retrieveSeasonRatings(league, pick.season);
+    } catch (e: any) {
+        // the bracket keeps its chances to make the field; a failed read is never held
+        console.error(`ERROR while loading the ${league} ${pick.season} ratings for the bracket: ${e}, ${e?.stack}`);
+        uncacheable(Astro);
+    }
+    return { league, seasons, current, pick, data, view, conference, ratings };
 }

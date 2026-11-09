@@ -9,7 +9,8 @@ import PlayoffBracket from '../PlayoffBracket.astro';
 import { VIEWS, type BracketologyParams } from '../../routes/basketball/bracketology';
 import type { BracketologyRow, SeasonSimRow, TeamResumeRow } from '../../resources/bracketology';
 import { bubbleGroups, projectedField, record, snapshotDay, type FieldUnit } from '../../utils/bracketology';
-import { oddsShade, pct, type BracketSlot } from '../../utils/playoff';
+import { oddsShade, pct, type BracketGameSlot, type BracketSlot } from '../../utils/playoff';
+import { neutralWinProb } from '../../utils/pregameProjection';
 import { generateColorRampValue, generateMarginalString, roundNumber } from '../../utils/misc';
 import { LEAGUES, leaguePath, teamLogoUrl } from '../../utils/league';
 import { BASKETBALL, seasonLabelFor } from '../../basketball/config';
@@ -48,10 +49,20 @@ const bid = (id: number) => simById.get(id)?.bid_prob ?? 0;
 const field = projectedField(data?.bracket ?? []);
 const teamSlot = (r: BracketologyRow): BracketSlot => ({ seed: r.projected_seed!, teamId: String(r.team_id), pct: bid(r.team_id) });
 const unitSlot = (u: FieldUnit<BracketologyRow>) => (u.teams.length === 1 ? teamSlot(u.teams[0]) : { seed: u.seed, label: u.teams.map((t) => abbrs[t.team_id]).join(' / ') });
-const rounds = field ? [
+// BB-G18 ('bball-pregame-projection'): with the season's ratings, each number is the team's chance to win that game at a
+// neutral site instead (the producer's closed form, utils/pregameProjection.ts); a team drawn against a First Four pair,
+// or with no rating, shows a dash
+const odds = Astro.props.data.ratings ?? null;
+const gameSlot = (r: BracketologyRow, opp: BracketologyRow | null) => ({ ...teamSlot(r), pct: opp ? neutralWinProb(league, odds!, r.team_id, opp.team_id) : null });
+const gameUnit = (u: FieldUnit<BracketologyRow>, opp: FieldUnit<BracketologyRow>) =>
+    (u.teams.length === 1 ? gameSlot(u.teams[0], opp.teams.length === 1 ? opp.teams[0] : null) : unitSlot(u));
+const rounds = !field ? [] : odds ? [
+    { name: 'First Four', games: field.firstFour.map(([a, b]) => [gameSlot(a, b), gameSlot(b, a)] as [BracketGameSlot, BracketGameSlot]) },
+    ...field.regions.map((games, i) => ({ name: `Region ${i + 1}`, games: games.map(([a, b]) => [gameUnit(a, b), gameUnit(b, a)] as [BracketGameSlot, BracketGameSlot]) })),
+] : [
     { name: 'First Four', games: field.firstFour.map(([a, b]) => [teamSlot(a), teamSlot(b)] as [BracketSlot, BracketSlot]) },
     ...field.regions.map((games, i) => ({ name: `Region ${i + 1}`, games: games.map(([a, b]) => [unitSlot(a), unitSlot(b)] as [ReturnType<typeof unitSlot>, ReturnType<typeof unitSlot>]) })),
-] : [];
+];
 const bubble = bubbleGroups(data?.bracket ?? []);
 const CONTENDER_FLOOR = 0.05;
 const contenders = sims.filter((r) => (r.bid_prob ?? 0) > CONTENDER_FLOOR).sort((a, b) => (a.seed_mean ?? 99) - (b.seed_mean ?? 99));
@@ -116,9 +127,11 @@ const shownIds = view === 'bracket'
     {data && view === 'bracket' && (
       <Fragment>
         <h2 class="fs-5 mt-4">Projected field</h2>
-        <p class="small text-muted">The field and seeds if the season ended today, from each team's résumé. Each number is the team's chance to make the field on Selection Sunday. Regions follow the S-curve; the committee's bracketing rules are not applied.</p>
+        {odds
+          ? <p class="small text-muted" id="bracket-game-odds">The field and seeds if the season ended today, from each team's résumé. Each number is the team's chance to win that game at a neutral site, from the two teams' adjusted efficiency margins this season. Regions follow the S-curve; the committee's bracketing rules are not applied.</p>
+          : <p class="small text-muted">The field and seeds if the season ended today, from each team's résumé. Each number is the team's chance to make the field on Selection Sunday. Regions follow the S-curve; the committee's bracketing rules are not applied.</p>}
         {field
-          ? <PlayoffBracket rounds={rounds} names={names} abbrs={abbrs} league={league} href={href} pctTitle="Chance to make the field on Selection Sunday" label="Projected NCAA tournament bracket" />
+          ? <PlayoffBracket rounds={rounds} names={names} abbrs={abbrs} league={league} href={href} pctTitle={odds ? 'Chance to win this game at a neutral site' : 'Chance to make the field on Selection Sunday'} label="Projected NCAA tournament bracket" />
           : <p class="text-muted">The projected field does not fill a 68-team bracket on this day.</p>}
 
         {bubble.length > 0 && (

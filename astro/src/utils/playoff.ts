@@ -8,6 +8,9 @@ export interface BracketSlot {
     pct: number
 }
 
+/** A bracket slot whose number may be unknown (BB-G18: a team drawn against a First Four pair), printed as a dash; or a First Four pair's label. */
+export type BracketGameSlot = (Omit<BracketSlot, 'pct'> & { pct: number | null }) | { seed: number; label: string };
+
 export interface BracketRound {
     name: string
     games: [BracketSlot, BracketSlot][]
