@@ -5,7 +5,7 @@ import type { NbaGame } from '../../../resources/nbaGame';
 import { cleanAbbreviation } from '../../../utils/misc';
 import { dash } from '../../../nba/data/game';
 import { fmtPct } from '../../../nba/format';
-import { periodLong } from './periodLabel';
+import { periodLong } from '../../../basketball/periods';
 
 interface Props { game: NbaGame }
 const { game } = Astro.props;
@@ -17,9 +17,9 @@ const away = cleanAbbreviation(game.away.team);
 ---
 {periods.length === 0 ? <p class="text-muted">No plays yet.</p> : periods.map((q) => (
     <details open={q >= current}>
-        <summary class="h6 mt-3">{periodLong(q)}</summary>
+        <summary class="h6 mt-3">{periodLong(q, game.regulation, game.periodKind)}</summary>
         <div class="table-responsive">
-        <table class="table table-sm numeral table-fix-first-col" aria-label={`${periodLong(q)} plays`}>
+        <table class="table table-sm numeral table-fix-first-col" aria-label={`${periodLong(q, game.regulation, game.periodKind)} plays`}>
             <thead><tr><th scope="col">Clock</th><th scope="col" class="text-end">Score ({away}-{home})</th><th scope="col">Play</th><th scope="col" class="text-end">{home} WP</th></tr></thead>
             <tbody>
                 {game.plays.filter((p) => p.period === q).map((p) => (
