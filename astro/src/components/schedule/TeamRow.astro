@@ -1,6 +1,6 @@
 ---
 import type { ESPNCompetitor, ESPNStatus } from "../../resources/espn";
-import { espnLogoLeague } from '../../utils/league';
+import { teamLogoUrl } from '../../utils/league';
 import { cleanScore, getRecordString, cleanAbbreviation } from "../../utils/misc";
 
 interface Props {
@@ -11,8 +11,12 @@ interface Props {
     winner: boolean
     completed: boolean
     spacer: string
+    /** The game's season: a WNBA logo can depend on it (wnbaLogoId) */
+    season?: number | null
+    /** The league's own conference list for the record line (MBB); absent, the football group list */
+    conferences?: readonly { id: string; label: string }[]
 }
-const { espnComp, espnStatus, isRedZone, hasBall, winner, completed, spacer } = Astro.props;
+const { espnComp, espnStatus, isRedZone, hasBall, winner, completed, spacer, season, conferences } = Astro.props;
 
 function formatScore(score: string | { displayValue: string }, winner: boolean, complete: boolean): string {
     const cleanedScore = typeof(score) == 'object' ? cleanScore(score) : score;
@@ -30,9 +34,12 @@ const comp = (espnComp as ESPNCompetitor);
 const status = (espnStatus as ESPNStatus);
 const rank = comp.curatedRank?.current || 99;
 // A TBD placeholder competitor has no real team id; ESPN's default shield
-// stands in so the card never shows a broken image.
+// stands in so the card never shows a broken image. teamLogoUrl is the id path
+// for every league except the WNBA, whose logos ESPN serves by abbreviation. ESPN's combiner resizes only its own files,
+// so a site-hosted logo (a defunct WNBA franchise's, root-relative) is used as it is.
+const logo = teamLogoUrl(Astro.locals.league, comp.id, false, season);
 const logoSrc = comp.id && String(comp.id) !== "0" && comp.team?.abbreviation !== "TBD"
-    ? `https://a.espncdn.com/combiner/i?img=/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${comp.id}.png&h=80&w=80`
+    ? (logo.startsWith('/') ? logo : `https://a.espncdn.com/combiner/i?img=${logo.replace('https://a.espncdn.com', '')}&h=80&w=80`)
     : "https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png&h=80&w=80";
 const possessionClass = isRedZone ? "text-danger" : "text-primary";
 const possessionMarker = hasBall ? `<span class="ms-1 ${possessionClass}">&#8226;</span>` : ''
@@ -45,7 +52,7 @@ const possessionMarker = hasBall ? `<span class="ms-1 ${possessionClass}">&#8226
                 <span class=`small text-muted ${(rank != 99) ? "me-1" : ""}`>{(rank != 99) ? ("#" + rank) : ""}</span>
                 <span class="align-self-center h4 mb-0"><Fragment set:html={formatScore(cleanAbbreviation(comp.team), winner, completed)} /> <Fragment set:html={possessionMarker} /></span>
             </div>
-            <Fragment set:html={getRecordString(comp)} />
+            <Fragment set:html={getRecordString(comp, conferences)} />
         </div>
     </div>
     <span class="align-self-center h4"><strong hidden={(status.type.name.includes("STATUS_SCHEDULED") || status.type.detail.includes("Cancel") || status.type.detail.includes("Postpone"))}><Fragment set:html={formatScore(comp.score, winner, completed)} /></strong></span>

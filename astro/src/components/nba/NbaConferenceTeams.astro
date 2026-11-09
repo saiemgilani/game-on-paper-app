@@ -1,0 +1,43 @@
+---
+// src/components/nba/NbaConferenceTeams.astro
+// A college season's teams by conference (sdv-reference-data): one table, a <tbody> per conference whose header row has
+// no data-name (so NbaNameFilter never hides it), jump links, and the name filter over the team rows, which carry the
+// folded "tricode name conference" so a search for a conference finds its teams.
+import NbaNameFilter from './NbaNameFilter.astro';
+import { basketball } from '../../basketball/config';
+import type { ConferenceGroup } from '../../basketball/dashboards';
+import type { ShootingLine } from '../../nba/data/aggregate';
+import { fmtInt, fmtPct, foldText } from '../../nba/format';
+import { teamHref } from '../../nba/links';
+interface Props { groups: ConferenceGroup[]; lines: Map<number, ShootingLine>; seasonQuery: string }
+const { groups, lines, seasonQuery } = Astro.props;
+const league = basketball(Astro.locals.league).league;
+const anchor = (g: ConferenceGroup) => `conf-${(g.id || 'other').replace(/^mbb:|^wbb:/, '').replace(/[^a-z0-9]+/gi, '-')}`;
+const count = groups.reduce((a, g) => a + g.teams.length, 0);
+---
+<nav aria-label="Conferences" class="small mb-2 d-flex flex-wrap">{groups.map((g) => (<a href={`#${anchor(g)}`} class="me-2 text-nowrap">{g.label}</a>))}</nav>
+<NbaNameFilter tableId="nba-teams-table" count={count} noun="teams" placeholder="team name" />
+<div class="table-responsive">
+  <table class="table table-sm" id="nba-teams-table">
+    <thead>
+      <tr><th scope="col">Team</th><th scope="col" class="text-end">FGA</th><th scope="col" class="text-end">FG%</th><th scope="col" class="text-end">eFG%</th><th scope="col" class="text-end d-none d-sm-table-cell">3P%</th></tr>
+    </thead>
+    {groups.map((g) => (
+      <tbody id={anchor(g)}>
+        <tr><th scope="rowgroup" colspan="5" class="pt-3">{g.label} <span class="fw-normal text-muted small">{g.teams.length} teams</span></th></tr>
+        {g.teams.map((t) => {
+          const line = lines.get(t.team_id);
+          return (
+            <tr data-name={foldText(`${t.tricode} ${t.name} ${g.label}`)}>
+              <th scope="row" class="fw-normal"><span aria-hidden="true" class="nba-team-bar rounded me-2 d-inline-block align-middle" style={`background: ${t.color}; height: 1rem`}></span><a href={teamHref(t.team_id, seasonQuery, league)}>{t.name}</a> <span class="text-muted small">{t.tricode}</span></th>
+              <td class="text-end numeral">{fmtInt(line?.attempts)}</td>
+              <td class="text-end numeral">{fmtPct(line?.fgPct)}</td>
+              <td class="text-end numeral">{fmtPct(line?.efgPct)}</td>
+              <td class="text-end numeral d-none d-sm-table-cell">{fmtPct(line?.fg3Pct)}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    ))}
+  </table>
+</div>
