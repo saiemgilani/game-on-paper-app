@@ -5,7 +5,7 @@
 import { proAllows } from '../../utils/pro';
 
 interface Props {
-    active?: 'players' | 'compare' | 'portal' | 'rosters' | 'positions' | 'market' | 'roles' | 'methodology'
+    active?: 'players' | 'compare' | 'portal' | 'teams' | 'rosters' | 'positions' | 'market' | 'roles' | 'methodology'
 }
 const { active } = Astro.props;
 const viewer = Astro.locals.pro ?? null;
@@ -13,6 +13,7 @@ const links: [string, string, Props['active']][] = ([
     ['/pro', 'Players', 'players'],
     ['/pro/compare', 'Compare', 'compare'],
     ['/pro/portal', 'Portal Board', 'portal'],
+    ['/pro/teams', 'Scout Pack', 'teams'],
     ['/pro/rosters', 'Rosters', 'rosters'],
     ['/pro/positions', 'Positions', 'positions'],
     ['/pro/market', 'Market', 'market'],

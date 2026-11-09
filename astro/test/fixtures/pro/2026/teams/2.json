@@ -1,0 +1,159 @@
+{
+ "schema": 1,
+ "season": 2026,
+ "week": 10,
+ "snapshot": "20261106T000000Z",
+ "rendered": "2026-11-05",
+ "notes": [
+  "Fixture note one.",
+  "Fixture note two."
+ ],
+ "team": {
+  "team_id": 2,
+  "team": "Fixture Tech",
+  "conference": "Fixture Conference"
+ },
+ "game": null,
+ "self": {
+  "offense": [
+   {
+    "key": "EPAplay_off",
+    "label": "EPA per play",
+    "value": 0.32,
+    "better": 60,
+    "tendency": false
+   },
+   {
+    "key": "success_off",
+    "label": "Success rate",
+    "value": 0.64,
+    "better": 60,
+    "tendency": false
+   },
+   {
+    "key": "explosive_off",
+    "label": "Explosive play rate",
+    "value": 0.31,
+    "better": 60,
+    "tendency": false
+   },
+   {
+    "key": "line_yards_off",
+    "label": "Line yards per rush",
+    "value": 3.1,
+    "better": 60,
+    "tendency": false
+   },
+   {
+    "key": "havoc_off",
+    "label": "Havoc rate",
+    "value": 0.37,
+    "better": 60,
+    "tendency": false
+   },
+   {
+    "key": "passrate_off",
+    "label": "Pass rate",
+    "value": 0.52,
+    "better": null,
+    "tendency": true
+   },
+   {
+    "key": "playsgame_off",
+    "label": "Plays per game",
+    "value": 68.4,
+    "better": null,
+    "tendency": true
+   }
+  ],
+  "defense": [
+   {
+    "key": "EPAplay_def",
+    "label": "EPA per play",
+    "value": 0.16999999999999998,
+    "better": 45,
+    "tendency": false
+   },
+   {
+    "key": "success_def",
+    "label": "Success rate",
+    "value": 0.49,
+    "better": 45,
+    "tendency": false
+   },
+   {
+    "key": "explosive_def",
+    "label": "Explosive play rate",
+    "value": 0.16,
+    "better": 45,
+    "tendency": false
+   },
+   {
+    "key": "line_yards_def",
+    "label": "Line yards per rush",
+    "value": 2.9499999999999997,
+    "better": 45,
+    "tendency": false
+   },
+   {
+    "key": "havoc_def",
+    "label": "Havoc rate",
+    "value": 0.22000000000000003,
+    "better": 45,
+    "tendency": false
+   },
+   {
+    "key": "passrate_def",
+    "label": "Pass rate",
+    "value": 0.52,
+    "better": null,
+    "tendency": true
+   },
+   {
+    "key": "playsgame_def",
+    "label": "Plays per game",
+    "value": 68.4,
+    "better": null,
+    "tendency": true
+   }
+  ],
+  "tendencies": [
+   {
+    "down": 1,
+    "dist": "7+",
+    "plays": 130,
+    "pass_rate": 0.45,
+    "pass_oe": -2.5,
+    "epa_play": 0.08,
+    "success": 0.46
+   },
+   {
+    "down": 2,
+    "dist": "1-3",
+    "plays": 18,
+    "pass_rate": 0.22,
+    "pass_oe": null,
+    "epa_play": 0.31,
+    "success": 0.61
+   },
+   {
+    "down": 2,
+    "dist": "7+",
+    "plays": 40,
+    "pass_rate": 0.7,
+    "pass_oe": 4.2,
+    "epa_play": -0.05,
+    "success": 0.38
+   },
+   {
+    "down": 3,
+    "dist": "4-6",
+    "plays": 15,
+    "pass_rate": 0.87,
+    "pass_oe": 1.1,
+    "epa_play": 0.12,
+    "success": 0.4
+   }
+  ]
+ }
+}
