@@ -1,0 +1,88 @@
+---
+import GenericPage from '../layouts/GenericPage.astro';
+import { isFeatureEnabled } from '../utils/features';
+
+if (!isFeatureEnabled('about-page', Astro.locals)) {
+    return Astro.rewrite("/404");
+}
+Astro.cache.set({ maxAge: 86400, swr: 86400, tags: ["about"] });
+
+// Each bio is its owner's to write; the page stays in preview until all three are in.
+const team = [
+    {
+        name: 'Akshay Easwaran',
+        role: 'Co-creator',
+        bio: 'Bio to come.',
+        links: [
+            { label: 'Bluesky', href: 'https://bsky.app/profile/akeaswaran.me' },
+            { label: 'GitHub', href: 'https://github.com/akeaswaran' },
+        ],
+    },
+    {
+        name: 'Saiem Gilani',
+        role: 'Co-creator',
+        bio: "A Georgia Tech and Florida State alum, Saiem is a machine learning engineer who has spent most of his career in basketball and sports analytics, from modeling players and teams to building tracking-data products. He also created and leads the SportsDataverse, an open-source sports data project with packages in R (cfbfastR, hoopR, wehoop, baseballr, fastRhockey), Python (sportsdataverse-py, sdvplot) and Node.js/TypeScript (sportsdataverse.js and the sdvplot-js charting library). At Game on Paper, he builds the data API and the pipeline that feeds the play-by-play processing.",
+        links: [
+            { label: 'Bluesky', href: 'https://bsky.app/profile/saiemgilani.bsky.social' },
+            { label: 'GitHub', href: 'https://github.com/saiemgilani' },
+        ],
+    },
+    {
+        name: 'Jack Purdy',
+        role: '',
+        bio: 'Bio to come.',
+        links: [],
+    },
+];
+
+const title = 'About Game on Paper';
+const subtitle = 'Who builds Game on Paper, and where its numbers come from.';
+---
+<GenericPage
+    title={title}
+    subtitle={subtitle}
+    slug="/about"
+    heading={title}
+    description={subtitle}
+    breadcrumbs={[
+        { title: 'Home', url: '/', active: false },
+        { title: 'About', url: '/about', active: true },
+    ]}
+>
+    <div class="container my-4">
+        <h1 class="fs-3">{title}</h1>
+        <p>
+            Game on Paper is a free advanced-stats site for college football: EPA, success rate, win probability and
+            opponent-adjusted team ratings for every FBS game, live and after the fact. Learn what each number means in
+            the <a href="/glossary">Glossary</a>, and where each one comes from on the <a href="/data-sources">data sources</a> page.
+        </p>
+
+        <h2 class="fs-5 mt-4">The team</h2>
+        <div class="row g-3">
+            {team.map((p) => (
+                <div class="col-md-4 col-12">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h3 class="fs-6 card-title mb-2">{p.name}</h3>
+                            {p.role && <p class="text-muted small mb-0">{p.role}</p>}
+                            <p class="card-text">{p.bio}</p>
+                            {p.links.length > 0 && (
+                                <p class="small mb-0">{p.links.map((l, i) => <>{i > 0 && ', '}<a href={l.href}>{l.label}</a></>)}</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+
+        <h2 class="fs-5 mt-4">Data and code</h2>
+        <p>
+            <!-- one line: the HTML compressor drops whitespace at a line break next to a tag -->
+            Play-by-play comes from <a href="https://espn.com/college-football">ESPN.com</a> and <a href="https://collegefootballdata.com">collegefootballdata.com</a>; season data and models come from <a href="https://www.sportsdataverse.org">SportsDataverse</a>. The site is open source on <a href="https://github.com/saiemgilani/game-on-paper-app">GitHub</a>.
+        </p>
+        <p>
+            Follow the site on <a href="https://bsky.app/profile/gameonpaper.com">Bluesky</a>. Love the site? Support us
+            on <a href="https://ko-fi.com/G2G0KJ588">Ko-fi</a>.
+        </p>
+    </div>
+</GenericPage>
