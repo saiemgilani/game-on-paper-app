@@ -70,7 +70,7 @@ const statMinimum = (PLAYER_STAT_MINIMUMS[category] ?? "")
                 <FreshnessStamp stamp={stamp} />
             </div>
             <div class="ms-auto col-lg-6 col-xs-12">
-                <PlayerMetricDropdown client:idle season={season} category={category} metric={metric} league={league} allTime={isFeatureEnabled('all-time-leaderboards', Astro.locals)} />
+                <PlayerMetricDropdown client:idle season={season} category={category} metric={metric} league={league} {...(isFeatureEnabled('all-time-leaderboards', Astro.locals) ? { allTime: true } : {})} />
             </div>
         </div>
     </div>

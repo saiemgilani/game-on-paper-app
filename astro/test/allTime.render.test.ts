@@ -103,6 +103,16 @@ describe('the season board', () => {
         expect(await at(true)).toMatch(/<option value="all-time"[^>]*>All-time<\/option>/);
         expect(await at(true)).not.toMatch(/<option value="all-time" selected/);
     }, 60_000);
+    test('flag off, the island props carry no allTime key (the public page stays byte-identical)', async () => {
+        const { default: Page } = await import('../src/components/leaderboards/PlayerLeaderboardPage.astro');
+        const html = await container.renderToString(Page, {
+            props: { season: 2025, category: 'passing', metric: 'TEPA' },
+            request: new Request('https://gameonpaper.com/year/2025/players/passing'),
+            locals: { league: 'cfb', preview: false },
+        });
+        expect(html).toContain('<astro-island');
+        expect(html).not.toContain('allTime');
+    }, 60_000);
 });
 
 describe('all-time passing, nfl', () => {
