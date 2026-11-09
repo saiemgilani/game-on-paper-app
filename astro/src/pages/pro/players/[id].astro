@@ -1,0 +1,242 @@
+---
+/**
+ * The Pro player profile (plan 2.2): the web twin of gop-pro's one-page PDF, read
+ * from `pro/<season>/players/<id>.json` (contract.md schema 2) for the current
+ * season. The middleware has already checked the entitlement and keeps the page
+ * no-store. Layout follows the free player page (components/player/PlayerPage.astro):
+ * the same header card, every section a GenericPanel, tables in its format.
+ */
+import GenericPage from '../../../layouts/GenericPage.astro';
+import Panel from '../../../layouts/panel/GenericPanel.astro';
+import DarkModeLogos from '../../../components/DarkModeLogos.astro';
+import ProNav from '../../../components/pro/ProNav.astro';
+import BandBar from '../../../components/pro/BandBar.astro';
+import { cleanTextForTeam, roundNumber } from '../../../utils/misc';
+import { formatHeight, playerPath } from '../../../utils/players';
+import { espnLogoLeague } from '../../../utils/league';
+import { formatOdds, formatPffValue, formatProDelta, formatProMetric, formatUsd } from '../../../utils/pro';
+import { PRO_SEASON, proObject } from '../../../resources/pro';
+
+interface ProProfile {
+    season: number; snapshot: string; rendered: string
+    player: {
+        espn_id: number; name: string | null; team: string | null; team_id: number | null; position: string | null
+        pff_position?: string | null; jersey?: string | null; class?: string | null; height_in?: number | null
+        weight_lb?: number | null; conference?: string | null; transferred?: boolean | null
+    }
+    metrics: { key: string; label: string; value: number | null; n: number | null; n_label: string; qualified: boolean
+        band_lo: number | null; band_mid: number | null; band_hi: number | null; delta_eb: number | null }[]
+    pff: { key: string; label: string; value: number | null; pct: number | null }[]
+    volume: { label: string; value: number }[]
+    notes: { key: string; text: string }[]
+    value?: {
+        unit: string; source: string; stars: number | null; class_year: number | null; age: number | null; age_basis: string
+        age_for_class: number | null; var: number | null; production_usd_pace: number | null
+        projection: { pct: number | null; lo: number | null; hi: number | null }
+        projected_usd: number | null; projected_usd_lo: number | null; projected_usd_hi: number | null
+        p_start_next: number | null; scarcity: number | null
+        replacement: { target_pct: number; equiv_entrants: number | null; p_land: number | null
+            routes: { route: string; stars: number; by_year: number; hit: number; signees_needed: number }[] }
+        rushing: { carries: number; ryoe: number | null; repoe: number | null; repoe_pct: number | null } | null
+        qb_rushing?: { var: number | null; proj_season: number | null } | null
+    } | null
+}
+
+// Defense in depth: the middleware already sent anyone without a live entitlement to
+// /pricing; this page refuses to render for them on its own too.
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
+const id = Astro.params.id ?? '';
+const doc = /^\d+$/.test(id) ? await proObject<ProProfile>(`pro/${PRO_SEASON}/players/${id}.json`) : null;
+if (!doc) {
+    return Astro.rewrite('/404');
+}
+const p = doc.player;
+const name = cleanTextForTeam(p.name ?? `Player ${p.espn_id}`, p.team_id);
+const team = p.team ? cleanTextForTeam(p.team, p.team_id) : null;
+const bio = [
+    p.class, formatHeight(p.height_in), p.weight_lb ? `${Math.round(p.weight_lb)} lb` : null, p.conference,
+    p.transferred ? 'Transferred in' : null,
+].filter(Boolean) as string[];
+const pdfHref = `/pro/file/pro/${doc.season}/players/${p.espn_id}.pdf`;
+const val = doc.value ?? null;
+const r0 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : String(Math.round(v)));
+const ageNote = (v: NonNullable<ProProfile['value']>) =>
+    v.age_basis + (v.age_for_class === null ? '' : `, ${v.age_for_class >= 0 ? '+' : ''}${v.age_for_class} y vs class`);
+const valueTiles: [string, string, string][] = val ? [
+    ['Production (pace)', formatUsd(val.production_usd_pace), val.var === null ? 'this season' : `this season, ${val.var} EPA over a backup`],
+    ['Projected next season', formatUsd(val.projected_usd), `as a starter, 80%: ${formatUsd(val.projected_usd_lo)}–${formatUsd(val.projected_usd_hi)}`],
+    ['Next-season percentile', r0(val.projection.pct), `80%: ${r0(val.projection.lo)}–${r0(val.projection.hi)}, starts ${formatOdds(val.p_start_next)}`],
+    ['Age', val.age === null ? '—' : String(val.age), ageNote(val)],
+    ['Replace via portal', formatOdds(val.replacement.p_land), `${val.replacement.equiv_entrants ?? '—'} equal entrants last cycle, scarcity ${val.scarcity ?? '—'}`],
+] : [];
+const breadcrumbs = [
+    { title: 'Pro', url: '/pro', active: false },
+    { title: name, active: true },
+];
+---
+<GenericPage title={`${p.name ?? 'Player'} | Game on Paper Pro`} subtitle={`${doc.season} Pro profile`} slug={`/pro/players/${id}`}
+    breadcrumbs={breadcrumbs} heading={`${name} ${doc.season} Pro profile`}>
+    <ProNav active="players" />
+    <div class="container">
+        {p.team_id && <DarkModeLogos teamIds={[p.team_id]} />}
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card border rounded mb-3">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                {p.team_id && (
+                                    <img class={`img img-fluid team-logo-${p.team_id}`} width="50px"
+                                        src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague('cfb')}/500/${p.team_id}.png`} alt={`${p.team ?? ''} logo`} />
+                                )}
+                                <div>
+                                    <h2 class="mb-0">{name}</h2>
+                                    <p class="mb-0 text-muted">{[p.position, p.jersey ? `#${p.jersey}` : null, team].filter(Boolean).join(' / ')}</p>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-column flex-sm-row gap-1">
+                                <a class="btn btn-sm btn-outline-secondary text-nowrap" href={`/pro/compare?ids=${p.espn_id}`} id="pro-compare">Compare</a>
+                                <a class="btn btn-sm btn-outline-secondary text-nowrap" href={pdfHref} id="pro-pdf">Download PDF</a>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-column flex-md-row justify-content-md-between gap-2">
+                            <p class="m-0 text-muted text-small" id="pro-bio">{bio.join(' / ')}</p>
+                            <a class="text-small" href={playerPath('cfb', p.espn_id, doc.season)}>Free player page</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        {val && (
+        <Panel id="pro-value" title="Valuation" show={true} class="mb-md-3">
+            <p slot="panel-subtitle" class="m-0 text-muted text-small">
+                {val.unit}, {val.source}{val.stars ? `, ${val.stars}★ recruit` : ''}{val.class_year ? `, class of ${val.class_year}` : ''}.
+                Model estimates at revenue-share rates, not reported deals.
+            </p>
+            <Fragment slot="panel-body">
+                <div class="row g-2 mb-2" id="pro-value-tiles">
+                    {valueTiles.map(([label, v, note]) => (
+                        <div class="col-lg col-md-4 col-6">
+                            <div class="border rounded p-2 h-100">
+                                <div class="text-muted text-small text-uppercase">{label}</div>
+                                <div class="fs-5 fw-bold numeral">{v}</div>
+                                <div class="text-muted text-small">{note}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {val.replacement.routes.length > 0 && (
+                    <p class="text-muted text-small mb-1" id="pro-value-routes">
+                        Other routes to a {val.replacement.target_pct}th-percentile starter: {val.replacement.routes.map((r) =>
+                            `${r.route} ${r.stars}★ by year ${r.by_year + 1}: ${formatOdds(r.hit)} hit, ~${r.signees_needed} signees`).join('; ')}
+                    </p>
+                )}
+                {val.qb_rushing && val.qb_rushing.var !== null && (
+                    <p class="text-muted text-small mb-1" id="pro-value-qbrun">
+                        QB rushing: {val.qb_rushing.var} EPA over expected on his runs this season; {val.qb_rushing.proj_season ?? '—'} projected
+                        over a full season next year. QB rushing carries over about twice as well as a back's, so it is part of his value.
+                    </p>
+                )}
+                {val.rushing && val.rushing.carries >= 20 && (
+                    <p class="text-muted text-small mb-0" id="pro-value-ryoe">
+                        Rushing over expected (play-by-play, no tracking): {val.rushing.ryoe} yds and {val.rushing.repoe} EPA per carry vs down,
+                        distance, field position, opponent and his own line ({val.rushing.carries} carries{val.rushing.repoe_pct === null ? '' : `; ${Math.round(val.rushing.repoe_pct)}th pct among RBs`}).
+                        It describes this season; it barely carries to the next.
+                    </p>
+                )}
+            </Fragment>
+        </Panel>
+        )}
+
+        <Panel id="pro-efficiency" title="Efficiency" show={true} class="mb-md-3">
+            <p slot="panel-subtitle" class="m-0 text-muted text-small">Percentile bands are 80% intervals, ranked among qualifying players at the position.</p>
+            <Fragment slot="panel-body">
+                {doc.metrics.length === 0
+                    ? <p class="m-0 text-muted text-small">No metric with at least 5 plays this season.</p>
+                    : (
+                    <div class="table-responsive" id="pro-efficiency-table">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th class="text-left" colspan="1">Metric</th>
+                                    <th class="text-center" colspan="1">Value</th>
+                                    <th class="text-center" colspan="1">Sample</th>
+                                    <th class="text-center" colspan="1">Percentile band (80%)</th>
+                                    <th class="text-center" colspan="1"><abbr title="Change in the shrunk estimate vs his previous season">vs last season</abbr></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {doc.metrics.map((m) => (
+                                    <tr data-metric={m.key}>
+                                        <td class="text-left text-nowrap" colspan="1">{m.label}</td>
+                                        <td class="text-center numeral" colspan="1">{formatProMetric(m.key, m.value)}</td>
+                                        <td class="text-center numeral text-nowrap" colspan="1">{m.n === null ? '—' : `${roundNumber(m.n, 0, 0)} ${m.n_label}`}</td>
+                                        <td class="text-center" colspan="1"><BandBar lo={m.band_lo} mid={m.band_mid} hi={m.band_hi} /></td>
+                                        <td class="text-center numeral" colspan="1">{formatProDelta(m.key, m.delta_eb)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    )}
+            </Fragment>
+        </Panel>
+
+        {doc.pff.length > 0 && (
+        <Panel id="pro-pff" title="PFF Season" show={true} class="mb-md-3">
+            <p slot="panel-subtitle" class="m-0 text-muted text-small">Grades from PFF, with a percentile among rated {p.pff_position ?? ''} (100+ snaps).</p>
+            <Fragment slot="panel-body">
+                <div class="table-responsive" id="pro-pff-table">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th class="text-left" colspan="1">Figure</th>
+                                <th class="text-center" colspan="1">Value</th>
+                                <th class="text-center" colspan="1">Percentile</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {doc.pff.map((g) => (
+                                <tr>
+                                    <td class="text-left text-nowrap" colspan="1">{g.label}</td>
+                                    <td class="text-center numeral" colspan="1">{formatPffValue(g.key, g.value)}</td>
+                                    <td class="text-center" colspan="1">{g.pct === null ? '—' : <BandBar mid={g.pct} />}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </Fragment>
+        </Panel>
+        )}
+
+        {doc.volume.length > 0 && (
+        <Panel id="pro-volume" title="Volume" show={true} class="mb-md-3">
+            <Fragment slot="panel-body">
+                <div class="table-responsive" id="pro-volume-table">
+                    <table class="table table-sm">
+                        <thead><tr>{doc.volume.map((v) => <th class="text-center" colspan="1">{v.label}</th>)}</tr></thead>
+                        <tbody><tr>{doc.volume.map((v) => <td class="text-center numeral" colspan="1">{roundNumber(v.value, 0, 0)}</td>)}</tr></tbody>
+                    </table>
+                </div>
+            </Fragment>
+        </Panel>
+        )}
+
+        <div class="alert alert-warning mb-3" id="pro-caveats">
+            <p class="fw-bold mb-1">What this page can't tell you</p>
+            <ul class="mb-0">
+                {doc.notes.map((n) => <li data-note={n.key}>{n.text}</li>)}
+                <li>No athletic testing or injury history. Dollar values are model estimates at revenue-share rates, not reported NIL deals.</li>
+            </ul>
+        </div>
+
+        <p class="text-muted text-small" id="pro-provenance">
+            Data {doc.snapshot}, rendered {doc.rendered}. Play-by-play from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>;
+            grades from PFF. How every number is made: <a href="/pro/methodology">methodology</a>.
+        </p>
+    </div>
+</GenericPage>

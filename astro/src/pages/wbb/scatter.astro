@@ -1,0 +1,13 @@
+---
+// src/pages/wbb/scatter.astro
+import NbaScatterRoute from '../../components/routes/NbaScatterRoute.astro';
+import { prepareBasketballScatter } from '../../routes/basketball/scatter';
+import { unavailable } from '../../routes/basketball/cache';
+
+const r = await prepareBasketballScatter(Astro, 'wbb');
+if ('unavailable' in r) {
+    return unavailable('wbb');
+}
+---
+
+<NbaScatterRoute data={r} />

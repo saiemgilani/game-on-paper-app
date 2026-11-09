@@ -1,0 +1,6 @@
+{"schema": 1, "seasons": [2024, 2025, 2026], "rendered": "2026-11-05", "price_season": 2026, "limits": ["Fixture role limit one.", "Fixture role limit two."], "role": "agent", "headlines": ["Agent headline one."],
+ "price": [], "premium": [{"unit": "QB", "name": "Quarterbacks", "movers": 120, "change": -300000.0, "start_rate": 0.45}],
+ "premium_by_season": [], "landing_spots": [{"unit": "QB", "name": "Quarterbacks", "teams": [{"team": "Fixture State", "need": 0.85, "pull": 0.02}, {"team": "Rival Fixture", "need": 0.7, "pull": 0.01}]}],
+ "market_list": [{"espn_id": 2, "name": "Fixture Receiver", "team": "Fixture State", "unit": "WR", "class": "JR", "pct": 71.0, "usd": 900000.0, "p_move": 0.31, "market_usd": 640000.0, "value_at_risk": 280000.0, "proj": 58.2}],
+ "market_price": [{"unit": "QB", "name": "Quarterbacks", "seasons": [2025, 2026], "p50": [250000.0, 290000.0], "p90": [2300000.0, 2650000.0]}],
+ "value_per_dollar": [{"unit": "TE", "name": "Tight ends", "pay": 80000000.0, "value": 18000000.0, "per_dollar": 0.225}], "csc_check": []}

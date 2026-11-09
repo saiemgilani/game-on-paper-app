@@ -13,7 +13,7 @@
 		"SEASON_MODE": "normal"
 	},
 	"secrets": {
-		"required": ["PYTHON_HTTP_TOKEN", "SDV_AUTH_TOKEN", "ADMIN_USER", "ADMIN_PASS", "GOP_INGEST_KEY"]
+		"required": ["PYTHON_HTTP_TOKEN", "SDV_AUTH_TOKEN", "ADMIN_USER", "ADMIN_PASS", "GOP_INGEST_KEY", "PRO_COOKIE_SECRET"]
 	},
 	"main": "./src/worker.ts",
 	"assets": {
@@ -46,6 +46,12 @@
 		{
 			"binding": "ESPN_API_CACHE",
 			"id": "a79130ba55134dfd85727bd6d1467570"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "PRO_BUCKET",
+			"bucket_name": "gop-pro"
 		}
 	],
 	"triggers": {

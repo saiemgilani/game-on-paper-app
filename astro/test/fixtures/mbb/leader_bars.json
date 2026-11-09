@@ -1,0 +1,82 @@
+[
+ {
+  "season": 2019,
+  "mbb_fga": 57.91,
+  "mbb_team_games": 11310,
+  "nba_fga": 89.27,
+  "nba_team_games": 2464,
+  "ratio": 0.6487,
+  "fga": 3,
+  "fg3a": 2
+ },
+ {
+  "season": 2020,
+  "mbb_fga": 57.79,
+  "mbb_team_games": 11052,
+  "nba_fga": 88.87,
+  "nba_team_games": 2122,
+  "ratio": 0.6503,
+  "fga": 3,
+  "fg3a": 2
+ },
+ {
+  "season": 2021,
+  "mbb_fga": 58.09,
+  "mbb_team_games": 8033,
+  "nba_fga": 88.44,
+  "nba_team_games": 2162,
+  "ratio": 0.6568,
+  "fga": 3,
+  "fg3a": 2
+ },
+ {
+  "season": 2022,
+  "mbb_fga": 57.93,
+  "mbb_team_games": 11152,
+  "nba_fga": 88.12,
+  "nba_team_games": 2462,
+  "ratio": 0.6574,
+  "fga": 3,
+  "fg3a": 2
+ },
+ {
+  "season": 2023,
+  "mbb_fga": 57.68,
+  "mbb_team_games": 11678,
+  "nba_fga": 88.33,
+  "nba_team_games": 2462,
+  "ratio": 0.653,
+  "fga": 3,
+  "fg3a": 2
+ },
+ {
+  "season": 2024,
+  "mbb_fga": 58.69,
+  "mbb_team_games": 11724,
+  "nba_fga": 88.95,
+  "nba_team_games": 2464,
+  "ratio": 0.6598,
+  "fga": 3,
+  "fg3a": 2
+ },
+ {
+  "season": 2025,
+  "mbb_fga": 58.42,
+  "mbb_team_games": 11799,
+  "nba_fga": 89.08,
+  "nba_team_games": 2468,
+  "ratio": 0.6558,
+  "fga": 3,
+  "fg3a": 2
+ },
+ {
+  "season": 2026,
+  "mbb_fga": 58.72,
+  "mbb_team_games": 11841,
+  "nba_fga": 88.91,
+  "nba_team_games": 2470,
+  "ratio": 0.6605,
+  "fga": 3,
+  "fg3a": 2
+ }
+]
