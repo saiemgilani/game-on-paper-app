@@ -1,0 +1,7 @@
+{"schema": 1, "seasons": [2024, 2025, 2026], "rendered": "2026-11-05", "price_season": 2026, "limits": ["Fixture role limit one.", "Fixture role limit two."], "role": "player", "player": {"espn_id": 1, "name": "Fixture Player", "team": "Fixture State", "unit": "QB", "class": "JR", "source": "Portal", "stars": 4, "age": 21.2},
+ "headlines": ["Player headline one."],
+ "career": [{"season": 2025, "team": "Fixture State", "unit": "QB", "class": "SO", "pct": 80.4, "usd": 2400000.0, "started": true, "era": "Revenue share"}],
+ "comps": [{"name": "Fixture Comp", "team": "Other Fixture", "season": 2022, "pct": 79.0, "usd": 1900000.0, "pct_next": 84.0, "usd_next": 2300000.0, "team_next": "Other Fixture"}],
+ "projection": {"market_usd": 1800000.0, "proj": 82.4, "proj_lo": 61.0, "proj_hi": 97.5, "p_move": 0.12},
+ "destinations": [{"team": "Rival Fixture", "need": 0.9, "pull": 0.031}],
+ "market": {"pay_usd": 2100000.0, "value_usd": 3200000.0, "surplus": 1100000.0}}

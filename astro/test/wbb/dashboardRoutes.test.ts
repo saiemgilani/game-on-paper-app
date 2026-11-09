@@ -1,0 +1,42 @@
+// astro/test/wbb/dashboardRoutes.test.ts
+// The team and player loaders read the wbb tables and build with the season's women's court.
+import { describe, expect, test, vi } from 'vitest';
+import { courtFor } from '../../src/basketball/config';
+import {
+    SC, conferenceNames, conferences, leagueContext, p26, player2019Games, player2026Games, player2026Seasons, player2026Shots, scShots, scheduleTeams, seasonPlayers, type Season,
+} from './dashboardFixtures';
+
+const lite = ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result }: any) => ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result });
+vi.mock('../../src/resources/nbaShots', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/nbaShots')>()),
+    retrieveSeasonPlayerRows: async (s: number, lg: string) => { if (lg !== 'wbb') throw new Error(lg); return seasonPlayers(s as Season); },
+    retrieveLeagueContextRows: async (s: number, lg: string) => { if (lg !== 'wbb') throw new Error(lg); return leagueContext(s as Season); },
+    // checks its league like its siblings (self-review on #344): a loader sending the shots read to mbb must fail here
+    retrieveTeamShots: async (s: number, t: number, lg: string) => { if (lg !== 'wbb') throw new Error(lg); return t === SC ? scShots(s as Season).map(lite) : []; },
+    retrievePlayerShots: async () => player2026Shots(),
+    retrievePlayerGameRows: async (s: number) => (s === 2026 ? player2026Games() : player2019Games()),
+    retrievePlayerSeasons: async () => [...new Set(player2026Seasons().map((r) => Number(r.season)))].sort((a, b) => a - b),
+    retrieveCoverageRows: async () => [],
+    retrieveConferenceRows: async (s: number) => ({ teams: conferences(s as Season), groups: conferenceNames(s as Season) }), // D43: membership by season
+    retrieveScheduleTeamRows: async (s: number) => scheduleTeams(s as Season),                                                  // D47: >= 1 game
+}));
+const fakeAstro = (path: string, params: Record<string, string>) =>
+    ({ params, url: new URL(`https://gameonpaper.com${path}`), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } }) as any;
+
+describe("the WBB dashboard loaders use the women's court", () => {
+    test('team page, 2019, 2022 and 2026: every placed shot, the season court', async () => {
+        const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
+        for (const season of [2019, 2022, 2026] as const) {
+            const r: any = await prepareBasketballTeam(fakeAstro(`/wbb/team/${SC}?season=${season}`, { id: String(SC) }), 'wbb');
+            expect(r.dashboard.hex.court, String(season)).toBe(courtFor('wbb', season));
+            expect(r.line.attempts, String(season)).toBe(scShots(season).length); // attributed or not
+        }
+    });
+    test('player page, 2026: the court, seasons from 2019, the pronoun', async () => {
+        const { prepareBasketballPlayer } = await import('../../src/routes/basketball/player');
+        const id = p26().person_id;
+        const r: any = await prepareBasketballPlayer(fakeAstro(`/wbb/players/${id}`, { id: String(id) }), 'wbb');
+        expect(r.explorer.court).toBe(courtFor('wbb', 2026));
+        expect(r.hisSeasons.every((s: number) => s >= 2019)).toBe(true);
+    });
+});
