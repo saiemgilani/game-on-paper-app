@@ -4,7 +4,7 @@
     // filter and a zoom reset around the league scatter.
     import { randomPair, SCATTER_DEFAULT, SCATTER_INFO, SCATTER_METRICS, type ScatterMetric, type ScatterPoint } from '../../nba/scatterMetrics';
     import ScatterChart from './charts/ScatterChart.svelte';
-    let { points, subject }: { points: ScatterPoint[]; subject: string } = $props();
+    let { points, subject, highlight = 'Nets', minFga = 100 }: { points: ScatterPoint[]; subject: string; highlight?: string | null; minFga?: number } = $props();
     let x = $state<ScatterMetric>(SCATTER_DEFAULT.x);
     let y = $state<ScatterMetric>(SCATTER_DEFAULT.y);
     let faces = $state(false);
@@ -12,6 +12,7 @@
     let resetKey = $state(0);
     const random = () => { const [a, b] = randomPair(); x = a; y = b; };
     const title = $derived(`${subject}: ${SCATTER_INFO[y].label} against ${SCATTER_INFO[x].label}`);
+    // ponytail: with no highlight the bold span below is empty (invisible); an {#if} would add hydration markers to the NBA's HTML
 </script>
 
 <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
@@ -38,5 +39,5 @@
         {#each points as p (p.person_id)}<option value={p.name}></option>{/each}
     </datalist>
 </label>
-<ScatterChart {points} {x} {y} {faces} {filter} {resetKey} {title} />
-<p class="small text-muted mt-2">Players with 100+ FGA. <span class="fw-bold">Nets</span> with names, others in their team colours; dashed lines are the league medians. Scroll the wheel or pinch to zoom; drag (two fingers on a touch screen) to pan. Season stats where the release has them, shots otherwise.</p>
+<ScatterChart {points} {x} {y} {faces} {filter} {resetKey} {title} {highlight} {minFga} />
+<p class="small text-muted mt-2">Players with {minFga}+ FGA. <span class="fw-bold">{highlight ?? ''}</span>{highlight ? ' with names, others' : 'Each'} in their team colours; dashed lines are the league medians. Scroll the wheel or pinch to zoom; drag (two fingers on a touch screen) to pan. Season stats where the release has them, shots otherwise.</p>

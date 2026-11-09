@@ -46,6 +46,18 @@ export const FLAGS: Record<string, FeatureState> = {
     // entry) for up to 6 h + 6 h stale -- purge, or confirm the deploy clears the cache. Before the
     // flip, `?view=live&flags=nba:on` previews the Header entry (isFeaturePublic honours the override).
     'nba': 'preview',
+    // The whole WNBA surface (pages/wnba/**: the teams-index landing, the scoreboard, game pages and the shooting pages; its
+    // Header menu and league-switch entry), gated in middleware like 'nba'. Promote to 'on' when the design owner signs off,
+    // in a one-line commit as for 'nba': the sitemap then lists /wnba, the Header's pages and the team pages.
+    'wnba': 'preview',
+    // Men's college basketball (pages/mbb/**: the teams-index landing, the scoreboard, game pages and the shooting pages;
+    // its Header menu and league-switch entry), gated in middleware like 'nba'. Promote to 'on' when the design owner signs
+    // off, in a one-line commit: the sitemap then lists /mbb, the Header's pages and the 365 member team pages.
+    'mbb': 'preview',
+    // Women's college basketball (pages/wbb/**: the teams-index landing, the scoreboard, game pages and the shooting pages;
+    // its Header menu and league-switch entry), gated in middleware like 'nba'. Promote to 'on' when the design owner signs
+    // off, in a one-line commit: the sitemap then lists /wbb, the Header's pages and the season's 363 team pages (D38).
+    'wbb': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
