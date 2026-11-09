@@ -28,7 +28,12 @@ export interface GarbageReads {
 
 /** The log for one ESPN game; no teams and no rows when it is not mapped (the pros' crosswalk has no row). */
 export async function retrieveGarbageTime(league: BasketballLeague, season: number, espnGameId: string, homeId: number, awayId: number): Promise<GarbageReads> {
-    const read = (table: string, q: Record<string, string>) => retrieveRowsFrom<Record<string, any>>(leagueSource(league), table, { season: String(season), ...q, limit: POSSESSION_LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS);
+    const read = async (table: string, q: Record<string, string>) => {
+        const rows = await retrieveRowsFrom<Record<string, any>>(leagueSource(league), table, { season: String(season), ...q, limit: POSSESSION_LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS);
+        // a log cut at the cap would split part of the game: a failed read, never a short one
+        if (rows.length >= Number(POSSESSION_LIMIT)) throw new Error(`${table}: ${rows.length} rows, at the ${POSSESSION_LIMIT} cap`);
+        return rows;
+    };
     if (PRO_LEAGUES.includes(league)) {
         const x = await retrieveProGame(league, season, espnGameId);
         return x ? { teams: x.teams, rows: await read('possessions', { game_id: x.gameId }) } : { teams: null, rows: [] };

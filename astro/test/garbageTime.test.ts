@@ -176,10 +176,12 @@ describe('retrieveGarbageTime', () => {
         expect(api.calls[0].query.select.split(',')).toContain('is_garbage_time');
         expect(r.teams).toEqual({ home: 218, away: 45 });
     });
-    test('an unmapped pro game is empty after one read; a failed read rejects', async () => {
+    test('an unmapped pro game is empty after one read; a failed or capped read rejects', async () => {
         api.crosswalk = [];
         expect(await retrieveGarbageTime('wnba', 2026, '1', 1, 2)).toEqual({ teams: null, rows: [] });
         expect(api.calls).toHaveLength(1);
+        api.rows = Array.from({ length: 400 }, () => G.wbb.possessions[0]);
+        await expect(retrieveGarbageTime('wbb', 2026, '401824983', 218, 45)).rejects.toThrow('cap'); // a cut log is a failed read
         api.fail = true;
         await expect(retrieveGarbageTime('wbb', 2026, '401824983', 218, 45)).rejects.toThrow('down');
     });
