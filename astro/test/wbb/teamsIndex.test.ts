@@ -10,6 +10,13 @@ import { teamLinesFromRows, teamsFromSeasonRows } from '../../src/nba/tables';
 import { WBB_CONFERENCES } from '../../src/nba/data/wbbTeams';
 import { SC, conferenceNames, conferences, coverage, scheduleTeams, seasonPlayers, unlinkedPrograms } from './dashboardFixtures';
 
+// No live Data API (test/helpers/networkGuard.ts): the reads left unmocked, the /v1/meta
+// ingest stamp and the unlinked programs' shot_rows among them, get an empty answer.
+vi.mock('../../src/utils/telemetry', async (orig) => ({
+    ...(await orig<typeof import('../../src/utils/telemetry')>()),
+    wrappedFetch: async () => new Response('{"data":[]}', { status: 200 }),
+}));
+
 const members = (season: 2019 | 2026) => withSeasonMembers(teamsFromSeasonRows(seasonPlayers(season), season, 'wbb'), conferences(season), scheduleTeams(season), season, 'wbb');
 const ids = (season: 2019 | 2026) => new Set(conferences(season).map((r) => Number(r.team_id)));
 let container: AstroContainer;

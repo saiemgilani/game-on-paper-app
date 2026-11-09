@@ -16,6 +16,12 @@ const eventsOf = (league: string) => [...fixture[league].schedule.home_id.data, 
 // `override`, when set, is what the splits read returns
 const feed: { override: any | null; calls: any[] } = { override: null, calls: [] };
 
+// No live Data API (test/helpers/networkGuard.ts): the reads left unmocked, the /v1/meta
+// ingest stamp among them, get an empty answer and stay on their unversioned keys.
+vi.mock('../src/utils/telemetry', async (orig) => ({
+    ...(await orig<typeof import('../src/utils/telemetry')>()),
+    wrappedFetch: async () => new Response('{"data":[]}', { status: 200 }),
+}));
 vi.mock('../src/resources/espn', async (orig) => ({
     ...(await orig<typeof import('../src/resources/espn')>()),
     retrieveTeamInformation: async (id: string, league = 'cfb') =>

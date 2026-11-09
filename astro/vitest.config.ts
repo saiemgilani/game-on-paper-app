@@ -14,7 +14,7 @@ for (const k of ['PYTHON_HTTP_TOKEN', 'SDV_AUTH_TOKEN', 'ADMIN_USER', 'ADMIN_PAS
 export default getViteConfig(
     {
         resolve: { conditions: ['browser'], alias: { 'cloudflare:workers': fileURLToPath(new URL('./test/stubs/cloudflare-workers.ts', import.meta.url)) } },
-        test: { include: ['test/**/*.test.ts'] },
+        test: { include: ['test/**/*.test.ts'], setupFiles: ['test/helpers/networkGuard.ts'] },
     },
     { configFile: false, output: 'server', integrations: [svelte()], trailingSlash: 'ignore' },
 );
