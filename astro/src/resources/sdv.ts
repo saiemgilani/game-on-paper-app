@@ -617,10 +617,12 @@ export async function sdvIngestStamp(league: League, table: string, fresh = fals
     return ingestStamp(LEAGUES[league].sdvSchema, table, fresh);
 }
 
-/** The page purge cron's next target across every league's tables (utils/pagePurge.ts),
- *  from /v1/meta read past the cached copies. */
+/** The page purge cron's next target across the football tables (utils/pagePurge.ts),
+ *  from /v1/meta read past the cached copies. Only cfb and nfl: the purged tags are the
+ *  football summary pages', and the basketball leagues' pages carry their own league tag
+ *  and a 6 h TTL, so their ingests must not clear the football pages. */
 export async function sdvPurgeTarget(purgedFor: IngestStamps, now: number): Promise<IngestStamps | undefined> {
-    return purgeTarget(await fetchSDVDatasets(true), Object.values(LEAGUES).map((l) => l.sdvSchema), purgedFor, now);
+    return purgeTarget(await fetchSDVDatasets(true), [LEAGUES.cfb.sdvSchema, LEAGUES.nfl.sdvSchema], purgedFor, now);
 }
 
 /** When `<schema>.<table>` last ingested, per /v1/meta; see sdvIngestStamp. */
