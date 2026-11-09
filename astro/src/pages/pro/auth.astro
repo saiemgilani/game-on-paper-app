@@ -1,0 +1,74 @@
+---
+/**
+ * The magic link's landing: /pro/auth?t=<token>. GET only shows a button; the
+ * token is spent by the POST it submits. Email scanners and link previewers fetch
+ * a link with GET before the reader clicks it, and a GET that spent the token
+ * left the real click on "that link did not work". A live token is spent (one
+ * use, strictly: resources/pro.ts redeemLoginToken), the signed gop_pro cookie is
+ * set, and the viewer lands on /pro; anything else goes back to the sign-in form.
+ * Astro's origin check rejects a cross-site POST before this runs, and the
+ * middleware keeps this path no-store.
+ *
+ * The GET also gives the browser a random `__Host-gop_pro_auth` nonce cookie (kept if it
+ * already has one; no server state). The POST spends the token for that nonce, so
+ * if its response is lost, the same browser can press Sign in again, or reopen the
+ * link, and finish within PRO_AUTH_RETRY_S. A different browser cannot.
+ */
+import { getSecret } from 'astro:env/server';
+import GenericPage from '../../layouts/GenericPage.astro';
+import ProNav from '../../components/pro/ProNav.astro';
+import { readCookie, sessionCookie } from '../../utils/preview';
+import { mintProCookie, PRO_AUTH_NONCE_COOKIE, PRO_COOKIE, PRO_COOKIE_TTL_S, PRO_TOKEN_TTL_S } from '../../utils/pro';
+import { redeemLoginToken } from '../../resources/pro';
+
+if (Astro.request.method === 'POST') {
+    let token: string | null = null;
+    try { token = String((await Astro.request.formData()).get('t') ?? ''); } catch { /* empty form */ }
+    const secret = getSecret('PRO_COOKIE_SECRET');
+    const nonce = readCookie(Astro.request.headers.get('cookie'), PRO_AUTH_NONCE_COOKIE);
+    const email = secret ? await redeemLoginToken(token, nonce) : null;
+    if (!email || !secret) {
+        return new Response(null, { status: 303, headers: { Location: '/pro/login?err=1', 'Cache-Control': 'no-store' } });
+    }
+    return new Response(null, {
+        status: 303,
+        headers: {
+            Location: '/pro',
+            'Set-Cookie': sessionCookie(PRO_COOKIE, await mintProCookie(email, secret), PRO_COOKIE_TTL_S, Astro.request.url),
+            'Cache-Control': 'no-store',
+        },
+    });
+}
+const token = Astro.url.searchParams.get('t') ?? '';
+// This page's URL carries the token, and the form's POST would send it as its Referer,
+// which request_log records (middleware emit); the path alone is logged for the GET. Analytics
+// would send the whole URL to plausible.io, so the page leaves it out.
+Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+if (token && !/^[0-9a-f]{64}$/.test(readCookie(Astro.request.headers.get('cookie'), PRO_AUTH_NONCE_COOKIE) ?? '')) {
+    const nonce = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, '0')).join('');
+    // Lax, not Strict: the GET arrives from an email client, a cross-site navigation. The
+    // __Host- name needs Secure and Path=/ (browsers accept Secure on http://localhost too)
+    Astro.response.headers.append('Set-Cookie',
+        `${PRO_AUTH_NONCE_COOKIE}=${nonce}; Path=/; Max-Age=${PRO_TOKEN_TTL_S}; HttpOnly; Secure; SameSite=Lax`);
+}
+---
+<GenericPage title="Sign in | Game on Paper Pro" subtitle="Sign in to Game on Paper Pro" slug="/pro/auth" heading="Sign in to Game on Paper Pro" noAnalytics
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Sign in', active: true }]}>
+    <ProNav />
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-lg-6 col-12">
+                <h1 class="fs-3">Sign in</h1>
+                {token
+                    ? (
+                    <form method="post" action="/pro/auth" id="pro-auth-form">
+                        <input type="hidden" name="t" value={token} />
+                        <p>Finish signing in to Game on Paper Pro on this device.</p>
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">Sign in</button>
+                    </form>
+                    )
+                    : <p>That link is incomplete. <a href="/pro/login">Get a new sign-in link</a>.</p>}
+            </div>
+        </div>
+    </div>
+</GenericPage>

@@ -1,0 +1,209 @@
+---
+/**
+ * The Portal Board (plan 3.2): `pro/<season>/portal/board.json`, filtered by
+ * position and metric band and sorted by any column, all through the query string
+ * (?pos=&metric=&min=&sort=) so it needs no script, works on a phone and every view
+ * is a link. Rows with a Pro profile link to it. "Save" keeps a row on the viewer's
+ * own board (KV pro:board:<email>), and the filters can be saved for the morning
+ * digest (pro:filters:<email>); both post to /pro/board.
+ */
+import GenericPage from '../../layouts/GenericPage.astro';
+import Panel from '../../layouts/panel/GenericPanel.astro';
+import ProNav from '../../components/pro/ProNav.astro';
+import { roundNumber } from '../../utils/misc';
+import { formatOdds, formatUsd } from '../../utils/pro';
+import {
+    BOARD_SORTS, describeFilters, entrantKey, filterBoard, parseBoardFilters, PRO_METRIC_LABELS, sortBoard,
+    type BoardEntrant, type BoardSort,
+} from '../../utils/pro';
+import { latestBoard, PRO_SEASON, readBoard, readFilters } from '../../resources/pro';
+
+// Defense in depth: the middleware already sent anyone without a live entitlement to
+// /pricing; this page refuses to render for them on its own too.
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
+const viewer = Astro.locals.pro!;
+// Between windows this cycle has no board yet, so the last cycle's shows, labelled.
+const latest = await latestBoard();
+const board = latest?.board ?? null;
+const boardSeason = latest?.season ?? PRO_SEASON;
+const cycle = typeof board?.window === 'string' ? board.window : String(boardSeason);
+const params = Astro.url.searchParams;
+const f = parseBoardFilters(params);
+const sortParam = params.get('sort');
+const sort = (BOARD_SORTS as readonly string[]).includes(sortParam ?? '') ? sortParam as BoardSort : undefined;
+const all = board?.entrants ?? [];
+const rows = sortBoard(filterBoard(all, f), sort, f.metric);
+const [saved, savedFilters] = await Promise.all([readBoard(viewer.email), readFilters(viewer.email)]);
+const savedSet = new Set(saved);
+const mine = all.filter((e) => savedSet.has(entrantKey(e)));
+const positions = [...new Set(all.map((e) => e.position))].sort();
+const here = Astro.url.pathname + Astro.url.search;
+
+/** This board's URL with one sort applied, the filters kept. */
+const sortHref = (s: BoardSort) => {
+    const next = new URLSearchParams(params);
+    next.set('sort', s);
+    return `/pro/portal?${next}`;
+};
+/** The band the column shows: the chosen metric's, or the row's best when none is chosen. */
+const bandOf = (e: BoardEntrant): { v: number; label: string } | null => {
+    if (f.metric) return e.band_mid?.[f.metric] === undefined ? null : { v: e.band_mid[f.metric], label: PRO_METRIC_LABELS[f.metric] };
+    const best = Object.entries(e.band_mid ?? {}).sort((a, b) => b[1] - a[1])[0];
+    return best ? { v: best[1], label: PRO_METRIC_LABELS[best[0]] ?? best[0] } : null;
+};
+const showRealized = all.some((e) => e.value?.realized);
+const r0 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : String(Math.round(v)));
+const columns: [BoardSort | null, string, string][] = [
+    ['name', 'Player', 'text-left'],
+    ['position', 'Pos', 'text-center'],
+    ['from', 'From', 'text-left'],
+    ['entered', 'Entered', 'text-center d-none d-md-table-cell'],
+    ['stars', 'Stars', 'text-center d-none d-md-table-cell'],
+    [null, 'Status', 'text-center d-none d-md-table-cell'],
+    ['band', f.metric ? 'Band' : 'Best band', 'text-center'],
+    ['pff', 'PFF grade', 'text-center'],
+    ['prod', 'Prod. $', 'text-center d-none d-md-table-cell'],
+    ['next', 'Next yr', 'text-center'],
+    ['projusd', 'Proj. $', 'text-center'],
+    ...(showRealized ? [[null, 'Next season, actual', 'text-center d-none d-lg-table-cell'] as [null, string, string]] : []),
+    [null, '', 'text-center'],
+];
+---
+<GenericPage title="Portal Board | Game on Paper Pro" subtitle={`${cycle} transfer portal board`} slug="/pro/portal"
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Portal Board', active: true }]} heading="Transfer portal board">
+    <ProNav active="portal" />
+    <div class="container">
+        {!board
+            ? <p class="text-muted" id="pro-board-unavailable">The board is unavailable right now.</p>
+            : (
+        <Fragment>
+        <Panel id="pro-board" title="Portal Board" show={true} class="mb-3">
+            <p slot="panel-subtitle" class="m-0 text-muted text-small" id="pro-board-cycle">{cycle} cycle{boardSeason < PRO_SEASON ? ` (the ${PRO_SEASON} window has not opened yet)` : ''}. Band is the percentile band's midpoint, among qualifiers at the position. Next yr: projected percentile with its 80% range (wider for players who change teams). Dollar values are model estimates at revenue-share rates, not deals. Updated {board.rendered}.</p>
+            <Fragment slot="panel-body">
+                <form method="get" action="/pro/portal" class="d-flex flex-wrap align-items-end gap-2 mb-3" id="pro-board-filters">
+                    <div>
+                        <label class="form-label text-muted text-small mb-0" for="board-pos">Position</label>
+                        <select class="form-select form-select-sm w-auto" id="board-pos" name="pos">
+                            <option value="">All</option>
+                            {positions.map((pos) => <option value={pos} selected={f.pos === pos}>{pos}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label text-muted text-small mb-0" for="board-metric">Band metric</label>
+                        <select class="form-select form-select-sm w-auto" id="board-metric" name="metric">
+                            <option value="">Best of any</option>
+                            {Object.entries(PRO_METRIC_LABELS).map(([k, label]) => <option value={k} selected={f.metric === k}>{label}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label text-muted text-small mb-0" for="board-min">Band at least</label>
+                        <input class="form-control form-control-sm" style="width: 6em" type="number" min="0" max="100" id="board-min" name="min" value={f.min ?? ''} />
+                    </div>
+                    {sort && <input type="hidden" name="sort" value={sort} />}
+                    <button class="btn btn-sm btn-outline-secondary" type="submit">Apply</button>
+                    <a class="btn btn-sm btn-outline-secondary" href={`/pro/file/pro/${boardSeason}/portal/board.csv`} id="pro-board-csv">Download CSV</a>
+                </form>
+                {board.scarcity && board.scarcity.length > 0 && (
+                    <div class="d-flex flex-wrap gap-1 mb-2 align-items-center" id="pro-board-scarcity">
+                        <span class="text-muted text-small me-1"><abbr title="P4 starting jobs opening (final-season starters and starters in the portal) per starter-caliber entrant this cycle; 1.0 = the average position">Scarcity this cycle</abbr>:</span>
+                        {board.scarcity.map((s) => (
+                            <span class:list={['badge', (s.scarcity ?? 0) > 1 ? 'text-bg-danger' : 'text-bg-light border']}>{s.unit} {s.scarcity === null ? '—' : s.scarcity.toFixed(2)}</span>
+                        ))}
+                    </div>
+                )}
+                <div class="table-responsive" id="pro-board-table">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                {columns.map(([s, title, cls]) => (
+                                    <th class={cls} colspan="1">{s ? <a href={sortHref(s)}>{title}</a> : title}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((e) => {
+                                const band = bandOf(e);
+                                const key = entrantKey(e);
+                                return (
+                                <tr data-key={key}>
+                                    <td class="text-left" colspan="1">
+                                        {e.has_profile && e.espn_id != null
+                                            ? <a href={`/pro/players/${e.espn_id}`}><strong>{e.name}</strong></a>
+                                            : <strong>{e.name}</strong>}
+                                    </td>
+                                    <td class="text-center" colspan="1">{e.position}</td>
+                                    <td class="text-left" colspan="1">{e.from_team}</td>
+                                    <td class="text-center numeral d-none d-md-table-cell" colspan="1">{e.entered}</td>
+                                    <td class="text-center numeral d-none d-md-table-cell" colspan="1">{e.stars ?? '—'}</td>
+                                    <td class="text-center d-none d-md-table-cell" colspan="1">{e.status}</td>
+                                    <td class="text-center numeral" colspan="1">{band ? <abbr title={band.label}>{roundNumber(band.v, 0, 0)}</abbr> : '—'}</td>
+                                    <td class="text-center numeral" colspan="1">{e.pff_grade == null ? '—' : roundNumber(e.pff_grade, 1, 1)}</td>
+                                    <td class="text-center numeral d-none d-md-table-cell" colspan="1">{formatUsd(e.value?.prod_usd)}</td>
+                                    <td class="text-center numeral text-nowrap" colspan="1">{e.value ? <span>{r0(e.value.proj)} <span class="text-muted text-small">({r0(e.value.proj_lo)}–{r0(e.value.proj_hi)})</span></span> : '—'}</td>
+                                    <td class="text-center numeral" colspan="1">{e.value ? <abbr title={e.value.at_destination ? 'Projected at his destination' : 'Projected at an average destination'}>{formatUsd(e.value.proj_usd)}</abbr> : '—'}</td>
+                                    {showRealized && <td class="text-center numeral text-nowrap d-none d-lg-table-cell" colspan="1">{e.value?.realized ? <span>{r0(e.value.realized.pct)} / {formatUsd(e.value.realized.prod_usd)}</span> : '—'}</td>}
+                                    <td class="text-center" colspan="1">
+                                        <form method="post" action="/pro/board" class="mb-0">
+                                            <input type="hidden" name="key" value={key} />
+                                            <input type="hidden" name="back" value={here} />
+                                            <button class="btn btn-sm btn-outline-secondary text-nowrap" type="submit" name="action"
+                                                value={savedSet.has(key) ? 'remove' : 'add'}>{savedSet.has(key) ? 'Saved' : 'Save'}</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+                {rows.length === 0 && <p class="m-0 text-muted text-small">No entrant matches these filters.</p>}
+                <form method="post" action="/pro/board" class="d-flex flex-wrap align-items-center gap-2 mt-2" id="pro-digest-filters">
+                    <input type="hidden" name="back" value={here} />
+                    {f.pos && <input type="hidden" name="pos" value={f.pos} />}
+                    {f.metric && <input type="hidden" name="metric" value={f.metric} />}
+                    {f.min !== undefined && <input type="hidden" name="min" value={String(f.min)} />}
+                    <span class="text-muted text-small">
+                        Morning email: {savedFilters ? describeFilters(savedFilters) : 'off'}
+                    </span>
+                    <button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="filters">Email me new entrants matching these filters</button>
+                    {savedFilters && <button class="btn btn-sm btn-outline-secondary" type="submit" name="action" value="clear-filters">Stop emails</button>}
+                </form>
+            </Fragment>
+        </Panel>
+
+        {board.check && board.check.length > 0 && (
+        <Panel id="pro-board-check" title="How this cycle's projections held up" show={true} class="mb-md-3">
+            <p slot="panel-subtitle" class="m-0 text-muted text-small">Projections made when the window opened vs the percentile each entrant posted the next season. The 80% range should hold about 80%.</p>
+            <Fragment slot="panel-body">
+                <div class="table-responsive">
+                    <table class="table table-sm" id="pro-board-check-table">
+                        <thead><tr><th class="text-left">Unit</th><th class="text-center">Entrants</th><th class="text-center">Error (RMSE)</th><th class="text-center">"Same as last year" error</th><th class="text-center">Inside 80% range</th><th class="text-left">Model</th></tr></thead>
+                        <tbody>{board.check.map((c) => (
+                            <tr><td class="text-left">{c.unit}</td><td class="text-center numeral">{c.n}</td><td class="text-center numeral">{c.rmse}</td><td class="text-center numeral">{c.rmse_same}</td><td class="text-center numeral">{formatOdds(c.cover80)}</td><td class="text-left text-small">{c.variant}</td></tr>
+                        ))}</tbody>
+                    </table>
+                </div>
+            </Fragment>
+        </Panel>
+        )}
+
+        <Panel id="pro-my-board" title="My Board" show={true} class="mb-md-3">
+            <Fragment slot="panel-body">
+                {mine.length === 0
+                    ? <p class="m-0 text-muted text-small">Nothing saved yet. Save a row above to keep it here.</p>
+                    : (
+                    <ul class="mb-0" id="pro-my-board-list">
+                        {mine.map((e) => (
+                            <li>
+                                {e.has_profile && e.espn_id != null ? <a href={`/pro/players/${e.espn_id}`}>{e.name}</a> : e.name}: {e.position}, {e.from_team}, {e.status}
+                            </li>
+                        ))}
+                    </ul>
+                    )}
+            </Fragment>
+        </Panel>
+        </Fragment>
+            )}
+        <p class="text-muted text-small">Derived figures only; player values are on each profile. How every number is made: <a href="/pro/methodology">methodology</a>.</p>
+    </div>
+</GenericPage>

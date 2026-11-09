@@ -1,0 +1,16 @@
+---
+// src/pages/wnba/team/[id].astro
+import NbaTeamRoute from '../../../components/routes/NbaTeamRoute.astro';
+import { prepareBasketballTeam } from '../../../routes/basketball/team';
+import { unavailable } from '../../../routes/basketball/cache';
+
+const r = await prepareBasketballTeam(Astro, 'wnba');
+if ('unavailable' in r) {
+    return unavailable('wnba');
+}
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+---
+
+<NbaTeamRoute data={r} />
