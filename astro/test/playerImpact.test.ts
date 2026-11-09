@@ -58,7 +58,7 @@ import { NBA_READ_TIMEOUT_MS } from '../src/resources/nbaGames';
 import { leagueSource } from '../src/utils/league';
 import { prepareNbaPlayer } from '../src/routes/nba/player';
 import { FLAGS } from '../src/utils/features';
-import { impactPanel } from '../src/utils/playerImpact';
+import { COLLEGE_IMPACT, impactPanel, impactShown } from '../src/utils/playerImpact';
 import { signed1 } from '../src/utils/shotQuality';
 
 const PID = Number(Object.keys(byPlayer)[0]); // 1629008, Michael Porter Jr., a Net in seasonPlayerRows()
@@ -88,28 +88,22 @@ describe('the captures', () => {
             expect(rows).toHaveLength(1);
             const [r] = rows;
             expect(r.season_type).toBe('Regular Season');
-            for (const [o, d, n] of [['o_rapm', 'd_rapm', 'rapm'], ['ospm', 'dspm', 'spm'], ['obpm', 'dbpm', 'bpm']]) expect(r[o] + r[d]).toBeCloseTo(r[n], 9);
+            for (const [o, d, n] of [['o_rapm', 'd_rapm', 'rapm'], ['o_adj_rapm', 'd_adj_rapm', 'adj_rapm'], ['ospm', 'dspm', 'spm'], ['obpm', 'dbpm', 'bpm']]) expect(r[o] + r[d]).toBeCloseTo(r[n], 9);
             expect(r.off_poss).toBeGreaterThan(1000);
         }
         expect(NBA.player_id).toBe(PID);
         for (const rows of [PI.mbbTeam, PI.wbbTeam]) for (const r of rows) expect(r.box_obpm + r.box_dbpm).toBeCloseTo(r.box_bpm, 9);
     });
-    test("the producer's split of adjusted RAPM is off-centre, which is why the panel shows it net only", () => {
-        // o_adj_rapm + d_adj_rapm = adj_rapm, but the halves sit about +11 / -11 from zero (Porter Jr. 2026: +16.9 / -8.9)
-        expect(NBA.o_adj_rapm + NBA.d_adj_rapm).toBeCloseTo(NBA.adj_rapm, 9);
-        expect(NBA.o_adj_rapm).toBeGreaterThan(8);
-        expect(NBA.d_adj_rapm).toBeLessThan(-5);
-    });
 });
 
 describe('impactPanel', () => {
-    test("NBA/WNBA: RAPM, Adj. RAPM (net only), SPM, BPM, BOBAN, WAR, each the producer's column; no rank columns today", () => {
+    test("NBA/WNBA: RAPM, Adj. RAPM, SPM, BPM (each Off/Def/Net), BOBAN, WAR, each the producer's column; no rank columns today", () => {
         for (const rows of [PI.nba, PI.wnba]) {
             const p = impactPanel(rows, false)!;
             const [r] = rows;
             expect(p.measures.map((m) => m.label)).toEqual(['RAPM', 'Adj. RAPM', 'SPM', 'BPM', 'BOBAN', 'WAR']);
             expect(p.measures.map((m) => [m.off?.value ?? null, m.def?.value ?? null, m.net.value])).toEqual([
-                [r.o_rapm, r.d_rapm, r.rapm], [null, null, r.adj_rapm], [r.ospm, r.dspm, r.spm], [r.obpm, r.dbpm, r.bpm],
+                [r.o_rapm, r.d_rapm, r.rapm], [r.o_adj_rapm, r.d_adj_rapm, r.adj_rapm], [r.ospm, r.dspm, r.spm], [r.obpm, r.dbpm, r.bpm],
                 [null, null, r.boban_filtered_skill], [null, null, r.war],
             ]);
             expect(p.ranked).toBe(false);
@@ -131,7 +125,12 @@ describe('impactPanel', () => {
         expect(p.measures[0].net).toEqual({ col: 'rapm', value: NBA.rapm, rank: 3, pct: 98.4 });
         expect(p.measures[0].off!.rank).toBeNull();
     });
-    test('college: box BPM and minutes from player_value; the row with the most minutes when there are two', () => {
+    test("college's panel is hidden until BB-D16's ESPN↔NCAA crosswalk (Akshay on #408); the pros always show", () => {
+        expect(COLLEGE_IMPACT).toBe(false);
+        expect(impactShown(true)).toBe(false);
+        expect(impactShown(false)).toBe(true);
+    });
+    test('college (kept for COLLEGE_IMPACT): box BPM and minutes from player_value; the row with the most minutes when there are two', () => {
         for (const rows of [PI.mbbTeam, PI.wbbTeam]) {
             const me = top(rows);
             const p = impactPanel([{ ...me, team_id: '1', min: 1 }, me], true)!;
@@ -190,8 +189,12 @@ describe('the panel', () => {
         const html = await render(PI.nba, 'nba');
         for (const id of ['rapm', 'adj_rapm', 'spm', 'bpm', 'boban_filtered_skill', 'war']) expect(html).toContain(`id="impact-${id}"`);
         expect(html).toContain(`${NBA.off_poss.toLocaleString('en-US')} offensive and ${NBA.def_poss.toLocaleString('en-US')} defensive possessions`);
-        for (const c of ['o_rapm', 'd_rapm', 'rapm', 'adj_rapm', 'war']) expect(html).toContain(`>${signed1(NBA[c])}</td>`);
-        expect(html).not.toContain(`>${signed1(NBA.o_adj_rapm)}<`);
+        // adjusted RAPM shows its trio like RAPM's (Akshay on #408), and the caption no longer says "net only"
+        for (const c of ['o_rapm', 'd_rapm', 'rapm', 'o_adj_rapm', 'd_adj_rapm', 'adj_rapm', 'war']) expect(html).toContain(`>${signed1(NBA[c])}</td>`);
+        expect(html).not.toContain('net only');
+        // full width, like the page's other sections (Akshay on #408: the half-width table left the right half empty)
+        expect(html).toContain('<div class="table-responsive">');
+        expect(html).not.toContain('col-lg-6');
         expect(html).toContain(`± ${NBA.boban_projected_sd.toFixed(1)}`);
         expect(html).not.toContain('>Rank<');
         expect(html).not.toContain('hulk-bg-level');
@@ -211,7 +214,7 @@ describe('the panel', () => {
         expect(html).toContain(' Shading by percentile.');
         expect(html).not.toContain('Rank among');
     });
-    test('college: box BPM only, with minutes', async () => {
+    test('college (kept for COLLEGE_IMPACT): box BPM only, with minutes', async () => {
         const me = top(PI.mbbTeam);
         const html = await render([me], 'mbb');
         expect(html.match(/id="impact-/g)).toHaveLength(3); // the sample line, the table and its one row

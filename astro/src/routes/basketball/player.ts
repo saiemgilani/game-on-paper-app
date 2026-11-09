@@ -19,6 +19,7 @@ import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeason
 import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/playerImpact';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { isFeatureEnabled } from '../../utils/features';
+import { impactShown } from '../../utils/playerImpact';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
@@ -124,7 +125,8 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     }
 
     // BB-G6: the same rule as BB-G15's below, started first so the two reads run together
-    const impactP = isFeatureEnabled('bball-impact', Astro.locals) ? readPlayerImpact(league, season, personId) : undefined;
+    // college waits for BB-D16's crosswalk (utils/playerImpact.ts COLLEGE_IMPACT): no read, no key, no panel
+    const impactP = isFeatureEnabled('bball-impact', Astro.locals) && impactShown(isNcaaDashboards(league)) ? readPlayerImpact(league, season, personId) : undefined;
     // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
     const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
     if (poe.poe === null) degraded = true;
