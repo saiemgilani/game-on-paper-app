@@ -18,6 +18,8 @@ import { isFeatureEnabled } from '../utils/features';
 import { SOURCE_PARAM } from '../utils/adminView';
 import { LEAGUES, leaguePath, type League } from '../utils/league';
 import { warmShareCards } from './shareCard';
+import { retrieveFirstFinal } from '../resources/sdv';
+import { finalScoreFirst, firstFinalLabel } from '../utils/finalScore';
 
 export interface GameRouteData {
     league: League;
@@ -96,14 +98,32 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
             game = await retrieveProcessedGame(id, config.maxAge || 30, league, source);
         }
 
-        if (guarded.regressed || headerFallback) {
+        // 'final-score-first' (preview): the chip's lookup runs here, before the cache policy,
+        // so a FAILED lookup keeps this render out of the cache. Cached, a game that really is
+        // first would stay chipless for the whole final-game TTL. GameHeader reads the label.
+        let firstFinalFailed = false;
+        let firstFinalPending = false;
+        const comp = espnGame.gamepackageJSON.header.competitions[0] as any;
+        if (isFeatureEnabled('final-score-first', Astro.locals) && comp.status?.type?.completed === true) {
+            const [a, b] = (comp.competitors ?? []).map((c: any) => (c?.score == null ? NaN : Number(c.score)));
+            if (Number.isInteger(a) && Number.isInteger(b)) {
+                const rows = await retrieveFirstFinal(league, a, b);
+                firstFinalFailed = rows === null;
+                // ESPN marks a game final before the next schedule ingest has it: no rows at all for a game
+                // that ended in the last 3 days is "not known yet", so the render takes an hour, not the year.
+                firstFinalPending = rows !== null && rows.length === 0 && Date.now() - Date.parse(comp.date) < 3 * 24 * 60 * 60 * 1000;
+                Astro.locals.firstFinal = rows && finalScoreFirst(rows, id) ? firstFinalLabel(league, a, b) : null;
+            }
+        }
+
+        if (guarded.regressed || headerFallback || firstFinalFailed) {
             // Astro.cache.set(false) emits NO header, and Workers Caching treats a
             // header-less 200 as cacheable for a heuristic two hours -- longer than any
             // live TTL here. Opting out has to be explicit.
             Astro.cache.set(false);
             Astro.response.headers.set("Cache-Control", "no-store");
         } else {
-            Astro.cache.set(config);
+            Astro.cache.set(firstFinalPending ? { ...config, maxAge: 60 * 60 } : config);
             // 'share-card' (preview): keep this game's played card in KV, drawn from the game
             // just processed, after the page is sent (routes/shareCard.ts)
             if (game && isFeatureEnabled('share-card', Astro.locals)) {
