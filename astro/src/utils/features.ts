@@ -46,11 +46,28 @@ export const FLAGS: Record<string, FeatureState> = {
     // entry) for up to 6 h + 6 h stale -- purge, or confirm the deploy clears the cache. Before the
     // flip, `?view=live&flags=nba:on` previews the Header entry (isFeaturePublic honours the override).
     'nba': 'preview',
+    // The whole WNBA surface (pages/wnba/**: the teams-index landing, the scoreboard, game pages and the shooting pages; its
+    // Header menu and league-switch entry), gated in middleware like 'nba'. Promote to 'on' when the design owner signs off,
+    // in a one-line commit as for 'nba': the sitemap then lists /wnba, the Header's pages and the team pages.
+    'wnba': 'preview',
+    // Men's college basketball (pages/mbb/**: the teams-index landing, the scoreboard, game pages and the shooting pages;
+    // its Header menu and league-switch entry), gated in middleware like 'nba'. Promote to 'on' when the design owner signs
+    // off, in a one-line commit: the sitemap then lists /mbb, the Header's pages and the 365 member team pages.
+    'mbb': 'preview',
+    // Women's college basketball (pages/wbb/**: the teams-index landing, the scoreboard, game pages and the shooting pages;
+    // its Header menu and league-switch entry), gated in middleware like 'nba'. Promote to 'on' when the design owner signs
+    // off, in a one-line commit: the sitemap then lists /wbb, the Header's pages and the season's 363 team pages (D38).
+    'wbb': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
     // isCoachBoardPath). Promote to 'on' once the coach attribution is trusted.
     'coaches': 'on',
+    // The CFP projection page (/playoff): sportsdataverse-py's season sims + cfbseedR tiebreakers
+    // through the API (python/playoff_projection.py), the 2026 selection rules and the fixed
+    // bracket, plus the committee's field from the CFP rankings. Public since #389: linked
+    // under the header's Tools menu and listed in the sitemap.
+    'playoff-projection': 'on',
     // The play processor's source switch (football-sources Stage 4): the game
     // page may ask the API to process a game from an alternate feed
     // (?source=shield|cbs|yahoo|fox|ncaa, the sportsdataverse-py contract's
@@ -128,6 +145,13 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // Game on Paper Pro: /pro/** (the paid player profiles, portal board and their
+    // files), /pricing, the "Pro profile" link on the free player page and the
+    // header's Pro entry. Gated in middleware like 'nfl': without the preview cookie
+    // every one of those paths is the site's 404. Behind the flag, /pro/** also
+    // needs a live entitlement (utils/pro.ts, resources/pro.ts) except login,
+    // auth, logout and methodology. Promote to 'on' at launch.
+    'pro': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

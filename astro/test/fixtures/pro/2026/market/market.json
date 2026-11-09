@@ -1,0 +1,57 @@
+{
+ "schema": 1,
+ "season": 2026,
+ "snapshot": "20261103T082146Z",
+ "model": "market_fixture",
+ "rendered": "2026-11-04",
+ "kind": "market",
+ "headlines": [
+  "Tightest markets: offensive line (1.60) (fixture).",
+  "Fixture headline two."
+ ],
+ "units": [
+  {
+   "unit": "OL",
+   "name": "Offensive line",
+   "scarcity": 1.6,
+   "jobs_opened": 205,
+   "starter_entrants": 67,
+   "p50": 519000,
+   "p75": 912000,
+   "p90": 1100000,
+   "proj_p50": 336000,
+   "leaving": 67,
+   "leaving_usd": 55200000,
+   "hs_n": 485,
+   "hs_blue": 67,
+   "hs_blue_open": 0,
+   "juco_n": 13,
+   "juco_open": 8,
+   "cycle_entrants": 471,
+   "cycle_now_starting": 235
+  }
+ ],
+ "cycle_top": [
+  {
+   "name": "Fixture Mover",
+   "position": "QB",
+   "from_team": "Fixture Tech",
+   "now_team": "Fixture State",
+   "stars": 3,
+   "pct": 98.0,
+   "prod_usd": 5900000,
+   "proj_usd": 2080000
+  }
+ ],
+ "pull": [
+  {
+   "team": "Fixture State",
+   "n": 47,
+   "share": 0.048
+  }
+ ],
+ "limits": [
+  "Dollar figures are a fixture model, not reported deals.",
+  "Fixture limit two."
+ ]
+}

@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { LEAGUES, NFL_LOGO_ABBR, headshotSrc, leaguePath, meetingLabel, nflRegularSeasonWeeks, splitLeague, teamLogoSrc, teamLogoUrl, weekLabel } from '../src/utils/league';
+import { LEAGUES, NFL_LOGO_ABBR, headshotSrc, leagueFromLocation, leaguePath, meetingLabel, nflRegularSeasonWeeks, splitLeague, teamLogoSrc, teamLogoUrl, weekLabel } from '../src/utils/league';
 
 describe('splitLeague', () => {
     test('strips the nfl prefix and keeps everything else', () => {
@@ -156,7 +156,7 @@ describe('the nba league', () => {
             logoLeague: 'nba', teamCount: 30, defaultGroup: null, scoreboardQuery: '', regularSeasonWeeks: 0,
         });
         expect(LEAGUES.nba.seasons[0]).toBe(1998);
-        expect(LEAGUES.nba.seasons.at(-1)).toBe(2026);
+        expect(LEAGUES.nba.seasons.at(-1)).toBe(2027); // 2026-27, rolled 2026-11-03
         expect(LEAGUES.cfb.sport).toBe('football');
         expect(LEAGUES.nfl.sport).toBe('football');
         expect(LEAGUES.cfb.sdvSchema).toBe('cfb');
@@ -202,4 +202,21 @@ describe('headshotSrc', () => {
     expect(headshotSrc('nfl', 3139477, { w: 96, h: 70 })).toBe('https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/3139477.png&w=96&h=70');
     expect(headshotSrc(undefined, '1', { w: 48, h: 48 })).toBe('https://a.espncdn.com/combiner/i?img=/i/headshots/college-football/players/full/1.png&w=48&h=48');
   });
+});
+
+describe('leagueFromLocation (client-side, e.g. the WP chart\'s logos)', () => {
+    afterEach(() => { vi.unstubAllGlobals(); });
+    const at = (pathname: string) => { vi.stubGlobal('window', { location: { pathname } }); return leagueFromLocation(); };
+    test('an admin preview link (/preview/<league>/...) is that league, not cfb', () => {
+        expect(at('/preview/wnba/game/1')).toBe('wnba');
+        expect(at('/preview/nba/game/1')).toBe('nba');
+        expect(at('/preview/nfl/game/1')).toBe('nfl');
+        expect(at('/preview')).toBe('cfb');
+        expect(at('/preview/game/1')).toBe('cfb');
+    });
+    test('public paths are unchanged', () => {
+        expect(at('/wnba/game/1')).toBe('wnba');
+        expect(at('/game/1')).toBe('cfb');
+        expect(at('/previewx/wnba/game/1')).toBe('cfb');
+    });
 });

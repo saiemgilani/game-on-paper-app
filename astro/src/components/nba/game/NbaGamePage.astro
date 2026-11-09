@@ -11,18 +11,25 @@ import NbaGameShotCharts from './NbaGameShotCharts.astro';
 import NbaPlaysTable from './NbaPlaysTable.astro';
 import { isFeatureEnabled } from '../../../utils/features';
 import { cleanAbbreviation, pickGameColors } from '../../../utils/misc';
-import { scoreboardBackHref } from '../../../nba/scoreboard';
+import { gameHref, scoreboardDayHref, teamHrefFromEspn } from '../../../nba/links';
+import { basketballEventJsonLd } from '../../../basketball/parity';
+import { LEAGUES, leaguePath } from '../../../utils/league';
+import { basketball } from '../../../basketball/config';
 import type { NbaGame } from '../../../resources/nbaGame';
 
 interface Props { game: NbaGame }
 const { game } = Astro.props;
+const cfg = basketball(Astro.locals.league);
+const league = cfg.league;
 const title = `${game.away.team.displayName} ${game.away.score ?? ''} at ${game.home.team.displayName} ${game.home.score ?? ''} | Game on Paper`.replace(/\s+/g, ' ');
 const description = `${game.away.team.displayName} at ${game.home.team.displayName}: win probability, biggest plays, four factors, advanced box score and shot charts.`;
-const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: '/nba', active: false }, { title: 'Scoreboard', url: scoreboardBackHref(game.date), active: false }, { title: `${cleanAbbreviation(game.away.team)} @ ${cleanAbbreviation(game.home.team)}`, active: true }];
+const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: leaguePath(league, '/'), active: false }, { title: 'Scoreboard', url: scoreboardDayHref(league, game.date), active: false }, { title: `${cleanAbbreviation(game.away.team)} @ ${cleanAbbreviation(game.home.team)}`, active: true }];
 const items: ScrollerItem[] = [{ href: '#wp', title: 'Win probability' }, { href: '#factors', title: 'Four factors' }, { href: '#teambox', title: 'Team box' }, { href: '#players', title: 'Players' }, { href: '#shots', title: 'Shots' }, { href: '#plays', title: 'Plays' }];
+const side = (s: typeof game.home) => ({ name: s.team.displayName, href: teamHrefFromEspn(s.team, league, game.season), score: s.score });
+const jsonLd = basketballEventJsonLd({ league, path: gameHref(league, game.id), date: game.date, description, venue: game.venue, statusDetail: game.status.detail, home: side(game.home), away: side(game.away) });
 const colors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(game.home.team, game.away.team) : null;
 ---
-<GenericPage title={title} subtitle={description} slug={`/nba/game/${game.id}`} breadcrumbs={breadcrumbs} description={description}>
+<GenericPage title={title} subtitle={description} slug={gameHref(league, game.id)} breadcrumbs={breadcrumbs} description={description} jsonLd={[jsonLd]}>
   <link href="/assets/css/sticky-table.css" rel="stylesheet">
   <div class="container">
     <NbaGameHeader game={game} />
@@ -30,7 +37,7 @@ const colors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(g
     <Panel id="wp" title="Win probability" show={true}><div slot="panel-body"><NbaWinProbability game={game} colors={colors} /></div></Panel>
     <Panel id="factors" title="Four factors" show={true}><div slot="panel-body"><NbaFourFactors game={game} /></div></Panel>
     <Panel id="teambox" title="Team box" show={true}><div slot="panel-body"><NbaTeamBox game={game} /></div></Panel>
-    <Panel id="players" title="Players" show={true}><div slot="panel-body"><div class="row"><div class="col-12 col-xl-6"><NbaPlayerBox side={game.away} id="box-away" /></div><div class="col-12 col-xl-6"><NbaPlayerBox side={game.home} id="box-home" /></div></div></div></Panel>
+    <Panel id="players" title="Players" show={true}><div slot="panel-body"><div class="row"><div class="col-12 col-xl-6"><NbaPlayerBox side={game.away} id="box-away" league={league} /></div><div class="col-12 col-xl-6"><NbaPlayerBox side={game.home} id="box-home" league={league} /></div></div></div></Panel>
     <Panel id="shots" title="Shot charts" show={true}><div slot="panel-body"><NbaGameShotCharts game={game} /></div></Panel>
     <Panel id="plays" title="Play-by-play" show={true}><div slot="panel-body"><NbaPlaysTable game={game} /></div></Panel>
   </div>
