@@ -1,0 +1,8 @@
+{"schema": 1, "seasons": [2024, 2025, 2026], "rendered": "2026-11-05", "price_season": 2026, "limits": ["Fixture role limit one.", "Fixture role limit two."], "role": "collective", "team": {"team_id": 1, "team": "Fixture State", "conference": "Fixture Conference", "p4": true}, "headlines": ["Collective headline one."], "pool": 12500000.0,
+ "allocation": [{"espn_id": 1, "name": "Fixture Player", "unit": "QB", "class": "JR", "source": "Portal", "pct": 88.0, "usd": 3200000.0, "alloc_usd": 4100000.0}],
+ "by_unit": [{"unit": "QB", "name": "Quarterbacks", "value_matched": 3200000.0, "room_budget": 2000000.0, "gap": 1200000.0}],
+ "history": [], "roi": [{"season": 2025, "route": "Portal", "n": 7, "price": 900000.0, "delivered": 1800000.0, "roi": 2.0}],
+ "retention": [{"espn_id": 2, "name": "Fixture Receiver", "unit": "WR", "class": "SO", "p_move": 0.22, "market_usd": 700000.0, "value_at_risk": 150000.0}],
+ "plan": [{"unit": "CB", "name": "Cornerbacks", "need": 0.93, "cost_p75_starter": 610000.0}],
+ "market_players": [], "market_units": [],
+ "spend": [{"season": 2026, "modeled": 12500000.0, "market_pay": 12500000.0, "value": 9000000.0, "per_dollar": 0.72, "eff_rank": 14, "eff_n": 68, "reported": 15000000.0}]}
