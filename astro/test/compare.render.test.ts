@@ -20,6 +20,13 @@ const otherRows = cfb.seasons.data.filter((r: any) => r.season === 2024 && r.cat
 // every nullable identity field null but the team name, and no season rows
 const bare = { ...cfb.identity, espn_id: '5000002', player_id: '5000002', name: 'Bare Player', position: null, jersey: null, team_id: null, team: 'Syracuse', headshot_url: null, seasons: [] };
 
+// No read reaches the network: anything the resource mocks below leave to the real module
+// (meta, games, splits, percentiles, boards) answers an empty body, and is recorded.
+const net = vi.hoisted(() => ({ calls: [] as string[] }));
+vi.mock('../src/utils/telemetry', async (orig) => ({
+    ...(await orig<typeof import('../src/utils/telemetry')>()),
+    wrappedFetch: async (url: string) => (net.calls.push(String(url)), new Response('{"data":[]}', { status: 200, headers: { 'content-type': 'application/json' } })),
+}));
 const feed = { throws: new Set<string>() };
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
