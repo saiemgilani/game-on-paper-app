@@ -1,0 +1,84 @@
+---
+// src/components/nba/BbPlayerGameLog.astro
+// BB-G50, behind 'bball-game-logs': the player's advanced game log. Each game's box with TS%, usage, on-court
+// possessions, +/- and ratings, points over expected and EPV added; each shaded cell is ranked among his season's games
+// (football's PlayerGameLog "Player Games" mode), and a consistency line gives the game-to-game spread of PTS, AST and
+// TS% over the games shown. Under BB-G14's game-set filter (?games=) it shows that set's games, still shaded against
+// the whole season. College logs have no possessions, +/-, ratings or EPV (resources/bballGameLogs.ts).
+import type { PlayerGame } from '../../nba/data/aggregate';
+import type { PlayerLogReads } from '../../resources/bballGameLogs';
+import { fmtDate, fmtDec, fmtInt, fmtPct } from '../../nba/format';
+import { gameHref } from '../../nba/links';
+import { bbGameSetLabel, pickGames, type BbGameSet } from '../../utils/bballGameSet';
+import { PLAYER_DIRS, PLAYER_KEYS, filledKeys, playerLogRows, shadeTable, spread, type PlayerKey } from '../../utils/bballGameLogs';
+import { generateMarginalString } from '../../utils/misc';
+import { isNcaaDashboards } from '../../basketball/dashboards';
+import { basketball } from '../../basketball/config';
+
+interface Props { games: PlayerGame[]; reads: PlayerLogReads | null; set?: BbGameSet }
+const { games, reads, set = 'all' } = Astro.props;
+const league = basketball(Astro.locals.league).league;
+
+const dash = '—';
+const dec = (d: number) => (v: number | null) => (v === null ? dash : fmtDec(v, d));
+const signed = (v: number | null) => (v === null ? dash : generateMarginalString(v, 1, 1));
+const COLS: Record<PlayerKey, { label: string; title: string; fmt: (v: number | null) => string }> = {
+    min: { label: 'MIN', title: 'Minutes', fmt: dec(0) },
+    pts: { label: 'PTS', title: 'Points', fmt: dec(0) },
+    reb: { label: 'REB', title: 'Rebounds', fmt: dec(0) },
+    ast: { label: 'AST', title: 'Assists', fmt: dec(0) },
+    stl: { label: 'STL', title: 'Steals', fmt: dec(0) },
+    blk: { label: 'BLK', title: 'Blocks', fmt: dec(0) },
+    tov: { label: 'TOV', title: 'Turnovers', fmt: dec(0) },
+    ts_pct: { label: 'TS%', title: 'True shooting: points per two shooting possessions, PTS / (2 × (FGA + 0.44 × FTA))', fmt: (v) => (v === null ? dash : fmtPct(v)) },
+    usg_pct: { label: 'USG%', title: "Usage: the share of his team's possessions he ended while on the floor", fmt: (v) => (v === null ? dash : `${fmtDec(v, 1)}%`) },
+    poss: { label: 'Poss', title: 'Offensive possessions he was on the floor for', fmt: dec(0) },
+    plus_minus: { label: '+/-', title: 'Point differential while he was on the floor', fmt: (v) => (v === null ? dash : generateMarginalString(v, 0, 0)) },
+    off_rtg: { label: 'ORtg', title: 'Points scored per 100 possessions while he was on the floor', fmt: dec(1) },
+    def_rtg: { label: 'DRtg', title: 'Points allowed per 100 possessions while he was on the floor', fmt: dec(1) },
+    poe: { label: 'POE', title: 'Points over expected: field-goal points minus the shot-quality model’s expected points for his shots', fmt: signed },
+    epv: { label: 'EPV+', title: 'EPV added on his own events: points plus the expected possession value after, minus before', fmt: signed },
+};
+
+const all = reads ? playerLogRows(games, reads, isNcaaDashboards(league)) : [];
+const keys = filledKeys(all, PLAYER_KEYS);
+const shades = shadeTable(all, PLAYER_DIRS);
+// the game-set filter's games; a set with none falls back to all of them (as the select does)
+const picked = pickGames(games, set);
+const shownSet: BbGameSet = picked.length ? set : 'all';
+const shownIds = new Set((picked.length ? picked : games).map((g) => g.game_id));
+const shown = all.filter((r) => shownIds.has(r.gameId));
+const sd = (k: PlayerKey) => spread(shown.map((r) => r.values[k]));
+const tsSd = sd('ts_pct');
+const venueMark = { home: 'vs', away: '@', neutral: 'vs' } as const;
+---
+<section id="player-game-log" aria-label="Game log" class="mb-4">
+  <h2 class="h5">Game log</h2>
+  {reads === null ? (<p class="text-muted" id="player-game-log-unavailable">The game log is temporarily unavailable.</p>) : (<Fragment>
+  {shown.length > 1 && (
+    <p class="numeral small mb-2" id="player-game-log-consistency">
+      <span class="text-muted">Game-to-game spread (standard deviation, {fmtInt(shown.length)} games):</span>
+      PTS {fmtDec(sd('pts'), 1)} &middot; AST {fmtDec(sd('ast'), 1)}{tsSd !== null && (<Fragment> &middot; TS% {fmtDec(tsSd * 100, 1)} pts</Fragment>)}
+    </p>
+  )}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0" id="player-game-log-table">
+      <caption class="small text-muted">{bbGameSetLabel(shownSet)}. Each shaded number is ranked among his {fmtInt(all.length)} games this season (none under three). A game without a field-goal attempt is not listed.</caption>
+      <thead><tr>
+        <th scope="col">Date</th><th scope="col">Opp</th><th scope="col">Result</th>
+        {keys.map((k) => (<Fragment><th scope="col" class="text-end"><abbr title={COLS[k].title}>{COLS[k].label}</abbr></th>{k === 'tov' && (<Fragment><th scope="col" class="text-end">FG</th><th scope="col" class="text-end">3P</th><th scope="col" class="text-end">FT</th></Fragment>)}</Fragment>))}
+      </tr></thead>
+      <tbody>
+        {shown.map((r) => (
+          <tr data-game={r.gameId}>
+            <td class="text-nowrap">{fmtDate(r.game.date)}</td>
+            <td class="text-nowrap"><span class="text-muted">{venueMark[r.game.venue]}</span> {r.game.opponent}</td>
+            <td class="text-nowrap">{r.espnGameId ? (<a href={gameHref(league, r.espnGameId)}>{r.game.win === true ? 'W' : r.game.win === false ? 'L' : 'Box'}</a>) : (r.game.win === true ? 'W' : r.game.win === false ? 'L' : dash)}</td>
+            {keys.map((k) => (<Fragment><td class:list={['numeral', 'text-end', shades.get(r.gameId)![k]]}>{COLS[k].fmt(r.values[k])}</td>{k === 'tov' && (<Fragment><td class="numeral text-end text-nowrap">{r.fg ?? dash}</td><td class="numeral text-end text-nowrap">{r.fg3 ?? dash}</td><td class="numeral text-end text-nowrap">{r.ft ?? dash}</td></Fragment>)}</Fragment>))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  </Fragment>)}
+</section>

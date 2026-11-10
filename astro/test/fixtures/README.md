@@ -802,3 +802,20 @@ select the flag adds: `select=game_id,off_rtg,def_rtg,pace,efg_pct,tov_pct,orb_p
 **Used by:** `test/bballGameSet.test.ts`.
 
 **To regenerate:** rerun the same twelve reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `game-logs-player-nba-2026.json.gz`, `game-logs-player-mbb-2026.json.gz`, `game-logs-flow-2026.json.gz`
+The reads behind the advanced game logs (BB-G50, `resources/bballGameLogs.ts`), captured live on 2026-11-10, sequentially, the
+`data` array of each response, no edits; each with the module's own `select` and `limit=200` unless noted.
+- NBA player, Michael Porter Jr. (stats 1629008, ESPN 4278104; his games are `game-set-player-nba-2026`'s): `{box, impact, poe, epv, xwalk, rates, sched}` =
+  `nba_stats/player_box?person_id=1629008` (54 rows), `nba_stats/game_player_impact?player_id=1629008` (56),
+  `nba_stats/shot_quality_game?person_id=1629008&level=player` (52), `nba_stats/epv_player_games?player_id=1629008` (57),
+  `nba/player_crosswalk?nba_player_id=1629008` (1), `nba/game_player_rates?athlete_id=4278104` (54) and
+  `nba/schedule_crosswalk?select=espn_game_id,nba_game_id&limit=2500` (1,415), all `season=2026`.
+- College player, Duke's leading shooter (ESPN 5041935): `{games, box, rates, poe}` = `mbb/shot_player_games?person_id=5041935` (38),
+  `mbb/player_box?athlete_id=5041935` (38), `mbb/game_player_rates?athlete_id=5041935` (38),
+  `mbb/shot_quality_game?person_id=5041935&level=player` (38), all `season=2026`.
+- Team flow: `{nets, duke}` = `nba_stats/game_flow?season=2026&team_id=1610612751` (86) and `mbb/game_flow?season=2026&team_id=150` (38).
+
+**Used by:** `test/bballGameLogs.test.ts`.
+
+**To regenerate:** rerun the same reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.

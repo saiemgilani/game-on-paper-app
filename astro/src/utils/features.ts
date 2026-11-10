@@ -84,6 +84,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // are the producer's split rows; the other sets sum per-game counts. Off: ?games= is never read, the pages and their
     // requests are unchanged.
     'bball-game-set': 'preview',
+    // BB-G50: advanced game logs. /<league>/players/[id]: each game's box with TS%, usage, on-court possessions, +/- and
+    // ratings, points over expected and EPV added (game_player_rates, game_player_impact, shot_quality_game,
+    // epv_player_games; college has no impact or EPV columns). /<league>/team/[id], inside 'bball-team-season': each
+    // game's four factors and ratings plus game_flow. Cells shaded against the season, a consistency line, and under
+    // 'bball-game-set' the chosen set's games. Off: no read and both pages unchanged.
+    'bball-game-logs': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

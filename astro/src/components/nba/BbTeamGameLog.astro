@@ -1,0 +1,89 @@
+---
+// src/components/nba/BbTeamGameLog.astro
+// BB-G50, behind 'bball-game-logs' (inside 'bball-team-season', whose schedule and game_team_rates it reads): the
+// team's advanced game log. Each final game's ratings and four factors (game_team_rates) and its game flow (game_flow:
+// lead share, lead changes, largest lead, best run); each shaded cell is ranked among the team's season games, and a
+// consistency line gives the game-to-game spread of points, ORtg and eFG% over the games shown. Under BB-G14's
+// game-set filter (?games=) it shows that set's games, still shaded against the whole season.
+import { DateTime } from 'luxon';
+import type { FlowRow } from '../../resources/bballGameLogs';
+import type { TeamSeasonReads } from '../../resources/teamSeason';
+import { fmtDate, fmtDec, fmtInt, fmtPct } from '../../nba/format';
+import { gameHref, teamHrefFromEspn } from '../../nba/links';
+import { bbGameSetLabel, pickGames, type BbGameSet } from '../../utils/bballGameSet';
+import { TEAM_DIRS, TEAM_KEYS, filledKeys, shadeTable, spread, teamLogRows, type TeamKey } from '../../utils/bballGameLogs';
+import { scheduleRows } from '../../utils/teamSeason';
+import { generateMarginalString } from '../../utils/misc';
+import { basketball } from '../../basketball/config';
+
+// flow: null when the game_flow read failed (the flow columns are left out)
+interface Props { data: TeamSeasonReads; flow: Map<string, FlowRow> | null; season: number; espnId: number; set?: BbGameSet }
+const { data, flow, season, espnId, set = 'all' } = Astro.props;
+const cfg = basketball(Astro.locals.league);
+const league = cfg.league;
+
+const dash = '—';
+const dec = (d: number) => (v: number | null) => (v === null ? dash : fmtDec(v, d));
+const pct = (v: number | null) => (v === null ? dash : fmtPct(v));
+const COLS: Record<TeamKey, { label: string; title: string; fmt: (v: number | null) => string }> = {
+    pts: { label: 'PTS', title: 'Points scored', fmt: dec(0) },
+    off_rtg: { label: 'ORtg', title: 'Points scored per 100 possessions', fmt: dec(1) },
+    def_rtg: { label: 'DRtg', title: 'Points allowed per 100 possessions', fmt: dec(1) },
+    net_rtg: { label: 'Net', title: 'ORtg minus DRtg', fmt: (v) => (v === null ? dash : generateMarginalString(v, 1, 1)) },
+    pace: { label: 'Pace', title: 'Possessions per regulation game', fmt: dec(1) },
+    efg_pct: { label: 'eFG%', title: 'Effective field-goal percentage: (FGM + 0.5 × 3PM) / FGA', fmt: pct },
+    tov_pct: { label: 'TOV%', title: 'Turnovers per possession', fmt: pct },
+    orb_pct: { label: 'ORB%', title: 'Offensive rebounds over offensive-rebound chances', fmt: pct },
+    ft_rate: { label: 'FT rate', title: 'Free-throw attempts per field-goal attempt', fmt: dec(3) },
+    lead_pct: { label: 'Led', title: 'Share of the game played with the lead', fmt: (v) => (v === null ? dash : fmtPct(v, 0)) },
+    lead_changes: { label: 'Lead chg', title: 'Lead changes', fmt: dec(0) },
+    largest_lead: { label: 'Big lead', title: 'Largest lead', fmt: dec(0) },
+    max_run: { label: 'Best run', title: 'Longest unanswered scoring run, in points', fmt: dec(0) },
+};
+
+const all = teamLogRows(scheduleRows(data.games, data.gameRates, espnId), flow ?? new Map());
+const keys = filledKeys(all, TEAM_KEYS);
+const shades = shadeTable(all, TEAM_DIRS);
+const picked = pickGames(all.map((r) => r.game), set);
+const shownSet: BbGameSet = picked.length ? set : 'all';
+const shownIds = new Set((picked.length ? picked : all.map((r) => r.game)).map((g) => g.game_id));
+const shown = all.filter((r) => shownIds.has(r.gameId));
+const sd = (k: TeamKey) => spread(shown.map((r) => r.values[k]));
+const efgSd = sd('efg_pct');
+const day = (iso: string) => fmtDate(DateTime.fromISO(iso, { zone: 'utc' }).setZone(cfg.scoreboardTimeZone).toISODate() ?? iso.slice(0, 10));
+const venueMark = { home: 'vs', away: '@', neutral: 'vs' } as const;
+---
+{all.length > 0 && (
+<div class="mt-3" id="team-game-log">
+  <h3 class="h6">Game log</h3>
+  {shown.length > 1 && (
+    <p class="numeral small mb-2" id="team-game-log-consistency">
+      <span class="text-muted">Game-to-game spread (standard deviation, {fmtInt(shown.length)} games):</span>
+      PTS {fmtDec(sd('pts'), 1)} &middot; ORtg {fmtDec(sd('off_rtg'), 1)}{efgSd !== null && (<Fragment> &middot; eFG% {fmtDec(efgSd * 100, 1)} pts</Fragment>)}
+    </p>
+  )}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0" id="team-game-log-table">
+      <caption class="small text-muted">{bbGameSetLabel(shownSet)}. Each shaded number is ranked among the team's {fmtInt(all.length)} rated games this season (none under three); pace and lead changes are not shaded.{flow === null && ' The game-flow numbers are temporarily unavailable.'}</caption>
+      <thead><tr>
+        <th scope="col">Date</th><th scope="col">Opp</th><th scope="col">Result</th>
+        {keys.map((k) => (<th scope="col" class="text-end"><abbr title={COLS[k].title}>{COLS[k].label}</abbr></th>))}
+      </tr></thead>
+      <tbody>
+        {shown.map((r) => {
+          const g = r.game;
+          const opp = teamHrefFromEspn({ id: g.oppId }, league, season);
+          return (
+            <tr data-game={r.gameId}>
+              <td class="text-nowrap">{day(g.date)}</td>
+              <td class="text-nowrap"><span class="text-muted">{venueMark[g.venue]}</span> {opp ? (<a href={opp} title={g.oppName}>{g.oppAbbr}</a>) : (<span title={g.oppName}>{g.oppAbbr}</span>)}</td>
+              <td class="numeral text-nowrap"><a href={gameHref(league, g.gameId)}>{g.win === true ? 'W' : g.win === false ? 'L' : 'T'} {g.teamScore}-{g.oppScore}</a></td>
+              {keys.map((k) => (<td class:list={['numeral', 'text-end', shades.get(r.gameId)![k]]}>{COLS[k].fmt(r.values[k])}</td>))}
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+</div>
+)}
