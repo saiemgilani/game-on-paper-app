@@ -107,8 +107,8 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
     if (impact === null || flow === null || garbage === null || averages === null) uncacheable(Astro);
-    // season averages move with every game: a final that shows them follows the nightly ingest too
-    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || (averages && averages.length > 0))) setCache(Astro, seasonCache(league));
+    // season averages move with every game (and arrive after it): a final that reads them follows the nightly ingest too
+    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || averages !== undefined)) setCache(Astro, seasonCache(league));
     return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}),
         ...(garbage !== undefined ? { garbage: { reads: garbage, out: Astro.url.searchParams.get(GARBAGE_PARAM) === 'out' } } : {}),
         ...(averages !== undefined ? { averages } : {}) };

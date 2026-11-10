@@ -57,7 +57,9 @@ def _no_line_as_snapshotted(body):
 def test_nba_process_payload_is_unchanged(monkeypatch):
     body = _body(monkeypatch)
     # BB-G35 added one per-play key, the assister of a made shot (athlete_id_2); everything else is the snapshot's
-    assert any(p.get("athlete_id_2") is not None for p in body["plays"])
+    # and it is the assister: on every made field goal, set exactly when the text credits an assist
+    makes = [p for p in body["plays"] if p.get("scoring_play") and (p.get("score_value") or 0) >= 2]
+    assert makes and all((p.get("athlete_id_2") is not None) == ("assist" in p["text"].lower()) for p in makes)
     body["plays"] = [{k: v for k, v in p.items() if k != "athlete_id_2"} for p in body["plays"]]
     kept = {k: v for k, v in _no_line_as_snapshotted(body).items() if k not in ADDED_IN_PR0}
     assert SNAP.exists(), "PR 0 snapshot missing; never regenerate"

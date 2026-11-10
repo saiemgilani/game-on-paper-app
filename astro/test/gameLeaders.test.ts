@@ -117,6 +117,10 @@ describe('assist web, against the play-by-play text and the box', () => {
                 const roster = new Map(side.players.map((p) => [p.athlete_id, p]));
                 for (const pr of web.pairs) { expect(roster.has(pr.passer)).toBe(true); expect(roster.has(pr.scorer)).toBe(true); expect(pr.passer).not.toBe(pr.scorer); }
                 expect(web.pairs.reduce((t, p) => t + p.ast, 0)).toBe(web.assisted);
+                // each pair is the plays' own passer -> scorer, counted independently here
+                const want = new Map<string, number>();
+                for (const p of g.plays) if (p.teamId === tid && p.scoringPlay && p.scoreValue >= 2 && p.athleteId2 != null) want.set(`${p.athleteId2}>${p.athleteId}`, (want.get(`${p.athleteId2}>${p.athleteId}`) ?? 0) + 1);
+                expect(new Map(web.pairs.map((pr) => [`${pr.passer}>${pr.scorer}`, pr.ast]))).toEqual(want);
                 // the feed's text and its second athlete agree: "(X assists)" / "Assisted by X" on exactly the linked makes
                 const makes = g.plays.filter((p) => p.teamId === tid && p.scoringPlay && p.scoreValue >= 2);
                 for (const p of makes) {
@@ -125,7 +129,7 @@ describe('assist web, against the play-by-play text and the box', () => {
                     if (says) expect(p.text, p.text).toContain(roster.get(p.athleteId2!)!.name.split(' ').at(-1)!);
                 }
                 expect(web.assisted).toBeLessThanOrEqual(web.boxAssists!);
-                expect(web.assisted).toBeGreaterThanOrEqual(Math.floor(web.boxAssists! * 0.85));
+                expect(web.assisted).toBeGreaterThanOrEqual(Math.ceil(web.boxAssists! * 0.85));
                 // every point of the team's scoring plays lands in one zone: the box's final score (not the feed's running
                 // score, which ESPN can leave a point off: the ORL final's 119 for 120)
                 const pts = Object.values(web.zones).reduce((t, z) => t + z.assisted + z.unassisted, 0);
@@ -145,6 +149,10 @@ describe('assist web, against the play-by-play text and the box', () => {
         const g = gameOf('nba');
         const web = assistWeb(g.plays.map((p) => ({ ...p, athleteId2: null })), g.home);
         expect([web.linked, web.pairs.length, web.assisted]).toEqual([false, 0, 0]);
+        // a block's or a steal's second athlete alone is not a linked feed
+        const others = assistWeb(g.plays.map((p) => (p.scoringPlay ? { ...p, athleteId2: null } : p)), g.home);
+        expect(g.plays.some((p) => !p.scoringPlay && p.athleteId2 != null)).toBe(true);
+        expect(others.linked).toBe(false);
     });
 });
 
@@ -160,6 +168,8 @@ describe('against their average', () => {
                 const raw = cap[lg].averages[ha];
                 const { over, under } = overUnder(g[ha], avgs);
                 expect(over.length + under.length).toBeGreaterThan(0);
+                expect(over.length).toBeLessThanOrEqual(3);
+                expect(under.length).toBeLessThanOrEqual(3);
                 for (const r of [...over, ...under]) {
                     expect(r.player.minutes!).toBeGreaterThanOrEqual(8);
                     const want = raw.find((x) => Number(x.athlete_id) === r.player.athlete_id && x.stat_name === 'avgPoints')!;
@@ -233,6 +243,11 @@ describe('prepareBasketballGame', () => {
         expect(afn).toHaveBeenCalledWith('nba', 2025, '401766458', Number(s.home_id), Number(s.away_id));
         expect('game' in r && r.averages).toEqual(averagesOf('nba'));
         expect(cache.at(-1)).toEqual({ maxAge: 6 * 60 * 60, swr: 6 * 60 * 60, tags: ['nba'] });
+        // no averages yet (the season table lags the final): still the season window, so they appear once built
+        afn.mockResolvedValue([]); ingested();
+        const empty = fakeAstro({ preview: true });
+        expect('game' in (await prepareBasketballGame(empty.astro, 'nba'))).toBe(true);
+        expect(empty.cache.at(-1)).toEqual({ maxAge: 6 * 60 * 60, swr: 6 * 60 * 60, tags: ['nba'] });
     });
     test('on, a failed read: averages null, the page renders, nothing is cached', async () => {
         afn.mockRejectedValue(new Error('down')); ingested();
@@ -274,14 +289,13 @@ describe('NbaGamePage', () => {
         expect(on).toContain('href="#leaders"');
         expect(on).not.toContain('NaN');
         expect(on).not.toContain('undefined');
-        // the leader cells: the game's top scorer by name, on its side's column
-        const pts = leaderOf(g.home, 'pts')!;
-        const text = table(on, 'Game leaders').replace(/<[^>]+>/g, '');
-        expect(text).toContain(`${pts.value} ${pts.players[0].short_name || pts.players[0].name}`);
+        // the leader cells, by position: the away column first, then home (the header's order)
+        const cells = (label: string) => table(on, 'Game leaders').split(`>${label}</abbr>`)[1].split('</tr>')[0].split('<td').slice(1).map((c) => c.replace(/^[^>]*>/, '').replace(/<[^>]+>/g, ''));
+        const cell = (s: typeof g.home, key: string) => { const l = leaderOf(s, key)!; return `${l.value} ${l.players.map((p) => p.short_name || p.name).join(', ')}`; };
+        expect(cells('PTS')).toEqual([cell(g.away, 'pts'), cell(g.home, 'pts')]);
         // a tie: every name, comma-separated (ORL's two-way tie for steals in this final)
-        const stl = leaderOf(g.home, 'stl')!;
-        expect(stl.players.length).toBeGreaterThan(1);
-        expect(text).toContain(`${stl.value} ${stl.players.map((p) => p.short_name || p.name).join(', ')}`);
+        expect(leaderOf(g.home, 'stl')!.players.length).toBeGreaterThan(1);
+        expect(cells('STL')).toEqual([cell(g.away, 'stl'), cell(g.home, 'stl')]);
         expect(on).toContain('id="leaders-over-under"');
         expect(on).toContain('id="assist-web-home"');
         expect(off.length).toBeLessThan(on.length);

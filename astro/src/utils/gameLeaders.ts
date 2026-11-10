@@ -117,7 +117,7 @@ export function zoneOf(p: NbaPlay): Zone {
 
 export interface AssistPair { passer: number; scorer: number; ast: number; pts: number }
 export interface AssistWeb {
-    /** false when no play in the game carries a second athlete (the feed links no assists): no pairs and no split */
+    /** false when no made field goal in the game carries a second athlete (the feed links no assists): no pairs and no split */
     linked: boolean;
     pairs: AssistPair[];
     /** the side's made field goals that carry an assister, against its box assists */
@@ -129,7 +129,8 @@ export interface AssistWeb {
 /** One side's assist web from the play-by-play: made shots by its team id, an assist being a second athlete who is not the shooter. */
 export function assistWeb(plays: readonly NbaPlay[], side: NbaSide): AssistWeb {
     const teamId = Number(side.team.id);
-    const linked = plays.some((p) => p.athleteId2 != null);
+    // a block or a steal also fills the second athlete: only a made field goal's says the feed links assists
+    const linked = plays.some((p) => p.scoringPlay && p.scoreValue >= 2 && p.athleteId2 != null);
     const zones = Object.fromEntries(ZONES.map((z) => [z.key, { assisted: 0, unassisted: 0 }])) as AssistWeb['zones'];
     const pairs = new Map<string, AssistPair>();
     let assisted = 0;
