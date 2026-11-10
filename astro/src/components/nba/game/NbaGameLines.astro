@@ -42,7 +42,7 @@ const side = (s: 'home' | 'away') => (s === 'home' ? H : A);
 const sideWp = (homeWp: number) => (homeWp >= 0.5 ? `${H} ${pct(homeWp)}` : `${A} ${pct(1 - homeWp)}`);
 const prior = game?.prior?.homeWinProb ?? null;
 const scored = final && hs != null && as != null;
-const coverText = (s: number, h: number, a: number, past: boolean) => { const c = cover(s, h, a); return c === 'push' ? `a push at ${spreadText(s, H, A)}` : `${side(c)} ${past ? 'covered' : 'cover'} ${spreadText(s, H, A)}`; };
+const coverText = (s: number, h: number, a: number, past: boolean) => { const c = cover(s, h, a); const at = spreadText(s, H, A); if (!past) return c === 'push' ? `on pace for a push at ${at}` : `${side(c)} on pace to cover ${at}`; return c === 'push' ? `a push at ${at}` : `${side(c)} covered ${at}`; };
 const ouText = (t: number, h: number, a: number) => { const r = overUnder(t, h, a); return r === 'push' ? `a push at ${t}` : `${r} ${t}`; };
 const up = scored && line ? upset(line, hs!, as!) : null;
 const regulation = game ? pickRegulation(cfg.regulation, game.season, game.regulation) : null;

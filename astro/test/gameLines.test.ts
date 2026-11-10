@@ -219,7 +219,7 @@ describe('NbaGamePage', () => {
     test('live: at this pace against the line', async () => {
         const t = lines(await page(gameAs(401809234, { name: 'STATUS_IN_PROGRESS', completed: false, period: 3, displayClock: '6:37' }, [68, 59]), row(401809234)));
         // 68 and 59 over 1,763 of 2,880 seconds: 111 and 96, a total of 207
-        expect(t).toContain('At this pace: CLE 96, NY 111; a total of 207, under 229; NY cover CLE -1.5');
+        expect(t).toContain('At this pace: CLE 96, NY 111; a total of 207, under 229; NY on pace to cover CLE -1.5');
         expect(t).not.toContain('Upset');
         // overtime: no pace
         expect(lines(await page(gameAs(401809234, { name: 'STATUS_IN_PROGRESS', completed: false, period: 5, displayClock: '2:00' }, [110, 110]), row(401809234)))).not.toContain('At this pace');
