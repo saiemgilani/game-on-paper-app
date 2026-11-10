@@ -10,6 +10,8 @@ import NbaGamePage from '../src/components/nba/game/NbaGamePage.astro';
 import { fromProcessor, type NbaGame } from '../src/resources/nbaGame';
 import { isLiveGame, latestStrip, RECENT_SHOTS } from '../src/basketball/latest';
 import { FLAGS } from '../src/utils/features';
+import { courtFor } from '../src/basketball/config';
+import { onDrawnCourt } from '../src/nba/charts/gameShotChart';
 
 type League = 'nba' | 'wnba' | 'mbb' | 'wbb';
 const raw = (league: League, id: string) => JSON.parse(readFileSync(new URL(`./fixtures/${league}/game_${id}_processor.json`, import.meta.url)).toString());
@@ -40,9 +42,10 @@ describe('latestStrip', () => {
     for (const league of ['nba', 'wnba', 'mbb', 'wbb'] as League[]) {
         test(`${league}: the last five plays newest first, the last ${RECENT_SHOTS} located shots newest first`, () => {
             const g = live(league);
-            const l = latestStrip(g)!;
+            const court = courtFor(league, g.season);
+            const l = latestStrip(g, { court })!;
             expect(l.plays).toEqual(g.plays.slice(-5).reverse());
-            const located = g.plays.filter((p) => p.xLegacy != null && p.yLegacy != null);
+            const located = g.plays.filter((p) => p.xLegacy != null && p.yLegacy != null && onDrawnCourt({ x: p.xLegacy, y: p.yLegacy, made: true, value: 2, label: '', period: 1 }, court));
             expect(l.shots.map((s) => s.play)).toEqual(located.slice(-RECENT_SHOTS).reverse());
             expect(l.shots.map((s) => s.age)).toEqual(l.shots.map((_, i) => i));
             for (const s of l.shots) expect(s.home).toBe(s.play.teamId === Number(g.home.team.id));
@@ -52,9 +55,18 @@ describe('latestStrip', () => {
     test("college: a field goal ESPN put at the rim as its 'no location' is not drawn (mbb 401706366: every one)", () => {
         const g = live('mbb', '401706366');
         expect(g.plays.some((p) => p.xLegacy === 0 && p.yLegacy === 0)).toBe(true);
-        expect(latestStrip(g, true)!.shots).toEqual([]);
-        expect(latestStrip(g, true)!.plays).toHaveLength(5); // the plays still list
-        expect(latestStrip(g, false)!.shots.length).toBe(RECENT_SHOTS);
+        expect(latestStrip(g, { rimPlaceholder: true })!.shots).toEqual([]);
+        expect(latestStrip(g, { rimPlaceholder: true })!.plays).toHaveLength(5); // the plays still list
+        expect(latestStrip(g)!.shots.length).toBe(RECENT_SHOTS);
+    });
+
+    test('a heave from past the drawn court is skipped before the count, so the newest drawn shot is age 0 and ringed', () => {
+        const g = live('nba');
+        const last = g.plays.filter((p) => p.xLegacy != null).at(-1)!;
+        const heave = { ...last, id: 'heave', n: last.n + 1000, yLegacy: 600, text: 'heave' };
+        const l = latestStrip({ ...g, plays: [...g.plays, heave] })!;
+        expect(l.shots[0].play).toBe(last);
+        expect(l.shots).toHaveLength(RECENT_SHOTS);
     });
 });
 
@@ -69,7 +81,7 @@ describe('the game page', () => {
             const s = strip(html);
             expect(s.split('<tbody>')[1].split('</tbody>')[0].match(/<tr/g)).toHaveLength(5);
             expect(s).toContain(g.plays.at(-1)!.text.replace(/&/g, '&amp;').replace(/'/g, '&#39;'));
-            const shots = latestStrip(g, league === 'mbb' || league === 'wbb')!.shots;
+            const shots = latestStrip(g, { rimPlaceholder: league === 'mbb' || league === 'wbb', court: courtFor(league, g.season) })!.shots;
             expect(s.match(/<g opacity=/g)?.length).toBe(shots.length);
             expect(s).toContain('opacity="1"'); // the newest, ringed
             expect(s).toContain('opacity="0.3"'); // the eighth, faded (1 - 0.75 * 7/7, rounded)

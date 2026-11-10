@@ -8,7 +8,6 @@ import { basketball, courtFor } from '../../../basketball/config';
 import { periodShort } from '../../../basketball/periods';
 import { courtLines, toSvg } from '../../../nba/data/court';
 import { courtViewport } from '../../../nba/charts/court';
-import { onDrawnCourt } from '../../../nba/charts/gameShotChart';
 import { dash, settle } from '../../../nba/data/game';
 import { fmtPct, fmtPts } from '../../../nba/format';
 import { cleanAbbreviation, pickGameColors } from '../../../utils/misc';
@@ -23,9 +22,8 @@ const label = (p: { period: number; clock: string }) => `${periodShort(p.period,
 const r1 = (n: number) => Math.round(n * 10) / 10;
 const v = courtViewport();
 const lines = courtLines(v, court);
-const marks = latest.shots
-    .filter((s) => onDrawnCourt({ x: s.play.xLegacy!, y: s.play.yLegacy!, made: s.play.scoringPlay, value: s.play.scoreValue, label: '', period: s.play.period }, court))
-    .map((s) => ({ ...s, ...toSvg({ x: s.play.xLegacy!, y: s.play.yLegacy! }, v), opacity: r1(1 - (0.75 * s.age) / (RECENT_SHOTS - 1)) }));
+// latestStrip kept only shots on the drawn court, so the newest here is the ringed one
+const marks = latest.shots.map((s) => ({ ...s, ...toSvg({ x: s.play.xLegacy!, y: s.play.yLegacy! }, v), opacity: r1(1 - (0.75 * s.age) / (RECENT_SHOTS - 1)) }));
 const colors = pickGameColors(game.home.team, game.away.team);
 const cid = `latest-${game.id}`;
 const made = marks.filter((m) => m.play.scoringPlay).length;
