@@ -82,13 +82,9 @@ describe('the nba entry', () => {
         expect(nba.featuredTeam!.tricode(2012)).toBe('NJN');
         expect(nba.featuredTeam!.tricode(2013)).toBe('BKN');
     });
-    test('header menu: the featured entry exists exactly when a featured team does', () => {
-        for (const cfg of Object.values(BASKETBALL)) {
-            const home = cfg.headerMenu.filter((m) => m.path === '/');
-            expect(home.length).toBe(cfg.featuredTeam ? 1 : 0);
-            if (cfg.featuredTeam) expect(home[0].label).toBe(cfg.featuredTeam.menuLabel);
-        }
-        expect(nba.headerMenu.map((m) => `${m.label} ${m.path}`)).toEqual(['Scoreboard /scoreboard', 'Nets /', 'Players /players', 'Teams /teams', 'Scatter /scatter', 'Leaders /leaders']);
+    test('header menu: no league lists its landing page (the NBA Nets entry is gone)', () => {
+        for (const cfg of Object.values(BASKETBALL)) expect(cfg.headerMenu.filter((m) => m.path === '/')).toEqual([]);
+        expect(nba.headerMenu.map((m) => `${m.label} ${m.path}`)).toEqual(['Scoreboard /scoreboard', 'Players /players', 'Teams /teams', 'Scatter /scatter', 'Leaders /leaders']);
     });
     test('court and season label', () => {
         expect(courtFor('nba', 2026)).toBe(COURT);
