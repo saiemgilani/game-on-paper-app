@@ -56,7 +56,8 @@ const MIN: BoxCol = { label: 'MIN', text: ({ p }) => int(p.minutes) };
 const count = (label: string, f: (p: NbaPlayerRow) => number | null, better: 'high' | null = 'high', title?: string): BoxCol =>
     ({ label, title, text: ({ p }) => int(f(p)), ...(better ? { value: ({ p }: BoxCtx) => f(p), better } : {}) });
 const TS: BoxCol = { label: 'TS%', title: 'True shooting', text: ({ p }) => pct(p.ts_pct), value: ({ p }) => p.ts_pct, better: 'high', n: ({ p }) => tsa(p), min: 5 };
-const USG: BoxCol = { label: 'USG%', title: 'Usage', text: ({ p }) => dec(p.usg_pct), value: ({ p }) => p.usg_pct, better: 'high' };
+// usage, possessions and unassisted share describe a role, not how well it went: unshaded, like the made-attempted pairs
+const USG: BoxCol = { label: 'USG%', title: 'Usage', text: ({ p }) => dec(p.usg_pct) };
 const PER_POSS = 10;
 const per100 = (label: string, k: 'pts_per100' | 'ast_per100' | 'reb_per100' | 'tov_per100', better: 'high' | 'low' = 'high'): BoxCol =>
     ({ label, title: `${label.split('/')[0]} per 100 possessions (estimated)`, text: ({ p }) => dec(p.split?.[k]), value: ({ p }) => p.split?.[k] ?? null, better, n: ({ p }) => p.split?.est_possessions ?? null, min: PER_POSS });
@@ -71,10 +72,10 @@ export function viewColumns(view: PlayerBoxView, opts: { pro: boolean; split: bo
     ];
     if (view === 'advanced') return [
         MIN,
-        ...(opts.split ? [{ label: 'Poss', title: 'Possessions, estimated: the team\'s counted possessions times the player\'s share of its minutes', text: ({ p }: BoxCtx) => dec(p.split?.est_possessions), value: ({ p }: BoxCtx) => p.split?.est_possessions ?? null, better: 'high' as const }] : []),
+        ...(opts.split ? [{ label: 'Poss', title: 'Possessions, estimated: the team\'s counted possessions times the player\'s share of its minutes', text: ({ p }: BoxCtx) => dec(p.split?.est_possessions) }] : []),
         TS, { label: 'eFG%', title: 'Effective field goal %', text: ({ p }) => pct(efgPct(p)), value: ({ p }) => efgPct(p), better: 'high', n: ({ p }) => fga(p), min: 4 }, USG,
         ...(opts.split ? [
-            { label: 'Unast%', title: 'The share of the made field goals nobody assisted', text: ({ p }: BoxCtx) => pct(p.split?.assisted_share == null ? null : 1 - p.split.assisted_share), value: ({ p }: BoxCtx) => (p.split?.assisted_share == null ? null : 1 - p.split.assisted_share), better: 'high' as const, n: ({ p }: BoxCtx) => p.split?.fgm ?? null, min: 3 },
+            { label: 'Unast%', title: 'The share of the made field goals nobody assisted', text: ({ p }: BoxCtx) => pct(p.split?.assisted_share == null ? null : 1 - p.split.assisted_share) },
             per100('PTS/100', 'pts_per100'), per100('AST/100', 'ast_per100'), per100('REB/100', 'reb_per100'), per100('TOV/100', 'tov_per100', 'low'),
         ] : []),
     ];

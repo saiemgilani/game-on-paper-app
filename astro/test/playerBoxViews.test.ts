@@ -120,6 +120,8 @@ describe('the views', () => {
         expect(shader(pts, ctx.slice(0, 3))(ctx[0])).toBeNull();
         // turnover counts rank minutes, so they are never shaded
         expect(viewColumns('basic', { pro: true, split: true }).find((c) => c.label === 'TOV')!.value).toBeUndefined();
+        // usage, possessions and unassisted share describe a role, so they are not shaded either
+        for (const l of ['USG%', 'Poss', 'Unast%']) expect(viewColumns('advanced', { pro: true, split: true }).find((c) => c.label === l)!.value).toBeUndefined();
     });
     test('college has no plus-minus column; without splits Advanced keeps only the box rates', () => {
         expect(viewColumns('basic', { pro: false, split: true }).map((c) => c.label)).not.toContain('+/-');
