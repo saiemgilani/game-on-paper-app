@@ -60,6 +60,7 @@ import { FLAGS } from '../src/utils/features';
 import { shotsOf } from '../src/nba/data/game';
 import { clockSeconds, filterShot, isAssisted, matches, NO_FILTERS, onFloor, parseFilters, shotKind, shotLine, withFilters, type FilterOptions } from '../src/basketball/shotFilters';
 import { courtFor } from '../src/basketball/config';
+import { leagueContextFromRows } from '../src/nba/adapters';
 import type { BasketballLeague } from '../src/utils/league';
 
 const json = (path: string) => JSON.parse(readFileSync(new URL(`./fixtures/${path}`, import.meta.url)).toString());
@@ -309,6 +310,19 @@ describe('NbaGamePage', () => {
         const names = [...g.home.players, ...g.away.players].filter((p) => stints[String(p.athlete_id)]).map((p) => p.name);
         expect(names.length).toBe(Object.keys(stints).length);
         for (const n of names) expect(shots).toContain(`>${n.replaceAll("'", '&#39;')}</option>`);
+    });
+    test('with the league curve (BB-G39): each team keeps its linked chart, signature and bars; a chosen shooter\'s are his own', async () => {
+        const g = game('mbb');
+        const ctx = leagueContextFromRows(json('mbb/dashboards/league_context_2026.json'));
+        const render = async (query = '') => normalize(await container.renderToString(NbaGamePage, { props: { game: g, shooting: ctx, shotFilters: { stints: null } }, request: new Request(`https://gameonpaper.com/mbb/game/${g.id}${query}`), locals: { league: 'mbb' } as App.Locals }));
+        const both = panel(await render());
+        expect(both.match(/<div data-shot-link[^>]*>/g)).toHaveLength(2);
+        expect(both.match(/Shooting signature/g)).toHaveLength(2);
+        expect(both).toContain(`${g.home.team.displayName} FG% by distance vs league`);
+        const p = g.home.players.find((r) => g.plays.some((x) => x.athleteId === r.athlete_id && x.shootingPlay && x.xLegacy != null && !(x.xLegacy === 0 && x.yLegacy === 0)))!;
+        const one = panel(await render(`?shot_player=${p.athlete_id}`));
+        expect(one.match(/<div data-shot-link[^>]*>/g)).toHaveLength(1);
+        expect(one).toContain(`${p.name.replaceAll("'", '&#39;')} FG% by distance vs league`);
     });
     test('the URL\'s filters are the first render; a value the page does not offer is dropped', async () => {
         const g = game('mbb');

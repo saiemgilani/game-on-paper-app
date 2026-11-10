@@ -106,15 +106,15 @@
         {@const d = distanceFor(xs)}
         <div class="col-12 col-lg-6">
             <h3 class="h6">{f.player ? `${s.abbr}: ${nameOf(f.player)}` : s.abbr}</h3>
-            <p class="small mb-2" aria-live="polite">{line || 'No shots match these filters.'}</p>
+            <p class="small mb-2" aria-live="polite">{line || (s.shots.length ? 'No shots match these filters.' : 'No field goal attempts.')}</p>
             {#if league}
                 <div data-shot-link>
                     <ChartSvg draw={drawFor(xs)} viewBox={GAME_SHOT_VIEWBOX} title={`${who} shots`} desc={describeShots(xs, court)} />
                     {#if d}
                         <h4 class="h6 small text-muted mt-2">Shooting signature</h4><ShootingSignature data={d.signature} title={`${who} FG% by distance vs league`} />
                         <h4 class="h6 small text-muted mt-2">Field goal percentage by distance</h4><DistanceBars data={d.bars} metric="fgPct" subjectLabel={f.player ? who : s.abbr} pinnable title={`${who} FG% by distance vs league`} />
+                        <p class="small text-muted mb-3">{caption}</p>
                     {/if}
-                    <p class="small text-muted mb-3">{caption}</p>
                 </div>
             {:else}
                 <ChartSvg draw={drawFor(xs)} viewBox={GAME_SHOT_VIEWBOX} title={`${who} shots`} desc={describeShots(xs, court)} />
