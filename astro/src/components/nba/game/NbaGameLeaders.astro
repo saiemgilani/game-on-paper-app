@@ -1,0 +1,108 @@
+---
+// src/components/nba/game/NbaGameLeaders.astro
+// BB-G35, behind 'bball-game-leaders': the basketball game page's Leaders panel. Each side's leader by category and its
+// assist web come from the box and the play-by-play the page already has (utils/gameLeaders.ts); "against their average"
+// reads the season averages (resources/seasonAverages.ts) and is drawn for a final only. Server-rendered tables, no script.
+import type { NbaGame, NbaPlayerRow, NbaSide } from '../../../resources/nbaGame';
+import { assistWeb, leaderRows, overUnder, MIN_MINUTES, OVER_UNDER_N, TS_MIN_ATTEMPTS, ZONES, type LeaderCategory, type OverUnderRow, type SeasonAverage } from '../../../utils/gameLeaders';
+import { cleanAbbreviation } from '../../../utils/misc';
+import { fmtPct } from '../../../nba/format';
+
+interface Props {
+    game: NbaGame
+    /** a final's season averages; null when the read failed; absent (a live game): no "against their average" */
+    averages?: SeasonAverage[] | null
+}
+const { game, averages } = Astro.props;
+const dash = '–';
+const minus = '−';
+const sides = [{ ha: 'away', side: game.away }, { ha: 'home', side: game.home }] as const;
+const abbr = (s: NbaSide) => cleanAbbreviation(s.team);
+const nameOf = (p: NbaPlayerRow) => p.short_name || p.name;
+const value = (cat: LeaderCategory, v: number) => (cat.pct ? fmtPct(v, 1) : cat.key === 'pm' && v > 0 ? `+${v}` : cat.key === 'pm' && v < 0 ? `${minus}${-v}` : String(v));
+const rows = leaderRows(game.home, game.away);
+const signed = (v: number) => (v > 0 ? `+${v.toFixed(1)}` : v < 0 ? `${minus}${(-v).toFixed(1)}` : '0.0');
+const avg = (v: number | null) => (v == null ? dash : v.toFixed(1));
+const ou = averages ? sides.map(({ side }) => ({ side, ...overUnder(side, averages) })) : null;
+const webs = sides.map(({ ha, side }) => {
+    const web = assistWeb(game.plays, side);
+    const names = new Map(side.players.map((p) => [p.athlete_id, nameOf(p)]));
+    return { ha, side, web, who: (id: number) => names.get(id) ?? dash };
+});
+const PAIRS_SHOWN = 8;
+const share = (a: number, t: number) => (t > 0 ? fmtPct(a / t, 0) : dash);
+---
+<div class="table-responsive"><table class="table table-sm numeral w-auto" aria-label="Game leaders" id="leaders-table">
+  <thead><tr><th scope="col"><span class="visually-hidden">Category</span></th>{sides.map(({ side }) => <th scope="col" class="text-start">{abbr(side)}</th>)}</tr></thead>
+  <tbody>
+    {rows.map((r) => (<tr><th scope="row" class="fw-normal text-nowrap"><abbr title={r.cat.title}>{r.cat.label}</abbr></th>{[r.away, r.home].map((l) => (<td>{l ? (<Fragment><span class="fw-semibold">{value(r.cat, l.value)}</span> {l.players.map((p, i) => (<Fragment>{i > 0 && ', '}<span class="text-nowrap">{nameOf(p)}</span></Fragment>))}</Fragment>) : dash}</td>))}</tr>))}
+  </tbody>
+</table></div>
+<p class="small text-muted">True shooting leads with {TS_MIN_ATTEMPTS} or more true-shooting attempts (FGA + 0.44 FTA). A tie lists every player at the top.</p>
+
+{averages !== undefined && (
+<Fragment>
+<h3 class="h6 mt-3">Against their average</h3>
+{ou === null ? (<p class="text-muted" id="leaders-averages-unavailable">The season averages are temporarily unavailable.</p>) : (
+<Fragment>
+<div class="row" id="leaders-over-under">
+  {ou.map(({ side, over, under }) => (
+    <div class="col-12 col-xl-6">
+      <div class="table-responsive"><table class="table table-sm numeral" aria-label={`${abbr(side)} points against the season average`}>
+        <thead><tr><th scope="col" class="text-start">{abbr(side)}</th><th scope="col" class="text-end">PTS</th><th scope="col" class="text-end"><abbr title="Season points per game">Avg</abbr></th><th scope="col" class="text-end"><abbr title="Points against the season average">+/−</abbr></th><th scope="col" class="text-end">REB</th><th scope="col" class="text-end">AST</th></tr></thead>
+        <tbody>
+          {over.length === 0 && under.length === 0 && (<tr><td colspan="6" class="text-muted small">No player with {MIN_MINUTES}+ minutes has a season average yet.</td></tr>)}
+          {[...over, ...under].map((r: OverUnderRow, i) => (
+            <tr class:list={[{ 'border-top': i === over.length && over.length > 0 }]}>
+              <th scope="row" class="text-start fw-normal text-nowrap">{r.player.name}</th>
+              <td class="text-end">{r.player.points}</td><td class="text-end">{avg(r.avg.pts)}</td><td class="text-end fw-semibold">{signed(r.delta)}</td>
+              <td class="text-end text-nowrap">{r.player.rebounds ?? dash} <span class="text-muted">({avg(r.avg.reb)})</span></td><td class="text-end text-nowrap">{r.player.assists ?? dash} <span class="text-muted">({avg(r.avg.ast)})</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+    </div>
+  ))}
+</div>
+<p class="small text-muted">Up to {OVER_UNDER_N} players a side furthest over, then under, their season scoring average, among those with {MIN_MINUTES}+ minutes; rebound and assist averages in brackets. The season averages are to date and include this game.</p>
+</Fragment>
+)}
+</Fragment>
+)}
+
+<h3 class="h6 mt-3">Assist web</h3>
+<div class="row" id="leaders-assist-web">
+  {webs.map(({ ha, side, web, who }) => {
+      const total = ZONES.reduce((t, z) => t + web.zones[z.key].assisted + web.zones[z.key].unassisted, 0);
+      return (
+    <div class="col-12 col-xl-6" id={`assist-web-${ha}`}>
+      {!web.linked ? (<p class="text-muted small">{abbr(side)}: the play-by-play does not say who assisted whom for this game.</p>) : (
+      <Fragment>
+      <div class="table-responsive"><table class="table table-sm numeral" aria-label={`${abbr(side)} assists by passer and scorer`}>
+        <thead><tr><th scope="col" class="text-start">{abbr(side)} passer</th><th scope="col" class="text-start">Scorer</th><th scope="col" class="text-end">AST</th><th scope="col" class="text-end">PTS</th></tr></thead>
+        <tbody>
+          {web.pairs.length === 0 && (<tr><td colspan="4" class="text-muted small">No assisted field goals.</td></tr>)}
+          {web.pairs.slice(0, PAIRS_SHOWN).map((p) => (<tr><th scope="row" class="text-start fw-normal text-nowrap">{who(p.passer)}</th><td class="text-start text-nowrap">{who(p.scorer)}</td><td class="text-end">{p.ast}</td><td class="text-end">{p.pts}</td></tr>))}
+        </tbody>
+      </table></div>
+      {web.pairs.length > PAIRS_SHOWN && (
+        <details class="mb-2"><summary class="small">{web.pairs.length - PAIRS_SHOWN} more pairs</summary>
+          <div class="table-responsive"><table class="table table-sm numeral" aria-label={`${abbr(side)} more assist pairs`}><tbody>
+            {web.pairs.slice(PAIRS_SHOWN).map((p) => (<tr><th scope="row" class="text-start fw-normal text-nowrap">{who(p.passer)}</th><td class="text-start text-nowrap">{who(p.scorer)}</td><td class="text-end">{p.ast}</td><td class="text-end">{p.pts}</td></tr>))}
+          </tbody></table></div>
+        </details>
+      )}
+      <div class="table-responsive"><table class="table table-sm numeral" aria-label={`${abbr(side)} points by zone, assisted and unassisted`}>
+        <thead><tr><th scope="col" class="text-start">{abbr(side)} points</th><th scope="col" class="text-end">Assisted</th><th scope="col" class="text-end">Unassisted</th><th scope="col" class="text-end">Total</th><th scope="col" class="text-end"><abbr title="Share of the zone's points that were assisted">Ast%</abbr></th></tr></thead>
+        <tbody>
+          {ZONES.map((z) => { const c = web.zones[z.key]; return (<tr><th scope="row" class="text-start fw-normal text-nowrap"><abbr title={z.title}>{z.label}</abbr></th><td class="text-end">{z.key === 'ft' ? dash : c.assisted}</td><td class="text-end">{c.unassisted}</td><td class="text-end">{c.assisted + c.unassisted}</td><td class="text-end">{z.key === 'ft' ? dash : share(c.assisted, c.assisted + c.unassisted)}</td></tr>); })}
+          <tr class="border-top"><th scope="row" class="text-start">Total</th><td class="text-end">{ZONES.reduce((t, z) => t + web.zones[z.key].assisted, 0)}</td><td class="text-end">{ZONES.reduce((t, z) => t + web.zones[z.key].unassisted, 0)}</td><td class="text-end">{total}</td><td class="text-end">{share(ZONES.reduce((t, z) => t + web.zones[z.key].assisted, 0), total)}</td></tr>
+        </tbody>
+      </table></div>
+      <p class="small text-muted mb-2">{web.assisted} of {web.boxAssists ?? dash} box-score assists are on a made shot in the play-by-play.</p>
+      </Fragment>
+      )}
+    </div>
+  ); })}
+</div>
+<p class="small text-muted mb-0">An assist is the play-by-play's assister on a made field goal. Zones follow the shot type: layups, dunks, tips and putbacks are at the rim.</p>

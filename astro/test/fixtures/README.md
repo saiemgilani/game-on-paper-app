@@ -839,3 +839,21 @@ within one (the log leaves the defense's technical free throws out); rebounds hi
 
 **To regenerate:** rerun those calls in an sdv-py checkout of `origin/main` (polars, no network beyond the GitHub
 release assets), write `{...}` above with `json.dumps(..., default=str)` and gzip (`mtime=0`).
+
+## `game-leaders-{nba-401766458,wnba-401736287,mbb-401820775,wbb-401805076}.json.gz`
+The reads behind BB-G35's Leaders panel for the four ingested finals the game-page tests already use
+(`<lg>/game_<id>_api.json`), captured live on 2026-11-09, every read season-filtered with a limit, as `{league,
+espnGameId, season, assists, averages: {home, away}}` (the `data` array of each response, no edits). `assists` is the
+game's play-by-play with the second athlete (`pbp?season=…&game_id=…&select=game_play_number,athlete_id_2&order=game_play_number&limit=1500`),
+which the tests join onto the API fixture's plays by `game_play_number` (those fixtures predate `athlete_id_2` in the
+page's select). `averages` is each side's `player_season_stats?season=…&team_id=…&select=category,stat_name,value,athlete_id,team_id&limit=3000`.
+Games: ATL 95 at ORL 120 (2024-25), GS 73 at CHI 66 (WNBA 2025), NC State 90 at Notre Dame 96 (MBB 2025-26), UTEP 87
+at Louisiana Tech 91 in overtime (WBB 2025-26).
+
+Two things the capture shows about `player_season_stats` (the page handles both): WNBA 2025's rows are mostly career
+lines under the season filter (games played up to 436), and WBB 2026 has one or two players a team, all career lines
+(82 to 107 games). `resources/seasonAverages.ts` leaves out any row with more games than a season holds.
+
+**Used by:** `test/gameLeaders.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.

@@ -55,6 +55,10 @@ def _no_line_as_snapshotted(body):
 
 
 def test_nba_process_payload_is_unchanged(monkeypatch):
-    kept = {k: v for k, v in _no_line_as_snapshotted(_body(monkeypatch)).items() if k not in ADDED_IN_PR0}
+    body = _body(monkeypatch)
+    # BB-G35 added one per-play key, the assister of a made shot (athlete_id_2); everything else is the snapshot's
+    assert any(p.get("athlete_id_2") is not None for p in body["plays"])
+    body["plays"] = [{k: v for k, v in p.items() if k != "athlete_id_2"} for p in body["plays"]]
+    kept = {k: v for k, v in _no_line_as_snapshotted(body).items() if k not in ADDED_IN_PR0}
     assert SNAP.exists(), "PR 0 snapshot missing; never regenerate"
     assert kept == json.loads(SNAP.read_text(encoding="utf-8"))

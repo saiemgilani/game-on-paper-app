@@ -35,6 +35,8 @@ export interface NbaPlay {
     id: string; n: number; period: number; clock: string; secondsRemaining: number | null
     homeScore: number; awayScore: number; teamId: number | null; text: string; typeText: string | null
     scoringPlay: boolean; scoreValue: number; shootingPlay: boolean; athleteId: number | null
+    /** the play's second athlete: on a made field goal, the assister (BB-G35's assist web); null when the feed sends none */
+    athleteId2: number | null
     homeWinProb: number | null; wpDelta: number | null; wpRegime: 'reg' | 'ot'; xLegacy: number | null; yLegacy: number | null
 }
 
@@ -201,7 +203,7 @@ function play(r: Record<string, any>, wp: Record<string, any> | undefined = r): 
         id: String(r.id), n: num(r.game_play_number) ?? 0, period: num(r.period_number) ?? 0, clock: r.clock_display_value ?? '',
         secondsRemaining: num(r.start_game_seconds_remaining), homeScore: num(r.home_score) ?? 0, awayScore: num(r.away_score) ?? 0, teamId: num(r.team_id),
         text: r.text ?? '', typeText: r.type_text ?? null, scoringPlay: isTrue(r.scoring_play), scoreValue: num(r.score_value) ?? 0, shootingPlay: isTrue(r.shooting_play),
-        athleteId: num(r.athlete_id_1), homeWinProb: num(wp?.home_win_prob), wpDelta: num(wp?.wp_delta), wpRegime: wp?.wp_regime === 'ot' ? 'ot' : 'reg',
+        athleteId: num(r.athlete_id_1), athleteId2: num(r.athlete_id_2), homeWinProb: num(wp?.home_win_prob), wpDelta: num(wp?.wp_delta), wpRegime: wp?.wp_regime === 'ot' ? 'ot' : 'reg',
         xLegacy: num(wp?.x_legacy), yLegacy: num(wp?.y_legacy),
     }
 }
