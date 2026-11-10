@@ -14,8 +14,9 @@ const capture = (name: string) => JSON.parse(gunzipSync(readFileSync(new URL(`./
 const CAP = capture('epv-box-nba-2025');
 // BB-G46: LV at NY, 2025-05-17 (ESPN 401736116, stats 1022500005); UNC Wilmington 67 at East Carolina 53, 2024-12-03
 // (ESPN 401722197, contest 5722015); Winthrop 39 at Georgia Tech 85, 2024-11-04 (ESPN 401711537, contest 5722020)
-const MORE = { wnba: capture('epv-box-wnba-2025'), mbb: capture('epv-box-mbb-2025'), wbb: capture('epv-box-wbb-2025') };
-const HOME = 1610612753, AWAY = 1610612766; // ORL, CHA
+const MORE = { wnba: { home: 17, away: 9, ...capture('epv-box-wnba-2025') }, // the ESPN ids (unused by a pro read)
+    mbb: capture('epv-box-mbb-2025'), wbb: capture('epv-box-wbb-2025') };
+const HOME = 1610612753, AWAY = 1610612766; // ORL, CHA (stats ids; ESPN 19 and 30)
 
 // an unmocked read would go to the Data API with the vitest config's dummy SDV_AUTH_TOKEN (a 429 lockout for this IP):
 // any fetch at all fails the file instead
@@ -55,7 +56,7 @@ import { fromDataApi } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
 
-const reads = async (cap = CAP): Promise<EpvBoxReads> => { api.cap = cap; return retrieveEpvBox('nba', 2025, '401703372'); };
+const reads = async (cap = CAP): Promise<EpvBoxReads> => { api.cap = cap; return retrieveEpvBox('nba', 2025, '401703372', 19, 30); };
 const read = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/nba/${name}.json`, import.meta.url)).toString());
 const gameApi = () => read('game_401766458_api'); // ATL 95 at ORL 120, the 2025 play-in: the route tests' final
 let container: AstroContainer;
@@ -201,15 +202,13 @@ describe('BB-G46: the WNBA and college', () => {
             expect(Math.sign(homeNet)).toBe(Math.sign(sc.home_score - sc.away_score));
         }
     });
-    test('an unmapped game is empty after one read; college with no ESPN side ids too', async () => {
+    test('an unmapped game is empty after one read', async () => {
         api.cap = { ...MORE.mbb, box: [] };
         expect(await retrieveEpvBox('mbb', 2025, MORE.mbb.espnGameId, MORE.mbb.home, MORE.mbb.away)).toEqual(EMPTY_EPV);
         expect(api.calls).toHaveLength(1);
         api.calls.length = 0; api.cap = { ...MORE.wnba, crosswalk: [] };
-        expect(await retrieveEpvBox('wnba', 2025, MORE.wnba.espnGameId)).toEqual(EMPTY_EPV);
+        expect(await retrieveEpvBox('wnba', 2025, MORE.wnba.espnGameId, 17, 9)).toEqual(EMPTY_EPV);
         expect(api.calls).toHaveLength(1);
-        api.calls.length = 0; api.cap = MORE.wbb;
-        expect(await retrieveEpvBox('wbb', 2025, MORE.wbb.espnGameId)).toEqual(EMPTY_EPV);
     });
     test('the box renders college rows: named, signed, no NaN', async () => {
         const html = await render(await more('wbb'), 'wbb', 'GT', 'WIN');
@@ -217,6 +216,8 @@ describe('BB-G46: the WNBA and college', () => {
         expect(html).not.toContain('NaN');
         expect(html).not.toContain('undefined');
         expect(html).not.toContain('>#');
+        // small screens get the abbreviation, larger ones the name
+        expect(html).toContain('<span class="d-none d-md-inline">GT</span><span class="d-md-none">GT</span>');
     });
 });
 

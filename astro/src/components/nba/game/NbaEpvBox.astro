@@ -7,7 +7,7 @@
 import type { NbaGame } from '../../../resources/nbaGame';
 import { epvSide, type EpvBoxReads } from '../../../resources/epvBox';
 import { fmtInt } from '../../../nba/format';
-import { cleanAbbreviation } from '../../../utils/misc';
+import { cleanAbbreviation, cleanField } from '../../../utils/misc';
 
 interface Props { game: NbaGame; epv: EpvBoxReads | null }
 const { game, epv } = Astro.props;
@@ -19,7 +19,7 @@ const int = (v: number | null | undefined) => (v == null ? dash : fmtInt(v));
 const perPoss = (v: number | null | undefined) => (v == null ? dash : signed(v, 2));
 const built = epv && epv.players.length > 0;
 const sides = built
-    ? (['away', 'home'] as const).map((key) => ({ key, abbr: cleanAbbreviation(game[key].team), name: game[key].team.displayName, ...epvSide(epv, key) }))
+    ? (['away', 'home'] as const).map((key) => ({ key, abbr: cleanAbbreviation(game[key].team), name: cleanField(game[key].team, 'displayName'), ...epvSide(epv, key) }))
     : [];
 ---
 {epv === null ? (<p class="text-muted" id="epv-unavailable">The EPV box is temporarily unavailable.</p>) : !built ? (<p class="text-muted" id="epv-empty">The EPV box is not built for this game yet; it follows the nightly ingest.</p>) : (
@@ -43,7 +43,7 @@ const sides = built
 <div class="row">
   {sides.map((s) => (
     <div class="col-12 col-xl-6" id={`epv-${s.key}`}>
-      <h3 class="h6">{s.name}</h3>
+      <h3 class="h6"><span class="d-none d-md-inline">{s.name}</span><span class="d-md-none">{s.abbr}</span></h3>
       {s.players.length === 0 ? (<p class="text-muted small">No EPV rows for {s.abbr}.</p>) : (
       <div class="table-responsive"><table class="table table-sm numeral align-middle" aria-label={`${s.abbr} EPV`}>
         <thead><tr><th scope="col">Player</th><th scope="col" class="text-end"><abbr title="EPV added on the player's own events: shots, turnovers, rebounds, fouls, steals and blocks">EPV added</abbr></th><th scope="col" class="text-end"><abbr title="The player's own events">Plays</abbr></th><th scope="col" class="text-end"><abbr title="The team's EPV added with the ball while the player was on the floor">On off.</abbr></th><th scope="col" class="text-end"><abbr title="The opponent's EPV added while the player was on the floor: lower is better">On def.</abbr></th><th scope="col" class="text-end"><abbr title="On-court EPV +/-: On off. minus On def.">On net</abbr></th></tr></thead>

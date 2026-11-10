@@ -81,7 +81,7 @@ async function retrieveWnbaNames(season: number): Promise<ImpactName[]> {
  * college: the stats.ncaa.org box (the contest id and the names; `homeId` / `awayId`, the ESPN team ids, are the tables'
  * own), then the players and the two team rows. Call only when hasEpv.
  */
-export async function retrieveEpvBox(league: BasketballLeague, season: number, espnGameId: string, homeId?: number, awayId?: number): Promise<EpvBoxReads> {
+export async function retrieveEpvBox(league: BasketballLeague, season: number, espnGameId: string, homeId: number, awayId: number): Promise<EpvBoxReads> {
     const s = String(season);
     let gameId: string;
     let teams: { home: number; away: number };
@@ -95,7 +95,7 @@ export async function retrieveEpvBox(league: BasketballLeague, season: number, e
         // the Impact box's query, key for key: one cache entry for both panels
         const box = await retrieveRowsFrom<NcaaName>(leagueSource(league), 'ncaa_player_box',
             { season: s, espn_game_id: espnGameId, select: 'contest_id,player_id,clean_name,player', limit: PLAYER_LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS);
-        if (!box[0]?.contest_id || homeId == null || awayId == null) return EMPTY_EPV;
+        if (!box[0]?.contest_id) return EMPTY_EPV;
         gameId = String(box[0].contest_id);
         teams = { home: homeId, away: awayId };
         // a non-D1 opponent's players carry no stats.ncaa.org id (and have no EPV rows)
