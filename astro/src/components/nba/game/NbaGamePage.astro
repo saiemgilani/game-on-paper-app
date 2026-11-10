@@ -36,7 +36,7 @@ interface Props {
     flow?: GameFlowReads | null
     /** BB-G2, 'bball-garbage-time' with the Impact box and a final only: the possession log and `?garbage=out`; absent: no toggle */
     garbage?: { reads: GarbageReads | null; out: boolean }
-    /** BB-G26, 'bball-epv', an NBA final from 2021-22 only: the EPV rows; null when a read failed; absent: no panel */
+    /** BB-G26 / BB-G46, 'bball-epv', a final from 2021-22 only: the EPV rows; null when a read failed; absent: no panel */
     epv?: EpvBoxReads | null
 }
 const { game, sourceTools, impact, flow, garbage, epv } = Astro.props;

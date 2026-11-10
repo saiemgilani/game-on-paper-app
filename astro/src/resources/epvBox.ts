@@ -2,25 +2,32 @@
  * The Data API reads behind BB-G26's EPV box (behind 'bball-epv'): sdv-db's nba_stats.epv_player_games and
  * epv_team_games (BB-D24, sdv-db #201, from sdv-py nba_epv_player_games / _team_games, sportsdataverse-py #1113). EPV is
  * the offense's expected points to the end of the possession; EPV added (points + EPV after - EPV before) is
- * basketball's EPA. NBA only, 2021-22 on: the WNBA booster is not shipped and sdv-py refuses earlier seasons. As the
- * Impact box (resources/impactBox.ts), the tables are keyed by stats.nba.com ids, so the ESPN game is mapped through
- * schedule_crosswalk and the names come from the stats box (the same reads, the same cache entries). Every number is the
- * producer's; the box reads, orders and formats. Reads are strict: an outage is never shown as a game with no rows.
+ * basketball's EPA. All four leagues from 2021-22 (the WNBA from 2022; BB-G46 for the WNBA and college): the boosters'
+ * first training season, sdv-py refuses earlier ones. As the Impact box (resources/impactBox.ts), the pro tables are keyed
+ * by stats.nba.com / stats.wnba.com ids, so the ESPN game is mapped through schedule_crosswalk; the NBA's names come from
+ * the stats box (the same reads, the same cache entries), the WNBA's from the season's player crosswalk (its stats box
+ * starts in 2026). College tables are keyed by the stats.ncaa.org contest and player ids with ESPN team ids, so the
+ * stats.ncaa.org box, filtered by the ESPN game id, gives the contest id and the names in one read (the Impact box's).
+ * Every number is the producer's; the box reads, orders and formats. Reads are strict: an outage is never shown as a
+ * game with no rows.
  */
 import { retrieveRowsFrom } from './sdv';
 import { NBA_READ_TIMEOUT_MS } from './nbaGames';
-import { retrieveProGame, retrieveProNames, type ImpactName } from './impactBox';
-import { leagueSource, type BasketballLeague } from '../utils/league';
+import { retrieveProGame, retrieveProNames, titleCase, type ImpactName } from './impactBox';
+import { BASKETBALL } from '../basketball/config';
+import { PRO_LEAGUES, leagueSource, type BasketballLeague } from '../utils/league';
 
 /** The tables are rebuilt once a day (the 16:00 UTC season products): the season pages' window. */
 const TTL = 6 * 60 * 60;
 /** A game is at most ~40 players between both sides; the cap keeps a bad filter from paging silently. */
 const PLAYER_LIMIT = '80';
-/** The EPV booster's first training season (sdv-py nba_epv refuses earlier ones): 2021-22. */
+/** A WNBA season's players in the crosswalk: ~270 rows (a traded player once per team); the cap is well above. */
+const WNBA_NAME_LIMIT = '600';
+/** The EPV boosters' first training season (sdv-py nba_epv / wnba_epv / mbb_epv refuse earlier ones): 2021-22, the WNBA's 2022. */
 export const EPV_FIRST_SEASON = 2022;
 
-/** Whether the league and season have EPV tables at all: the NBA from 2021-22. Anything else spends no read and shows no panel. */
-export const hasEpv = (league: BasketballLeague, season: number) => league === 'nba' && season >= EPV_FIRST_SEASON;
+/** Whether the league and season have EPV tables at all: every league from 2021-22. Earlier spends no read and shows no panel. */
+export const hasEpv = (_league: BasketballLeague, season: number) => season >= EPV_FIRST_SEASON;
 
 /** One player's EPV in one game: added on their own events, and the on-court EPV +/- (off - def). */
 export interface EpvPlayerRow {
@@ -48,9 +55,9 @@ export interface EpvTeamRow {
 const TEAM_SELECT = 'team_id,off_epv,def_epv,net_epv,poss,opp_poss,off_epv_per_poss,def_epv_per_poss';
 
 export interface EpvBoxReads {
-    /** the stats.nba.com game id; null when the crosswalk does not map the game */
+    /** the producer's game id (stats.nba.com / stats.wnba.com game id, stats.ncaa.org contest id); null when unmapped */
     gameId: string | null;
-    /** the stats team id of each ESPN side */
+    /** the tables' team id of each ESPN side (stats ids for the pros, the ESPN id in college) */
     teams: { home: number; away: number } | null;
     players: EpvPlayerRow[];
     team: EpvTeamRow[];
@@ -59,17 +66,47 @@ export interface EpvBoxReads {
 /** No producer rows for the game (not mapped, or not built yet). */
 export const EMPTY_EPV: EpvBoxReads = { gameId: null, teams: null, players: [], team: [], names: [] };
 
-/** One ESPN game's reads, strict: the crosswalk, then the players, the two team rows and the names. Call only when hasEpv. */
-export async function retrieveEpvBox(league: BasketballLeague, season: number, espnGameId: string): Promise<EpvBoxReads> {
-    const x = await retrieveProGame(league, season, espnGameId);
-    if (!x) return EMPTY_EPV;
-    const { gameId, teams } = x;
+interface NcaaName { contest_id: string; player_id: string | null; clean_name: string | null; player: string | null }
+interface WnbaName { wnba_player_id: number | null; wnba_player_name: string | null }
+
+/** A WNBA season's names by stats.wnba.com person id: one season-filtered, capped read, shared by every WNBA game that season. */
+async function retrieveWnbaNames(season: number): Promise<ImpactName[]> {
+    const rows = await retrieveRowsFrom<WnbaName>(BASKETBALL.wnba.gamesSource, 'player_crosswalk',
+        { season: String(season), select: 'wnba_player_id,wnba_player_name', limit: WNBA_NAME_LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS);
+    return rows.filter((r) => r.wnba_player_id != null && r.wnba_player_name).map((r) => ({ player_id: String(r.wnba_player_id), name: String(r.wnba_player_name) }));
+}
+
+/**
+ * One ESPN game's reads, strict, two rounds. The pros: the crosswalk, then the players, the two team rows and the names;
+ * college: the stats.ncaa.org box (the contest id and the names; `homeId` / `awayId`, the ESPN team ids, are the tables'
+ * own), then the players and the two team rows. Call only when hasEpv.
+ */
+export async function retrieveEpvBox(league: BasketballLeague, season: number, espnGameId: string, homeId?: number, awayId?: number): Promise<EpvBoxReads> {
+    const s = String(season);
+    let gameId: string;
+    let teams: { home: number; away: number };
+    let namesRead: Promise<ImpactName[]>;
+    if (PRO_LEAGUES.includes(league)) {
+        const x = await retrieveProGame(league, season, espnGameId);
+        if (!x) return EMPTY_EPV;
+        ({ gameId, teams } = x);
+        namesRead = league === 'nba' ? retrieveProNames(league, season, gameId) : retrieveWnbaNames(season);
+    } else {
+        // the Impact box's query, key for key: one cache entry for both panels
+        const box = await retrieveRowsFrom<NcaaName>(leagueSource(league), 'ncaa_player_box',
+            { season: s, espn_game_id: espnGameId, select: 'contest_id,player_id,clean_name,player', limit: PLAYER_LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS);
+        if (!box[0]?.contest_id || homeId == null || awayId == null) return EMPTY_EPV;
+        gameId = String(box[0].contest_id);
+        teams = { home: homeId, away: awayId };
+        // a non-D1 opponent's players carry no stats.ncaa.org id (and have no EPV rows)
+        namesRead = Promise.resolve(box.filter((r) => r.player_id).map((r) => ({ player_id: String(r.player_id), name: r.clean_name || titleCase(String(r.player ?? r.player_id)) })));
+    }
     const read = <T>(table: string, select: string, limit: string) =>
-        retrieveRowsFrom<T>(leagueSource(league), table, { season: String(season), game_id: gameId, select, limit }, TTL, true, NBA_READ_TIMEOUT_MS);
+        retrieveRowsFrom<T>(leagueSource(league), table, { season: s, game_id: gameId, select, limit }, TTL, true, NBA_READ_TIMEOUT_MS);
     const [players, team, names] = await Promise.all([
         read<EpvPlayerRow>('epv_player_games', PLAYER_SELECT, PLAYER_LIMIT),
         read<EpvTeamRow>('epv_team_games', TEAM_SELECT, '2'),
-        retrieveProNames(league, season, gameId),
+        namesRead,
     ]);
     return { gameId, teams, players, team, names };
 }

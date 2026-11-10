@@ -1,8 +1,9 @@
 ---
 // src/components/nba/game/NbaEpvBox.astro
-// BB-G26, behind 'bball-epv': the NBA game page's EPV box, football's per-player EPA. Each side's EPV added with the ball
-// and allowed, and each player's EPV added on their own events and on-court EPV +/-. Every number is the producer's
-// (sdv-db epv_player_games / epv_team_games, sdv-py nba_epv_*); this reads, orders and formats.
+// BB-G26 / BB-G46, behind 'bball-epv': the basketball game page's EPV box (all four leagues), football's per-player EPA.
+// Each side's EPV added with the ball and allowed, and each player's EPV added on their own events and on-court EPV +/-.
+// Every number is the producer's (sdv-db epv_player_games / epv_team_games, sdv-py {nba,wnba,mbb}_epv_*); this reads,
+// orders and formats.
 import type { NbaGame } from '../../../resources/nbaGame';
 import { epvSide, type EpvBoxReads } from '../../../resources/epvBox';
 import { fmtInt } from '../../../nba/format';

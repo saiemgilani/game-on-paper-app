@@ -1,7 +1,7 @@
-// BB-G26: the NBA game page's EPV box behind 'bball-epv'. The reads (the id mapping and every query season-filtered and
-// capped), the side split, the page-side step (the flag, the league and season, and a final gate the read; a failed read
-// keeps the page and is never cached) and the template, on real rows (fixtures/README.md: epv-box-nba-2025.json.gz).
-// Every Data API read here is mocked.
+// BB-G26 / BB-G46: the basketball game page's EPV box behind 'bball-epv', all four leagues. The reads (the id mapping and
+// every query season-filtered and capped), the side split, the page-side step (the flag, the season, and a final gate the
+// read; a failed read keeps the page and is never cached) and the template, on real rows (fixtures/README.md:
+// epv-box-{nba,wnba,mbb,wbb}-2025.json.gz). Every Data API read here is mocked.
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
@@ -10,7 +10,11 @@ import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/containe
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 
 // CHA 89 at ORL 114, 2024-11-12 (ESPN 401703372, stats 0022400003)
-const CAP = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/epv-box-nba-2025.json.gz', import.meta.url))).toString());
+const capture = (name: string) => JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/${name}.json.gz`, import.meta.url))).toString());
+const CAP = capture('epv-box-nba-2025');
+// BB-G46: LV at NY, 2025-05-17 (ESPN 401736116, stats 1022500005); UNC Wilmington 67 at East Carolina 53, 2024-12-03
+// (ESPN 401722197, contest 5722015); Winthrop 39 at Georgia Tech 85, 2024-11-04 (ESPN 401711537, contest 5722020)
+const MORE = { wnba: capture('epv-box-wnba-2025'), mbb: capture('epv-box-mbb-2025'), wbb: capture('epv-box-wbb-2025') };
 const HOME = 1610612753, AWAY = 1610612766; // ORL, CHA
 
 // an unmocked read would go to the Data API with the vitest config's dummy SDV_AUTH_TOKEN (a 429 lockout for this IP):
@@ -27,7 +31,8 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         if (api.fail) throw new Error('down');
         const c = api.cap;
         if (table === 'schedule_crosswalk') return c.crosswalk;
-        if (table === 'player_box') return c.names;
+        if (table === 'player_box' || table === 'player_crosswalk') return c.names;
+        if (table === 'ncaa_player_box') return c.box;
         // the cap applies, so a lowered limit would drop rows and fail the tests below
         if (table === 'epv_player_games') return c.players.slice(0, Number(query.limit));
         if (table === 'epv_team_games') return c.teams.slice(0, Number(query.limit));
@@ -109,11 +114,13 @@ describe('retrieveEpvBox', () => {
         api.fail = true;
         await expect(reads()).rejects.toThrow('down');
     });
-    test('hasEpv: the NBA from 2021-22 only', () => {
+    test('hasEpv: every league from 2021-22 (the WNBA from 2022)', () => {
         expect(EPV_FIRST_SEASON).toBe(2022);
-        expect(hasEpv('nba', 2022)).toBe(true);
-        expect(hasEpv('nba', 2021)).toBe(false);
-        for (const l of ['wnba', 'mbb', 'wbb'] as const) expect(hasEpv(l, 2026)).toBe(false);
+        for (const l of ['nba', 'wnba', 'mbb', 'wbb'] as const) {
+            expect(hasEpv(l, 2022)).toBe(true);
+            expect(hasEpv(l, 2026)).toBe(true);
+            expect(hasEpv(l, 2021)).toBe(false);
+        }
     });
 });
 
@@ -133,6 +140,83 @@ describe('epvSide', () => {
     test('a player the box does not name keeps their id', async () => {
         const s = epvSide({ ...(await reads()), names: [] }, 'away');
         expect(s.players.every((p) => p.name === `#${p.player_id}`)).toBe(true);
+    });
+});
+
+describe('BB-G46: the WNBA and college', () => {
+    const more = async (league: 'wnba' | 'mbb' | 'wbb') => {
+        const c = MORE[league]; api.cap = c;
+        return retrieveEpvBox(league, c.season, c.espnGameId, c.home, c.away);
+    };
+    test("the captures hold the producer's identities: on-court sums are five times the team's, and the nets cancel", () => {
+        for (const c of Object.values(MORE)) {
+            expect(c.teams).toHaveLength(2);
+            for (const t of c.teams) {
+                const sum = (k: string) => c.players.filter((p: any) => p.team_id === t.team_id).reduce((a: number, p: any) => a + p[k], 0);
+                expect(sum('off_epv_on')).toBeCloseTo(5 * t.off_epv, 6);
+                expect(sum('epv_on')).toBeCloseTo(5 * t.net_epv, 6);
+            }
+            expect(c.teams[0].net_epv + c.teams[1].net_epv).toBeCloseTo(0, 9);
+        }
+    });
+    test('the WNBA: the crosswalk, then wnba_stats by the stats game id and the season\'s names from the player crosswalk', async () => {
+        const r = await more('wnba');
+        expect(api.calls[0]).toEqual({ schema: 'wnba', table: 'schedule_crosswalk', query: { season: '2025', espn_game_id: '401736116', select: 'wnba_game_id,wnba_home_team_id,wnba_away_team_id', limit: '1' } });
+        const by = Object.fromEntries(api.calls.slice(1).map((c) => [c.table, c]));
+        expect(Object.keys(by).sort()).toEqual(['epv_player_games', 'epv_team_games', 'player_crosswalk']);
+        for (const t of ['epv_player_games', 'epv_team_games']) expect(by[t]).toMatchObject({ schema: 'wnba_stats', query: { season: '2025', game_id: '1022500005' } });
+        // one read per season, not per game: no game filter, capped
+        expect(by.player_crosswalk).toEqual({ schema: 'wnba', table: 'player_crosswalk', query: { season: '2025', select: 'wnba_player_id,wnba_player_name', limit: '600' } });
+        expect(r.teams).toEqual({ home: 1611661313, away: 1611661319 });
+        expect(r.players).toHaveLength(MORE.wnba.players.length);
+    });
+    test("college: the Impact box's stats.ncaa.org box read (one cache entry), then the league schema by the contest id", async () => {
+        for (const l of ['mbb', 'wbb'] as const) {
+            api.calls.length = 0;
+            const c = MORE[l];
+            const r = await more(l);
+            expect(api.calls[0]).toEqual({ schema: l, table: 'ncaa_player_box', query: { season: '2025', espn_game_id: c.espnGameId, select: 'contest_id,player_id,clean_name,player', limit: '80' } });
+            for (const x of api.calls.slice(1)) expect(x).toMatchObject({ schema: l, query: { season: '2025', game_id: c.box[0].contest_id } });
+            expect(api.calls.slice(1).map((x) => x.table).sort()).toEqual(['epv_player_games', 'epv_team_games']);
+            expect(r.teams).toEqual({ home: c.home, away: c.away });
+        }
+    });
+    test('each side of each league: its own players and team row, every player named', async () => {
+        for (const l of ['wnba', 'mbb', 'wbb'] as const) {
+            const r = await more(l);
+            const total = (['home', 'away'] as const).map((side) => {
+                const s = epvSide(r, side);
+                expect(s.team?.team_id).toBe(r.teams![side]);
+                expect(s.players.length).toBeGreaterThan(5);
+                expect(s.players.filter((p) => p.name.startsWith('#'))).toEqual([]);
+                return s.players.length;
+            });
+            expect(total[0] + total[1]).toBe(MORE[l].players.length);
+        }
+    });
+    test('the sign follows the score: the winner has the positive net', async () => {
+        for (const l of ['mbb', 'wbb'] as const) {
+            const r = await more(l); const sc = MORE[l].score;
+            const homeNet = epvSide(r, 'home').team!.net_epv!;
+            expect(Math.sign(homeNet)).toBe(Math.sign(sc.home_score - sc.away_score));
+        }
+    });
+    test('an unmapped game is empty after one read; college with no ESPN side ids too', async () => {
+        api.cap = { ...MORE.mbb, box: [] };
+        expect(await retrieveEpvBox('mbb', 2025, MORE.mbb.espnGameId, MORE.mbb.home, MORE.mbb.away)).toEqual(EMPTY_EPV);
+        expect(api.calls).toHaveLength(1);
+        api.calls.length = 0; api.cap = { ...MORE.wnba, crosswalk: [] };
+        expect(await retrieveEpvBox('wnba', 2025, MORE.wnba.espnGameId)).toEqual(EMPTY_EPV);
+        expect(api.calls).toHaveLength(1);
+        api.calls.length = 0; api.cap = MORE.wbb;
+        expect(await retrieveEpvBox('wbb', 2025, MORE.wbb.espnGameId)).toEqual(EMPTY_EPV);
+    });
+    test('the box renders college rows: named, signed, no NaN', async () => {
+        const html = await render(await more('wbb'), 'wbb', 'GT', 'WIN');
+        expect(table(html, 'GT EPV')).toContain(epvSide(await more('wbb'), 'home').players[0].name);
+        expect(html).not.toContain('NaN');
+        expect(html).not.toContain('undefined');
+        expect(html).not.toContain('>#');
     });
 });
 
@@ -197,12 +281,12 @@ describe('prepareBasketballGame with the flag', () => {
     });
 });
 
-const render = (epv: EpvBoxReads | null) => {
+function render(epv: EpvBoxReads | null, league = 'nba', homeAbbr = 'ORL', awayAbbr = 'CHA') {
     const game = fromDataApi(gameApi(), 'nba');
-    const g = { ...game, home: { ...game.home, team: { ...game.home.team, abbreviation: 'ORL', displayName: 'Orlando Magic' } }, away: { ...game.away, team: { ...game.away.team, abbreviation: 'CHA', displayName: 'Charlotte Hornets' } } };
-    return container.renderToString(NbaEpvBox, { props: { game: g, epv }, locals: { league: 'nba' } as App.Locals });
-};
-const table = (html: string, label: string) => html.split(`aria-label="${label}"`)[1].split('</table>')[0];
+    const g = { ...game, home: { ...game.home, team: { ...game.home.team, abbreviation: homeAbbr, displayName: homeAbbr === 'ORL' ? 'Orlando Magic' : homeAbbr } }, away: { ...game.away, team: { ...game.away.team, abbreviation: awayAbbr, displayName: awayAbbr === 'CHA' ? 'Charlotte Hornets' : awayAbbr } } };
+    return container.renderToString(NbaEpvBox, { props: { game: g, epv }, locals: { league } as App.Locals });
+}
+function table(html: string, label: string) { return html.split(`aria-label="${label}"`)[1].split('</table>')[0]; }
 
 describe('NbaEpvBox', () => {
     test('CHA at ORL: the team table, away first, and each side\'s players, named, signed, no NaN', async () => {
