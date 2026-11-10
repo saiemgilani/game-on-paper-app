@@ -1,0 +1,62 @@
+---
+// BB-G43's Lines and markets ('bball-lines'): open and close spread, total and moneylines with the no-vig market win %,
+// beside our pregame prior; a final's cover, total and upset; a live game's "at this pace" projection against the line.
+// The pregame page passes no game (no score, no prior, no pace). `line` null: the read failed.
+import { fmtPct } from '../../../nba/format';
+import { basketball, pickRegulation } from '../../../basketball/config';
+import { cleanAbbreviation } from '../../../utils/misc';
+import { cover, lineSpread, lineTotal, marketHomeWp, moneylineText, overUnder, pace, spreadText, upset, type GameLine } from '../../../utils/gameLines';
+import type { NbaGame } from '../../../resources/nbaGame';
+
+// home, away: ESPN team objects (the game's or the pregame header's)
+interface Props { line: GameLine | null; home: unknown; away: unknown; game?: NbaGame }
+const { line, game } = Astro.props;
+const cfg = basketball(Astro.locals.league);
+const H = cleanAbbreviation(Astro.props.home);
+const A = cleanAbbreviation(Astro.props.away);
+const final = game?.status.completed === true;
+// listed positively, as NbaGameHeader does
+const live = game != null && !final && ['STATUS_IN_PROGRESS', 'STATUS_HALFTIME', 'STATUS_END_PERIOD'].includes(game.status.name);
+const num = (v: number) => String(v);
+const pct = (v: number) => fmtPct(v, 0);
+type Row = { label: string; open: number | null; close: number | null; fmt: (v: number) => string };
+const rows: Row[] = line ? [
+    { label: 'Spread', open: line.spread_home_open, close: line.spread_home_close, fmt: (v: number) => spreadText(v, H, A) },
+    { label: 'Total', open: line.total_open, close: line.total_close, fmt: num },
+    { label: `Moneyline ${A}`, open: line.ml_away_open, close: line.ml_away_close, fmt: moneylineText },
+    { label: `Moneyline ${H}`, open: line.ml_home_open, close: line.ml_home_close, fmt: moneylineText },
+    { label: `Win % ${A} (no vig)`, open: line.market_away_wp_open, close: line.market_away_wp_close, fmt: pct },
+    { label: `Win % ${H} (no vig)`, open: line.market_home_wp_open, close: line.market_home_wp_close, fmt: pct },
+].filter((r) => r.open != null || r.close != null) : [];
+// one quote on file (every season before 2025-26): one column; no close yet: the open alone
+const same = rows.every((r) => r.open === r.close);
+const anyClose = rows.some((r) => r.close != null);
+const cols: { label: string; key: 'open' | 'close' }[] = same ? [{ label: 'Line', key: 'close' }] : !anyClose ? [{ label: 'Open', key: 'open' }]
+    : [{ label: 'Open', key: 'open' }, { label: final ? 'Close' : 'Latest', key: 'close' }];
+const spread = line && lineSpread(line);
+const total = line && lineTotal(line);
+const mwp = line && marketHomeWp(line);
+const hs = game?.home.score ?? null;
+const as = game?.away.score ?? null;
+const side = (s: 'home' | 'away') => (s === 'home' ? H : A);
+const sideWp = (homeWp: number) => (homeWp >= 0.5 ? `${H} ${pct(homeWp)}` : `${A} ${pct(1 - homeWp)}`);
+const prior = game?.prior?.homeWinProb ?? null;
+const scored = final && hs != null && as != null;
+const coverText = (s: number, h: number, a: number, past: boolean) => { const c = cover(s, h, a); return c === 'push' ? `a push at ${spreadText(s, H, A)}` : `${side(c)} ${past ? 'covered' : 'cover'} ${spreadText(s, H, A)}`; };
+const ouText = (t: number, h: number, a: number) => { const r = overUnder(t, h, a); return r === 'push' ? `a push at ${t}` : `${r} ${t}`; };
+const up = scored && line ? upset(line, hs!, as!) : null;
+const regulation = game ? pickRegulation(cfg.regulation, game.season, game.regulation) : null;
+const p = live && hs != null && as != null && regulation ? pace(game!.status.period, game!.status.displayClock, game!.regulation, regulation.periodMinutes * 60, hs, as) : null;
+const round = (v: number) => String(Math.round(v));
+---
+{line === null ? <p class="text-muted m-0" id="lines-unavailable">The lines are unavailable right now.</p> : (
+<div id="lines-body">
+    <table class="table table-sm w-auto numeral mb-2" aria-label="Lines">
+        <thead><tr><th scope="col"><span class="visually-hidden">Market</span></th>{cols.map((c) => <th scope="col" class="text-end">{c.label}</th>)}</tr></thead>
+        <tbody>{rows.map((r) => (<tr><th scope="row" class="fw-normal">{r.label}</th>{cols.map((c) => <td class="text-end">{r[c.key] == null ? '-' : r.fmt(r[c.key]!)}</td>)}</tr>))}</tbody>
+    </table>
+    {(mwp != null || prior != null) && <p class="m-0" id="lines-wp">{[mwp != null ? `Market pregame: ${sideWp(mwp)}` : null, prior != null ? `our pregame prior: ${sideWp(prior)}` : null].filter(Boolean).join('; ').replace(/^./, (c) => c.toUpperCase())}</p>}
+    {scored && (spread != null || total != null) && <p class="m-0" id="lines-result">{[spread != null ? coverText(spread, hs!, as!, true) : null, total != null ? `${ouText(total, hs!, as!)} (${hs! + as!})` : null].filter(Boolean).join('; ')}{up && <Fragment> <span class="badge text-bg-warning">Upset</span> {side(up.side)} won at {pct(up.wp)} pregame</Fragment>}</p>}
+    {p && <p class="m-0" id="lines-pace">{`At this pace: ${A} ${round(p.away)}, ${H} ${round(p.home)}`}{total != null && `; a total of ${round(p.total)}, ${ouText(total, p.home, p.away)}`}{spread != null && `; ${coverText(spread, p.home, p.away, false)}`}</p>}
+    <p class="text-small text-muted m-0">{[line.n_books ? `Consensus of ${line.n_books} book${line.n_books === 1 ? '' : 's'}.` : null, rows.some((r) => r.label.startsWith('Win %')) ? 'Win % is the moneylines with the vig removed.' : null, cols.length > 1 && !final ? 'Latest is the last nightly quote.' : null].filter(Boolean).join(' ')}</p>
+</div>)}
