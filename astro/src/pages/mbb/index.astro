@@ -2,13 +2,18 @@
 // /mbb: BASKETBALL.mbb.landing is 'teams-index' (spec §3.4, D30): the season's teams by conference with their shooting
 // lines, plus links to the scoreboard and the other shooting pages. /mbb/teams is the same list under the Header's Teams.
 import NbaTeamsRoute from '../../components/routes/NbaTeamsRoute.astro';
+import BasketballHubRoute from '../../components/routes/BasketballHubRoute.astro';
 import { prepareBasketballTeams } from '../../routes/basketball/teams';
+import { prepareBasketballHub } from '../../routes/basketball/hub';
 import { unavailable } from '../../routes/basketball/cache';
+import { isFeatureEnabled } from '../../utils/features';
 
-const r = await prepareBasketballTeams(Astro, 'mbb', { landing: true });
-if ('unavailable' in r) {
+// BB-G47: behind 'bball-hub' the landing is the league hub; off, it is the teams index, unchanged
+const hub = isFeatureEnabled('bball-hub', Astro.locals) ? await prepareBasketballHub(Astro, 'mbb') : null;
+const r = hub ? null : await prepareBasketballTeams(Astro, 'mbb', { landing: true });
+if (r && 'unavailable' in r) {
     return unavailable('mbb');
 }
 ---
 
-<NbaTeamsRoute data={r} landing />
+{hub ? <BasketballHubRoute data={hub} /> : <NbaTeamsRoute data={r!} landing />}

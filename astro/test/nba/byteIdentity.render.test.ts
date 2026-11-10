@@ -83,9 +83,10 @@ afterAll(() => { vi.useRealTimers(); });
 // timed-out test must not leak into the next one and show up as a false snapshot mismatch.
 beforeEach(() => { for (const m of [...Object.values(games), ...Object.values(espn)]) m.mockReset(); });
 
+// 'bball-hub' (BB-G47) held off: these are the pages with the flag off, and the hub replaces the landing when it is on
 async function page(path: string, url: string, params: Record<string, string> = {}) {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/nba/${path}`);
-    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true } as App.Locals }));
+    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-hub': false } } as App.Locals }));
 }
 const snap = (name: string) => `./__byte_identity__/${name}.html`;
 const finalPage = { gameId: 401766458, gamepackageJSON: { header: proc.header } };
