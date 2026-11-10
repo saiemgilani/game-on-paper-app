@@ -20,6 +20,11 @@ vi.mock('../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../src/resources/teamSeason')>()),
     retrieveTeamSeason: (...a: unknown[]) => block.fn(...a),
 }));
+// BB-G53's schedule-context reads ride on the block's schedule under preview: answered empty here, never from the network
+vi.mock('../src/resources/bballScheduleContext', async (orig) => ({
+    ...(await orig<typeof import('../src/resources/bballScheduleContext')>()),
+    retrieveScheduleContext: async () => ({ lines: new Map(), strength: new Map(), box: [] }),
+}));
 const oracle = JSON.parse(readFileSync(new URL('./fixtures/nba/league_context.json', import.meta.url)).toString());
 const shots = JSON.parse(readFileSync(new URL('./fixtures/nba/shots.json', import.meta.url)).toString()) as any[];
 vi.mock('../src/resources/nbaShots', async (orig) => ({

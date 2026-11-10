@@ -17,6 +17,7 @@ import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterR
 import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
 import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
 import { retrieveTeamGameFlow, type FlowRow } from '../../resources/bballGameLogs';
+import { retrieveScheduleContext, type ScheduleContextReads } from '../../resources/bballScheduleContext';
 import { scheduleRows } from '../../utils/teamSeason';
 import { bbGameSetOf, type BbGameSet } from '../../utils/bballGameSet';
 import { isFeatureEnabled } from '../../utils/features';
@@ -49,6 +50,8 @@ export interface BasketballTeamParams {
     gameSet?: BbGameSet;
     /** BB-G50, only with 'bball-game-logs' on too: each game's game_flow row by ESPN game id; null when that read failed */
     teamFlow?: Map<string, FlowRow> | null;
+    /** BB-G53, only with 'bball-schedule-context' on too: the lines, opponent strength and player box; each null when its read failed */
+    scheduleContext?: ScheduleContextReads;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -120,7 +123,12 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     // BB-G50 rides on the block's schedule and rates, plus one game_flow read; off, nothing more is read
     const teamFlow = seasonBlock && isFeatureEnabled('bball-game-logs', Astro.locals) ? await readTeamFlow(league, season, teamId, seasonBlock) : undefined;
     if (teamFlow === null) uncacheable(Astro);
-    const block = flagged ? { seasonBlock, ...(gameSetOn ? { gameSet: bbGameSetOf(Astro.url.searchParams.get('games')) } : {}), ...(teamFlow !== undefined ? { teamFlow } : {}) } : {};
+    // BB-G53 rides on the block's schedule: three more reads, each settling on its own (a failed one leaves its columns out
+    // and the page uncached); no schedule, or off, and nothing more is read
+    const scheduleContext = seasonBlock && seasonBlock.games.length > 0 && isFeatureEnabled('bball-schedule-context', Astro.locals)
+        ? await retrieveScheduleContext(league, season, espnIdOf(league, season, teamId)) : undefined;
+    if (scheduleContext && (!scheduleContext.lines || !scheduleContext.strength || !scheduleContext.box)) uncacheable(Astro);
+    const block = flagged ? { seasonBlock, ...(gameSetOn ? { gameSet: bbGameSetOf(Astro.url.searchParams.get('games')) } : {}), ...(teamFlow !== undefined ? { teamFlow } : {}), ...(scheduleContext ? { scheduleContext } : {}) } : {};
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);

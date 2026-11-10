@@ -1,0 +1,56 @@
+---
+// src/components/nba/BbTeamRotation.astro
+// BB-G53, behind 'bball-schedule-context' (inside 'bball-team-season', whose schedule it reads): the team's rotation.
+// One row per player who played, in depth order (most minutes first), with games, starts and minutes per game, and a
+// minutes strip with one cell per final game: darker is more minutes, a bar on top marks a start. The most-used starting
+// five sits above it. Minutes and starts are ESPN's box (player_box).
+import { DateTime } from 'luxon';
+import type { TeamSeasonReads } from '../../resources/teamSeason';
+import type { RotationBoxRow } from '../../resources/bballScheduleContext';
+import { rotation } from '../../utils/bballScheduleContext';
+import { scheduleRows } from '../../utils/teamSeason';
+import { fmtDec, fmtInt } from '../../nba/format';
+import { basketball, regulationFor } from '../../basketball/config';
+
+// box: null when the player_box read failed (the section says so)
+interface Props { data: TeamSeasonReads; box: RotationBoxRow[] | null; season: number; espnId: number }
+const { data, box, season, espnId } = Astro.props;
+const cfg = basketball(Astro.locals.league);
+const reg = regulationFor(cfg.league, season);
+const full = reg.periods * reg.periodMinutes;
+const rot = box ? rotation(scheduleRows(data.games, data.gameRates, espnId), box) : null;
+const venueMark = { home: 'vs', away: '@', neutral: 'vs' } as const;
+const day = (iso: string) => DateTime.fromISO(iso, { zone: 'utc' }).setZone(cfg.scoreboardTimeZone).toFormat('LLL d');
+// ponytail: one fixed hue at a minutes-scaled alpha reads on both themes; a theme token if the strip ever needs one
+const cellStyle = (min: number | null, started: boolean) =>
+    `display:inline-block;width:6px;height:1.1rem;margin-right:1px;background:${min === null ? 'transparent' : `rgba(13,110,253,${Math.min(1, 0.12 + 0.88 * (min / full)).toFixed(2)})`};${started ? 'box-shadow:inset 0 3px 0 rgba(0,0,0,.65);' : ''}${min === null ? 'outline:1px solid rgba(128,128,128,.25);outline-offset:-1px;' : ''}`;
+---
+<section id="rotation" aria-label="Rotation" class="mb-4">
+  <h2 class="h5">Rotation</h2>
+  {rot === null ? (<p class="text-muted" id="rotation-unavailable">The rotation is temporarily unavailable.</p>) : rot.players.length === 0 ? (<p class="text-muted" id="rotation-empty">No box scores yet this season.</p>) : (<Fragment>
+  {rot.five && (
+    <p class="small mb-2" id="rotation-five">Most-used starting five: {rot.five.names.join(', ')} <span class="text-muted">({fmtInt(rot.five.starts)} of {fmtInt(rot.games.length)} games; {fmtInt(rot.fives)} different starting fives)</span></p>
+  )}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0" id="rotation-table">
+      <caption class="small text-muted">Every player who played, most minutes first. Each cell is one final game in date order: darker is more minutes (full shade at {full}), a bar on top marks a start, an outline a game he did not play.</caption>
+      <thead><tr><th scope="col" class="text-end">#</th><th scope="col">Player</th><th scope="col" class="text-end">G</th><th scope="col" class="text-end">GS</th><th scope="col" class="text-end">MPG</th><th scope="col">Minutes by game</th></tr></thead>
+      <tbody>
+        {rot.players.map((p, i) => (
+          <tr data-athlete={p.id}>
+            <td class="numeral text-end text-muted small">{i + 1}</td>
+            <th scope="row" class="text-nowrap fw-normal">{p.name}</th>
+            <td class="numeral text-end">{fmtInt(p.gp)}</td>
+            <td class="numeral text-end">{fmtInt(p.gs)}</td>
+            <td class="numeral text-end">{fmtDec(p.mpg, 1)}</td>
+            <td class="text-nowrap" role="img" aria-label={`${p.name}: ${fmtInt(p.gp)} games, ${fmtInt(p.gs)} starts`}>{p.minutes.map((m, k) => {
+              const g = rot.games[k];
+              return (<span style={cellStyle(m, p.started[k])} title={`${day(g.date)} ${venueMark[g.venue]} ${g.oppAbbr}: ${m === null ? 'did not play' : `${fmtDec(m, 0)} min${p.started[k] ? ', started' : ''}`}`}></span>);
+            })}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  </Fragment>)}
+</section>

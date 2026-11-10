@@ -14,10 +14,13 @@ import { formatRank, generateColorRampValue, generateMarginalString } from '../.
 import { basketball, regulationFor, seasonLabelFor } from '../../basketball/config';
 import { GAME_SET_NAV, bbGameSetLabel, gameSetHref, teamGameSet, type BbGameSet } from '../../utils/bballGameSet';
 import { isNcaaDashboards } from '../../basketball/dashboards';
+import type { ScheduleContextReads } from '../../resources/bballScheduleContext';
+import { atsRecord, b2bRecord, scheduleContext } from '../../utils/bballScheduleContext';
 
 // gameSet: BB-G14 ('bball-game-set'), the ?games= line; absent, the block is BB-G5's byte for byte
-interface Props { data: TeamSeasonReads | null; season: number; espnId: number; teamName: string; gameSet?: BbGameSet }
-const { data, season, espnId, teamName, gameSet } = Astro.props;
+// context: BB-G53 ('bball-schedule-context'), the schedule's rest, trip, opponent and line columns; absent, likewise
+interface Props { data: TeamSeasonReads | null; season: number; espnId: number; teamName: string; gameSet?: BbGameSet; context?: ScheduleContextReads }
+const { data, season, espnId, teamName, gameSet, context } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const college = isNcaaDashboards(league);
@@ -55,6 +58,15 @@ const view = gameSet && data ? teamGameSet(data.rates, games, gameSet, reg.perio
 const viewCaption = view && (view.producer
   ? `Per possession: the season's ${bbGameSetLabel(view.set)} split (play-by-play possessions). Shading by percentile.`
   : `Summed over these games: points from each final score, possessions and minutes from each game's box score (the game page's estimate, not the play-by-play count of All, Home and Away), divided once. Pace per ${reg.periods * reg.periodMinutes} minutes.`);
+// BB-G53: each game's context; the opponent and line columns only when their read worked and named at least one game
+const ctx = context && data ? scheduleContext(games, new Map(data.games.map((g) => [String(g.id), Number(g.home_id) === espnId])), context, cfg.scoreboardTimeZone) : null;
+const ctxOf = (id: string) => ctx?.get(id) ?? null;
+const showOpp = ctx !== null && games.some((g) => ctxOf(g.gameId)?.opp);
+const showLine = ctx !== null && games.some((g) => ctxOf(g.gameId)?.spread != null);
+const ats = ctx ? atsRecord(ctx.values()) : null;
+const b2b = ctx ? b2bRecord(games, ctx) : null;
+const restLabel = (r: number) => (r >= 2 ? '2+' : String(r));
+const spreadLabel = (v: number | null | undefined) => (v == null ? dash : v === 0 ? 'PK' : generateMarginalString(v, 1, 1));
 const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore == null ? null : `${g.teamScore > g.oppScore ? 'W' : g.teamScore < g.oppScore ? 'L' : 'T'} ${g.teamScore}-${g.oppScore}`);
 ---
 <section id="season" aria-label={`${label} season`} class="mb-4">
@@ -142,15 +154,21 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
   {games.length > 0 && (
     <details class="mt-3" id="season-schedule-panel">
     <summary class="h6 mb-2">Schedule ({fmtInt(games.length)} games)</summary>
+    {ctx && (
+      <p class="numeral small mb-2" id="season-schedule-context">
+        {showLine && ats && (<Fragment>ATS <span class="fw-bold">{ats.w}-{ats.l}{ats.p > 0 && `-${ats.p}`}</span> &middot; </Fragment>)}Back-to-backs {fmtInt(b2b?.games ?? 0)}{b2b && b2b.w + b2b.l > 0 && (<span class="text-muted"> ({b2b.w}-{b2b.l} on the second night)</span>)}
+      </p>
+    )}
     <div class="table-responsive">
       <table class="table table-sm align-middle mb-0" id="season-schedule">
-        <caption class="small text-muted">Each game's own rates (the game page's four factors). A game not yet rated shows dashes.</caption>
-        <thead><tr><th scope="col">Date</th><th scope="col">Opponent</th><th scope="col">Result</th><th scope="col" class="text-end">ORtg</th><th scope="col" class="text-end">DRtg</th><th scope="col" class="text-end">Pace</th><th scope="col" class="text-end">eFG%</th><th scope="col" class="text-end">TOV%</th><th scope="col" class="text-end">ORB%</th><th scope="col" class="text-end">FT rate</th></tr></thead>
+        <caption class="small text-muted">Each game's own rates (the game page's four factors). A game not yet rated shows dashes.{ctx && (<Fragment> Rest: days off before the game (B2B: the second night of a back-to-back; 3 in 4: the third game in four nights). Trip: the game's place in a run of games away from home.{showOpp && " Opp: the opponent's adjusted net rating rank."}{showLine && ' Line: the closing spread on the team (negative: favoured); ATS: the result against it.'}</Fragment>)}</caption>
+        <thead><tr><th scope="col">Date</th><th scope="col">Opponent</th><th scope="col">Result</th><th scope="col" class="text-end">ORtg</th><th scope="col" class="text-end">DRtg</th><th scope="col" class="text-end">Pace</th><th scope="col" class="text-end">eFG%</th><th scope="col" class="text-end">TOV%</th><th scope="col" class="text-end">ORB%</th><th scope="col" class="text-end">FT rate</th>{ctx && (<Fragment><th scope="col" class="text-end">Rest</th><th scope="col" class="text-end">Trip</th>{showOpp && (<th scope="col" class="text-end">Opp</th>)}{showLine && (<Fragment><th scope="col" class="text-end">Line</th><th scope="col" class="text-center">ATS</th></Fragment>)}</Fragment>)}</tr></thead>
         <tbody>
           {games.map((g) => {
             const opp = teamHrefFromEspn({ id: g.oppId }, league, season);
             const res = result(g);
             const r = g.rates;
+            const c = ctxOf(g.gameId);
             return (
               <tr>
                 <td class="text-nowrap">{day(g.date)}</td>
@@ -163,6 +181,12 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
                 <td class="numeral text-end">{pct(r?.tov_pct)}</td>
                 <td class="numeral text-end">{pct(r?.orb_pct)}</td>
                 <td class="numeral text-end">{rate(r?.ft_rate)}</td>
+                {c && (<Fragment>
+                  <td class="numeral text-end text-nowrap">{restLabel(c.rest)}{c.b2b && (<span class="badge text-bg-warning ms-1" title="Second night of a back-to-back">B2B</span>)}{c.threeInFour && (<span class="badge text-bg-secondary ms-1" title="Third game in four nights">3 in 4</span>)}</td>
+                  <td class="numeral text-end">{c.trip ? `${c.trip.game}/${c.trip.of}` : ''}</td>
+                  {showOpp && (<td class="numeral text-end" title={c.opp?.rating != null ? `Adjusted net ${generateMarginalString(c.opp.rating, 1, 1)}` : undefined}>{rank(c.opp?.rank)}</td>)}
+                  {showLine && (<Fragment><td class="numeral text-end">{spreadLabel(c.spread)}</td><td class="numeral text-center">{c.ats ?? ''}</td></Fragment>)}
+                </Fragment>)}
               </tr>
             );
           })}
