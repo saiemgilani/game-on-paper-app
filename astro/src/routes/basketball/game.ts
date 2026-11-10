@@ -16,6 +16,7 @@ import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBo
 import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
 import { retrieveGarbageTime, type GarbageReads } from '../../resources/garbageTime';
 import { retrieveTeamGridSeason, type TeamGridSeason } from '../../resources/teamGrid';
+import { retrievePlayerSeasonRates, type PlayerSeasonRate } from '../../resources/playerSeasonRates';
 import { seasonCache, setCache, uncacheable } from './cache';
 
 /** The admin source tool's data (components/nba/game/NbaAdminSourceTools.astro); only an admin on the 'source-switch' path gets it. */
@@ -33,7 +34,9 @@ export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { 
     /** `flow`: BB-G28, only with 'bball-game-flow' on and a final; null when its read failed (the lead chart still draws) */
     /** `garbage`: BB-G2, only with 'bball-garbage-time' and 'bball-impact-box' on and a final; `reads` null when the log's read failed */
     /** `season`: BB-G32, only with 'bball-team-grid' on, live or final; null when its read failed (the grid draws without it) */
-    | { game: NbaGame; sourceTools?: BasketballSourceTools; impact?: ImpactBoxReads | null; flow?: GameFlowReads | null; garbage?: { reads: GarbageReads | null; out: boolean }; season?: TeamGridSeason | null };
+    | { game: NbaGame; sourceTools?: BasketballSourceTools; impact?: ImpactBoxReads | null; flow?: GameFlowReads | null; garbage?: { reads: GarbageReads | null; out: boolean }; season?: TeamGridSeason | null
+        /** `playerSeason`: BB-G34, only with 'bball-player-box-views' on, live or final; null when its read failed (Vs average says so) */
+        playerSeason?: PlayerSeasonRate[] | null };
 
 /** BB-G2's toggle: `?garbage=out` leaves the garbage-time possessions out; read only with 'bball-garbage-time' on. */
 export const GARBAGE_PARAM = 'garbage';
@@ -92,25 +95,28 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     if (!('game' in r) || r.game.season == null) return r;
     // BB-G32's season context reads live too (the season table, not the game's); every other panel waits for the final
     const withGrid = isFeatureEnabled('bball-team-grid', Astro.locals);
+    // BB-G34's Vs average is per minute, so it reads live too (points so far against minutes so far)
+    const withViews = isFeatureEnabled('bball-player-box-views', Astro.locals);
     const final = r.game.status.completed;
     const withImpact = final && isFeatureEnabled('bball-impact-box', Astro.locals);
     const withFlow = final && isFeatureEnabled('bball-game-flow', Astro.locals);
     // the toggle sits beside the Impact box: no box, no toggle and no read
     const withGarbage = withImpact && isFeatureEnabled('bball-garbage-time', Astro.locals);
-    if (!withImpact && !withFlow && !withGrid) return r;
-    const [impact, flow, garbage, season] = await Promise.all([
+    if (!withImpact && !withFlow && !withGrid && !withViews) return r;
+    const [impact, flow, garbage, season, playerSeason] = await Promise.all([
         withImpact ? readPanel('impact box', league, r.game, r.game.season, retrieveImpactBox) : undefined,
         withFlow ? readPanel('game flow', league, r.game, r.game.season, retrieveGameFlow) : undefined,
         withGarbage ? readPanel('garbage-time log', league, r.game, r.game.season, retrieveGarbageTime) : undefined,
         withGrid ? readPanel('season team rates', league, r.game, r.game.season, retrieveTeamGridSeason) : undefined,
+        withViews ? readPanel('player season rates', league, r.game, r.game.season, retrievePlayerSeasonRates) : undefined,
     ]);
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
-    if (impact === null || flow === null || garbage === null || season === null) uncacheable(Astro);
-    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || season !== undefined)) setCache(Astro, seasonCache(league));
+    if (impact === null || flow === null || garbage === null || season === null || playerSeason === null) uncacheable(Astro);
+    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || season !== undefined || playerSeason !== undefined)) setCache(Astro, seasonCache(league));
     return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}),
         ...(garbage !== undefined ? { garbage: { reads: garbage, out: Astro.url.searchParams.get(GARBAGE_PARAM) === 'out' } } : {}),
-        ...(season !== undefined ? { season } : {}) };
+        ...(season !== undefined ? { season } : {}), ...(playerSeason !== undefined ? { playerSeason } : {}) };
 }
 
 /** A game panel's reads (BB-G1's Impact box, BB-G28's Game flow) by the season and the ESPN ids; null when any failed. */

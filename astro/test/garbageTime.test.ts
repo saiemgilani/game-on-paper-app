@@ -200,7 +200,7 @@ describe('retrieveGarbageTime', () => {
 const gameApi = () => JSON.parse(readFileSync(new URL('./fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
 function fakeAstro(locals: Record<string, unknown>, search = '') {
     const cache: unknown[] = []; const headers = new Headers();
-    return { astro: { params: { id: '401766458' }, url: new URL(`https://gameonpaper.com/nba/game/401766458${search}`), locals: { ...locals, flagOverrides: { 'bball-game-flow': false, 'bball-team-grid': false, ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id: '401766458' }, url: new URL(`https://gameonpaper.com/nba/game/401766458${search}`), locals: { ...locals, flagOverrides: { 'bball-game-flow': false, 'bball-team-grid': false, 'bball-player-box-views': false, ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 
 describe('prepareBasketballGame', () => {

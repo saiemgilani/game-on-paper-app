@@ -29,7 +29,20 @@ export interface NbaPlayerRow {
     minutes: number | null; points: number | null; rebounds: number | null; assists: number | null
     steals: number | null; blocks: number | null; turnovers: number | null
     fg: string; fg3: string; ft: string; plus_minus: string | null; ts_pct: number | null; usg_pct: number | null
+    /** sdv-py's BB-D31 player splits, counted from the plays: the processor only (live or un-ingested), as NbaSide.splits */
+    split?: NbaPlayerSplit
 }
+
+/** The BB-D31 player split columns BB-G34's views read. `est_possessions` is a minutes-share estimate, not an on-court count. */
+export interface NbaPlayerSplit {
+    est_possessions: number | null; fgm: number | null; assisted_share: number | null
+    rim_fga: number | null; rim_fgm: number | null; rim_assisted_share: number | null
+    fg3a: number | null; fg3m: number | null; fg3_assisted_share: number | null
+    tov: number | null; live_tov: number | null
+    pts_per100: number | null; ast_per100: number | null; reb_per100: number | null; tov_per100: number | null
+}
+const SPLIT_KEYS = ['est_possessions', 'fgm', 'assisted_share', 'rim_fga', 'rim_fgm', 'rim_assisted_share', 'fg3a', 'fg3m', 'fg3_assisted_share',
+    'tov', 'live_tov', 'pts_per100', 'ast_per100', 'reb_per100', 'tov_per100'] as const satisfies readonly (keyof NbaPlayerSplit)[]
 
 export interface NbaPlay {
     id: string; n: number; period: number; clock: string; secondsRemaining: number | null
@@ -107,7 +120,7 @@ export interface NbaProcessorPayload {
     plays: Record<string, any>[]
     /** BB-G29; absent from a payload cached before it */
     excitement?: { gei: number | null; lead_changes: number; max_swing_pts: number | null; completed: boolean }
-    /** BB-D31's game splits (python/nba_game.py); absent from a payload cached before them. Only the team rows are read. */
+    /** BB-D31's game splits (python/nba_game.py); absent from a payload cached before them. The team rows feed BB-G32, the player rows BB-G34. */
     splits?: Record<'home' | 'away', { team: Record<string, any> | null; players: Record<string, any>[] }>
 }
 
@@ -243,10 +256,12 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague):
         const t = j.teams[ha]
         const ti = j.teamInfo[ha]
         const record = c.record?.find((x) => x.type === 'total') ?? c.record?.[0]
+        const splitBy = new Map((j.splits?.[ha]?.players ?? []).map((r) => [num(r.athlete_id), Object.fromEntries(SPLIT_KEYS.map((k) => [k, num(r[k])])) as unknown as NbaPlayerSplit]))
+        const withSplit = (p: NbaPlayerRow): NbaPlayerRow => { const s = splitBy.get(p.athlete_id); return s ? { ...p, split: s } : p }
         return {
             team: { id: String(ti.id), abbreviation: eraAbbreviation(league, ti.id, season, ti.abbreviation), displayName: ti.displayName, location: ti.location, name: ti.name, color: ti.color ?? null, alternateColor: ti.alternateColor ?? null, logo: ti.logos?.[0]?.href ?? null },
             score: num(c.score), winner: c.winner === true, records: record?.summary ?? null,
-            linescores: t.linescores, box: teamBox(t.box), rates: teamRates(t.rates), players: j.players[ha].map(playerRow),
+            linescores: t.linescores, box: teamBox(t.box), rates: teamRates(t.rates), players: j.players[ha].map((r) => withSplit(playerRow(r))),
             ...(j.splits?.[ha]?.team ? { splits: { possessions: num(j.splits[ha].team!.possessions) } } : {}),
         }
     }

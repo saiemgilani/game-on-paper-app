@@ -29,3 +29,21 @@
 
 /* the scatter canvas sits at z-index -1 under its svg; keep that inside the chart box */
 .nba-scatter { isolation: isolate; }
+
+/* BB-G34 ('bball-player-box-views'): the game page's player box views. A made-attempted pair never wraps at its hyphen;
+   the bench starts under a visible rule; phones use the short name. */
+.pbv-table { white-space: nowrap; }
+.table.pbv-table tr.pbv-bench > * { border-top: 2px solid rgba(128, 128, 128, .6); }
+.pbv-short { display: none; }
+@media (max-width: 575.98px) {
+    .pbv-short { display: inline; }
+    .pbv-full { display: none; }
+}
+/* a cell's rank among everyone who played (--pbv-s in [0, 1]); green in both themes */
+.table.pbv-table td.pbv-shade { background-color: rgba(25, 135, 84, calc(var(--pbv-s) * .4)); }
+/* the views: Basic unless another is picked; a browser without :has keeps Basic */
+.pbv-view:not([data-view="basic"]) { display: none; }
+#player-box-views:has(.btn-check:checked:not(#pbv-basic)) .pbv-view[data-view="basic"] { display: none; }
+#player-box-views:has(#pbv-advanced:checked) .pbv-view[data-view="advanced"],
+#player-box-views:has(#pbv-shooting:checked) .pbv-view[data-view="shooting"],
+#player-box-views:has(#pbv-vsavg:checked) .pbv-view[data-view="vsavg"] { display: block; }
