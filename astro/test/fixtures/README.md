@@ -836,7 +836,7 @@ replaces the sdv-py calls.
 ## `player-situations.json.gz`
 The player page's Situations section (BB-G55, `resources/situational.ts`), captured live on 2026-11-10, sequentially, the
 `data` array of each response, no edits, all `season=2026` and `select=team_id,family,split,games,minutes,poss,opp_poss,pts,opp_pts,plus_minus,off_rtg,def_rtg,net_rtg&limit=80`
-(the module's own read), as `{nba, wnba, mbb, wbb, mbbXwalk, wbbXwalk}`: `/v1/nba_stats/situational_player?player_id=1628983`
+(the module's own read, which now asks for `limit=125`: each player here had one team), as `{nba, wnba, mbb, wbb, mbbXwalk, wbbXwalk}`: `/v1/nba_stats/situational_player?player_id=1628983`
 (Shai Gilgeous-Alexander, 25 split rows), `/v1/wnba_stats/situational_player?player_id=1628932` (A'ja Wilson, 24),
 `/v1/mbb/situational_player?player_id=11195975` (Cameron Boozer, Duke, 19: no overtime possession, no `chance` family in
 college) and `/v1/wbb/situational_player?player_id=9342023` (Joyce Edwards, South Carolina, 23). `mbbXwalk` / `wbbXwalk` are

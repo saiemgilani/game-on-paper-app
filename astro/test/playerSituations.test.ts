@@ -61,6 +61,7 @@ import { NBA_READ_TIMEOUT_MS } from '../src/resources/nbaGames';
 import { leagueSource, type BasketballLeague } from '../src/utils/league';
 import { prepareNbaPlayer } from '../src/routes/nba/player';
 import { FLAGS } from '../src/utils/features';
+import { playerCache } from '../src/routes/basketball/cache';
 import { parseSituation, playerSituationRows, situationRows, situationsFor, type PlayerSituations as Data } from '../src/utils/situations';
 
 const PID = Number(Object.keys(byPlayer)[0]); // 1629008, Michael Porter Jr., a Net in seasonPlayerRows()
@@ -68,6 +69,7 @@ const OFF = { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball
 const locals = (on: boolean) => ({ preview: true, flagOverrides: { ...OFF, 'bball-player-situations': on } });
 const LEAGUES: BasketballLeague[] = ['nba', 'wnba', 'mbb', 'wbb'];
 const COLS = 'team_id,family,split,games,minutes,poss,opp_poss,pts,opp_pts,plus_minus,off_rtg,def_rtg,net_rtg';
+const LIMIT = '125';
 const find = (rows: Row[], family: string, split: string) => rows.find((r) => r.family === family && r.split === split);
 
 let container: AstroContainer;
@@ -153,7 +155,7 @@ describe('the read', () => {
         sdv.from.mockResolvedValue(PS.nba);
         expect(await retrievePlayerSituational('nba', 2026, 1628983)).toEqual(PS.nba);
         expect(sdv.from).toHaveBeenCalledTimes(1);
-        expect(sdv.from).toHaveBeenLastCalledWith(leagueSource('nba'), 'situational_player', { season: '2026', player_id: '1628983', select: COLS, limit: '80' }, 21600, true, NBA_READ_TIMEOUT_MS);
+        expect(sdv.from).toHaveBeenLastCalledWith(leagueSource('nba'), 'situational_player', { season: '2026', player_id: '1628983', select: COLS, limit: LIMIT }, 21600, true, NBA_READ_TIMEOUT_MS);
         expect([leagueSource('nba').schema, leagueSource('wnba').schema]).toEqual(['nba_stats', 'wnba_stats']);
     });
     test("college: his season's stats.ncaa.org id from the crosswalk, then his rows by it", async () => {
@@ -164,7 +166,7 @@ describe('the read', () => {
             expect(await retrievePlayerSituational(l, 2026, espn)).toEqual(PS[l]);
             expect(sdv.from.mock.calls.map((c) => [c[0], c[1], c[2]])).toEqual([
                 [leagueSource(l), 'ncaa_player_crosswalk', { season: '2026', espn_athlete_id: String(espn), select: 'ncaa_player_id', limit: '5' }],
-                [leagueSource(l), 'situational_player', { season: '2026', player_id: xwalk[0].ncaa_player_id, select: COLS, limit: '80' }],
+                [leagueSource(l), 'situational_player', { season: '2026', player_id: xwalk[0].ncaa_player_id, select: COLS, limit: LIMIT }],
             ]);
         }
     });
@@ -188,10 +190,11 @@ describe('the player page', () => {
     test('on: one read keyed by his person id, ?situation= picked; a failed read is null and never cached', async () => {
         const a = fakeAstro(true, '?season=2026&situation=clutch');
         const r = ok(await prepareNbaPlayer(a.astro));
+        expect(reads.situational).toHaveBeenCalledTimes(1);
         expect(reads.situational).toHaveBeenCalledWith('nba', 2026, PID);
         expect(r.situations!.situation.key).toBe('clutch');
         expect(r.situations!.rows).toEqual(PS.nba);
-        expect(a.cache.at(-1)).not.toBe(false);
+        expect(a.cache).toEqual([playerCache('nba')]);
         reads.situational.mockRejectedValueOnce(new Error('404 situational_player'));
         const b = fakeAstro(true, '?season=2026&situation=bogus');
         const rb = ok(await prepareNbaPlayer(b.astro));
@@ -237,9 +240,9 @@ describe('the section', () => {
 describe('the page', () => {
     const ROOT = fileURLToPath(new URL('../', import.meta.url)).replaceAll('\\', '/').replace(/\/$/, '');
     const normalize = (html: string) => html.replaceAll(ROOT, '<astro-root>').replace(/ uid="[^"]*"/g, ' uid=""').replace(/data-astro-cid-[a-z0-9]+/g, 'data-astro-cid-x');
-    async function page(on: boolean) {
+    async function page(on: boolean, query = '?season=2026') {
         const { default: Page } = await import('../src/pages/nba/players/[id].astro');
-        return normalize(await container.renderToString(Page, { params: { id: String(PID) }, request: new Request(`https://gameonpaper.com/nba/players/${PID}?season=2026`), locals: locals(on) as unknown as App.Locals }));
+        return normalize(await container.renderToString(Page, { params: { id: String(PID) }, request: new Request(`https://gameonpaper.com/nba/players/${PID}${query}`), locals: locals(on) as unknown as App.Locals }));
     }
     test("off: byte for byte the NBA byte-identity capture (main's page)", async () => {
         // a Windows checkout may write the capture with CRLF; the render is LF
@@ -254,5 +257,10 @@ describe('the page', () => {
         const section = on.match(/<section id="situations"[\s\S]*?<\/section>/)![0];
         expect(section).toContain('id="situations-player"');
         expect(on.replace(section, '').replace(link, '')).toBe(off.replace(/(<\/nav>)(\s*)/, '$1$2'));
+    });
+    test('the season select keeps the situation; All adds nothing to its links', async () => {
+        const season = (html: string) => html.match(/<select id="nba-season"[\s\S]*?<\/select>/)![0];
+        expect(season(await page(true, '?season=2026&situation=clutch'))).toContain(`/nba/players/${PID}?situation=clutch&amp;season=2025"`);
+        expect(season(await page(true))).not.toContain('situation=');
     });
 });

@@ -17,8 +17,8 @@ import { leagueSource, type BasketballLeague } from '../utils/league';
 
 /** The situational tables are rebuilt with the season products (once a day): the season pages' window. */
 const TTL = 6 * 60 * 60;
-/** A player-season is at most 24 split rows (11 families) per team; three teams fit, and a bad filter never pages silently. */
-const PLAYER_LIMIT = '80';
+/** A player-season is at most 25 split rows (11 families) per team; five teams fit, and a bad filter never pages silently. */
+const PLAYER_LIMIT = '125';
 
 export interface SituationalRow {
     family: string;
