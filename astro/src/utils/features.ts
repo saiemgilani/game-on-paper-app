@@ -174,7 +174,8 @@ export function isFeatureEnabled(
 /**
  * Is the flag public for this request: 'on', or an admin's per-request override. Unlike
  * isFeatureEnabled it is NOT true for a preview-cookie holder, so a 'preview' flag adds nothing to a
- * public-facing surface (the football Header's league menu) for them.
+ * public-facing surface (the Header's Tools menu) for them. The football Header's league switch asks
+ * Astro.locals.preview itself, so a preview viewer sees the preview leagues there (BB-G31).
  */
 export function isFeaturePublic(name: string, locals: { flagOverrides?: Record<string, boolean> } | undefined): boolean {
     const override = locals?.flagOverrides?.[name];
