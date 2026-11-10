@@ -9,7 +9,7 @@ import { periodShort } from '../../../basketball/periods';
 import { courtLines, toSvg } from '../../../nba/data/court';
 import { courtViewport } from '../../../nba/charts/court';
 import { onDrawnCourt } from '../../../nba/charts/gameShotChart';
-import { dash } from '../../../nba/data/game';
+import { dash, settle } from '../../../nba/data/game';
 import { fmtPct, fmtPts } from '../../../nba/format';
 import { cleanAbbreviation, pickGameColors } from '../../../utils/misc';
 
@@ -39,7 +39,7 @@ const R = 6;
       <thead><tr><th scope="col">Period</th><th scope="col">Clock</th><th scope="col" class="text-end">Score ({away}-{home})</th><th scope="col">Play</th><th scope="col" class="text-end">{home} WP</th><th scope="col" class="text-end">Change</th></tr></thead>
       <tbody>
         {latest.plays.map((p) => (
-          <tr class:list={[{ 'nba-scoring-play fw-bold': p.scoringPlay }]}><td>{periodShort(p.period, game.regulation, game.periodKind)}</td><td>{p.clock}</td><td class="text-end">{p.awayScore}-{p.homeScore}</td><td>{p.text}</td><td class="text-end">{dash(p.homeWinProb, (x) => fmtPct(x, 0))}</td><td class="text-end">{dash(p.wpDelta, fmtPts)}</td></tr>
+          <tr class:list={[{ 'nba-scoring-play fw-bold': p.scoringPlay }]}><td>{periodShort(p.period, game.regulation, game.periodKind)}</td><td>{p.clock}</td><td class="text-end">{p.awayScore}-{p.homeScore}</td><td>{p.text}</td><td class="text-end">{dash(p.homeWinProb, (x) => fmtPct(x, 0))}</td><td class="text-end">{dash(settle(p) ? null : p.wpDelta, fmtPts)}</td></tr>
         ))}
       </tbody>
     </table>

@@ -89,6 +89,16 @@ describe('the game page', () => {
             expect(on).toBe(await page(g, 'nba', false));
         }
     });
+    test("end of regulation: the End Period row's change is the settle (wnba 401736289: -60.3 into OT), so a dash", async () => {
+        const g0 = final('wnba');
+        const end = g0.plays.findIndex((p) => p.typeText === 'End Period' && (p.wpDelta ?? 0) < -0.5);
+        expect(end).toBeGreaterThan(0);
+        const g = { ...live('wnba', GAMES.wnba, 1, 'STATUS_END_PERIOD'), plays: g0.plays.slice(0, end + 1) };
+        const first = strip(await page(g, 'wnba')).split('<tbody>')[1].split('</tr>')[0];
+        expect(first).toContain('End of');
+        expect(first.endsWith('<td class="text-end">–</td>')).toBe(true);
+        expect(first).not.toContain('60.3');
+    });
     test('halftime: the strip shows, with a missing WP as a dash', async () => {
         const g = live('wnba', GAMES.wnba, 0.5, 'STATUS_HALFTIME');
         g.plays[g.plays.length - 1] = { ...g.plays.at(-1)!, homeWinProb: null, wpDelta: null };
