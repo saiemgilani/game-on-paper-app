@@ -79,6 +79,10 @@ describe('the extras agree with the rows', () => {
         expect(at(720)).toBe('Q1 0:00');
         expect(at(721)).toBe('Q2 11:59');
         expect(at(2880)).toBe('Q4 0:00');
+        expect(stampAt(2880 + 1, 5, 4, 720, 'quarter')).toBe('OT 4:59');
+        // men's college: two 20-minute halves
+        expect(stampAt(1200, 2, 2, 1200, 'half')).toBe('H1 0:00');
+        expect(stampAt(1500, 2, 2, 1200, 'half')).toBe('H2 15:00');
     });
     test('last 5:00: the final minus the score with more than five minutes left', () => {
         const before = r.pbp.filter((p) => p.period_number === 4 && clockSeconds(p.clock_display_value)! > 300).at(-1)!;
@@ -228,6 +232,18 @@ describe('the WP panel', () => {
         expect(html).not.toContain('Lenses:');
         expect(html).toContain('id="wp-extras"');
     });
+    for (const [league, file] of [['wnba', 'game_401736287_api'], ['mbb', 'game_401744223_api'], ['wbb', 'game_401805076_api']] as const) {
+        test(`on, ${league} (no variant rows): the overlay and the extras in the league's periods, nothing blank`, async () => {
+            const g = fromDataApi(JSON.parse(readFileSync(new URL(`./fixtures/${league}/${file}.json`, import.meta.url)).toString()), league);
+            const html = await container.renderToString(NbaWinProbability, { props: { game: g, colors: null }, locals: { league, preview: true } as App.Locals });
+            expect(island(html)).toContain('"moments"');
+            expect(island(html)).not.toContain('"lenses"');
+            expect(html).toContain('id="wp-extras"');
+            const text = html.replace(/<(script|style|astro-island)[\s\S]*?<\/\1>/g, '').replace(/<[^>]+>/g, '');
+            for (const bad of ['NaN', 'undefined', 'null']) expect(text).not.toContain(bad);
+            expect(text).toMatch(league === 'mbb' ? /H[12] \d+:\d\d/ : /Q[1-4] \d+:\d\d/);
+        });
+    }
     test('off: byte for byte the panel without the rows', async () => {
         const off = await render(game(LINE), { preview: true, flagOverrides: { 'bball-wp-lenses': false } });
         expect(off).toBe(await render(game(LINE, false), {}));
