@@ -6,6 +6,8 @@ services:
       - GOP_PG_DSN=${GOP_PG_DSN:-}
       - GOP_PG_DSN_RO=${GOP_PG_DSN_RO:-}
       - GOP_INGEST_KEY=${GOP_INGEST_KEY:-}
+      # the Data API read key: the league's shot cells for the live expected points (python/shot_cells.py); unset = no read
+      - SDV_AUTH_TOKEN=${SDV_AUTH_TOKEN:-}
       - TELEMETRY_ENABLED=${TELEMETRY_ENABLED:-1}
     ports:
       - 3000:5000

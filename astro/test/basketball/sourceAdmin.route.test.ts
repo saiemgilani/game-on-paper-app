@@ -24,6 +24,8 @@ vi.mock('../../src/resources/gameFlow', async (orig) => ({ ...(await orig<typeof
 // BB-G2's garbage-time log likewise ('bball-garbage-time', preview): unmapped, never a read
 // BB-G32's season team rates likewise ('bball-team-grid', preview, live or final): no rows, never a read
 vi.mock('../../src/resources/teamGrid', async (orig) => ({ ...(await orig<typeof import('../../src/resources/teamGrid')>()), retrieveTeamGridSeason: async () => ({ home: null, away: null, league: null }) }));
+// BB-G33's expected points on a Data API final likewise ('bball-situational-box', preview): no rows, never a read
+vi.mock('../../src/resources/gameExpected', async (orig) => ({ ...(await orig<typeof import('../../src/resources/gameExpected')>()), retrieveGameExpected: async () => ({}) }));
 vi.mock('../../src/resources/garbageTime', async (orig) => ({ ...(await orig<typeof import('../../src/resources/garbageTime')>()), retrieveGarbageTime: async () => ({ teams: null, rows: [] }) }));
 
 const api = () => JSON.parse(readFileSync(new URL('../fixtures/nba/game_401766458_api.json', import.meta.url)).toString());

@@ -16,6 +16,7 @@ import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBo
 import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
 import { retrieveGarbageTime, type GarbageReads } from '../../resources/garbageTime';
 import { retrieveTeamGridSeason, type TeamGridSeason } from '../../resources/teamGrid';
+import { retrieveGameExpected } from '../../resources/gameExpected';
 import { seasonCache, setCache, uncacheable } from './cache';
 
 /** The admin source tool's data (components/nba/game/NbaAdminSourceTools.astro); only an admin on the 'source-switch' path gets it. */
@@ -97,18 +98,23 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     const withFlow = final && isFeatureEnabled('bball-game-flow', Astro.locals);
     // the toggle sits beside the Impact box: no box, no toggle and no read
     const withGarbage = withImpact && isFeatureEnabled('bball-garbage-time', Astro.locals);
-    if (!withImpact && !withFlow && !withGrid) return r;
-    const [impact, flow, garbage, season] = await Promise.all([
+    // BB-G33's expected points: the processor payload carries them, so only a Data API final reads {lg}.game_team_expected
+    const withExpected = final && r.game.source === 'data_api' && isFeatureEnabled('bball-situational-box', Astro.locals);
+    if (!withImpact && !withFlow && !withGrid && !withExpected) return r;
+    const [impact, flow, garbage, season, expected] = await Promise.all([
         withImpact ? readPanel('impact box', league, r.game, r.game.season, retrieveImpactBox) : undefined,
         withFlow ? readPanel('game flow', league, r.game, r.game.season, retrieveGameFlow) : undefined,
         withGarbage ? readPanel('garbage-time log', league, r.game, r.game.season, retrieveGarbageTime) : undefined,
         withGrid ? readPanel('season team rates', league, r.game, r.game.season, retrieveTeamGridSeason) : undefined,
+        withExpected ? readPanel('game expected points', league, r.game, r.game.season, retrieveGameExpected) : undefined,
     ]);
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
-    if (impact === null || flow === null || garbage === null || season === null) uncacheable(Astro);
-    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || season !== undefined)) setCache(Astro, seasonCache(league));
-    return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}),
+    if (impact === null || flow === null || garbage === null || season === null || expected === null) uncacheable(Astro);
+    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || season !== undefined || (expected && (!expected.home || !expected.away)))) setCache(Astro, seasonCache(league));
+    // the rows ride on the sides, where a processor game already has them
+    const game = expected ? { ...r.game, home: { ...r.game.home, ...(expected.home ? { expected: expected.home } : {}) }, away: { ...r.game.away, ...(expected.away ? { expected: expected.away } : {}) } } : r.game;
+    return { ...r, game, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}),
         ...(garbage !== undefined ? { garbage: { reads: garbage, out: Astro.url.searchParams.get(GARBAGE_PARAM) === 'out' } } : {}),
         ...(season !== undefined ? { season } : {}) };
 }

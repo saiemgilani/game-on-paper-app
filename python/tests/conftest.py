@@ -42,3 +42,19 @@ def processed():
         return cache[league]
 
     return get
+
+
+
+@pytest.fixture(autouse=True)
+def _no_data_api(monkeypatch):
+    """The basketball route reads the league's shot cells from the Data API (shot_cells.py): never in tests.
+    No key is set (so no read is tried), and a read that gets as far as the HTTP call fails the test at
+    teardown (league_shot_cells swallows the error by design). A test that wants cells seeds shot_cells._cache."""
+    import shot_cells
+
+    reached = []
+    monkeypatch.delenv("SDV_AUTH_TOKEN", raising=False)
+    monkeypatch.setattr(shot_cells, "_get", lambda url, token: reached.append(url) or {})
+    monkeypatch.setattr(shot_cells, "_cache", {})
+    yield
+    assert reached == [], f"a test reached the Data API: {reached}"

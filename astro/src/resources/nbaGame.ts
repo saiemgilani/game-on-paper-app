@@ -44,6 +44,10 @@ export interface NbaSide {
     box: NbaTeamBox | null; rates: NbaTeamRates | null; players: NbaPlayerRow[]
     /** sdv-py's BB-D31 team splits, counted from the plays: the processor only (live or un-ingested), absent otherwise and in a payload cached before them */
     splits?: NbaTeamSplits
+    /** sdv-py's BB-D40 expected points (team_game_expected): the processor's (live or un-ingested) or a Data API final's
+     *  {lg}.game_team_expected row (routes/basketball/game.ts); absent before the tip, in an older payload and for a season
+     *  not built. Its expected columns are null when the processor could not read the league's shot cells. */
+    expected?: NbaTeamExpected
 }
 
 /** The BB-D31 team split columns the page reads: BB-G32's counted possessions and BB-G33's possession factors. */
@@ -59,6 +63,23 @@ export const TEAM_SPLIT_KEYS = [
 ] as const;
 /** One side's BB-D31 team split row; a rate with a zero denominator (and every column before the tip) is null. */
 export type NbaTeamSplits = Record<(typeof TEAM_SPLIT_KEYS)[number], number | null>;
+
+/** BB-D40's situations and zones (sdv-py nba_game_expected SITUATIONS / ZONES). */
+export const EXPECTED_SITUATIONS = ['fast_break', 'second_chance', 'off_turnover', 'paint'] as const;
+export const EXPECTED_ZONES = ['rim', 'short_mid', 'midrange', 'corner3', 'above_break3'] as const;
+type Cols<P extends string, M extends string> = `${P}_${M}`;
+/** The BB-D40 team_game_expected columns the page reads (BB-G33's expected points). */
+export const TEAM_EXPECTED_KEYS = [
+    'possessions', 'points', 'fga', 'fgm', 'xfg_pts', 'poe', 'ts_pct', 'xts_pct', 'drtg', 'xdrtg', 'unlocated_fga', 'unlocated_fgm',
+    ...EXPECTED_SITUATIONS.flatMap((s) => (['poss', 'rate', 'pts', 'ppp', 'poe'] as const).map((m) => `${s}_${m}` as Cols<typeof s, typeof m>)),
+    ...EXPECTED_ZONES.flatMap((z) => (['fga', 'fgm', 'efg_pct', 'xppp', 'poe'] as const).map((m) => `${z}_${m}` as Cols<typeof z, typeof m>)),
+] as const;
+/** One side's BB-D40 row; every expected column (x*, *_poe, *_xppp) is null without the league's shot cells. */
+export type NbaTeamExpected = Record<(typeof TEAM_EXPECTED_KEYS)[number], number | null>;
+/** A team_game_expected row (the processor payload's or the Data API's) as the page reads it. */
+export function teamExpected(r: Record<string, any>): NbaTeamExpected {
+    return Object.fromEntries(TEAM_EXPECTED_KEYS.map((k) => [k, num(r[k])])) as NbaTeamExpected
+}
 
 /** Which feed produced a `?source=` response: the football payload's block, emitted by the same app.py helper. */
 export type SourceProvenance = NonNullable<ProcessedGame['provenance']>
@@ -120,6 +141,8 @@ export interface NbaProcessorPayload {
     excitement?: { gei: number | null; lead_changes: number; max_swing_pts: number | null; completed: boolean }
     /** BB-D31's game splits (python/nba_game.py); absent from a payload cached before them. Only the team rows are read. */
     splits?: Record<'home' | 'away', { team: Record<string, any> | null; players: Record<string, any>[] }>
+    /** BB-D40's team_game_expected rows (python/nba_game.py); absent from a payload cached before them. */
+    expected?: Record<'home' | 'away', Record<string, any> | null>
 }
 
 /** sdv-py's prior source: a real line ('spread'), a lineless neutral site ('neutral', prior 0.5) or the league's home-court edge ('hfa'). */
@@ -263,6 +286,7 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague):
             score: num(c.score), winner: c.winner === true, records: record?.summary ?? null,
             linescores: t.linescores, box: teamBox(t.box), rates: teamRates(t.rates), players: j.players[ha].map(playerRow),
             ...(j.splits?.[ha]?.team ? { splits: teamSplits(j.splits[ha].team!) } : {}),
+            ...(j.expected?.[ha] ? { expected: teamExpected(j.expected[ha]!) } : {}),
         }
     }
     const reg = regulationFor(league, season, j.regulation_periods)
