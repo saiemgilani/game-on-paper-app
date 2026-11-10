@@ -88,6 +88,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // No toggle when the log has no flag (a release from before BB-D7) or no garbage time. Off: no read, `?garbage=` is
     // ignored, and the game page is today's, byte for byte.
     'bball-garbage-time': 'preview',
+    // BB-G41's Latest strip on /<league>/game/[id] for a live game only (in progress, halftime, end of a period): the
+    // last five plays newest first with their WP change, beside a half court drawing the last few located shots with
+    // the older ones faded. No read: it is the page's own plays. Off, or a final: the game page is today's, byte for byte.
+    'bball-latest-strip': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
