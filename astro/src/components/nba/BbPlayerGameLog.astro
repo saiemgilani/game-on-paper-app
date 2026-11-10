@@ -4,7 +4,8 @@
 // possessions, +/- and ratings, points over expected and EPV added; each shaded cell is ranked among his season's games
 // (football's PlayerGameLog "Player Games" mode), and a consistency line gives the game-to-game spread of PTS, AST and
 // TS% over the games shown. Under BB-G14's game-set filter (?games=) it shows that set's games, still shaded against
-// the whole season. College logs have no possessions, +/-, ratings or EPV (resources/bballGameLogs.ts).
+// the whole season. A college player with no ncaa_player_crosswalk pair has no possessions, +/-, ratings or EPV
+// (resources/bballGameLogs.ts); a column with no values is not rendered.
 import type { PlayerGame } from '../../nba/data/aggregate';
 import type { PlayerLogReads } from '../../resources/bballGameLogs';
 import { fmtDate, fmtDec, fmtInt, fmtPct } from '../../nba/format';

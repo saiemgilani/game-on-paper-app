@@ -3,11 +3,12 @@
  * the logs read, join and format.
  *
  * Player (the page's per-game shot rows are the log's games): the box, game_player_rates (TS%, usage),
- * shot_quality_game (points over expected), and for the pros game_player_impact (on-court possessions, +/-, ratings)
- * and epv_player_games (EPV added on his own events). The pro season tables are keyed by stats.nba.com /
- * stats.wnba.com ids; game_player_rates by ESPN's, so the pros map through player_crosswalk and schedule_crosswalk.
- * College tables are ESPN-keyed except the impact and EPV tables (stats.ncaa.org contest and player ids, with no ESPN
- * athlete crosswalk), so college logs carry no possessions, +/-, ratings or EPV.
+ * shot_quality_game (points over expected), game_player_impact (on-court possessions, +/-, ratings) and
+ * epv_player_games (EPV added on his own events). The pro season tables are keyed by stats.nba.com / stats.wnba.com
+ * ids; game_player_rates by ESPN's, so the pros map through player_crosswalk and schedule_crosswalk. College tables are
+ * ESPN-keyed except the impact and EPV tables (stats.ncaa.org contest and player ids): his season's stats.ncaa.org id
+ * comes from ncaa_player_crosswalk (BB-D37; stats.ncaa.org issues a new id every season, so the read is season-filtered)
+ * and each contest's ESPN game from his own ncaa_player_box rows. With no matched pair those columns stay blank.
  *
  * Team: game_flow (lead share, lead changes, largest lead, best run) on top of the season block's game_team_rates.
  */
@@ -78,13 +79,27 @@ export async function retrievePlayerGameLog(league: BasketballLeague, season: nu
         return read(games, 'game_player_rates', { athlete_id: athlete, select: 'game_id,ts_pct,usg_pct' });
     })();
     const poeR = read(stats, 'shot_quality_game', { person_id: p, level: 'player', select: 'game_id,poe' });
-    const impactR = pro ? read(stats, 'game_player_impact', { player_id: p, select: 'game_id,poss,plus_minus,off_rtg,def_rtg' }) : Promise.resolve([]);
-    const epvR = pro ? read(stats, 'epv_player_games', { player_id: p, select: 'game_id,epv_own' }) : Promise.resolve([]);
+    // college: his season's stats.ncaa.org id first (null: no matched pair, so no impact or EPV read), then his contests'
+    // ESPN games. The crosswalk's espn_athlete_id is a bigint and ncaa_player_id text: both are compared as strings.
+    const ncaaR: Promise<string | null> = pro ? Promise.resolve(p) : read(stats, 'ncaa_player_crosswalk', { espn_athlete_id: p, select: 'ncaa_player_id' })
+        .then(([x]) => (x?.ncaa_player_id ? String(x.ncaa_player_id) : null));
+    const contestsR = pro ? Promise.resolve(null) : ncaaR.then((id) => (id ? read(stats, 'ncaa_player_box', { player_id: id, select: 'contest_id,espn_game_id' }) : []));
+    const byPlayer = (table: string, select: string) => ncaaR.then((id) => (id ? read(stats, table, { player_id: id, select }) : []));
+    const impactR = byPlayer('game_player_impact', 'game_id,poss,plus_minus,off_rtg,def_rtg');
+    const epvR = byPlayer('epv_player_games', 'game_id,epv_own');
 
-    const [box, espnGame, rates, poe, impact, epv] = await Promise.allSettled([boxR, espnGameR, ratesR, poeR, impactR, epvR]);
+    const [box, espnGame, rates, poe, impact, epv, contests] = await Promise.allSettled([boxR, espnGameR, ratesR, poeR, impactR, epvR, contestsR]);
     if (box.status === 'rejected') throw box.reason;
-    const degraded = [espnGame, rates, poe, impact, epv].some((r) => r.status === 'rejected');
-    for (const r of [espnGame, rates, poe, impact, epv]) if (r.status === 'rejected') console.error(`player ${personId} game log: a read failed: ${r.reason}`);
+    const optional = [espnGame, rates, poe, impact, epv, contests];
+    const degraded = optional.some((r) => r.status === 'rejected');
+    for (const r of optional) if (r.status === 'rejected') console.error(`player ${personId} game log: a read failed: ${r.reason}`);
+    // the impact and EPV rows' game id -> the page's: the stats id itself for the pros, the contest's ESPN game in college
+    const contestRows = settled(contests, []);
+    const toPage = pro ? null : new Map(contestRows.filter((r) => r.contest_id && r.espn_game_id).map((r) => [String(r.contest_id), String(r.espn_game_id)]));
+    const rekey = <V>(rows: Record<string, unknown>[], pick: (r: Record<string, unknown>) => V) => new Map(rows.flatMap((r) => {
+        const id = toPage ? toPage.get(String(r.game_id)) : String(r.game_id);
+        return id ? [[id, pick(r)] as const] : [];
+    }));
 
     const toStats = settled(espnGame, null);
     // ESPN game id -> the page's id, for the ESPN-keyed rates
@@ -101,9 +116,9 @@ export async function retrievePlayerGameLog(league: BasketballLeague, season: nu
             const id = fromEspn ? fromEspn.get(String(r.game_id)) : String(r.game_id);
             return id ? [[id, { ts_pct: num(r.ts_pct), usg_pct: num(r.usg_pct) }] as const] : [];
         })),
-        impact: by(settled(impact, []), 'game_id', (r) => ({ poss: num(r.poss), plus_minus: num(r.plus_minus), off_rtg: num(r.off_rtg), def_rtg: num(r.def_rtg) })),
+        impact: rekey(settled(impact, []), (r) => ({ poss: num(r.poss), plus_minus: num(r.plus_minus), off_rtg: num(r.off_rtg), def_rtg: num(r.def_rtg) })),
         poe: by(settled(poe, []), 'game_id', (r) => num(r.poe)),
-        epv: by(settled(epv, []), 'game_id', (r) => num(r.epv_own)),
+        epv: rekey(settled(epv, []), (r) => num(r.epv_own)),
         espnGame: toStats ?? new Map(),
         degraded,
     };

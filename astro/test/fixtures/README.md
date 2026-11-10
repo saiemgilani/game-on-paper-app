@@ -803,7 +803,7 @@ select the flag adds: `select=game_id,off_rtg,def_rtg,pace,efg_pct,tov_pct,orb_p
 
 **To regenerate:** rerun the same twelve reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
 
-## `game-logs-player-nba-2026.json.gz`, `game-logs-player-mbb-2026.json.gz`, `game-logs-flow-2026.json.gz`
+## `game-logs-player-nba-2026.json.gz`, `game-logs-player-mbb-2026.json.gz`, `game-logs-flow-2026.json.gz`, `game-logs-xwalk-mbb-2026.json.gz`
 The reads behind the advanced game logs (BB-G50, `resources/bballGameLogs.ts`), captured live on 2026-11-10, sequentially, the
 `data` array of each response, no edits; each with the module's own `select` and `limit=200` unless noted.
 - NBA player, Michael Porter Jr. (stats 1629008, ESPN 4278104; his games are `game-set-player-nba-2026`'s): `{box, impact, poe, epv, xwalk, rates, sched}` =
@@ -815,6 +815,11 @@ The reads behind the advanced game logs (BB-G50, `resources/bballGameLogs.ts`), 
   `mbb/player_box?athlete_id=5041935` (38), `mbb/game_player_rates?athlete_id=5041935` (38),
   `mbb/shot_quality_game?person_id=5041935&level=player` (38), all `season=2026`.
 - Team flow: `{nets, duke}` = `nba_stats/game_flow?season=2026&team_id=1610612751` (86) and `mbb/game_flow?season=2026&team_id=150` (38).
+- College player, his stats.ncaa.org side (`game-logs-xwalk-mbb-2026`, captured live on 2026-11-10 once `ncaa_player_crosswalk` (BB-D37) was
+  served): `{xwalk, impact, epv, contests}` = `mbb/ncaa_player_crosswalk?season=2026&espn_team_id=150&limit=40` (14, every Duke pair;
+  his row is ESPN 5041935 -> stats.ncaa.org `11195975`, `name_jersey`), `mbb/game_player_impact?player_id=11195975` (38),
+  `mbb/epv_player_games?player_id=11195975` (38) and `mbb/ncaa_player_box?player_id=11195975&select=contest_id,espn_game_id,pts` (38;
+  `pts` is not in the module's select: the test uses it as the join oracle against ESPN's box), all `season=2026`.
 
 **Used by:** `test/bballGameLogs.test.ts`.
 

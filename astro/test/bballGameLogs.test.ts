@@ -17,6 +17,8 @@ const capture = (name: string) => JSON.parse(gunzipSync(readFileSync(new URL(`./
 const MPJ = capture('game-set-player-nba-2026'); // Michael Porter Jr. 2025-26, shot_player_games
 const NBA_LOG = capture('game-logs-player-nba-2026');
 const MBB_LOG = capture('game-logs-player-mbb-2026'); // Duke's leading shooter 2025-26 (ESPN 5041935)
+const MBB_XW = capture('game-logs-xwalk-mbb-2026'); // his stats.ncaa.org side: Duke's crosswalk pairs, impact, EPV, contests
+const NCAA_PID = '11195975'; // his 2025-26 stats.ncaa.org id (the crosswalk's text id)
 const FLOW = capture('game-logs-flow-2026');
 const NETS_BLOCK = capture('game-set-nba-2026');
 const DUKE_BLOCK = capture('game-set-mbb-2026');
@@ -24,13 +26,14 @@ const asReads = (c: any) => ({ rates: c.rates, strength: c.strength[0] ?? null, 
 const PID = 1629008, COLLEGE_PID = 5041935, NETS = 1610612751, NETS_ESPN = 17, DUKE = 150;
 
 // the Data API, answered from the captures by schema, table and key; anything else is an error (an unexpected read)
-const sdv = vi.hoisted(() => ({ calls: [] as string[], fail: new Set<string>() }));
+const sdv = vi.hoisted(() => ({ calls: [] as string[], fail: new Set<string>(), empty: new Set<string>() }));
 vi.mock('../src/resources/sdv', async (orig) => {
     const real = await orig<typeof import('../src/resources/sdv')>();
     return { ...real, retrieveRowsFrom: async (src: { schema: string }, table: string, q: Record<string, string>, ...rest: unknown[]) => {
         const key = `${src.schema}.${table}`;
         sdv.calls.push(key);
         if (sdv.fail.has(key)) throw new Error(`503 ${key}`);
+        if (sdv.empty.has(key)) return [];
         const rows: Record<string, any> = {
             'nba_stats.player_box': q.person_id === String(PID) && NBA_LOG.box,
             'nba_stats.game_player_impact': q.player_id === String(PID) && NBA_LOG.impact,
@@ -43,6 +46,11 @@ vi.mock('../src/resources/sdv', async (orig) => {
             'mbb.player_box': q.athlete_id === String(COLLEGE_PID) && MBB_LOG.box,
             'mbb.game_player_rates': q.athlete_id === String(COLLEGE_PID) && MBB_LOG.rates,
             'mbb.shot_quality_game': q.person_id === String(COLLEGE_PID) && MBB_LOG.poe,
+            // the crosswalk's espn_athlete_id is a bigint (a JSON number): filtered as the API does, by its digits
+            'mbb.ncaa_player_crosswalk': q.espn_athlete_id !== undefined && MBB_XW.xwalk.filter((r: any) => String(r.espn_athlete_id) === q.espn_athlete_id),
+            'mbb.ncaa_player_box': q.player_id === NCAA_PID && MBB_XW.contests,
+            'mbb.game_player_impact': q.player_id === NCAA_PID && MBB_XW.impact,
+            'mbb.epv_player_games': q.player_id === NCAA_PID && MBB_XW.epv,
             'mbb.game_flow': q.team_id === String(DUKE) && FLOW.duke,
         };
         if (rows[key]) return rows[key];
@@ -85,7 +93,7 @@ import { scheduleRows } from '../src/utils/teamSeason';
 
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
-beforeEach(() => { sdv.calls.length = 0; sdv.fail.clear(); block.fn.mockReset(); block.fn.mockResolvedValue(asReads(NETS_BLOCK)); });
+beforeEach(() => { sdv.calls.length = 0; sdv.fail.clear(); sdv.empty.clear(); block.fn.mockReset(); block.fn.mockResolvedValue(asReads(NETS_BLOCK)); });
 
 const mpjGames = () => playerGamesFromRows(MPJ.games)!;
 const boozerGames = () => playerGamesFromRows(MBB_LOG.games)!;
@@ -135,18 +143,44 @@ describe('player reads, NBA (Michael Porter Jr. 2025-26)', () => {
 });
 
 describe('player reads, college (Duke 2025-26)', () => {
-    test('ESPN-keyed throughout: box, rates and POE on every game, no impact or EPV read', async () => {
+    test('box, rates and POE by his ESPN id; impact and EPV by his stats.ncaa.org id through the crosswalk, on every game', async () => {
         const reads = await retrievePlayerGameLog('mbb', 2026, COLLEGE_PID);
-        expect(sdv.calls.toSorted()).toEqual(['mbb.game_player_rates', 'mbb.player_box', 'mbb.shot_quality_game']);
+        expect(reads.degraded).toBe(false);
+        expect(sdv.calls.toSorted()).toEqual(['mbb.epv_player_games', 'mbb.game_player_impact', 'mbb.game_player_rates', 'mbb.ncaa_player_box', 'mbb.ncaa_player_crosswalk', 'mbb.player_box', 'mbb.shot_quality_game']);
         const rows = playerLogRows(boozerGames(), reads, true);
+        expect(rows).toHaveLength(MBB_LOG.games.length);
+        // the contest -> ESPN game join, checked on the data: the stats.ncaa.org box's points for the contest whose impact
+        // row landed on a game equal ESPN's box points for that game (a shifted or swapped mapping fails)
+        const ncaaPts = new Map(MBB_XW.contests.map((c: any) => [c.contest_id, c.pts]));
         for (const r of rows) {
             const b = reads.box.get(r.gameId)!;
             expect(`${b.fgm}/${b.fga}`).toBe(`${r.game.makes}/${r.game.attempts}`);
             expect(Math.abs(ts(b) - r.values.ts_pct!)).toBeLessThan(0.01);
             expect(r.values.poe).not.toBeNull();
-            expect(r.values.off_rtg).toBeNull();
             expect(r.espnGameId).toBe(r.gameId);
+            const raw = MBB_XW.impact.filter((i: any) => i.poss === r.values.poss && i.plus_minus === r.values.plus_minus && i.off_rtg === r.values.off_rtg && i.def_rtg === r.values.def_rtg);
+            expect(raw).toHaveLength(1);
+            expect(ncaaPts.get(raw[0].game_id)).toBe(b.pts);
+            expect(r.values.epv).toBe(MBB_XW.epv.find((e: any) => e.game_id === raw[0].game_id).epv_own);
         }
+    });
+    test('no crosswalk pair: no impact or EPV read and those columns blank; a failed crosswalk read marks the read degraded', async () => {
+        sdv.empty.add('mbb.ncaa_player_crosswalk');
+        const none = await retrievePlayerGameLog('mbb', 2026, COLLEGE_PID);
+        expect(sdv.calls).not.toContain('mbb.game_player_impact');
+        expect(sdv.calls).not.toContain('mbb.ncaa_player_box');
+        expect([none.impact.size, none.epv.size, none.degraded]).toEqual([0, 0, false]);
+        expect(none.box.size).toBe(MBB_LOG.box.length);
+        sdv.empty.clear();
+        sdv.fail.add('mbb.ncaa_player_crosswalk');
+        const failed = await retrievePlayerGameLog('mbb', 2026, COLLEGE_PID);
+        expect([failed.impact.size, failed.epv.size, failed.degraded]).toEqual([0, 0, true]);
+        expect(failed.rates.size).toBe(MBB_LOG.rates.length);
+    });
+    test('the contest map read failed: impact and EPV cannot be placed, so they stay blank and the read is degraded', async () => {
+        sdv.fail.add('mbb.ncaa_player_box');
+        const reads = await retrievePlayerGameLog('mbb', 2026, COLLEGE_PID);
+        expect([reads.impact.size, reads.epv.size, reads.degraded]).toEqual([0, 0, true]);
     });
 });
 
@@ -217,13 +251,15 @@ describe('the logs', () => {
         expect(html).not.toContain('undefined');
         expect(html).not.toContain('NaN');
     });
-    test('player, college: no impact or EPV columns', async () => {
+    test('player, college: impact and EPV columns through the crosswalk; with no pair they are left out', async () => {
         const reads = await retrievePlayerGameLog('mbb', 2026, COLLEGE_PID);
         const html = await render(BbPlayerGameLog, { games: boozerGames(), reads }, 'mbb', `/mbb/players/${COLLEGE_PID}`);
-        expect(html).toContain('TS%');
-        expect(html).toContain('POE');
-        for (const h of ['ORtg', 'EPV+', '+/-']) expect(html).not.toContain(`>${h}<`);
+        for (const h of ['TS%', 'POE', 'Poss', '+/-', 'ORtg', 'DRtg', 'EPV+']) expect(html).toContain(h);
         expect(html).not.toContain('NaN');
+        sdv.empty.add('mbb.ncaa_player_crosswalk');
+        const unpaired = await render(BbPlayerGameLog, { games: boozerGames(), reads: await retrievePlayerGameLog('mbb', 2026, COLLEGE_PID) }, 'mbb', `/mbb/players/${COLLEGE_PID}`);
+        expect(unpaired).toContain('POE');
+        for (const h of ['ORtg', 'EPV+', '+/-']) expect(unpaired).not.toContain(`>${h}<`);
     });
     test('player, the box read failed: the log says so', async () => {
         const html = await render(BbPlayerGameLog, { games: mpjGames(), reads: null }, 'nba', `/nba/players/${PID}`);

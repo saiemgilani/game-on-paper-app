@@ -85,9 +85,9 @@ export const FLAGS: Record<string, FeatureState> = {
     // requests are unchanged.
     'bball-game-set': 'preview',
     // BB-G50: advanced game logs. /<league>/players/[id]: each game's box with TS%, usage, on-court possessions, +/- and
-    // ratings, points over expected and EPV added (game_player_rates, game_player_impact, shot_quality_game,
-    // epv_player_games; college has no impact or EPV columns). /<league>/team/[id], inside 'bball-team-season': each
-    // game's four factors and ratings plus game_flow. Cells shaded against the season, a consistency line, and under
+    // ratings, points over expected and EPV added (game_player_rates, shot_quality_game, game_player_impact,
+    // epv_player_games; college reaches the last two through ncaa_player_crosswalk). /<league>/team/[id], inside
+    // 'bball-team-season': each game's four factors and ratings plus game_flow. Cells shaded against the season, a consistency line, and under
     // 'bball-game-set' the chosen set's games. Off: no read and both pages unchanged.
     'bball-game-logs': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
