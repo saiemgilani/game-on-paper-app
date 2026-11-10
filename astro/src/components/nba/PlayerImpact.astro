@@ -2,7 +2,7 @@
 // src/components/nba/PlayerImpact.astro
 // BB-G6, behind 'bball-impact': the player page's Impact panel, full width like the page's other sections. NBA/WNBA:
 // RAPM, adjusted RAPM, SPM, BPM, BOBAN and WAR over the possessions they are computed from (sdv-db player_impact);
-// college: box BPM (player_value), not shown until BB-D16 (utils/playerImpact.ts COLLEGE_IMPACT). One number per
+// college: RAPM (ncaa_rapm, through ncaa_player_crosswalk) and box BPM (player_value). One number per
 // cell. Rank columns and percentile shading appear only when the producer ships `<m>_rank` / `<m>_pct` (rule B6).
 import type { PlayerImpactRow } from '../../resources/playerImpact';
 import { impactPanel, type ImpactCell } from '../../utils/playerImpact';
@@ -32,12 +32,12 @@ const rank = (c: ImpactCell | null) => (c?.rank == null ? '—' : formatRank(c.r
   {rows === null ? (<p class="text-muted" id="impact-unavailable">The impact numbers are temporarily unavailable.</p>) : !panel ? (<p class="text-muted" id="impact-empty">No {label} impact numbers for {name} yet.</p>) : (<Fragment>
   <p class="numeral small text-muted mb-2" id="impact-sample">
     {college
-      ? (<Fragment>{fmtInt(panel.min)} MIN{panel.qualified === false && (<Fragment> &middot; below the qualifying minutes</Fragment>)}</Fragment>)
+      ? (<Fragment>{panel.offPoss != null && (<Fragment>{fmtInt(panel.offPoss)} offensive and {fmtInt(panel.defPoss)} defensive possessions &middot; </Fragment>)}{fmtInt(panel.min)} MIN{panel.qualified === false && (<Fragment> &middot; below the qualifying minutes</Fragment>)}</Fragment>)
       : (<Fragment>{fmtInt(panel.offPoss)} offensive and {fmtInt(panel.defPoss)} defensive possessions &middot; {fmtInt(panel.gp)} GP &middot; {fmtInt(panel.min)} MIN</Fragment>)}
   </p>
   <div class="table-responsive">
     <table class="table table-sm align-middle mb-0" id="impact-table">
-      <caption class="small text-muted">{college ? 'Box plus-minus per 100 possessions. Positive is better at both ends.' :'Per 100 possessions (WAR in wins), regular season. Positive is better at both ends.'}{ranked && ' Rank among the league’s qualified players.'}{shaded && ' Shading by percentile.'}</caption>
+      <caption class="small text-muted">{college ? 'Per 100 possessions. Positive is better at both ends.' : 'Per 100 possessions (WAR in wins), regular season. Positive is better at both ends.'}{ranked && ' Rank among the league’s qualified players.'}{shaded && ' Shading by percentile.'}</caption>
       <thead><tr><th scope="col"></th>{sides.map((s) => (<Fragment><th scope="col" class="text-end">{head[s]}</th>{ranked && (<th scope="col" class="text-end">Rank</th>)}</Fragment>))}</tr></thead>
       <tbody>
         {panel.measures.map((m) => (
