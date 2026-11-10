@@ -4,8 +4,10 @@
  * by stats.nba.com / stats.wnba.com ids (game, team, player), so the ESPN game is first mapped through the games
  * schema's schedule_crosswalk and the names come from the stats box; college tables are keyed by the stats.ncaa.org
  * contest and player ids with ESPN team ids, so ncaa_player_box (filtered by the ESPN game id) gives the contest id and
- * the names in one read. Every minute, possession, point, +/- and rating is the producer's (sdv-py
- * nba_impact_rows / ncaa_impact_rows); the box reads, orders and formats. Reads are strict: an outage is never shown as
+ * the names in one read. Player links: a pro's stats id is his player page's id; a college player's page is keyed by
+ * his ESPN athlete id, so each side's ncaa_player_crosswalk pairs (BB-D37, by ESPN team and season) map the
+ * stats.ncaa.org ids, and a player with no pair stays unlinked. Every minute, possession, point, +/- and rating is the
+ * producer's (sdv-py nba_impact_rows / ncaa_impact_rows); the box reads, orders and formats. Reads are strict: an outage is never shown as
  * a game with no impact rows.
  */
 import { retrieveRowsFrom } from './sdv';
@@ -59,13 +61,16 @@ export interface ImpactBoxReads {
     /** each side's top units, most minutes first */
     lineups: { home: LineupRow[]; away: LineupRow[] };
     names: ImpactName[];
+    /** college: stats.ncaa.org player id -> ESPN athlete id (the player page's id); null for the pros, whose ids are the page's */
+    pageIds: Map<string, string> | null;
 }
 
 /** No producer rows for the game (not mapped, or not built yet). */
-export const EMPTY_IMPACT: ImpactBoxReads = { gameId: null, teams: null, players: [], lineups: { home: [], away: [] }, names: [] };
+export const EMPTY_IMPACT: ImpactBoxReads = { gameId: null, teams: null, players: [], lineups: { home: [], away: [] }, names: [], pageIds: null };
 
 interface ProCrosswalk { [k: string]: string | number | null }
 interface ProName { person_id: number; first_name: string | null; family_name: string | null; name_i: string | null }
+interface NcaaPair { ncaa_player_id: string | null; espn_athlete_id: number | string | null }
 interface NcaaName { contest_id: string; player_id: string | null; clean_name: string | null; player: string | null }
 
 /** "ANGELO.BRIZZI" (the stats.ncaa.org box's raw name) as "Angelo Brizzi", for a row with no clean name. */
@@ -74,7 +79,7 @@ const titleCase = (raw: string) => raw.replace(/[._]+/g, ' ').toLowerCase().repl
 /**
  * The reads for one ESPN game, two rounds, strict. `homeId` / `awayId` are the ESPN team ids. The pros: the crosswalk,
  * then the impact rows, the stats box's names and each side's top units; college: the stats.ncaa.org box (contest id and
- * names), then the impact rows and each side's top units.
+ * names), then the impact rows, each side's top units and each side's crosswalk pairs (the player links).
  */
 export async function retrieveImpactBox(league: BasketballLeague, season: number, espnGameId: string, homeId: number, awayId: number): Promise<ImpactBoxReads> {
     const s = String(season);
@@ -83,6 +88,7 @@ export async function retrieveImpactBox(league: BasketballLeague, season: number
     let gameId: string;
     let teams: { home: number; away: number };
     let namesRead: Promise<ImpactName[]>;
+    let pageIdsRead: Promise<Map<string, string> | null> = Promise.resolve(null);
     if (PRO_LEAGUES.includes(league)) {
         const p = league; // the crosswalk's prefix: nba_game_id / wnba_game_id
         const [x] = await retrieveRowsFrom<ProCrosswalk>(BASKETBALL[league].gamesSource, 'schedule_crosswalk',
@@ -99,13 +105,18 @@ export async function retrieveImpactBox(league: BasketballLeague, season: number
         teams = { home: homeId, away: awayId };
         // a non-D1 opponent's players carry no stats.ncaa.org id (and have no impact rows)
         namesRead = Promise.resolve(box.filter((r) => r.player_id).map((r) => ({ player_id: String(r.player_id), name: r.clean_name || titleCase(String(r.player ?? r.player_id)) })));
+        // each side's matched pairs (a non-D1 side has none); the bigint espn_athlete_id and text ncaa_player_id as strings
+        const pairs = (teamId: number) => read<NcaaPair>('ncaa_player_crosswalk', { espn_team_id: String(teamId), select: 'ncaa_player_id,espn_athlete_id', limit: PLAYER_LIMIT });
+        pageIdsRead = Promise.all([pairs(homeId), pairs(awayId)]).then((sides) =>
+            new Map(sides.flat().filter((r) => r.ncaa_player_id && r.espn_athlete_id != null).map((r) => [String(r.ncaa_player_id), String(r.espn_athlete_id)])));
     }
     const units = (teamId: number) => read<LineupRow>('game_lineups_used', { game_id: gameId, team_id: String(teamId), select: LINEUP_SELECT, order: '-seconds', limit: String(TOP_UNITS) });
-    const [players, home, away, nameRows] = await Promise.all([
+    const [players, home, away, nameRows, pageIds] = await Promise.all([
         read<ImpactRow>('game_player_impact', { game_id: gameId, select: IMPACT_SELECT, limit: PLAYER_LIMIT }),
         units(teams.home),
         units(teams.away),
         namesRead,
+        pageIdsRead,
     ]);
-    return { gameId, teams, players, lineups: { home, away }, names: nameRows };
+    return { gameId, teams, players, lineups: { home, away }, names: nameRows, pageIds };
 }

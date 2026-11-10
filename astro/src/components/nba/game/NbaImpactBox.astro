@@ -9,6 +9,9 @@ import { TOP_UNITS } from '../../../resources/impactBox';
 import { impactSide, shortName, type ImpactSide } from '../../../utils/impactBox';
 import { fmtDec, fmtInt } from '../../../nba/format';
 import { cleanAbbreviation } from '../../../utils/misc';
+import { playerHref, seasonQuery } from '../../../nba/links';
+import { LEAGUES } from '../../../utils/league';
+import { basketball } from '../../../basketball/config';
 
 interface Props { game: NbaGame; impact: ImpactBoxReads | null }
 const { game, impact } = Astro.props;
@@ -19,6 +22,15 @@ const rtg = (v: number | null | undefined) => (v == null ? dash : fmtDec(v, 1));
 const mins = (v: number | null | undefined) => (v == null ? dash : fmtDec(v, 1));
 const int = (v: number | null | undefined) => (v == null ? dash : fmtInt(v));
 const built = impact && impact.players.length > 0;
+// a player's page for the game's season: one the player pages list (resolveBasketballSeason's: a league with shot
+// dashboards from shotFirstSeason on), ?season= left off for the current one; any other season links nothing
+const cfg = basketball(Astro.locals.league);
+const league = cfg.league;
+const seasons = LEAGUES[league].seasons;
+const season = game.season;
+const listed = season != null && seasons.includes(season) && season >= (cfg.shotFirstSeason ?? seasons[0]);
+const q = listed ? seasonQuery(season, seasons[seasons.length - 1]) : null;
+const href = (pageId: string | null) => (pageId && q !== null ? playerHref(Number(pageId), q, league) : null);
 const sides: { key: 'away' | 'home'; abbr: string; name: string; rows: ImpactSide }[] = built
     ? (['away', 'home'] as const).map((key) => ({ key, abbr: cleanAbbreviation(game[key].team), name: game[key].team.displayName, rows: impactSide(impact, key) }))
     : [];
@@ -35,7 +47,7 @@ const sides: { key: 'away' | 'home'; abbr: string; name: string; rows: ImpactSid
         <tbody>
           {s.rows.players.map((p) => (
             <tr>
-              <th scope="row" class="fw-normal text-nowrap">{p.name}</th>
+              <th scope="row" class="fw-normal text-nowrap">{href(p.pageId) ? (<a href={href(p.pageId)!}>{p.name}</a>) : p.name}</th>
               <td class="text-end">{mins(p.minutes)}</td>
               <td class="text-end">{int(p.poss)}</td>
               <td class="text-end fw-bold">{signed(p.plus_minus)}</td>

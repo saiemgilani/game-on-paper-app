@@ -75,7 +75,9 @@ export const FLAGS: Record<string, FeatureState> = {
     'bball-playoff-picture': 'preview',
     // The game page's Impact box and Lineups used (BB-G1) on /<league>/game/[id] for a final, inside each league's flag:
     // each side's on-court minutes, possessions, +/- and ratings and its five most-used units (sdv-db's game_player_impact
-    // and game_lineups_used, BB-D6). Off: no read and the game page is today's, byte for byte.
+    // and game_lineups_used, BB-D6). Names link to player pages: a pro's stats id is his page's id; college maps through
+    // ncaa_player_crosswalk (BB-D37) and leaves a player with no pair unlinked. Off: no read and the game page is today's,
+    // byte for byte.
     'bball-impact-box': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's

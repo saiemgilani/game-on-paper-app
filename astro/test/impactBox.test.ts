@@ -10,12 +10,15 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vit
 interface Capture {
     league: 'nba' | 'wnba' | 'mbb' | 'wbb'; season: number; espnGameId: string
     schedule: any[]; crosswalk?: any[]; names?: any[]; box?: any[]; players: any[]; home: any[]; away: any[]
+    /** college: each side's ncaa_player_crosswalk pairs, keyed by its ESPN team id */
+    xwalk?: Record<string, any[]>
 }
 const capture = (name: string): Capture => JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/${name}.json.gz`, import.meta.url))).toString());
 const CAPTURES = {
     nba: capture('impact-box-nba-2027'), // BOS 113 at DET 121, 2026-10-20 (ESPN 401909088, stats 0022600001)
     wnba: capture('impact-box-wnba-2026'), // CON 75 at NY 106, 2026-05-08 (ESPN 401856890, stats 1022600001)
-    mbb: capture('impact-box-mbb-2026'), // Southern Miss 79 at Buffalo 85, 2025-11-03 (ESPN 401823425, contest 6388769)
+    // Southern Miss 79 at Buffalo 85, 2025-11-03 (ESPN 401823425, contest 6388769), with both sides' crosswalk pairs
+    mbb: { ...capture('impact-box-mbb-2026'), xwalk: JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/impact-box-mbb-2026-xwalk.json.gz', import.meta.url))).toString()) } as Capture,
     wbb: capture('impact-box-wbb-2026'), // GW 50 at Temple 86 (ESPN 401824983, contest 6387150)
     nonD1: capture('impact-box-wbb-2026-nond1'), // UDC 47 at GW 86 (ESPN 401824982): the non-D1 side has no stats.ncaa.org ids
 };
@@ -37,6 +40,7 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         if (table === 'schedule_crosswalk') return c.crosswalk ?? [];
         if (table === 'player_box') return c.names ?? [];
         if (table === 'ncaa_player_box') return c.box ?? [];
+        if (table === 'ncaa_player_crosswalk') return c.xwalk?.[query.espn_team_id] ?? [];
         if (table === 'game_player_impact') return c.players;
         if (table === 'game_lineups_used') {
             const x = c.crosswalk?.[0];
@@ -130,9 +134,22 @@ describe('retrieveImpactBox', () => {
     test('college: the stats.ncaa.org box by the ESPN game id gives the contest and the names; ESPN team ids key the units', async () => {
         const r = await reads(CAPTURES.mbb);
         expect(api.calls[0]).toMatchObject({ schema: 'mbb', table: 'ncaa_player_box', query: { season: '2026', espn_game_id: '401823425' } });
-        for (const c of api.calls.slice(1)) expect(c.query).toMatchObject({ season: '2026', game_id: '6388769' });
+        for (const c of api.calls.slice(1).filter((x) => x.table !== 'ncaa_player_crosswalk')) expect(c.query).toMatchObject({ season: '2026', game_id: '6388769' });
         expect(r.teams).toEqual({ home: 2084, away: 2572 });
         expect(r.names.find((n) => n.player_id === '9961090')?.name).toBe('Angelo Brizzi');
+        // the player links: each side's crosswalk pairs, by ESPN team and season, in the same second round
+        expect(api.calls.filter((c) => c.table === 'ncaa_player_crosswalk').map((c) => c.query))
+            .toEqual([2084, 2572].map((t) => ({ season: '2026', espn_team_id: String(t), select: 'ncaa_player_id,espn_athlete_id', limit: '80' })));
+        // every one of the game's 24 players has a pair, each to a distinct ESPN athlete id, all as strings
+        const ids = r.players.map((p) => r.pageIds!.get(String(p.player_id)));
+        expect(ids.every((id) => typeof id === 'string' && /^\d+$/.test(id))).toBe(true);
+        expect(new Set(ids).size).toBe(r.players.length);
+        expect(r.pageIds!.get('9961090')).toBe('4684022'); // Angelo Brizzi
+    });
+    test("the pros read no crosswalk: their stats ids are the player pages' ids", async () => {
+        const r = await reads(CAPTURES.nba);
+        expect(api.calls.some((c) => c.table === 'ncaa_player_crosswalk')).toBe(false);
+        expect(r.pageIds).toBeNull();
     });
     test('a game the crosswalk (or the stats.ncaa.org box) does not map is empty after one read', async () => {
         expect(await reads({ ...CAPTURES.nba, crosswalk: [] })).toEqual(EMPTY_IMPACT);
@@ -161,6 +178,15 @@ describe('impactSide', () => {
                 expect(s.units.every((u) => u.names.length === 5 && u.names.every((n) => !n.startsWith('#')))).toBe(true);
             }
         }
+    });
+    test("each player's page id: the stats id for the pros, the crosswalk's ESPN id in college, none without a pair", async () => {
+        const nba = impactSide(await reads(CAPTURES.nba), 'away');
+        expect(nba.players.every((p) => p.pageId === String(p.player_id))).toBe(true);
+        const mbb = await reads(CAPTURES.mbb);
+        expect(impactSide(mbb, 'home').players.find((p) => p.name === 'Angelo Brizzi')?.pageId).toBe('4684022');
+        // wbb's captures carry no crosswalk rows: no pair, no page id (the name stays)
+        const wbb = impactSide(await reads(CAPTURES.wbb), 'home');
+        expect(wbb.players.every((p) => p.pageId === null && !p.name.startsWith('#'))).toBe(true);
     });
     test('the sides follow the ESPN home and away, not the id order', async () => {
         const r = await reads(CAPTURES.nba);
@@ -260,7 +286,7 @@ describe('NbaImpactBox', () => {
             expect(table(html, `${abbr} impact`).match(/<tr/g)!.length).toBeGreaterThan(5);
             expect(table(html, `${abbr} lineups used`).match(/<tr/g)).toHaveLength(TOP_UNITS + 1); // header + 5
         }
-        expect(table(html, 'BOS impact')).toContain('Jayson Tatum');
+        expect(table(html, 'BOS impact')).toMatch(/<a href="\/nba\/players\/1628369(\?season=\d+)?">Jayson Tatum<\/a>/);
         expect(table(html, 'BOS lineups used')).toContain('J. Tatum');
         expect(html).toMatch(/>−\d+</); // BOS lost: a negative +/- with a real minus
         expect(html).not.toContain('undefined');
@@ -269,7 +295,10 @@ describe('NbaImpactBox', () => {
     });
     test('college: Buffalo and Southern Miss, the stats.ncaa.org names', async () => {
         const html = await render(await reads(CAPTURES.mbb), 'mbb', 'BUF', 'USM');
-        expect(table(html, 'BUF impact')).toContain('Angelo Brizzi');
+        expect(table(html, 'BUF impact')).toMatch(/<a href="\/mbb\/players\/4684022(\?season=\d+)?">Angelo Brizzi<\/a>/);
+        // every player row is linked (all 24 have a pair); the unit names stay plain
+        expect(table(html, 'BUF impact').match(/<th scope="row"[^>]*><a href="\/mbb\/players\//g)).toHaveLength(impactSide(await reads(CAPTURES.mbb), 'home').players.length);
+        expect(table(html, 'BUF lineups used')).not.toContain('<a ');
         expect(table(html, 'USM lineups used').match(/<tr/g)).toHaveLength(TOP_UNITS + 1);
         expect(html).not.toContain('NaN');
     });
@@ -277,6 +306,14 @@ describe('NbaImpactBox', () => {
         const html = await render(await reads(CAPTURES.nonD1), 'wbb', 'GW', 'UDC');
         expect(html.split('id="impact-away"')[1].split('id="impact-home"')[0]).toContain('No on-court rows for UDC');
         expect(table(html, 'GW lineups used').match(/<tr/g)).toHaveLength(TOP_UNITS + 1);
+        // no crosswalk pairs in this capture: the names are plain text, never a guessed link
+        expect(table(html, 'GW impact')).not.toContain('/wbb/players/');
+    });
+    test('a game season the player pages do not list links nothing', async () => {
+        const game = fromDataApi(gameApi(), 'nba');
+        const html = await container.renderToString(NbaImpactBox, { props: { game: { ...game, season: 1990 }, impact: await reads(CAPTURES.nba) }, locals: { league: 'nba' } as App.Locals });
+        expect(html).toContain('Jayson Tatum');
+        expect(html).not.toContain('/nba/players/');
     });
     test('a failed read says unavailable; an unbuilt game says so', async () => {
         expect(await render(null, 'nba')).toContain('id="impact-unavailable"');
