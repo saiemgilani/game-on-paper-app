@@ -46,8 +46,19 @@ export interface NbaSide {
     splits?: NbaTeamSplits
 }
 
-/** The BB-D31 team split columns the page reads (BB-G32's counted possessions); null before the tip. */
-export interface NbaTeamSplits { possessions: number | null }
+/** The BB-D31 team split columns the page reads: BB-G32's counted possessions and BB-G33's possession factors. */
+export const TEAM_SPLIT_KEYS = [
+    'points', 'possessions', 'ppp', 'avg_possession_seconds',
+    'transition_poss', 'transition_pts', 'transition_ppp', 'half_court_poss', 'half_court_pts', 'half_court_ppp',
+    'second_chance_poss', 'second_chance_pts', 'second_chance_ppp', 'first_chance_poss', 'first_chance_pts', 'first_chance_ppp',
+    'tov', 'live_tov', 'dead_tov', 'tov_pct', 'pts_off_live_tov', 'pts_off_dead_tov',
+    'fga', 'fgm', 'rim_fga', 'rim_fgm', 'mid_fga', 'mid_fgm', 'fg2_unlocated_fga', 'fg2_unlocated_fgm',
+    'fg3_fga', 'fg3_fgm', 'corner3_fga', 'corner3_fgm', 'above_break3_fga', 'above_break3_fgm', 'fg3_unlocated_fga', 'fg3_unlocated_fgm',
+    'layup_dunk_fga', 'layup_dunk_fgm', 'rim_rate', 'fg3a_rate', 'avg_fg2_distance', 'assisted_fgm', 'assisted_share',
+    'bench_points', 'largest_lead', 'max_run',
+] as const;
+/** One side's BB-D31 team split row; a rate with a zero denominator (and every column before the tip) is null. */
+export type NbaTeamSplits = Record<(typeof TEAM_SPLIT_KEYS)[number], number | null>;
 
 /** Which feed produced a `?source=` response: the football payload's block, emitted by the same app.py helper. */
 export type SourceProvenance = NonNullable<ProcessedGame['provenance']>
@@ -191,6 +202,10 @@ function teamRates(r: Record<string, any> | null | undefined): NbaTeamRates | nu
     }
 }
 
+function teamSplits(r: Record<string, any>): NbaTeamSplits {
+    return Object.fromEntries(TEAM_SPLIT_KEYS.map((k) => [k, num(r[k])])) as NbaTeamSplits
+}
+
 function playerRow(r: Record<string, any>): NbaPlayerRow {
     return {
         athlete_id: num(r.athlete_id) ?? 0, name: r.athlete_display_name ?? '', short_name: r.athlete_short_name ?? null, headshot: r.athlete_headshot_href ?? null,
@@ -247,7 +262,7 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague):
             team: { id: String(ti.id), abbreviation: eraAbbreviation(league, ti.id, season, ti.abbreviation), displayName: ti.displayName, location: ti.location, name: ti.name, color: ti.color ?? null, alternateColor: ti.alternateColor ?? null, logo: ti.logos?.[0]?.href ?? null },
             score: num(c.score), winner: c.winner === true, records: record?.summary ?? null,
             linescores: t.linescores, box: teamBox(t.box), rates: teamRates(t.rates), players: j.players[ha].map(playerRow),
-            ...(j.splits?.[ha]?.team ? { splits: { possessions: num(j.splits[ha].team!.possessions) } } : {}),
+            ...(j.splits?.[ha]?.team ? { splits: teamSplits(j.splits[ha].team!) } : {}),
         }
     }
     const reg = regulationFor(league, season, j.regulation_periods)

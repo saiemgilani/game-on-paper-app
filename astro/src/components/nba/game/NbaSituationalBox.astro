@@ -1,0 +1,149 @@
+---
+// src/components/nba/game/NbaSituationalBox.astro
+// BB-G33, behind 'bball-situational-box': the possession factors for both teams, every number sdv-py's BB-D31 team split
+// row (counted from the play-by-play; the processor only, so live games and finals not yet ingested). Three tables: the
+// situations (possessions, share, points, PPP), the shot zones (made-attempted, share of FGA, eFG%) and ball and flow
+// (turnovers live vs dead, points off each, shot mix, bench, leads, runs, possession length). The better side is tinted
+// and bold, as in BB-G32's grid. The expected-points columns wait on BB-D40.
+import type { NbaGame, NbaTeamSplits } from '../../../resources/nbaGame';
+import { dash } from '../../../nba/data/game';
+import { fmtDec, fmtPct } from '../../../nba/format';
+import { cleanAbbreviation } from '../../../utils/misc';
+import { edge, type Better } from '../../../utils/teamGrid';
+import { PRO_LEAGUES, type BasketballLeague } from '../../../utils/league';
+
+interface Props { game: NbaGame; league: BasketballLeague }
+const { game, league } = Astro.props;
+const S = { away: game.away.splits, home: game.home.splits };
+const away = cleanAbbreviation(game.away.team), home = cleanAbbreviation(game.home.team);
+const SIDES = ['away', 'home'] as const;
+type K = keyof NbaTeamSplits;
+const pct = (n: number) => fmtPct(n, 1), int = (n: number) => String(Math.round(n)), dec1 = (n: number) => fmtDec(n, 1), dec2 = (n: number) => fmtDec(n, 2);
+const ratio = (num: number | null, den: number | null) => (num == null || !den ? null : num / den);
+// tint and bold: the better side is never told by colour alone
+const tint = (side: 'away' | 'home', e: ReturnType<typeof edge>) => ['text-end', { 'table-success fw-bold': e?.side === side }];
+
+const situations: { label: string; f: 'all' | 'transition' | 'half_court' | 'second_chance' | 'first_chance' }[] = [
+    { label: 'All possessions', f: 'all' }, { label: 'Transition', f: 'transition' }, { label: 'Half-court', f: 'half_court' },
+    { label: 'Second chance', f: 'second_chance' }, { label: 'First chance', f: 'first_chance' },
+];
+const sit = (s: NbaTeamSplits, f: (typeof situations)[number]['f']) => f === 'all'
+    ? { poss: s.possessions, share: null, pts: s.points, ppp: s.ppp }
+    : { poss: s[`${f}_poss` as K], share: ratio(s[`${f}_poss` as K], s.possessions), pts: s[`${f}_pts` as K], ppp: s[`${f}_ppp` as K] };
+
+// a zone's eFG%: a three's make is worth 1.5 twos. Unlocated rows only when either side has one.
+const zones: { label: string; z: string; three: boolean; optional?: boolean }[] = [
+    { label: 'Rim (under 4 ft)', z: 'rim', three: false }, { label: 'Mid-range', z: 'mid', three: false },
+    { label: 'Two, no location', z: 'fg2_unlocated', three: false, optional: true },
+    { label: 'Corner three', z: 'corner3', three: true }, { label: 'Above-the-break three', z: 'above_break3', three: true },
+    { label: 'Three, no location', z: 'fg3_unlocated', three: true, optional: true },
+    { label: 'Layups and dunks', z: 'layup_dunk', three: false },
+];
+const zone = (s: NbaTeamSplits, z: string, three: boolean) => {
+    const fga = s[`${z}_fga` as K], fgm = s[`${z}_fgm` as K];
+    return { fga, fgm, share: ratio(fga, s.fga), efg: ratio(fgm == null ? null : fgm * (three ? 1.5 : 1), fga) };
+};
+const shownZones = zones.filter((r) => !r.optional || SIDES.some((x) => (S[x]?.[`${r.z}_fga` as K] ?? 0) > 0));
+
+const rows: { label: string; key: K; fmt: (n: number) => string; better: Better }[] = [
+    { label: 'Turnovers per possession', key: 'tov_pct', fmt: pct, better: 'low' },
+    { label: 'Live-ball turnovers (steals)', key: 'live_tov', fmt: int, better: 'low' },
+    { label: 'Dead-ball turnovers', key: 'dead_tov', fmt: int, better: 'low' },
+    { label: 'Points off live-ball turnovers', key: 'pts_off_live_tov', fmt: int, better: 'high' },
+    { label: 'Points off dead-ball turnovers', key: 'pts_off_dead_tov', fmt: int, better: 'high' },
+    { label: 'Assisted share of makes', key: 'assisted_share', fmt: pct, better: 'none' },
+    { label: 'Rim rate (share of FGA)', key: 'rim_rate', fmt: pct, better: 'none' },
+    { label: '3PA rate', key: 'fg3a_rate', fmt: pct, better: 'none' },
+    { label: 'Average 2PT distance (ft)', key: 'avg_fg2_distance', fmt: dec1, better: 'none' },
+    { label: 'Bench points', key: 'bench_points', fmt: int, better: 'high' },
+    { label: 'Largest lead', key: 'largest_lead', fmt: int, better: 'high' },
+    { label: 'Biggest run', key: 'max_run', fmt: int, better: 'high' },
+    { label: 'Average possession (seconds)', key: 'avg_possession_seconds', fmt: dec1, better: 'none' },
+];
+// sdv-py's transition windows: BB-D7's 8 s in the pros, the college possession release's 10 s
+const transitionWindow = PRO_LEAGUES.includes(league) ? 8 : 10;
+---
+<div id="situational-box">
+  {(!S.away || !S.home) ? <p class="text-muted mb-0">The possession factors are counted from the play-by-play and are not available for this game yet.</p> : (
+  <Fragment>
+  <div class="row g-4">
+    <div class="col-12 col-xl-6">
+      <h3 class="h6">Situations</h3>
+      <div class="table-responsive"><table class="table table-sm numeral mb-2" aria-label="Situations">
+        <thead>
+          <tr><th scope="col" rowspan="2"><span class="visually-hidden">Situation</span></th><th scope="colgroup" colspan="4" class="text-center border-start">{away}</th><th scope="colgroup" colspan="4" class="text-center border-start">{home}</th></tr>
+          <tr>{SIDES.map(() => (<Fragment><th scope="col" class="text-end border-start">Poss</th><th scope="col" class="text-end">Share</th><th scope="col" class="text-end">Pts</th><th scope="col" class="text-end">PPP</th></Fragment>))}</tr>
+        </thead>
+        <tbody>
+          {situations.map((r) => {
+              const v = { away: sit(S.away!, r.f), home: sit(S.home!, r.f) };
+              const e = edge('high', v.away.ppp, v.home.ppp);
+              return (
+              <tr>
+                <th scope="row" class="fw-normal">{r.label}</th>
+                {SIDES.map((x) => (<Fragment>
+                  <td class="text-end border-start">{dash(v[x].poss, int)}</td>
+                  <td class="text-end text-muted">{v[x].share == null ? '' : pct(v[x].share!)}</td>
+                  <td class="text-end">{dash(v[x].pts, int)}</td>
+                  <td class:list={tint(x, e)}>{dash(v[x].ppp, dec2)}</td>
+                </Fragment>))}
+              </tr>);
+          })}
+        </tbody>
+      </table></div>
+    </div>
+    <div class="col-12 col-xl-6">
+      <h3 class="h6">Shot zones</h3>
+      <div class="table-responsive"><table class="table table-sm numeral mb-2" aria-label="Shot zones">
+        <thead>
+          <tr><th scope="col" rowspan="2"><span class="visually-hidden">Zone</span></th><th scope="colgroup" colspan="3" class="text-center border-start">{away}</th><th scope="colgroup" colspan="3" class="text-center border-start">{home}</th></tr>
+          <tr>{SIDES.map(() => (<Fragment><th scope="col" class="text-end border-start">FGM-A</th><th scope="col" class="text-end">Share</th><th scope="col" class="text-end">eFG%</th></Fragment>))}</tr>
+        </thead>
+        <tbody>
+          {shownZones.map((r) => {
+              const v = { away: zone(S.away!, r.z, r.three), home: zone(S.home!, r.z, r.three) };
+              const e = edge('high', v.away.efg, v.home.efg);
+              return (
+              <tr class:list={{ 'border-top': r.z === 'layup_dunk' }}>
+                <th scope="row" class="fw-normal">{r.label}</th>
+                {SIDES.map((x) => (<Fragment>
+                  <td class="text-end border-start">{v[x].fga == null || v[x].fgm == null ? '–' : `${v[x].fgm}-${v[x].fga}`}</td>
+                  <td class="text-end text-muted">{dash(v[x].share, pct)}</td>
+                  <td class:list={tint(x, e)}>{dash(v[x].efg, pct)}</td>
+                </Fragment>))}
+              </tr>);
+          })}
+        </tbody>
+      </table></div>
+    </div>
+    <div class="col-12 col-xl-6">
+      <h3 class="h6">Ball and flow</h3>
+      <div class="table-responsive"><table class="table table-sm numeral mb-2" aria-label="Ball and flow">
+        <thead><tr><th scope="col"><span class="visually-hidden">Metric</span></th><th scope="col" class="text-end">{away}</th><th scope="col" class="text-end">{home}</th><th scope="col" class="text-end">Gap</th></tr></thead>
+        <tbody>
+          {rows.map((r) => {
+              const e = edge(r.better, S.away![r.key], S.home![r.key]);
+              return (
+              <tr>
+                <th scope="row" class="fw-normal">{r.label}</th>
+                <td class:list={tint('away', e)}>{dash(S.away![r.key], r.fmt)}</td>
+                <td class:list={tint('home', e)}>{dash(S.home![r.key], r.fmt)}</td>
+                <td class="text-end text-muted">{e ? (r.fmt === pct ? fmtDec(e.gap * 100, 1) : r.fmt(e.gap)) : ''}</td>
+              </tr>);
+          })}
+        </tbody>
+      </table></div>
+    </div>
+    <div class="col-12 col-xl-6">
+      <p class="small text-muted mb-0">
+        Counted from the play-by-play, one team at a time. A possession is a run of one offense. Tinted and bold: the better side (PPP,
+        eFG%, fewer turnovers, more points off them); the gap is in percentage points for rates. Transition: the possession started
+        live (after a make, a defensive rebound or a steal) and its first shot came within {transitionWindow} seconds; half-court
+        is everything else. Second chance: the possession had an offensive rebound. Live-ball turnovers are the ones with a steal
+        credited; points off turnovers are the points scored on the possessions they started. Rim is a two under 4 feet; a corner
+        three is one taken from the corner strip along the baseline. Layups and dunks cut across the zones above.
+      </p>
+    </div>
+  </div>
+  </Fragment>)}
+</div>
