@@ -25,7 +25,8 @@ import type { ImpactBoxReads } from '../../../resources/impactBox';
 import type { GameFlowReads } from '../../../resources/gameFlow';
 import type { GarbageReads } from '../../../resources/garbageTime';
 import type { LeagueContext } from '../../../nba/dashboard';
-import type { GameStints } from '../../../resources/gameStints';
+import type { GameStints, MappedStint } from '../../../resources/gameStints';
+import NbaShiftChart from './NbaShiftChart.astro';
 import { garbageView } from '../../../utils/garbageTime';
 
 interface Props {
@@ -40,14 +41,16 @@ interface Props {
     shooting?: LeagueContext | null
     /** BB-G38, 'bball-shot-filters' (live or final): the shot filters, with the final's stints for ON/OFF (null: none); absent: today's charts */
     shotFilters?: { stints: GameStints | null }
+    /** BB-G36, 'bball-shift-chart' and a final only: the game's stints (null: the read failed); absent: no panel */
+    shift?: MappedStint[] | null
 }
-const { game, sourceTools, impact, flow, garbage, shooting, shotFilters } = Astro.props;
+const { game, sourceTools, impact, flow, garbage, shooting, shotFilters, shift } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const title = `${game.away.team.displayName} ${game.away.score ?? ''} at ${game.home.team.displayName} ${game.home.score ?? ''} | Game on Paper`.replace(/\s+/g, ' ');
 const description = `${game.away.team.displayName} at ${game.home.team.displayName}: win probability, biggest plays, four factors, advanced box score and shot charts.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: leaguePath(league, '/'), active: false }, { title: 'Scoreboard', url: scoreboardDayHref(league, game.date), active: false }, { title: `${cleanAbbreviation(game.away.team)} @ ${cleanAbbreviation(game.home.team)}`, active: true }];
-const items: ScrollerItem[] = [{ href: '#wp', title: 'Win probability' }, ...(flow !== undefined ? [{ href: '#flow', title: 'Game flow' }] : []), { href: '#factors', title: 'Four factors' }, { href: '#teambox', title: 'Team box' }, { href: '#players', title: 'Players' }, ...(impact !== undefined ? [{ href: '#impact', title: 'Impact' }] : []), { href: '#shots', title: 'Shots' }, { href: '#plays', title: 'Plays' }];
+const items: ScrollerItem[] = [{ href: '#wp', title: 'Win probability' }, ...(flow !== undefined ? [{ href: '#flow', title: 'Game flow' }] : []), { href: '#factors', title: 'Four factors' }, { href: '#teambox', title: 'Team box' }, { href: '#players', title: 'Players' }, ...(impact !== undefined ? [{ href: '#impact', title: 'Impact' }] : []), ...(shift !== undefined ? [{ href: '#shifts', title: 'Shifts' }] : []), { href: '#shots', title: 'Shots' }, { href: '#plays', title: 'Plays' }];
 const side = (s: typeof game.home) => ({ name: s.team.displayName, href: teamHrefFromEspn(s.team, league, game.season), score: s.score });
 const jsonLd = basketballEventJsonLd({ league, path: gameHref(league, game.id), date: game.date, description, venue: game.venue, statusDetail: game.status.detail, home: side(game.home), away: side(game.away) });
 const colors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(game.home.team, game.away.team) : null;
@@ -64,6 +67,7 @@ const split = gt?.rates ? gt : undefined;
     <Panel id="factors" title="Four factors" show={true}><div slot="panel-body">{split ? <NbaGarbageTime game={game} view={split} part="factors" /> : <NbaFourFactors game={game} />}</div></Panel>
     <Panel id="teambox" title="Team box" show={true}><div slot="panel-body">{split?.box ? <NbaGarbageTime game={game} view={split} part="teambox" /> : (<Fragment>{split && <NbaGarbageTime game={game} view={split} part="teambox" />}<NbaTeamBox game={game} /></Fragment>)}</div></Panel>
     <Panel id="players" title="Players" show={true}><div slot="panel-body">{split && <NbaGarbageTime game={game} view={split} part="whole" />}<div class="row"><div class="col-12 col-xl-6"><NbaPlayerBox side={game.away} id="box-away" league={league} /></div><div class="col-12 col-xl-6"><NbaPlayerBox side={game.home} id="box-home" league={league} /></div></div></div></Panel>{impact !== undefined && (<Panel id="impact" title="Impact and lineups" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="toggle" />}<NbaImpactBox game={game} impact={gt?.impact ?? impact} fromLog={gt?.impact !== undefined} /></div></Panel>)}
+    {shift !== undefined && (<Panel id="shifts" title="Shift chart" show={true}><div slot="panel-body"><NbaShiftChart game={game} stints={shift} periodMinutes={pickRegulation(cfg.regulation, game.season, game.regulation).periodMinutes} /></div></Panel>)}
     <Panel id="shots" title="Shot charts" show={true}><div slot="panel-body"><NbaGameShotCharts game={game} shooting={shooting} filters={shotFilters} /></div></Panel>
     <Panel id="plays" title="Play-by-play" show={true}><div slot="panel-body"><NbaPlaysTable game={game} /></div></Panel>
   </div>

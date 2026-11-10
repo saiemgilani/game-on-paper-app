@@ -98,6 +98,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // with 'bball-game-shooting' the signature and distance bars follow the filters (a chosen player's own). Off: no read
     // and the game page is today's, byte for byte.
     'bball-shot-filters': 'preview',
+    // BB-G36's shift chart on a final's /<league>/game/[id]: a row per player, a bar per stint on the floor coloured by its
+    // +/- with its clock, score and possessions on hover (sdv-db's game_stints, BB-D32); `?shift_on=<ESPN ids>` highlights a
+    // unit and its shared minutes (BB-G37's link). Off: no read and the game page is today's.
+    'bball-shift-chart': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

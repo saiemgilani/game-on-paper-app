@@ -25,11 +25,25 @@ export type Stint = [period: number, clockIn: number, clockOut: number];
 /** Each mapped player's stints, keyed by the ESPN athlete id (as a string). A player the crosswalk cannot map is left out. */
 export type GameStints = Record<string, Stint[]>;
 
-interface StintRow { player_id: number | string; period: number; clock_in: number; clock_out: number }
-const STINT_SELECT = 'player_id,period,clock_in,clock_out';
+/** One stint row as read: its clock and, for BB-G36's shift chart, the producer's points and possessions while on. */
+export interface StintRow {
+    player_id: number | string; period: number; clock_in: number; clock_out: number
+    seconds: number | null; poss: number | null; opp_poss: number | null; pts: number | null; opp_pts: number | null; plus_minus: number | null
+}
+// one select for both readers (these shot filters and BB-G36's shift chart): the two panels share one cache entry
+const STINT_SELECT = 'player_id,period,clock_in,clock_out,seconds,poss,opp_poss,pts,opp_pts,plus_minus';
+/** A stint row mapped to its player's ESPN athlete id and side (the crosswalk read that mapped him). */
+export interface MappedStint extends StintRow { espn: string; side: 'home' | 'away' }
 
 /** The reads for one ESPN game (`homeId` / `awayId` are the ESPN team ids); {} when the game or its stints are not built. */
 export async function retrieveGameStints(league: BasketballLeague, season: number, espnGameId: string, homeId: number, awayId: number): Promise<GameStints> {
+    const out: GameStints = {};
+    for (const r of await retrieveGameStintRows(league, season, espnGameId, homeId, awayId)) (out[r.espn] ??= []).push([Number(r.period), Number(r.clock_in), Number(r.clock_out)]);
+    return out;
+}
+
+/** The same reads, each mapped row whole in the producer's order; [] when the game or its stints are not built. */
+export async function retrieveGameStintRows(league: BasketballLeague, season: number, espnGameId: string, homeId: number, awayId: number): Promise<MappedStint[]> {
     const s = String(season);
     const read = <T>(source: Parameters<typeof retrieveRowsFrom>[0], table: string, q: Record<string, string>) =>
         retrieveRowsFrom<T>(source, table, { season: s, ...q }, TTL, true, NBA_READ_TIMEOUT_MS);
@@ -37,12 +51,12 @@ export async function retrieveGameStints(league: BasketballLeague, season: numbe
     let gameId: string;
     if (pro) {
         const x = await retrieveProGame(league, season, espnGameId);
-        if (!x) return {};
+        if (!x) return [];
         gameId = x.gameId;
     } else {
         // the Impact box's query string exactly (impactBox.ts), so both panels share its cache entry
         const box = await read<{ contest_id: string | null }>(leagueSource(league), 'ncaa_player_box', { espn_game_id: espnGameId, select: 'contest_id,player_id,clean_name,player', limit: '80' });
-        if (!box[0]?.contest_id) return {};
+        if (!box[0]?.contest_id) return [];
         gameId = String(box[0].contest_id);
     }
     // the crosswalk's producer-id column: nba_player_id / wnba_player_id, ncaa_player_id in college
@@ -55,11 +69,8 @@ export async function retrieveGameStints(league: BasketballLeague, season: numbe
         roster(awayId),
     ]);
     // ids compared as strings: the pros' are bigints, college's text
-    const espn = new Map([...home, ...away].filter((r) => r[idCol] != null && r.espn_athlete_id != null).map((r) => [String(r[idCol]), String(r.espn_athlete_id)]));
-    const out: GameStints = {};
-    for (const r of stints) {
-        const id = espn.get(String(r.player_id));
-        if (id) (out[id] ??= []).push([Number(r.period), Number(r.clock_in), Number(r.clock_out)]);
-    }
-    return out;
+    const tag = (rows: typeof home, side: 'home' | 'away') =>
+        rows.filter((r) => r[idCol] != null && r.espn_athlete_id != null).map((r) => [String(r[idCol]), { espn: String(r.espn_athlete_id), side }] as const);
+    const espn = new Map([...tag(home, 'home'), ...tag(away, 'away')]);
+    return stints.flatMap((r) => { const m = espn.get(String(r.player_id)); return m ? [{ ...r, ...m }] : []; });
 }

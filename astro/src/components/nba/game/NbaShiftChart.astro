@@ -1,0 +1,61 @@
+---
+// BB-G36, behind 'bball-shift-chart': each team's players, a row each (starters, then the bench by minutes), with a bar per
+// stint on the floor coloured by its +/- and the stint's clock, score and possessions on hover. `?shift_on=<ids>` (ESPN
+// athlete ids; shiftHref) highlights those players and adds a row for the stretches they were all on. Server-rendered:
+// plain HTML bars positioned in percent, so the chart needs no script and fits any width.
+import type { NbaGame } from '../../../resources/nbaGame';
+import type { MappedStint } from '../../../resources/gameStints';
+import { parseShiftOn, pmFill, shiftView } from '../../../basketball/shiftChart';
+
+/** `stints` null: the read failed; []: none built for this game (a season before the stints, or the nightly build pending) */
+interface Props { game: NbaGame; stints: MappedStint[] | null; periodMinutes: number }
+const { game, stints, periodMinutes } = Astro.props;
+const view = stints && stints.length > 0 ? shiftView(game, stints, periodMinutes, parseShiftOn(Astro.url.searchParams)) : null;
+const recent = Date.now() - Date.parse(game.date) < 3 * 24 * 60 * 60 * 1000;
+const pos = (b: { from: number; to: number }) => `left:${b.from.toFixed(3)}%;width:${Math.max(b.to - b.from, 0.15).toFixed(3)}%`;
+---
+{stints === null ? (<p class="text-muted m-0" id="shifts-unavailable">The shift chart is temporarily unavailable.</p>)
+: !view ? (<p class="text-muted m-0" id="shifts-empty">{recent ? 'The shift chart follows the nightly build; check back tomorrow.' : 'No stints for this game: the shift chart covers the seasons the stints are built for.'}</p>) : (
+<Fragment>
+<p class="small text-muted mb-2">Each bar is a stint on the floor: <span class="shift-key" style={`background:${pmFill(6)}`}></span> the team outscored its opponent, <span class="shift-key" style={`background:${pmFill(-6)}`}></span> was outscored, <span class="shift-key" style={`background:${pmFill(0)}`}></span> level; the deeper the colour, the larger the margin. Hover a bar for its clock, score and possessions.</p>
+<div class="row">
+  {view.sides.map((s) => (
+    <div class="col-12 col-xl-6 mb-3" id={`shifts-${s.key}`}>
+      <h3 class="h6">{s.name}</h3>
+      {s.rows.length === 0 ? (<p class="text-muted small">No stints mapped to {s.abbr}'s box.</p>) : (
+      <div class="shift-grid small">
+        <div class="shift-name"></div>
+        <div class="shift-track shift-axis" aria-hidden="true">{view.periods.map((p) => <span class="shift-period" style={`left:${p.at.toFixed(3)}%`}>{p.label}</span>)}</div>
+        <div class="shift-min text-muted">MIN</div>
+        {s.together && (<Fragment>
+          <div class="shift-name fw-bold">Together</div>
+          <div class="shift-track" role="img" aria-label={`The highlighted ${s.abbr} players together: ${s.together.minutes}`}>{view.periods.slice(1).map((p) => <span class="shift-divider" style={`left:${p.at.toFixed(3)}%`}></span>)}{s.together.bars.map((b) => <span class="shift-bar shift-together" style={pos(b)}></span>)}</div>
+          <div class="shift-min fw-bold">{s.together.minutes}</div>
+        </Fragment>)}
+        {s.rows.map((r, i) => (
+          <div class:list={['shift-row', { 'shift-dim': s.rows.some((x) => x.on) && !r.on, 'shift-bench': !r.starter && i > 0 && s.rows[i - 1].starter }]} data-player={r.id}>
+            <div class:list={['shift-name text-truncate', { 'fw-bold': r.on }]} title={r.name}>{r.name}</div>
+            <div class="shift-track">{view.periods.slice(1).map((p) => <span class="shift-divider" style={`left:${p.at.toFixed(3)}%`}></span>)}{r.bars.map((b) => <span class="shift-bar" style={`${pos(b)};background:${pmFill(b.pm)}`} title={b.label} role="img" aria-label={b.label}></span>)}</div>
+            <div class="shift-min numeral">{r.minutes}</div>
+          </div>
+        ))}
+      </div>)}
+    </div>
+  ))}
+</div>
+</Fragment>)}
+
+<style>
+  .shift-grid { display: grid; grid-template-columns: minmax(5.5rem, 10rem) 1fr 2.75rem; row-gap: 3px; column-gap: .5rem; align-items: center; }
+  .shift-row { display: contents; }
+  .shift-bench > div { border-top: 1px solid var(--line, #dee2e6); padding-top: 3px; }
+  .shift-dim > div { opacity: .35; }
+  .shift-track { position: relative; height: 16px; background: rgba(128,128,128,.12); }
+  .shift-axis { background: none; height: 1.1rem; }
+  .shift-period { position: absolute; top: 0; padding-left: 2px; color: var(--muted, #6c757d); font-size: .75rem; line-height: 1.1rem; }
+  .shift-divider { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--muted, #6c757d); opacity: .45; }
+  .shift-bar { position: absolute; top: 1px; bottom: 1px; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+  .shift-together { background: var(--fg, #343a40); }
+  .shift-min { text-align: right; }
+  .shift-key { display: inline-block; width: .9em; height: .9em; vertical-align: -.1em; border-radius: 2px; }
+</style>
