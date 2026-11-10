@@ -42,8 +42,12 @@ const ascending = (a: number | string, b: number | string) => (a < b ? -1 : a > 
 /** The five slots' players, unique, nulls dropped, sorted (sdv-py: `list.drop_nulls().list.unique().list.sort()`). */
 const slots = (r: Record<string, any>, key: (i: number) => string) => [...new Set([1, 2, 3, 4, 5].map((i) => r[key(i)]).filter((v) => v != null && v !== ''))].sort(ascending);
 
-/** True when the log carries the producer's flag (a release published before BB-D7 does not): no flag, no toggle. */
-export const hasGarbageFlag = (rows: readonly Record<string, any>[]) => rows.some((r) => r.is_garbage_time != null);
+/**
+ * True when every possession carries the producer's flag (a release published before BB-D7 carries none): no flag, no
+ * toggle. A partly flagged log gets none either, since its All column would leave the unclassified possessions out (the
+ * four leagues' sources have no null flag; sdv-py's split puts one in neither side).
+ */
+export const hasGarbageFlag = (rows: readonly Record<string, any>[]) => rows.length > 0 && rows.every((r) => r.is_garbage_time != null);
 
 /**
  * `{nba,wnba}_stats.possessions` rows (sdv-py `nba_possession_rate_rows`): a possession starts at the previous one's end
@@ -153,7 +157,6 @@ export function splitTotals(possessions: readonly SplitPossession[], keep: (p: S
 }
 
 export const isOut = (p: SplitPossession) => p.garbage === false;
-export const isFlagged = (p: SplitPossession) => p.garbage != null;
 
 /** Where garbage time starts: the first flagged possession's period and clock; null when the game had none. */
 export function garbageStart(possessions: readonly SplitPossession[]): { period: number; clock: number } | null {
@@ -193,7 +196,7 @@ export interface GarbageView {
     out: boolean;
     /** the log could not be read for a `?garbage=out` render: the page says so and shows the whole game */
     unavailable?: true;
-    /** possessions flagged garbage time, of the flagged log */
+    /** possessions flagged garbage time, of the log */
     excluded: number;
     total: number;
     start: { period: number; clock: number } | null;
@@ -213,7 +216,7 @@ export interface GarbageView {
 export function garbageView(reads: GarbageReads | null, impact: ImpactBoxReads | null | undefined, out: boolean, league: BasketballLeague, regulation: number, periodMinutes: number): GarbageView | undefined {
     if (reads === null) return out ? { out, unavailable: true, excluded: 0, total: 0, start: null, regulationMinutes: regulation * periodMinutes } : undefined;
     if (!reads.teams || !impact?.players.length || !hasGarbageFlag(reads.rows)) return undefined;
-    const log = (PRO_LEAGUES.includes(league) ? proPossessions(reads.rows, regulation, periodMinutes * 60) : ncaaPossessions(reads.rows)).filter(isFlagged);
+    const log = (PRO_LEAGUES.includes(league) ? proPossessions(reads.rows, regulation, periodMinutes * 60) : ncaaPossessions(reads.rows));
     const excluded = log.filter((p) => p.garbage).length;
     if (excluded === 0) return undefined;
     const view: GarbageView = { out, excluded, total: log.length, start: garbageStart(log), regulationMinutes: regulation * periodMinutes };

@@ -125,6 +125,10 @@ describe('garbageView', () => {
         const unflagged = G.nba24.possessions.map(({ is_garbage_time, is_transition, seconds_to_first_shot, ...r }) => r);
         expect(hasGarbageFlag(unflagged)).toBe(false);
         expect(garbageView({ teams: G.nba24.teams, rows: unflagged }, impactFor(G.nba24), true, 'nba', 4, 12)).toBeUndefined();
+        // one unclassified possession: All would no longer be the whole log, so there is no split to show
+        const partly = G.nba24.possessions.map((r, i) => (i === 0 ? { ...r, is_garbage_time: null } : r));
+        expect(hasGarbageFlag(partly)).toBe(false);
+        expect(garbageView({ teams: G.nba24.teams, rows: partly }, impactFor(G.nba24), true, 'nba', 4, 12)).toBeUndefined();
         expect(garbageView({ teams: null, rows: [] }, impactFor(G.nba24), true, 'nba', 4, 12)).toBeUndefined();
         expect(garbageView(reads(G.nba24), EMPTY_IMPACT, true, 'nba', 4, 12)).toBeUndefined();
         expect(garbageView(reads(G.nba24), null, true, 'nba', 4, 12)).toBeUndefined();
@@ -147,8 +151,14 @@ describe('garbageView', () => {
         expect(v.box!.away.out!.pts).toBe(74);
         const want = G.nba24.oracle.player.filter((r) => r.split === 'not_garbage_time');
         expect(v.impact!.players).toHaveLength(want.length);
-        expect(v.impact!.lineups.home.length).toBeLessThanOrEqual(5);
-        expect(v.impact!.lineups.home.map((u) => u.minutes)).toEqual([...v.impact!.lineups.home.map((u) => u.minutes)].sort((a, b) => b! - a!));
+        // each side's units are the producer's not_garbage_time lineups, its five most-used (by seconds, then id)
+        for (const side of ['home', 'away'] as const) {
+            const top = G.nba24.oracle.lineup.filter((r) => r.split === 'not_garbage_time' && r.team_id === G.nba24.teams[side])
+                .sort((a, b) => b.seconds - a.seconds || (a.lineup_id < b.lineup_id ? -1 : a.lineup_id > b.lineup_id ? 1 : 0)).slice(0, 5);
+            expect(top).toHaveLength(5);
+            expect(v.impact!.lineups[side].map((u) => u.lineup_id)).toEqual(top.map((r) => r.lineup_id));
+            v.impact!.lineups[side].forEach((u, i) => same(u, top[i]));
+        }
     });
     test('?garbage=out, college: points only, so no shooting factors and no box rows', () => {
         const v = garbageView(reads(G.wbb), impactFor(G.wbb), true, 'wbb', 4, 10)!;
@@ -283,6 +293,10 @@ describe('NbaGamePage', () => {
         const top = G.nba24.oracle.player.filter((r) => r.split === 'not_garbage_time' && r.team_id === 1610612740).sort((a, b) => b.minutes - a.minutes)[0];
         const name = G.nba24.names.find((n) => n.person_id === top.player_id)!;
         expect(table(html, 'NOP impact')).toContain(`${name.first_name} ${name.family_name}`);
+        // the split's rows come from the possession log, and the box's footer says so (not the substitutions)
+        expect(html).toContain('id="impact-source-log"');
+        expect(html).not.toContain('substitutions');
+        expect(await page('nba', gameAs('nba', 'NOP', 'TOR'), impactFor(G.nba24))).toContain('substitutions');
         expect(html).not.toContain('NaN');
         expect(html).not.toContain('undefined');
     });
