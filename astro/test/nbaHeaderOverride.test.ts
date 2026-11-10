@@ -35,6 +35,11 @@ describe('Header with the basketball flags in preview', () => {
         for (const lg of BASKETBALL) expect(html).toContain(`href="/${lg}"`);
         expect(html).toMatch(/class="dropdown-item" href="\/"/);
     });
+    test("an admin's ?view=preview rides the switch links, so a cookieless admin lands on the league offered", async () => {
+        const html = await container.renderToString(Header, { request: new Request('https://gameonpaper.com/?view=preview'), locals: { league: 'cfb', preview: true } as App.Locals });
+        for (const lg of BASKETBALL) expect(html).toContain(`href="/${lg}?view=preview"`);
+        expect(html).toContain('href="/nfl?view=preview"');
+    });
     test('in preview mode an admin override that turns a league off still hides it', async () => {
         const html = await render({ league: 'cfb', preview: true, flagOverrides: { wbb: false } });
         expect(html).not.toContain('href="/wbb"');

@@ -3,6 +3,7 @@ import { METRIC_YEAR } from "../utils/constants";
 import { LEAGUES, leaguePath, type League } from "../utils/league";
 import { isFeatureEnabled, isFeaturePublic } from "../utils/features";
 import { basketball } from "../basketball/config";
+import { carryAdminParams } from "../utils/adminView";
 import SiteSearch from "./search/SiteSearch.svelte";
 
 const league: League = Astro.locals.league ?? 'cfb';
@@ -16,6 +17,8 @@ const others = (Object.keys(LEAGUES) as League[]).filter((lg) => lg !== league
     && (football ? (LEAGUES[lg].sport === 'football' || Astro.locals.preview === true || isFeaturePublic(lg, Astro.locals)) : true)
     && (lg === 'cfb' || isFeatureEnabled(lg, Astro.locals)));
 const lp = (p: string) => leaguePath(league, p);
+// a switch link keeps an admin's ?view= / ?flags= override, so a cookieless ?view=preview lands on the league it offered
+const switchHref = (lg: League) => carryAdminParams(leaguePath(lg, "/"), Astro.url.search);
 ---
 
 <header class="p-2 border-bottom">
@@ -112,7 +115,7 @@ const lp = (p: string) => leaguePath(league, p);
                 </ul>
                 {others.length === 1 && (
                     <form class="col-auto mb-3 mt-1 mb-lg-0 me-lg-3">
-                    <a href={leaguePath(others[0], "/")} class="btn btn-md btn-outline-primary league-switch" title={`Switch to ${LEAGUES[others[0]].name}`}>{cfg.shortName} <i class="bi bi-arrow-right" aria-hidden="true"></i> {LEAGUES[others[0]].shortName}</a>
+                    <a href={switchHref(others[0])} class="btn btn-md btn-outline-primary league-switch" title={`Switch to ${LEAGUES[others[0]].name}`}>{cfg.shortName} <i class="bi bi-arrow-right" aria-hidden="true"></i> {LEAGUES[others[0]].shortName}</a>
                     </form>
                 )}
                 {others.length > 1 && (
@@ -120,7 +123,7 @@ const lp = (p: string) => leaguePath(league, p);
                         <div class="dropdown">
                             <button class="btn btn-md btn-outline-primary league-switch dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Switch league">{cfg.shortName}</button>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                {others.map((lg) => (<li><a class="dropdown-item" href={leaguePath(lg, "/")}>{LEAGUES[lg].name}</a></li>))}
+                                {others.map((lg) => (<li><a class="dropdown-item" href={switchHref(lg)}>{LEAGUES[lg].name}</a></li>))}
                             </ul>
                         </div>
                     </form>
