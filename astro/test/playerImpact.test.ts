@@ -272,6 +272,10 @@ describe('the panel', () => {
         expect(html).toContain(`${rapm.off_poss.toLocaleString('en-US')} offensive and ${rapm.def_poss.toLocaleString('en-US')} defensive possessions`);
         expect(html).toContain(`${me.min.toLocaleString('en-US')} MIN`);
         expect(html).not.toMatch(/BOBAN|WAR|undefined|NaN/);
+        // a crosswalk pair and a RAPM row but no player_value row: RAPM and its possessions, no minutes and no BPM
+        const only = await render([rapm], 'mbb');
+        expect(only).toContain(`${rapm.def_poss.toLocaleString('en-US')} defensive possessions</p>`);
+        expect(only).not.toMatch(/MIN|impact-box_bpm|n\/a/);
     });
     test('college with no crosswalk pair: box BPM only, with minutes', async () => {
         const me = top(PI.mbbTeam);

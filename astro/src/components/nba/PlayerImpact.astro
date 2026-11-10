@@ -26,13 +26,19 @@ const shaded = panel?.measures.some((m) => [m.off, m.def, m.net].some((c) => c?.
 const shade = (c: ImpactCell | null) => generateColorRampValue(c?.pct ?? null, 100);
 const tip = (c: ImpactCell | null) => (c?.pct != null ? `${ordinal(Math.round(c.pct))} percentile` : undefined);
 const rank = (c: ImpactCell | null) => (c?.rank == null ? '—' : formatRank(c.rank));
+// college: RAPM's possessions (with a crosswalk pair), player_value's minutes (with a row) and its minutes gate, whichever he has
+const collegeSample = panel && [
+  panel.offPoss != null && `${fmtInt(panel.offPoss)} offensive and ${fmtInt(panel.defPoss)} defensive possessions`,
+  panel.min != null && `${fmtInt(panel.min)} MIN`,
+  panel.qualified === false && 'below the qualifying minutes',
+].filter(Boolean).join(' · ');
 ---
 <section id="impact" aria-label="Impact" class="mb-4">
   <h2 class="h5">Impact</h2>
   {rows === null ? (<p class="text-muted" id="impact-unavailable">The impact numbers are temporarily unavailable.</p>) : !panel ? (<p class="text-muted" id="impact-empty">No {label} impact numbers for {name} yet.</p>) : (<Fragment>
   <p class="numeral small text-muted mb-2" id="impact-sample">
     {college
-      ? (<Fragment>{panel.offPoss != null && (<Fragment>{fmtInt(panel.offPoss)} offensive and {fmtInt(panel.defPoss)} defensive possessions &middot; </Fragment>)}{fmtInt(panel.min)} MIN{panel.qualified === false && (<Fragment> &middot; below the qualifying minutes</Fragment>)}</Fragment>)
+      ? collegeSample
       : (<Fragment>{fmtInt(panel.offPoss)} offensive and {fmtInt(panel.defPoss)} defensive possessions &middot; {fmtInt(panel.gp)} GP &middot; {fmtInt(panel.min)} MIN</Fragment>)}
   </p>
   <div class="table-responsive">
