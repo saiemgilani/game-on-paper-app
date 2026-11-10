@@ -40,7 +40,8 @@ const acctRows: { label: string; key: keyof Accounting }[] = [
     { label: 'Shooting', key: 'shooting' }, { label: 'Turnovers', key: 'turnovers' }, { label: 'Offensive rebounding', key: 'rebounding' }, { label: 'Free throws', key: 'freeThrows' }, { label: 'Total', key: 'total' },
 ];
 const signed = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1)}`;
-const tint = (side: 'away' | 'home', e: ReturnType<typeof edge>) => ['text-end', { 'table-success': e?.side === side }];
+// tint and bold: the better side is never told by colour alone
+const tint = (side: 'away' | 'home', e: ReturnType<typeof edge>) => ['text-end', { 'table-success fw-bold': e?.side === side }];
 ---
 <div class="row g-4" id="team-grid">
   <div class="col-12 col-lg-6">
@@ -98,7 +99,7 @@ const tint = (side: 'away' | 'home', e: ReturnType<typeof edge>) => ['text-end',
     </table></div>
     </Fragment>)}
     <p class="small text-muted mb-0">
-      Tinted: the better side; the gap is in percentage points for eFG%, TOV% and ORB%. Possessions (box estimate) is Oliver's
+      Tinted and bold: the better side; the gap is in percentage points for eFG%, TOV% and ORB%. Possessions (box estimate) is Oliver's
       (FGA minus ORB plus TOV plus 0.44 FTA, averaged over both teams){counted && '; counted possessions come from the play-by-play, one team at a time, and the box estimate runs a few percent above the count in the pros'}.
       Ratings are per 100 estimated possessions{minutes != null ? `; pace is per ${minutes} minutes${game.hasOvertime ? ' (overtime included)' : ''}` : ''}.
       {withSeason && ' Season rows are each team\'s season rates, counted from its possessions (turnovers per possession), so they sit a little apart from the game\'s box-based rates.'}
