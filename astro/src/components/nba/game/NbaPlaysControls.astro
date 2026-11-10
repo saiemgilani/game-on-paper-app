@@ -1,0 +1,135 @@
+---
+// BB-G40, behind 'bball-pbp-controls' (NbaPlaysTable renders this instead of its plain table): the play-by-play with
+// filters (event type, team, period, player, big WP swings only), a points column and WPA beside home WP, and a sort
+// toggle kept in the URL (`?order=newest|oldest`; newest first by default while live, oldest first otherwise). The
+// server renders the asked order, so a reload or a shared link keeps it; the script filters and flips the order in place.
+import type { NbaGame } from '../../../resources/nbaGame';
+import { cleanAbbreviation } from '../../../utils/misc';
+import { dash } from '../../../nba/data/game';
+import { fmtPct, fmtPts } from '../../../nba/format';
+import { periodLong } from '../../../basketball/periods';
+import { ORDER_PARAM, newestFirstFor, playControls, type ControlledPlay } from '../../../basketball/playControls';
+
+interface Props { game: NbaGame }
+const { game } = Astro.props;
+const c = playControls(game);
+const newestFirst = newestFirstFor(game.status.completed, Astro.url.searchParams.get(ORDER_PARAM));
+const periods = [...new Set(game.plays.map((p) => p.period))].sort((a, b) => a - b);
+const shown = newestFirst ? [...periods].reverse() : periods;
+// only periods before the current one collapse, and only on a live game; a final (or unknown period) opens all
+const current = game.status.completed ? -Infinity : (game.status.period ?? -Infinity);
+const home = cleanAbbreviation(game.home.team);
+const away = cleanAbbreviation(game.away.team);
+const rowsOf = (q: number) => { const r = c.plays.filter((x) => x.play.period === q); return newestFirst ? r.reverse() : r; };
+const signed = (n: number) => `${n > 0 ? '+' : '−'}${Math.abs(n)}`;
+const points = (x: ControlledPlay) => [x.awayPts && `${signed(x.awayPts)} ${away}`, x.homePts && `${signed(x.homePts)} ${home}`].filter(Boolean).join(', ');
+const orderHref = (newest: boolean) => { const u = new URL(Astro.url); u.searchParams.set(ORDER_PARAM, newest ? 'newest' : 'oldest'); return `${u.search}#plays`; };
+const label = (newest: boolean) => (newest ? 'Newest first' : 'Oldest first');
+---
+{periods.length === 0 ? <p class="text-muted">No plays yet.</p> : (
+<Fragment>
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-2" data-pbp-controls>
+        <select class="form-select form-select-sm w-auto" aria-label="Event type" data-f="k">
+            <option value="">All events</option>
+            {c.kinds.map((k) => <option value={k.kind}>{k.label} ({k.n})</option>)}
+        </select>
+        <select class="form-select form-select-sm w-auto" aria-label="Team" data-f="team">
+            <option value="">Both teams</option>
+            <option value={game.away.team.id}>{away}</option>
+            <option value={game.home.team.id}>{home}</option>
+        </select>
+        <select class="form-select form-select-sm w-auto" aria-label="Period" data-f="period">
+            <option value="">All periods</option>
+            {periods.map((q) => <option value={String(q)}>{periodLong(q, game.regulation, game.periodKind)}</option>)}
+        </select>
+        {c.players.length > 0 && (
+            <select class="form-select form-select-sm w-auto" aria-label="Player" data-f="player">
+                <option value="">All players</option>
+                {c.players.map((g) => (
+                    <optgroup label={cleanAbbreviation(game[g.side].team)}>
+                        {g.options.map((o) => <option value={String(o.id)}>{o.name} ({o.n})</option>)}
+                    </optgroup>
+                ))}
+            </select>
+        )}
+        {c.big > 0 && (
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" role="switch" id="pbp-big" data-f="big" />
+                <label class="form-check-label small" for="pbp-big">Big WP swings only ({c.big})</label>
+            </div>
+        )}
+        <span class="small text-muted" data-pbp-count aria-live="polite"></span>
+        <a class="btn btn-sm btn-outline-secondary ms-auto" href={orderHref(!newestFirst)} data-pbp-order={newestFirst ? 'newest' : 'oldest'} title="Reverse the order">{label(newestFirst)}</a>
+    </div>
+    <p class="text-muted" data-pbp-none hidden>No plays match these filters.</p>
+    <div data-pbp-groups>
+    {shown.map((q) => (
+        <details open={q >= current} data-period={String(q)}>
+            <summary class="h6 mt-3">{periodLong(q, game.regulation, game.periodKind)}</summary>
+            <div class="table-responsive">
+            <table class="table table-sm numeral table-fix-first-col" aria-label={`${periodLong(q, game.regulation, game.periodKind)} plays`}>
+                <thead><tr><th scope="col">Clock</th><th scope="col" class="text-end">Score ({away}-{home})</th><th scope="col">Play</th><th scope="col" class="text-end">Points</th><th scope="col" class="text-end">{home} WP</th><th scope="col" class="text-end"><abbr title={`Change in ${home} win probability on the play, in percentage points`}>WPA</abbr></th></tr></thead>
+                <tbody>
+                    {rowsOf(q).map((x) => (
+                        <tr class:list={[{ 'nba-scoring-play fw-bold': x.play.scoringPlay }]} data-k={x.kinds.join(' ')} data-team={x.play.teamId == null ? '' : String(x.play.teamId)} data-player={x.play.athleteId == null ? '' : String(x.play.athleteId)} data-big={x.big ? '1' : undefined}>
+                            <td>{x.play.clock}</td><td class="text-end">{x.play.awayScore}-{x.play.homeScore}</td><td>{x.play.text}</td><td class="text-end text-nowrap">{points(x)}</td><td class="text-end">{dash(x.play.homeWinProb, (v) => fmtPct(v, 0))}</td><td class="text-end">{dash(x.wpa, fmtPts)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+            </div>
+        </details>
+    ))}
+    </div>
+</Fragment>
+)}
+
+<script>
+    // Deferred module: the bar sits above the groups it drives. Filters set inline `display` (no stylesheet to fail);
+    // the order button flips the groups and rows in place and keeps `?order=` in the URL, so a reload renders the same.
+    for (const bar of document.querySelectorAll<HTMLElement>('[data-pbp-controls]')) {
+        const root = bar.parentElement?.querySelector<HTMLElement>('[data-pbp-groups]');
+        const none = bar.parentElement?.querySelector<HTMLElement>('[data-pbp-none]');
+        const out = bar.querySelector<HTMLElement>('[data-pbp-count]');
+        if (!root) continue;
+        const val = (f: string) => bar.querySelector<HTMLSelectElement>(`select[data-f="${f}"]`)?.value ?? '';
+        const total = root.querySelectorAll('tbody tr').length;
+        const apply = () => {
+            const k = val('k'), team = val('team'), period = val('period'), player = val('player');
+            const big = bar.querySelector<HTMLInputElement>('input[data-f="big"]')?.checked === true;
+            const on = Boolean(k || team || period || player || big);
+            let shown = 0;
+            for (const d of root.querySelectorAll<HTMLDetailsElement>('details')) {
+                let n = 0;
+                for (const r of d.querySelectorAll<HTMLElement>('tbody tr')) {
+                    const ok = (!period || d.dataset.period === period) && (!k || (r.dataset.k ?? '').split(' ').includes(k))
+                        && (!team || r.dataset.team === team) && (!player || r.dataset.player === player) && (!big || r.dataset.big === '1');
+                    r.style.display = ok ? '' : 'none';
+                    if (ok) n++;
+                }
+                d.style.display = n ? '' : 'none';
+                // a live game collapses earlier periods; a filter's matches there must be seen
+                if (on && n) d.open = true;
+                shown += n;
+            }
+            if (out) out.textContent = on ? `${shown} of ${total} plays` : '';
+            if (none) none.hidden = shown > 0;
+        };
+        bar.addEventListener('change', apply);
+
+        const order = bar.querySelector<HTMLAnchorElement>('[data-pbp-order]');
+        order?.addEventListener('click', (e) => {
+            e.preventDefault();
+            const newest = order.dataset.pbpOrder !== 'newest';
+            for (const d of [...root.children].reverse()) root.appendChild(d);
+            for (const b of root.querySelectorAll('tbody')) for (const r of [...b.children].reverse()) b.appendChild(r);
+            const url = new URL(location.href);
+            url.searchParams.set('order', newest ? 'newest' : 'oldest');
+            history.replaceState(history.state, '', url);
+            url.searchParams.set('order', newest ? 'oldest' : 'newest');
+            order.href = `${url.search}#plays`;
+            order.dataset.pbpOrder = newest ? 'newest' : 'oldest';
+            order.textContent = newest ? 'Newest first' : 'Oldest first';
+        });
+    }
+</script>

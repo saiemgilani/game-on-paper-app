@@ -88,6 +88,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // No toggle when the log has no flag (a release from before BB-D7) or no garbage time. Off: no read, `?garbage=` is
     // ignored, and the game page is today's, byte for byte.
     'bball-garbage-time': 'preview',
+    // BB-G40's play-by-play controls on /<league>/game/[id]: filters (event type, team, period, player, big WP swings only),
+    // a points column and WPA beside home WP, and a sort toggle kept in `?order=` (newest first while live, oldest first
+    // otherwise). Off: `?order=` is ignored and the plays table is today's, byte for byte.
+    'bball-pbp-controls': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

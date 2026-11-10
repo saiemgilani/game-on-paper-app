@@ -5,9 +5,10 @@ import type { NbaGame, NbaPlay, NbaPlayerRow } from '../../resources/nbaGame'
  * Selection only. The first play's delta is measured from the pregame prior and a period-end or game-end row's
  * delta is the terminal settle, so none of them is a play that swung the game.
  */
+export const isSettle = (p: NbaPlay) => p.n === 1 || p.typeText === 'End Period' || p.typeText === 'End Game'
+
 export function biggestPlays(plays: NbaPlay[], n = 10): NbaPlay[] {
-    const settle = (p: NbaPlay) => p.n === 1 || p.typeText === 'End Period' || p.typeText === 'End Game'
-    return plays.filter((p) => p.wpDelta != null && !settle(p)).sort((a, b) => Math.abs(b.wpDelta!) - Math.abs(a.wpDelta!)).slice(0, n)
+    return plays.filter((p) => p.wpDelta != null && !isSettle(p)).sort((a, b) => Math.abs(b.wpDelta!) - Math.abs(a.wpDelta!)).slice(0, n)
 }
 
 export function shotsOf(plays: NbaPlay[], teamId: number): NbaPlay[] {
