@@ -9,15 +9,44 @@
 import type { AstroGlobal } from 'astro';
 import { prepareBasketballScoreboard, type BasketballScoreboardParams } from './scoreboard';
 import { retrieveGameLines } from '../../resources/gameLines';
-import { hubIndex, hubLine, type HubLine, type HubLink } from '../../basketball/hub';
+import { hubIndex, hubLine, sparkline, standouts, type HubLine, type HubLink, type Standout } from '../../basketball/hub';
+import { retrieveDayBox, retrieveFinalsWp } from '../../resources/hubTonight';
+import { isFeatureEnabled } from '../../utils/features';
 import { cleanAbbreviation } from '../../utils/misc';
-import type { BasketballLeague } from '../../utils/league';
+import { LEAGUES, type BasketballLeague } from '../../utils/league';
 
 export interface BasketballHubParams {
     board: BasketballScoreboardParams;
     /** ESPN game id -> its line; a game without one is absent */
     lines: Record<string, HubLine>;
     index: HubLink[];
+    /** BB-G48, behind 'bball-hub-tonight'; absent with the flag off */
+    tonight?: HubTonight;
+}
+
+export interface HubTonight {
+    /** the day the standouts are from: the board's, or the one before when the nightly has not reached the board's finals */
+    day: string | null;
+    standouts: Standout[];
+    /** ESPN game id -> its card's sparkline points; a final without ingested play_wp is absent */
+    sparklines: Record<string, string>;
+}
+
+/** The standouts read: the board's day when it has a final, else (or when that day is not ingested yet) the day before. */
+async function prepareTonight(league: BasketballLeague, board: BasketballScoreboardParams): Promise<HubTonight> {
+    const finals = board.games.filter((g) => (g.competitions[0].status ?? g.status)?.type?.completed === true && g.season?.year != null)
+        .map((g) => ({ id: g.id, season: g.season.year }));
+    const seasons = LEAGUES[league].seasons;
+    const season = board.games.find((g) => g.season?.year != null)?.season.year ?? seasons[seasons.length - 1];
+    const dayBox = async () => {
+        if (finals.length) { const r = await retrieveDayBox(league, season, board.day); if (r.length) return { day: board.day, r }; }
+        const r = await retrieveDayBox(league, season, board.nav.prev);
+        return { day: r.length ? board.nav.prev : null, r };
+    };
+    const [box, wp] = await Promise.all([dayBox(), finals.length ? retrieveFinalsWp(league, finals) : new Map<string, (number | null)[]>()]);
+    const sparklines: Record<string, string> = {};
+    for (const [id, v] of wp) { const pts = sparkline(v); if (pts) sparklines[id] = pts; }
+    return { day: box.day, standouts: standouts(box.r), sparklines };
 }
 
 export async function prepareBasketballHub(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballHubParams> {
@@ -25,7 +54,9 @@ export async function prepareBasketballHub(Astro: AstroGlobal, league: Basketbal
     // `today` sends no ?date= or ?group=, the only inputs a bad-date answer comes from
     if ('badDate' in board) throw new Error(`${league} hub: the scoreboard refused its own current day`);
     const games = board.games.filter((g) => g.season?.year != null).map((g) => ({ id: g.id, season: g.season.year }));
-    const rows = games.length ? await retrieveGameLines(league, games) : new Map();
+    // a degraded board's day is the server's guess, so it gets no "Tonight" reads
+    const tonightOn = isFeatureEnabled('bball-hub-tonight', Astro.locals) && !board.degraded;
+    const [rows, tonight] = await Promise.all([games.length ? retrieveGameLines(league, games) : new Map(), tonightOn ? prepareTonight(league, board) : undefined]);
     const lines: Record<string, HubLine> = {};
     for (const g of board.games) {
         const comp = g.competitions[0];
@@ -36,5 +67,5 @@ export async function prepareBasketballHub(Astro: AstroGlobal, league: Basketbal
         const line = hubLine(rows.get(g.id), { home: cleanAbbreviation(home.team), away: cleanAbbreviation(away.team) }, done && hs !== as ? (hs > as ? 'home' : 'away') : null);
         if (line) lines[g.id] = line;
     }
-    return { board, lines, index: hubIndex(league) };
+    return { board, lines, index: hubIndex(league), ...(tonight ? { tonight } : {}) };
 }
