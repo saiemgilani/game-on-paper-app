@@ -34,6 +34,8 @@ export interface ShiftSide {
     key: 'away' | 'home'; abbr: string; name: string; rows: ShiftRow[]
     /** with two or more of this side highlighted: the stretches they were all on, and how long */
     together: { bars: { from: number; to: number }[]; minutes: string } | null
+    /** the rows cover less than five on the floor all game: a player the id crosswalk does not map yet has no row */
+    gap: boolean
 }
 export interface ShiftView { periods: { at: number; label: string }[]; sides: ShiftSide[]; highlighted: boolean }
 
@@ -68,12 +70,14 @@ export function shiftView(game: NbaGame, rows: MappedStint[], periodMinutes: num
         const side = game[key];
         const { starters, bench } = orderPlayers(side.players);
         const out: ShiftRow[] = [];
+        let covered = 0;
         for (const p of [...starters, ...bench]) {
             const id = String(p.athlete_id);
             const st = (byPlayer.get(id) ?? []).filter((r) => r.side === key);
             if (st.length === 0) continue;
             st.sort((a, b) => at(a.period, a.clock_in) - at(b.period, b.clock_in));
             const secs = st.reduce((s, r) => s + (r.seconds ?? r.clock_in - r.clock_out), 0);
+            covered += secs;
             out.push({
                 id, name: p.name, starter: p.starter, minutes: mmss(secs), on: onSet.has(id),
                 bars: st.map((r) => {
@@ -95,7 +99,7 @@ export function shiftView(game: NbaGame, rows: MappedStint[], periodMinutes: num
             const shared = mine.slice(1).reduce(intersect, mine[0]);
             together = { bars: shared.map(([a, b]) => ({ from: pct(a), to: pct(b) })), minutes: mmss(shared.reduce((s, [a, b]) => s + b - a, 0)) };
         }
-        return { key, abbr: cleanAbbreviation(side.team), name: side.team.displayName, rows: out, together };
+        return { key, abbr: cleanAbbreviation(side.team), name: side.team.displayName, rows: out, together, gap: covered < 5 * total - 1 };
     });
     return {
         periods: Array.from({ length: n }, (_, i) => ({ at: pct(start[i]), label: label(i + 1) })),

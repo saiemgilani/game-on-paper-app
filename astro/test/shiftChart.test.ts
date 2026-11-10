@@ -122,6 +122,7 @@ describe('the chart on the real college finals', () => {
                 // the row's minutes are its stints' seconds
                 const total = s.rows.reduce((n, r) => { const [m, sec] = r.minutes.split(':').map(Number); return n + m * 60 + sec; }, 0);
                 expect(total).toBe(5 * gameSecs);
+                expect(s.gap).toBe(false);
                 for (const r of s.rows) {
                     for (const [a, b] of r.bars.slice(0, -1).map((b, i) => [b, r.bars[i + 1]])) expect(a.to).toBeLessThanOrEqual(b.from + 1e-9);
                     for (const b of r.bars) { expect(b.from).toBeGreaterThanOrEqual(0); expect(b.to).toBeLessThanOrEqual(100); expect(b.label).toMatch(/^.+: ((H|Q)\d|OT) \d+:\d\d–\d+:\d\d \(\d+:\d\d\) · ([+−]\d+|0) · \d+–\d+ · \d+ poss, \d+ opp poss$/); }
@@ -142,6 +143,9 @@ describe('the chart on the real college finals', () => {
         const secs = (m: string) => { const [a, b] = m.split(':').map(Number); return a * 60 + b; };
         expect(secs(home.together!.minutes)).toBeLessThanOrEqual(Math.min(...home.rows.filter((r) => r.on).map((r) => secs(r.minutes))));
         expect(secs(home.together!.minutes)).toBeGreaterThan(0);
+        // a player the crosswalk misses leaves his team's minutes short of five on the floor: flagged
+        const gapped = shiftView(g, st.filter((r) => r.espn !== starters[0]), minutesOf(g, 'mbb'));
+        expect(gapped.sides.map((s) => s.gap)).toEqual([false, true]);
         // one player alone: highlighted, no shared row
         expect(shiftView(g, st, minutesOf(g, 'mbb'), starters.slice(0, 1)).sides.find((s) => s.key === 'home')!.together).toBeNull();
     });

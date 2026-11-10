@@ -40,6 +40,7 @@ const pos = (b: { from: number; to: number }) => `left:${b.from.toFixed(3)}%;wid
           </div>
         ))}
       </div>)}
+      {s.rows.length > 0 && s.gap && (<p class="text-muted small mt-1 mb-0">Some of {s.abbr}'s minutes have no row: a player's id is not mapped to the box yet.</p>)}
     </div>
   ))}
 </div>
