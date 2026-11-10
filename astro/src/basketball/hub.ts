@@ -144,7 +144,8 @@ const NOT_NEXT = /POSTPONED|CANCELED|FORFEIT|SUSPENDED/;
 export function followTeams(league: BasketballLeague, rows: readonly FollowScheduleRow[], today: string): FollowTeam[] {
     const cfg = BASKETBALL[league];
     const college = cfg.currentMembers != null;
-    const known = (id: number) => (college ? cfg.currentMembers!.ids.includes(id) : cfg.teams.byEspnId(id) != null);
+    const members = new Set(cfg.currentMembers?.ids ?? []); // a college season is ~6,300 rows x 2 sides against 364 ids
+    const known = (id: number) => (college ? members.has(id) : cfg.teams.byEspnId(id) != null);
     type Acc = { w: number; l: number; last: FollowGame | null; next: FollowGame | null; poll: number | null; nextPoll: number | null };
     const acc = new Map<number, Acc>();
     for (const g of [...rows].sort((a, b) => a.game_date.localeCompare(b.game_date))) {
