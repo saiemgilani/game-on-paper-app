@@ -12,7 +12,7 @@ import { gameShotsLite, type GameShot } from '../../../nba/charts/gameShotChart'
 import { cleanAbbreviation } from '../../../utils/misc';
 import { COURT } from '../../../nba/data/court';
 import { islandPeriodProps } from '../../../basketball/periods';
-import { basketball, courtFor, seasonLabelFor } from '../../../basketball/config';
+import { basketball, courtFor, placeholderFor, seasonLabelFor } from '../../../basketball/config';
 import { placeholderNote } from '../../../nba/data/placeholder';
 import { dashboardScope } from '../../../basketball/dashboards';
 
@@ -32,7 +32,7 @@ const toShots = (teamId: string): GameShot[] => {
 };
 const sides = [game.away, game.home].map((s) => {
     const shots = toShots(s.team.id);
-    const located = shooting?.fgPct != null ? gameShotsLite(shots, game.id) : [];
+    const located = shooting?.fgPct != null ? gameShotsLite(shots, game.id, placeholderFor(league, game.season!)) : [];
     return { side: s, shots, distance: located.length > 0 ? distanceCharts(located, shooting!) : null };
 });
 const total = sides.reduce((n, s) => n + s.shots.length, 0);

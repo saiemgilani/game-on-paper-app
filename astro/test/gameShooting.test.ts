@@ -30,6 +30,7 @@ import type { LeagueContextRow } from '../src/resources/nbaShots';
 import { fromDataApi, type NbaGame } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
+import { placeholderFor } from '../src/basketball/config';
 import type { BasketballLeague } from '../src/utils/league';
 
 const json = (path: string) => JSON.parse(readFileSync(new URL(`./fixtures/${path}`, import.meta.url)).toString());
@@ -74,6 +75,14 @@ describe('the game\'s shots binned like the league\'s', () => {
             { game_id: 'g1', x_legacy: 30, y_legacy: 40, shot_distance: 5, shot_value: 2, shot_result: 'Missed' },
             { game_id: 'g1', x_legacy: -220, y_legacy: 15, shot_distance: 22, shot_value: 3, shot_result: 'Made' },
         ]);
+    });
+    test('the WNBA through 2010: shots at the placeholder location (the rim, D29) enter no bar, as in the league curve', () => {
+        const g = fromDataApi(json('wnba/game_250603003_api.json'), 'wnba'); // 2005, 33 of 114 attempts at the placeholder
+        const shots = [g.away, g.home].flatMap((s) => teamShots(g, s.team.id, 'wnba'));
+        const atRim = shots.filter((s) => s.x === 0 && s.y === 0).length;
+        expect(atRim).toBe(33);
+        expect(gameShotsLite(shots, g.id, placeholderFor('wnba', 2005))).toHaveLength(shots.length - atRim);
+        expect(gameShotsLite(shots, g.id, placeholderFor('wnba', 2026))).toHaveLength(shots.length);
     });
     for (const league of ['nba', 'wnba', 'mbb', 'wbb'] as const) {
         test(`${league}: every located shot inside 35 ft lands in one bar and one signature foot, against the league's curves`, () => {

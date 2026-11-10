@@ -4,7 +4,7 @@ import { COURT, toSvg, toSvgLength, type Viewport } from "../data/court";
 import { COURT_PAD, COURT_TOP, courtViewport, DEFAULT_WIDTH, drawCourt } from "./court";
 import { setViewBox, TOKENS, type G } from "./theme";
 import type { Court } from "../../basketball/config";
-import { placeholderNote } from "../data/placeholder";
+import { placeholderNote, placeholderSplit, type PlaceholderLocation } from "../data/placeholder";
 import { emitDistance, onDistance } from "./link";
 import type { ShotLite } from "../data/shots";
 
@@ -18,11 +18,15 @@ const DIM = 0.12;
 /** Rounded feet from the rim, as the dashboards' shot_distance (sdv-db: floor(hypot / 10 + 0.5)). */
 export const shotFeet = (s: Pick<GameShot, "x" | "y">): number => Math.round(Math.hypot(s.x, s.y) / 10);
 
-/** BB-G39: a game's located shots as the dashboards' ShotLite, so fgPctByDistance bins them like the league's. */
-export function gameShotsLite(shots: GameShot[], gameId: string): ShotLite[] {
-  return shots.filter((s) => !s.unlocated).map((s) => ({
+/**
+ * BB-G39: a game's located shots as the dashboards' ShotLite, so fgPctByDistance bins them like the league's. Shots at the
+ * league's placeholder location (`at`, D29: the WNBA's through 2010) are left out, as the league curve leaves them out.
+ */
+export function gameShotsLite(shots: GameShot[], gameId: string, at: PlaceholderLocation | null = null): ShotLite[] {
+  const lite = shots.filter((s) => !s.unlocated).map((s): ShotLite => ({
     game_id: gameId, x_legacy: s.x, y_legacy: s.y, shot_distance: shotFeet(s), shot_value: s.value, shot_result: s.made ? "Made" : "Missed",
   }));
+  return placeholderSplit(lite, at).located;
 }
 
 export function shotMarks(shots: GameShot[], v: Viewport): ShotMark[] {
