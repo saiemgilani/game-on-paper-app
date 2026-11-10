@@ -107,5 +107,8 @@ export const shiftDate = (day: string, days: number): string => new Date(Date.pa
 export function easternDate(iso: string): string | null {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return null;
-    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+    // by parts, not a locale's date string: the separators and order are not the runtime's to pick
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d);
+    const part = (t: string) => parts.find((x) => x.type === t)?.value;
+    return `${part('year')}-${part('month')}-${part('day')}`;
 }
