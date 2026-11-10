@@ -15,6 +15,8 @@ import type { BasketballLeague } from '../../utils/league';
 import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBox';
 import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
 import { retrieveGarbageTime, type GarbageReads } from '../../resources/garbageTime';
+import { built, retrieveWpLenses } from '../../resources/wpLenses';
+import type { WpLensRow } from '../../utils/wpLenses';
 import { seasonCache, setCache, uncacheable } from './cache';
 
 /** The admin source tool's data (components/nba/game/NbaAdminSourceTools.astro); only an admin on the 'source-switch' path gets it. */
@@ -85,6 +87,33 @@ function degraded(id: string, message: string, league: BasketballLeague): void {
 
 export async function prepareBasketballGame(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballGamePrep> {
     const r = await prepareGame(Astro, league);
+    // BB-G45's WP lenses: a Data API final's play_wp variants, read beside the final's panels; flag off is today's page. Only
+    // the Data API's plays share play_wp's game_play_number (the same ingest); a processor-served game keeps our model alone.
+    const lenses = 'game' in r && r.game.source === 'data_api' && r.game.status.completed && r.game.season != null && isFeatureEnabled('bball-wp-lenses', Astro.locals)
+        ? readWpLenses(league, r.game, r.game.season) : undefined;
+    const p = await finalPanels(Astro, league, r);
+    if (lenses === undefined || !('game' in p)) return p;
+    const rows = await lenses;
+    // decorative like the panels: a failed read is never cached; an ingested final whose season the nightly has not rebuilt
+    // with the variants yet (sdv-db #217's backfill) follows the nightly's window, unless a panel's failed read made it uncacheable
+    const failed = Object.values(p).some((x) => x === null || (x && typeof x === 'object' && 'reads' in x && x.reads === null));
+    if (rows === null) uncacheable(Astro);
+    else if (!built(rows) && !failed) setCache(Astro, seasonCache(league));
+    return rows && built(rows) ? { ...p, game: { ...p.game, wpLenses: rows } } : p;
+}
+
+/** BB-G45's variant rows; null when the read failed (the chart keeps our model alone). */
+async function readWpLenses(league: BasketballLeague, game: NbaGame, season: number): Promise<WpLensRow[] | null> {
+    try {
+        return await retrieveWpLenses(league, season, game.id);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} WP lenses for game ${game.id}: ${e}, ${e?.stack}`);
+        return null;
+    }
+}
+
+/** The final's panels (BB-G1, BB-G28, BB-G2): read only once a final will render. */
+async function finalPanels(Astro: AstroGlobal, league: BasketballLeague, r: BasketballGamePrep): Promise<BasketballGamePrep> {
     // read only once a final will render: a 404, 503, pregame or live page never spends the reads, and flag off is today's page.
     // The producer's tables are per season, so a game with no season has nothing to read (no panel, not "unavailable").
     if (!('game' in r) || !r.game.status.completed || r.game.season == null) return r;

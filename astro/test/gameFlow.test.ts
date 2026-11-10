@@ -55,6 +55,8 @@ vi.mock('../src/resources/playoffPicture', async (orig) => ({
 const sched = vi.fn(), rows = vi.fn(), proc = vi.fn(), espn = vi.fn();
 vi.mock('../src/resources/nbaGames', async (orig) => ({ ...(await orig<typeof import('../src/resources/nbaGames')>()), retrieveNbaSchedule: (...a: unknown[]) => sched(...a), retrieveNbaGameRows: (...a: unknown[]) => rows(...a), retrieveNbaProcessedGame: (...a: unknown[]) => proc(...a) }));
 vi.mock('../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../src/resources/espn')>()), retrieveGamePageGuarded: (...a: unknown[]) => espn(...a) }));
+// BB-G45's play_wp variants ('bball-wp-lenses', preview, a final): built, so the cache is the final's, never a read
+vi.mock('../src/resources/wpLenses', async (orig) => ({ ...(await orig<typeof import('../src/resources/wpLenses')>()), retrieveWpLenses: async () => [{ n: 1, naive: 0.5, market: null }] }));
 
 import NbaGameFlow from '../src/components/nba/game/NbaGameFlow.astro';
 import PlayoffPictureRoute from '../src/components/routes/PlayoffPictureRoute.astro';

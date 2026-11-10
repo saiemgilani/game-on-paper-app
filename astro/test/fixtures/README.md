@@ -839,3 +839,25 @@ within one (the log leaves the defense's technical free throws out); rebounds hi
 
 **To regenerate:** rerun those calls in an sdv-py checkout of `origin/main` (polars, no network beyond the GitHub
 release assets), write `{...}` above with `json.dumps(..., default=str)` and gzip (`mtime=0`).
+
+## `wp-lenses-nba-{401704939,401704690}.json.gz`
+Two 2025 NBA finals as the game page's Data API read sees them (`DataApiGameRows`: `schedule`, `pbp`, `team_box`,
+`player_box`, `play_wp`, `game_team_rates`, `game_player_rates`), with BB-G45's two `play_wp` variant columns added.
+CHA 98 at PHI 108, 2024-12-20 (401704939, closing line PHI -13, `game_lines.market_home_wp_close` 0.8424) and BKN 119 at
+MEM 106, 2024-10-30 (401704690, no `game_lines` row): the BB-D33 games of sdv-db #217's own fixtures.
+
+- **The seven tables**: read from the production Data API on 2026-11-10 (`GET /v1/nba/<table>?season=2025&game_id=<id>`,
+  each with the `select` of `resources/nbaGames.ts`), as they are.
+- **`home_win_prob_naive`, `home_win_prob_market`**: sdv-db #217 (merged 2026-11-10) adds them to `nba.play_wp`, but the
+  Data API did not serve them yet when these were cut (`unknown select column`; the droplet backfill follows), so they
+  were computed locally with sportsdataverse-py `nba_game_lines.wp_variants(pbp, market, league="nba",
+  regulation_periods=4)` (4564898380) on sdv-db `tests/fixtures/nba_game_pages/nba_<id>_pbp.parquet` (the hoopR release's
+  pbp for the game), with `market` the game's `market_home_wp_close` from `GET /v1/nba/game_lines` (none for 401704690:
+  its market column is null on every play), joined on `game_play_number`. The same checkout's `score_win_prob` on that
+  pbp reproduces the API's `home_win_prob` on every play exactly (max difference 0.0), so the variants are the build's.
+
+**Used by:** `test/wpLenses.test.ts`.
+
+**To regenerate:** once the Data API serves the columns, read `play_wp` with
+`select=game_play_number,home_win_prob,wp_delta,wp_regime,prior_source,pregame_home_prob,x_legacy,y_legacy,home_win_prob_naive,home_win_prob_market`
+and the other six tables as above, and write `{schedule, pbp, ...}` with `json.dumps` and gzip.
