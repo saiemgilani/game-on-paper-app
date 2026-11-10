@@ -1,0 +1,55 @@
+---
+// src/components/nba/game/NbaPlayerProps.astro
+// BB-G44, behind 'bball-props': each player's closing line per stat with the books' no-vig over probability, beside
+// the box score's count. Final: O / U / P where it landed. Live: the count so far against the line, O once it is cleared.
+// The view is utils/playerProps.ts's; null `view` is a failed read.
+import type { NbaGame } from '../../../resources/nbaGame';
+import { PROP_STATS, type PropPlayer, type PropsView, type PropResult } from '../../../utils/playerProps';
+import { fmtPct } from '../../../nba/format';
+import { cleanAbbreviation } from '../../../utils/misc';
+
+interface Props { game: NbaGame; view: PropsView | null }
+const { game, view } = Astro.props;
+const cols = view ? PROP_STATS.filter((d) => view.stats.includes(d.stat)) : [];
+const sides = view ? (['away', 'home'] as const).map((s) => ({ s, abbr: cleanAbbreviation(game[s].team), players: view[s] as PropPlayer[] })).filter((x) => x.players.length) : [];
+const mark: Record<PropResult, { text: string; cls: string; title: string }> = {
+    over: { text: 'O', cls: 'text-bg-success', title: 'Over' },
+    under: { text: 'U', cls: 'text-bg-danger', title: 'Under' },
+    push: { text: 'P', cls: 'text-bg-secondary', title: 'Push' },
+};
+const pct = (line: number, actual: number) => Math.max(0, Math.min(100, Math.round((actual / line) * 100)));
+---
+{!view ? (<p class="text-muted small mb-0" id="props-unavailable">Player lines are temporarily unavailable.</p>) : (
+<Fragment>
+<p class="text-muted small">Closing lines (the median across books) with the implied chance of the over, vig removed.{view.final ? ' O / U: where the final box score landed.' : ' Live: the count so far against each line.'}</p>
+<div class="row" id="player-props">
+  {sides.map(({ s, abbr, players }) => (
+    <div class="col-12 col-xl-6">
+    <div class="table-responsive">
+    <table class="table table-sm numeral table-fix-first-col" id={`props-${s}`} aria-label={`${abbr} player lines`}>
+      <thead><tr><th scope="col" class="text-start">{abbr}</th>{cols.map((c) => <th scope="col" class="text-end" title={c.title}>{c.label}</th>)}</tr></thead>
+      <tbody>
+        {players.map((p) => (
+          <tr>
+            <th scope="row" class="text-start fw-normal text-nowrap">{p.name}</th>
+            {cols.map(({ stat }) => { const c = p.cells[stat]; return (
+              <td class="text-end text-nowrap">{c ? (
+                <Fragment>
+                  <div>{c.line}{c.overProb != null && <span class="text-muted small" title="Implied chance of the over"> {fmtPct(c.overProb, 0)}</span>}</div>
+                  <div class="small">{c.actual == null ? <span class="text-muted">–</span> : c.actual}{c.result && <span class:list={['badge ms-1', mark[c.result].cls]} title={mark[c.result].title}>{mark[c.result].text}</span>}</div>
+                  {!view.final && c.actual != null && !c.result && (
+                    <div class="progress" style="height: 3px" role="progressbar" aria-label={`${p.name} ${stat} toward the line`} aria-valuenow={c.actual} aria-valuemin="0" aria-valuemax={c.line}><div class="progress-bar" style={`width: ${pct(c.line, c.actual)}%`}></div></div>
+                  )}
+                </Fragment>
+              ) : <span class="text-muted">–</span>}</td>
+            ); })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    </div>
+    </div>
+  ))}
+</div>
+</Fragment>
+)}

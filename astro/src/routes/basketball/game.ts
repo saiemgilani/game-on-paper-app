@@ -15,6 +15,7 @@ import type { BasketballLeague } from '../../utils/league';
 import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBox';
 import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
 import { retrieveGarbageTime, type GarbageReads } from '../../resources/garbageTime';
+import { PROPS_LEAGUES, retrievePlayerProps, type PropRow } from '../../resources/playerProps';
 import { seasonCache, setCache, uncacheable } from './cache';
 
 /** The admin source tool's data (components/nba/game/NbaAdminSourceTools.astro); only an admin on the 'source-switch' path gets it. */
@@ -31,7 +32,8 @@ export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { 
     /** `impact`: BB-G1, only with 'bball-impact-box' on and a final; null when a read failed (the panel says so) */
     /** `flow`: BB-G28, only with 'bball-game-flow' on and a final; null when its read failed (the lead chart still draws) */
     /** `garbage`: BB-G2, only with 'bball-garbage-time' and 'bball-impact-box' on and a final; `reads` null when the log's read failed */
-    | { game: NbaGame; sourceTools?: BasketballSourceTools; impact?: ImpactBoxReads | null; flow?: GameFlowReads | null; garbage?: { reads: GarbageReads | null; out: boolean } };
+    /** `playerProps`: BB-G44, only with 'bball-props' on, nba/wnba/mbb, a final or live game; null when its read failed */
+    | { game: NbaGame; sourceTools?: BasketballSourceTools; impact?: ImpactBoxReads | null; flow?: GameFlowReads | null; garbage?: { reads: GarbageReads | null; out: boolean }; playerProps?: PropRow[] | null };
 
 /** BB-G2's toggle: `?garbage=out` leaves the garbage-time possessions out; read only with 'bball-garbage-time' on. */
 export const GARBAGE_PARAM = 'garbage';
@@ -85,28 +87,33 @@ function degraded(id: string, message: string, league: BasketballLeague): void {
 
 export async function prepareBasketballGame(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballGamePrep> {
     const r = await prepareGame(Astro, league);
-    // read only once a final will render: a 404, 503, pregame or live page never spends the reads, and flag off is today's page.
-    // The producer's tables are per season, so a game with no season has nothing to read (no panel, not "unavailable").
-    if (!('game' in r) || !r.game.status.completed || r.game.season == null) return r;
-    const withImpact = isFeatureEnabled('bball-impact-box', Astro.locals);
-    const withFlow = isFeatureEnabled('bball-game-flow', Astro.locals);
+    // read only once a final will render (the player lines on a live game too): a 404, 503 or pregame page never spends the
+    // reads, and flag off is today's page. The producer's tables are per season, so a game with no season has nothing to
+    // read (no panel, not "unavailable").
+    if (!('game' in r) || r.game.season == null) return r;
+    const final = r.game.status.completed;
+    const withProps = PROPS_LEAGUES.includes(league) && isFeatureEnabled('bball-props', Astro.locals);
+    const withImpact = final && isFeatureEnabled('bball-impact-box', Astro.locals);
+    const withFlow = final && isFeatureEnabled('bball-game-flow', Astro.locals);
     // the toggle sits beside the Impact box: no box, no toggle and no read
     const withGarbage = withImpact && isFeatureEnabled('bball-garbage-time', Astro.locals);
-    if (!withImpact && !withFlow) return r;
-    const [impact, flow, garbage] = await Promise.all([
+    if (!withImpact && !withFlow && !withProps) return r;
+    const [impact, flow, garbage, playerProps] = await Promise.all([
         withImpact ? readPanel('impact box', league, r.game, r.game.season, retrieveImpactBox) : undefined,
         withFlow ? readPanel('game flow', league, r.game, r.game.season, retrieveGameFlow) : undefined,
         withGarbage ? readPanel('garbage-time log', league, r.game, r.game.season, retrieveGarbageTime) : undefined,
+        withProps ? readPanel('player props', league, r.game, r.game.season, retrievePlayerProps) : undefined,
     ]);
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
-    if (impact === null || flow === null || garbage === null) uncacheable(Astro);
-    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away))) setCache(Astro, seasonCache(league));
+    if (impact === null || flow === null || garbage === null || playerProps === null) uncacheable(Astro);
+    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || playerProps?.length === 0)) setCache(Astro, seasonCache(league));
     return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}),
-        ...(garbage !== undefined ? { garbage: { reads: garbage, out: Astro.url.searchParams.get(GARBAGE_PARAM) === 'out' } } : {}) };
+        ...(garbage !== undefined ? { garbage: { reads: garbage, out: Astro.url.searchParams.get(GARBAGE_PARAM) === 'out' } } : {}),
+        ...(playerProps !== undefined ? { playerProps } : {}) };
 }
 
-/** A game panel's reads (BB-G1's Impact box, BB-G28's Game flow) by the season and the ESPN ids; null when any failed. */
+/** A game panel's reads (BB-G1's Impact box, BB-G28's Game flow, BB-G44's player lines) by the season and the ESPN ids; null when any failed. */
 async function readPanel<T>(what: string, league: BasketballLeague, game: NbaGame, season: number,
     read: (league: BasketballLeague, season: number, espnGameId: string, homeId: number, awayId: number) => Promise<T>): Promise<T | null> {
     try {

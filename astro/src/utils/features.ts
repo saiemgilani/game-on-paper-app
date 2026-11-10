@@ -88,6 +88,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // No toggle when the log has no flag (a release from before BB-D7) or no garbage time. Off: no read, `?garbage=` is
     // ignored, and the game page is today's, byte for byte.
     'bball-garbage-time': 'preview',
+    // BB-G44's player props panel on /<league>/game/[id] for a final or live nba/wnba/mbb game (women's college has no
+    // props upstream: no read, no panel): each player's closing line per stat with the no-vig over probability (sdv-db's
+    // player_props, BB-D33), beside the box score's count, O / U after the final and progress toward the line live. No
+    // panel when the game has no matched lines. Off: no read and the game page is today's, byte for byte.
+    'bball-props': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

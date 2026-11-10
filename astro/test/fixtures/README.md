@@ -839,3 +839,17 @@ within one (the log leaves the defense's technical free throws out); rebounds hi
 
 **To regenerate:** rerun those calls in an sdv-py checkout of `origin/main` (polars, no network beyond the GitHub
 release assets), write `{...}` above with `json.dumps(..., default=str)` and gzip (`mtime=0`).
+
+## `player-props.json.gz`
+Real Data API rows of sdv-db's `player_props` (BB-D33), captured 2026-11-10 with resources/playerProps.ts's own query
+(`?season=&game_id=&select=athlete_id,team_id,player_name,stat,line,n_books,over_price,under_price,over_prob&limit=300`),
+keyed `<league>-<ESPN game id>` as `{league, season, rows}`:
+
+- **`nba-401705127`** (season 2025, 77 rows, all five stats): the game of `nba/game_401705127_processor.json`, an OT
+  final. Three of the lined players (out that night) have no box row.
+- **`mbb-401808271`** (season 2026, 28 rows: points, rebounds, assists only): the game of `mbb/game_401808271_api.json`.
+
+**Used by:** `test/playerProps.test.ts`.
+
+**To regenerate:** repeat the two reads (Bearer key, one game each) and write `{key: {league, season, rows: body.data}}`
+gzipped.
