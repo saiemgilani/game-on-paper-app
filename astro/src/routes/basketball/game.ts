@@ -17,6 +17,7 @@ import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
 import { retrieveGarbageTime, type GarbageReads } from '../../resources/garbageTime';
 import { retrieveLeagueContextRows } from '../../resources/nbaShots';
 import { leagueContextFromRows } from '../../nba/adapters';
+import { retrieveGameStints, type GameStints } from '../../resources/gameStints';
 import type { LeagueContext } from '../../nba/dashboard';
 import { seasonCache, setCache, uncacheable } from './cache';
 
@@ -36,7 +37,9 @@ export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { 
     /** `garbage`: BB-G2, only with 'bball-garbage-time' and 'bball-impact-box' on and a final; `reads` null when the log's read failed */
     | { game: NbaGame; sourceTools?: BasketballSourceTools; impact?: ImpactBoxReads | null; flow?: GameFlowReads | null; garbage?: { reads: GarbageReads | null; out: boolean }
         /** `shooting`: BB-G39, only with 'bball-game-shooting' on and a final: the season's league curve; null when its read failed */
-        shooting?: LeagueContext | null };
+        shooting?: LeagueContext | null
+        /** `shotFilters`: BB-G38, only with 'bball-shot-filters' on, live or final: a final's stints (ON/OFF); null for a live game or a failed read */
+        shotFilters?: { stints: GameStints | null } };
 
 /** BB-G2's toggle: `?garbage=out` leaves the garbage-time possessions out; read only with 'bball-garbage-time' on. */
 export const GARBAGE_PARAM = 'garbage';
@@ -90,30 +93,40 @@ function degraded(id: string, message: string, league: BasketballLeague): void {
 
 export async function prepareBasketballGame(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballGamePrep> {
     const r = await prepareGame(Astro, league);
+    if (!('game' in r)) return r;
+    // BB-G38's shot filters draw on a live game too; only their ON/OFF filter reads, and only a final's stints
+    const withStints = isFeatureEnabled('bball-shot-filters', Astro.locals);
+    const live = withStints ? { shotFilters: { stints: null } } : {};
     // read only once a final will render: a 404, 503, pregame or live page never spends the reads, and flag off is today's page.
     // The producer's tables are per season, so a game with no season has nothing to read (no panel, not "unavailable").
-    if (!('game' in r) || !r.game.status.completed || r.game.season == null) return r;
+    if (!r.game.status.completed || r.game.season == null) return { ...r, ...live };
     const withImpact = isFeatureEnabled('bball-impact-box', Astro.locals);
     const withFlow = isFeatureEnabled('bball-game-flow', Astro.locals);
     // the toggle sits beside the Impact box: no box, no toggle and no read
     const withGarbage = withImpact && isFeatureEnabled('bball-garbage-time', Astro.locals);
     const withShooting = isFeatureEnabled('bball-game-shooting', Astro.locals);
-    if (!withImpact && !withFlow && !withShooting) return r;
-    const [impact, flow, garbage, shooting] = await Promise.all([
+    if (!withImpact && !withFlow && !withShooting && !withStints) return r;
+    const [impact, flow, garbage, shooting, stints] = await Promise.all([
         withImpact ? readPanel('impact box', league, r.game, r.game.season, retrieveImpactBox) : undefined,
         withFlow ? readPanel('game flow', league, r.game, r.game.season, retrieveGameFlow) : undefined,
         withGarbage ? readPanel('garbage-time log', league, r.game, r.game.season, retrieveGarbageTime) : undefined,
         withShooting ? readPanel('league shot context', league, r.game, r.game.season, (lg, season) => retrieveLeagueContextRows(season, lg).then(leagueContextFromRows)) : undefined,
+        withStints ? readPanel('game stints', league, r.game, r.game.season, retrieveGameStints) : undefined,
     ]);
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
-    if (impact === null || flow === null || garbage === null || shooting === null) uncacheable(Astro);
-    // a season with no league curve yet (fgPct null: no total row) draws no signature: held for the season window too
-    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || shooting?.fgPct === null)) setCache(Astro, seasonCache(league));
+    if (impact === null || flow === null || garbage === null || shooting === null || stints === null) uncacheable(Astro);
+    // a season with no league curve yet (fgPct null: no total row) draws no signature: held for the season window too; so is a
+    // recent final with no stints yet (the nightly build), not an old one (stints start with recent seasons: never coming)
+    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || shooting?.fgPct === null
+        || (stints && Object.keys(stints).length === 0 && recentFinal(r.game)))) setCache(Astro, seasonCache(league));
     return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}),
         ...(garbage !== undefined ? { garbage: { reads: garbage, out: Astro.url.searchParams.get(GARBAGE_PARAM) === 'out' } } : {}),
-        ...(shooting !== undefined ? { shooting } : {}) };
+        ...(shooting !== undefined ? { shooting } : {}), ...(withStints ? { shotFilters: { stints: stints ?? null } } : {}) };
 }
+
+/** A final from the last three days: the nightly season products (game_stints) may not have reached it yet. */
+const recentFinal = (game: NbaGame): boolean => Date.now() - Date.parse(game.date) < 3 * 24 * 60 * 60 * 1000;
 
 /** A game panel's reads (BB-G1's Impact box, BB-G28's Game flow) by the season and the ESPN ids; null when any failed. */
 async function readPanel<T>(what: string, league: BasketballLeague, game: NbaGame, season: number,

@@ -2,22 +2,31 @@
 // One shot chart per team; ESPN's sentinel locations arrive as null, so a game with none shows a message, not an empty court.
 // BB-G39 ('bball-game-shooting'): with the season's league curve, each team's signature and FG% distance bars sit under its
 // chart in one `data-shot-link` dashboard, so a distance hovered or clicked on any of the three marks it on the others.
+// BB-G38 ('bball-shot-filters', `filters` set): one island draws both teams under a filter bar (GameShotFilters.svelte).
 import GameShotChart from '../charts/GameShotChart.svelte';
+import GameShotFilters from '../charts/GameShotFilters.svelte';
 import ShootingSignature from '../charts/ShootingSignature.svelte';
 import DistanceBars from '../charts/DistanceBars.svelte';
 import { distanceCharts, type LeagueContext } from '../../../nba/dashboard';
 import type { NbaGame } from '../../../resources/nbaGame';
+import type { GameStints } from '../../../resources/gameStints';
 import { shotsOf, unlocatedShots } from '../../../nba/data/game';
 import { gameShotsLite, type GameShot } from '../../../nba/charts/gameShotChart';
+import { ZONE_LABELS } from '../../../nba/charts/hexShotChart';
 import { cleanAbbreviation } from '../../../utils/misc';
 import { COURT } from '../../../nba/data/court';
-import { islandPeriodProps } from '../../../basketball/periods';
+import { islandPeriodProps, periodShort } from '../../../basketball/periods';
 import { basketball, courtFor, placeholderFor, seasonLabelFor } from '../../../basketball/config';
 import { placeholderNote } from '../../../nba/data/placeholder';
 import { dashboardScope } from '../../../basketball/dashboards';
+import { filterShot, kindsOf, parseFilters, SHOT_KINDS, zonesOf, type FilterShot } from '../../../basketball/shotFilters';
 
-interface Props { game: NbaGame; /** BB-G39: the league curve; absent, null (a failed read) or empty (fgPct null): the charts alone */ shooting?: LeagueContext | null }
-const { game, shooting } = Astro.props;
+interface Props {
+    game: NbaGame; /** BB-G39: the league curve; absent, null (a failed read) or empty (fgPct null): the charts alone */ shooting?: LeagueContext | null
+    /** BB-G38: absent, today's charts; set, the filter bar, with the ON/OFF filter when `stints` has any (null: none read) */
+    filters?: { stints: GameStints | null }
+}
+const { game, shooting, filters } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const court = courtFor(league, game.season);
@@ -32,16 +41,51 @@ const toShots = (teamId: string): GameShot[] => {
 };
 const sides = [game.away, game.home].map((s) => {
     const shots = toShots(s.team.id);
-    const located = shooting?.fgPct != null ? gameShotsLite(shots, game.id, placeholderFor(league, game.season!)) : [];
+    const located = !filters && shooting?.fgPct != null ? gameShotsLite(shots, game.id, placeholderFor(league, game.season!)) : [];
     return { side: s, shots, distance: located.length > 0 ? distanceCharts(located, shooting!) : null };
 });
 const total = sides.reduce((n, s) => n + s.shots.length, 0);
 const unplaced = sides.reduce((n, s) => n + s.shots.filter((x) => x.unlocated).length, 0);
+
+// BB-G38: the same shots with what the filters read, the menus from what the game has, and the URL's state checked against them
+const filtered = filters && (() => {
+    const at = game.season != null ? placeholderFor(league, game.season) : null;
+    const stints = filters.stints && Object.keys(filters.stints).length > 0 ? filters.stints : null;
+    const fside = sides.map(({ side, shots }) => {
+        const plays = shotsOf(game.plays, Number(side.team.id));
+        const xs: FilterShot[] = plays.map((p, i) => filterShot(p, { ...shots[i], label: `${periodShort(p.period, game.regulation, game.periodKind)} ${p.clock} · ${p.awayScore}-${p.homeScore} · ${p.text}` }, court, at));
+        const n = new Map<string, number>();
+        for (const x of xs) if (x.shooter) n.set(x.shooter, (n.get(x.shooter) ?? 0) + 1);
+        // shooters named from the box, most attempts first; on/off players in the box's order (starters, then minutes)
+        const players = side.players.filter((r) => n.has(String(r.athlete_id))).map((r) => ({ id: String(r.athlete_id), name: r.name }))
+            .sort((a, b) => n.get(b.id)! - n.get(a.id)! || a.name.localeCompare(b.name));
+        const withPlayers = stints ? side.players.filter((r) => stints[String(r.athlete_id)]).map((r) => ({ id: String(r.athlete_id), name: r.name })) : [];
+        return { key: side === game.away ? 'away' as const : 'home' as const, abbr: cleanAbbreviation(side.team), name: side.team.displayName, shots: xs, players, withPlayers };
+    });
+    const all = fside.flatMap((s) => s.shots);
+    const periods = Array.from({ length: game.periods }, (_, i) => ({ value: String(i + 1), label: periodShort(i + 1, game.regulation, game.periodKind) }));
+    const zones = zonesOf(all).map((z) => ({ value: z, label: ZONE_LABELS[z] }));
+    const kinds = kindsOf(all).map((k) => ({ value: k, label: SHOT_KINDS[k] }));
+    const withPlayers = fside.filter((s) => s.withPlayers.length > 0).map((s) => ({ key: s.key, abbr: s.abbr, players: s.withPlayers }));
+    const initial = parseFilters(Astro.url.searchParams, {
+        players: fside.flatMap((s) => s.players.map((p) => p.id)), periods: periods.map((p) => p.value), zones: zones.map((z) => z.value),
+        kinds: kinds.map((k) => k.value), withPlayers: withPlayers.flatMap((s) => s.players.map((p) => p.id)),
+    });
+    const curve = shooting?.fgPct != null;
+    return {
+        sides: fside.map(({ withPlayers: _, ...s }) => s), periods, zones, kinds, withPlayers, initial, gameId: game.id,
+        ...(stints ? { stints } : {}),
+        ...(curve ? { league: { byFoot: shooting!.byFoot, byBin: shooting!.byBin }, caption: `League: ${seasonLabelFor(league, game.season!)} ${dashboardScope(league, game.season!).noun}. Hover a distance to mark it on every chart; click a bar to hold it.` } : {}),
+        ...(at ? { placeholder: at } : {}), ...(court === COURT ? {} : { court }),
+    };
+})();
 ---
 {sides.every((s) => s.shots.length === 0)
     ? <p class="text-muted m-0">ESPN has no shot locations for this game.</p>
     : unplaced === total
     ? <p class="text-muted m-0">ESPN has no shot locations for this game: {placeholderNote(unplaced, total, 'game')}</p>
+    : filtered
+    ? <GameShotFilters client:load {...filtered} />
     : <div class="row">{sides.map(({ side, shots, distance }) => {
         const chart = <GameShotChart client:load shots={shots} title={`${side.team.displayName} shots`} periods={game.periods} {...islandPeriodProps(game.regulation, game.periodKind)} {...(court === COURT ? {} : { court })} />;
         return (
