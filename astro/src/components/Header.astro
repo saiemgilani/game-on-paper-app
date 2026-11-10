@@ -8,11 +8,12 @@ import SiteSearch from "./search/SiteSearch.svelte";
 const league: League = Astro.locals.league ?? 'cfb';
 const cfg = LEAGUES[league];
 const football = cfg.sport === 'football';
-// every other league a viewer may switch to: a football viewer's Header stays the cfb<->nfl switch
-// while a non-football league is in preview, and gains it once that league is public; a basketball
-// viewer sees cfb always and nfl behind its flag
+// every other league a viewer may switch to: a football viewer's public Header stays the cfb<->nfl
+// switch while a non-football league is in preview, and gains it once that league is public; in
+// preview mode (the cookie, or an admin's ?view=preview) it lists every league whose flag is enabled,
+// so the basketball leagues are one click away. A basketball viewer sees cfb always and nfl behind its flag
 const others = (Object.keys(LEAGUES) as League[]).filter((lg) => lg !== league
-    && (football ? (LEAGUES[lg].sport === 'football' || isFeaturePublic(lg, Astro.locals)) : true)
+    && (football ? (LEAGUES[lg].sport === 'football' || Astro.locals.preview === true || isFeaturePublic(lg, Astro.locals)) : true)
     && (lg === 'cfb' || isFeatureEnabled(lg, Astro.locals)));
 const lp = (p: string) => leaguePath(league, p);
 ---

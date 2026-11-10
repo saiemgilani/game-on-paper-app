@@ -75,6 +75,7 @@ describe('the nfl flag', () => {
         expect(prev).toContain('href="/nfl"');
         // on the NFL side (already admitted) the switch back to CFB is always there
         const nfl = await container.renderToString(Header, { request: new Request('https://gameonpaper.com/nfl'), locals: { league: 'nfl', preview: true } });
-        expect(nfl).toMatch(/league-switch[^>]*href="\/"|href="\/"[^>]*league-switch/);
+        // (a preview viewer's switch is the dropdown: the basketball leagues sit beside cfb, BB-G31)
+        expect(nfl).toContain('class="dropdown-item" href="/">College Football</a>');
     }, 30_000);
 });
