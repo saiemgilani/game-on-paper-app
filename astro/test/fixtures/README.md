@@ -842,3 +842,13 @@ the `data` array of each live Data API read of 2026-11-10 (sdv-db #213, BB-D35; 
 `/v1/mbb/player_shot_zones?season=2026&team_id=251&limit=40` (Texas, 13 shooters: the team of `mbb/dashboards/season_players_2026.json.gz`'s `p26`),
 `/v1/mbb/team_shot_zones?season=2026&team_id=150&limit=2` (Duke, the team of `team-season-mbb-2026.json.gz`) and
 `/v1/wbb/player_shot_zones?season=2026&team_id=2579&limit=40` (South Carolina, 11 shooters).
+
+## `shot-zones-xwalk-mbb-2026.json.gz`
+Texas 2025-26's `ncaa_player_crosswalk` pairs (BB-D37), the id the Shot profile's college path picks a player's
+`player_shot_zones` row by: `{xwalk}` = the `data` array of `/v1/mbb/ncaa_player_crosswalk?season=2026&espn_team_id=251&limit=40`,
+captured live on 2026-11-10, no edits (15 pairs, all columns; all 13 shooters of `shot-zones.json.gz`'s `mbbTexas` have one, and
+each id picks the same row as the name match). The page reads one player's pair (`espn_athlete_id=`, `select=ncaa_player_id`).
+
+**Used by:** `test/shotProfile.test.ts`.
+
+**To regenerate:** rerun the read (season filter and limit as above, never unfiltered), wrap it as above and gzip.

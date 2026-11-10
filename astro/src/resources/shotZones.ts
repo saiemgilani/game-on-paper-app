@@ -16,7 +16,7 @@ import { leagueSource, type BasketballLeague } from '../utils/league';
 const TTL = 6 * 60 * 60;
 /** A pro has one row per team he played for; the cap keeps a bad filter from paging. */
 const PLAYER_LIMIT = '5';
-/** A college roster is at most ~20 shooters (one team's rows: the name match runs on them). */
+/** A college roster is at most ~20 shooters (one team's rows: the crosswalk id, or the name fallback, picks his). */
 const ROSTER_LIMIT = '40';
 
 export const ZONE_KEYS = ['rim', 'mid', 'corner_3', 'above_break_3'] as const;
@@ -47,6 +47,19 @@ const read = <T>(league: BasketballLeague, table: string, query: Record<string, 
 /** NBA/WNBA: his rows (one per team) by stats id. */
 export function retrievePlayerShotZones(league: BasketballLeague, season: number, personId: number): Promise<ShotZoneRow[]> {
     return read<ShotZoneRow>(league, 'player_shot_zones', { season: String(season), player_id: String(personId), limit: PLAYER_LIMIT });
+}
+
+/**
+ * College: his season's stats.ncaa.org id from `ncaa_player_crosswalk` (BB-D37), the id `player_shot_zones` keys players by;
+ * null when the crosswalk has no matched pair. Season-filtered: stats.ncaa.org issues a new id every season.
+ * `ncaa_player_id` is text, `espn_athlete_id` a bigint: compared as strings. The query is #408's
+ * resources/ncaaPlayerCrosswalk.ts's key for key, so one cached response serves both.
+ * ponytail: inline until #408 merges, then switch to that module's retrieveNcaaPlayerId.
+ */
+export async function retrieveNcaaPlayerId(league: BasketballLeague, season: number, espnAthleteId: number): Promise<string | null> {
+    const [x] = await read<{ ncaa_player_id: string | null }>(league, 'ncaa_player_crosswalk',
+        { season: String(season), espn_athlete_id: String(espnAthleteId), select: 'ncaa_player_id', limit: PLAYER_LIMIT });
+    return x?.ncaa_player_id ? String(x.ncaa_player_id) : null;
 }
 
 /** College: every shooter of his ESPN team (the table keys players by the stats.ncaa.org id, the page by ESPN's). */

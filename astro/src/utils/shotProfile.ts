@@ -75,11 +75,13 @@ export function nameKey(name: string): string {
 }
 
 /**
- * College: his row among his team's, by name, since the table keys players by the stats.ncaa.org id and the page by ESPN's.
- * Only a unique match counts; none or two is no row.
- * ponytail: a name match inside one team-season; key on BB-D37's NCAA↔ESPN player crosswalk once it ships.
+ * College: his row among his team's. The table keys players by the stats.ncaa.org id and the page by ESPN's, so `ncaaId`
+ * (his season's id from ncaa_player_crosswalk, BB-D37) picks it. The name match is only the fallback for a player with no
+ * matched pair (`ncaaId` null), and only a unique match counts; none or two is no row. A pair with no zone row is no row:
+ * the id wins over a name.
  */
-export function collegePlayerRows(rows: readonly ShotZoneRow[], name: string): ShotZoneRow[] {
+export function collegePlayerRows(rows: readonly ShotZoneRow[], ncaaId: string | null, name: string): ShotZoneRow[] {
+    if (ncaaId !== null) return rows.filter((r) => String(r.player_id) === ncaaId);
     const key = nameKey(name);
     const hit = rows.filter((r) => r.player_name != null && nameKey(String(r.player_name)) === key);
     return hit.length === 1 ? hit : [];

@@ -3,7 +3,7 @@
 // reads (player_shot_zones / team_shot_zones in the league's season schema; the team's season rates on the season block's
 // exact query), the page-side steps (the flag gates every read; a failed read keeps the page and is never cached), the
 // panel and the player page: flag off is byte for byte the NBA byte-identity capture. On real Data API rows
-// (fixtures/README.md: shot-zones.json.gz). Every read is mocked.
+// (fixtures/README.md: shot-zones.json.gz, shot-zones-xwalk-mbb-2026.json.gz). Every read is mocked.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
@@ -23,16 +23,19 @@ afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 type Row = any; // fixture rows: the Data API's, checked by the tests below
 const gz = (name: string) => JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/${name}.json.gz`, import.meta.url))).toString());
 const SZ = gz('shot-zones') as Record<'nba' | 'nbaTeam' | 'wnba' | 'mbbTexas' | 'mbbTeam' | 'wbbSouthCarolina', Row[]>;
+// Texas 2025-26's ncaa_player_crosswalk pairs: ESPN athlete id -> the stats.ncaa.org id player_shot_zones keys players by
+const XWALK = gz('shot-zones-xwalk-mbb-2026').xwalk as Row[];
 const RATES = { nba: gz('team-season-nba-2026').rates as Row[], mbb: gz('team-season-mbb-2026').rates as Row[] };
 const MBB_PLAYERS = gz('mbb/dashboards/season_players_2026') as Row[];
 const NBA_PLAYERS = JSON.parse(readFileSync(new URL('./fixtures/nba/season_players_2026_api.json', import.meta.url)).toString());
 
-const reads = vi.hoisted(() => ({ player: vi.fn(), roster: vi.fn(), team: vi.fn() }));
+const reads = vi.hoisted(() => ({ player: vi.fn(), roster: vi.fn(), team: vi.fn(), ncaa: vi.fn() }));
 vi.mock('../src/resources/shotZones', async (orig) => ({
     ...(await orig<typeof import('../src/resources/shotZones')>()),
     retrievePlayerShotZones: (...a: unknown[]) => reads.player(...a),
     retrieveTeamPlayerShotZones: (...a: unknown[]) => reads.roster(...a),
     retrieveTeamShotZones: (...a: unknown[]) => reads.team(...a),
+    retrieveNcaaPlayerId: (...a: unknown[]) => reads.ncaa(...a),
 }));
 const sdv = vi.hoisted(() => ({ from: vi.fn() }));
 vi.mock('../src/resources/sdv', async (orig) => ({ ...(await orig<typeof import('../src/resources/sdv')>()), retrieveRowsFrom: (...a: unknown[]) => sdv.from(...a) }));
@@ -92,6 +95,7 @@ beforeEach(() => {
     reads.player.mockResolvedValue(SZ.nba);
     reads.roster.mockResolvedValue(SZ.mbbTexas);
     reads.team.mockResolvedValue({ zones: BKN, rates: RATES.nba });
+    reads.ncaa.mockResolvedValue(null);
 });
 function ok<T extends object>(r: T | { notFound: true } | { unavailable: true }): T { if ('notFound' in r || 'unavailable' in r) throw new Error(JSON.stringify(r)); return r as T; }
 function fake(path: string, id: string, on: boolean) {
@@ -172,18 +176,35 @@ describe('the college name match', () => {
         expect(nameKey('Vokietaitis, Matas')).toBe('matas vokietaitis');
         expect(nameKey('Dëmin III')).toBe('demin');
     });
-    test("every Texas 2025-26 shooter on the season stats finds exactly his zone row, with the box's FGA", () => {
+    test("by the crosswalk: every Texas 2025-26 shooter with a pair finds exactly his zone row by id, with the box's FGA", () => {
+        const roster = MBB_PLAYERS.filter((r) => r.team_id === 251);
+        const toNcaa = new Map(XWALK.map((x) => [String(x.espn_athlete_id), String(x.ncaa_player_id)]));
+        const paired = roster.filter((p) => toNcaa.has(String(p.person_id)));
+        expect(paired.length).toBeGreaterThan(0);
+        for (const p of paired) {
+            const ncaaId = toNcaa.get(String(p.person_id))!;
+            expect(ncaaId).not.toBe(String(p.person_id)); // the page's id is not the table's: reading by it finds nothing
+            expect(collegePlayerRows(SZ.mbbTexas, String(p.person_id), 'Nobody Here')).toEqual([]);
+            // the name is never consulted when he has a pair: a wrong name still finds his row
+            const hit = collegePlayerRows(SZ.mbbTexas, ncaaId, 'Nobody Here');
+            expect(hit).toHaveLength(1);
+            expect(hit[0].player_id).toBe(ncaaId);
+            expect(hit[0].fga).toBe(p.fga_total);
+        }
+    });
+    test("by name, only the fallback for no pair: every Texas 2025-26 shooter finds exactly his zone row, with the box's FGA", () => {
         const roster = MBB_PLAYERS.filter((r) => r.team_id === 251);
         expect(roster.length).toBe(SZ.mbbTexas.length);
         for (const p of roster) {
-            const hit = collegePlayerRows(SZ.mbbTexas, p.player_name);
+            const hit = collegePlayerRows(SZ.mbbTexas, null, p.player_name);
             expect(hit).toHaveLength(1);
             expect(hit[0].fga).toBe(p.fga_total);
         }
     });
-    test('no match or two matches: no row', () => {
-        expect(collegePlayerRows(SZ.mbbTexas, 'Nobody Here')).toEqual([]);
-        expect(collegePlayerRows([...SZ.mbbTexas, { ...SZ.mbbTexas[0], player_id: 'x' }], SZ.mbbTexas[0].player_name)).toEqual([]);
+    test('no pair and no match or two matches: no row; a pair with no zone row is no row, whatever the name', () => {
+        expect(collegePlayerRows(SZ.mbbTexas, null, 'Nobody Here')).toEqual([]);
+        expect(collegePlayerRows([...SZ.mbbTexas, { ...SZ.mbbTexas[0], player_id: 'x' }], null, SZ.mbbTexas[0].player_name)).toEqual([]);
+        expect(collegePlayerRows(SZ.mbbTexas, '0', SZ.mbbTexas[0].player_name)).toEqual([]);
     });
 });
 
@@ -225,6 +246,14 @@ describe('the reads', () => {
         expect(sdv.from).toHaveBeenLastCalledWith(leagueSource('nba'), 'player_shot_zones', { season: '2026', player_id: String(PID), limit: '5' }, 21600, true, NBA_READ_TIMEOUT_MS);
         await actual.retrieveTeamPlayerShotZones('mbb', 2026, 251);
         expect(sdv.from).toHaveBeenLastCalledWith(leagueSource('mbb'), 'player_shot_zones', { season: '2026', team_id: '251', limit: '40' }, 21600, true, NBA_READ_TIMEOUT_MS);
+        // his season's stats.ncaa.org id: season-filtered (a new id every season), the crosswalk's text id as a string
+        const [pair] = XWALK;
+        sdv.from.mockImplementation(async (_s: unknown, _t: string, q: Record<string, string>) => XWALK
+            .filter((x) => String(x.season) === q.season && String(x.espn_athlete_id) === q.espn_athlete_id).map((x) => ({ ncaa_player_id: x.ncaa_player_id })));
+        expect(await actual.retrieveNcaaPlayerId('mbb', 2026, pair.espn_athlete_id)).toBe(String(pair.ncaa_player_id));
+        expect(sdv.from).toHaveBeenLastCalledWith(leagueSource('mbb'), 'ncaa_player_crosswalk', { season: '2026', espn_athlete_id: String(pair.espn_athlete_id), select: 'ncaa_player_id', limit: '5' }, 21600, true, NBA_READ_TIMEOUT_MS);
+        expect(await actual.retrieveNcaaPlayerId('mbb', 2025, pair.espn_athlete_id)).toBeNull();
+        sdv.from.mockReset();
         sdv.from.mockReset();
         sdv.from.mockImplementation(async (_s: unknown, table: string) => (table === 'team_shot_zones' ? [BKN] : RATES.nba));
         expect(await actual.retrieveTeamShotZones('nba', 2026, 1610612751)).toEqual({ zones: BKN, rates: RATES.nba });
@@ -263,15 +292,27 @@ describe('the pages', () => {
         expect(ok(await prepareBasketballTeam(b.astro, 'nba')).shotZones).toBeNull();
         expect(b.cache.at(-1)).toBe(false);
     });
-    test("prepareBasketballPlayer's college path reads his ESPN team and keeps only his row", async () => {
+    test("prepareBasketballPlayer's college path reads his ESPN team and his crosswalk id, and keeps only his row by that id", async () => {
         // the mbb page's identity reads are the NBA mock's here; the college branch is what is under test
         const first = seasonPlayerRows()[0];
+        // his name is on row 0, his crosswalk id on row 1: the id wins
         reads.roster.mockResolvedValue([{ ...SZ.mbbTexas[0], player_name: first.player_name }, ...SZ.mbbTexas.slice(1)]);
+        reads.ncaa.mockResolvedValue(String(SZ.mbbTexas[1].player_id));
         const r = ok(await prepareBasketballPlayer(fake(`/mbb/players/${first.person_id}`, String(first.person_id), true).astro, 'mbb'));
         expect(reads.roster).toHaveBeenCalledWith('mbb', 2026, first.team_id);
+        expect(reads.ncaa).toHaveBeenCalledWith('mbb', 2026, first.person_id);
         expect(reads.player).not.toHaveBeenCalled();
         expect(r.zones).toHaveLength(1);
-        expect(r.zones![0].player_id).toBe(SZ.mbbTexas[0].player_id);
+        expect(r.zones![0].player_id).toBe(SZ.mbbTexas[1].player_id);
+        // no pair: the name fallback
+        reads.ncaa.mockResolvedValue(null);
+        const n = ok(await prepareBasketballPlayer(fake(`/mbb/players/${first.person_id}`, String(first.person_id), true).astro, 'mbb'));
+        expect(n.zones!.map((z) => z.player_id)).toEqual([SZ.mbbTexas[0].player_id]);
+        // a failed crosswalk read is "unavailable", never a name guess
+        reads.ncaa.mockRejectedValueOnce(new Error('503'));
+        const b = fake(`/mbb/players/${first.person_id}`, String(first.person_id), true);
+        expect(ok(await prepareBasketballPlayer(b.astro, 'mbb')).zones).toBeNull();
+        expect(b.cache.at(-1)).toBe(false);
     });
 });
 
