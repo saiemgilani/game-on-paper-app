@@ -65,6 +65,8 @@ vi.mock('../../src/resources/playerWar', async (orig) => {
     const no = async () => { throw new Error('a WAR or EPV read with bball-war off'); };
     return { ...(await orig<typeof import('../../src/resources/playerWar')>()), retrievePlayerWar: no, retrievePlayerEpv: no };
 });
+// 'bball-player-situations' is off here too: a situational read throws and would put "unavailable" in the snapshot
+vi.mock('../../src/resources/situational', () => ({ retrievePlayerSituational: async () => { throw new Error('a situational read with bball-player-situations off'); } }));
 const games = { schedule: vi.fn(), rows: vi.fn(), proc: vi.fn() };
 vi.mock('../../src/resources/nbaGames', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaGames')>()),
@@ -101,7 +103,7 @@ async function page(path: string, url: string, params: Record<string, string> = 
     // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture', BB-G5's team season block behind 'bball-team-season'
     // BB-G15's points over expected behind 'bball-poe' and BB-G6's Impact panel behind 'bball-impact': all off here, so these
     // pages stay byte for byte main's
-    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false, 'bball-war': false, ...flagOverrides } } as App.Locals }));
+    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false, 'bball-war': false, 'bball-player-situations': false, ...flagOverrides } } as App.Locals }));
 }
 const snap = (name: string) => `./__byte_identity__/${name}.html`;
 const finalPage = { gameId: 401766458, gamepackageJSON: { header: proc.header } };

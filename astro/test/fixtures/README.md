@@ -832,3 +832,18 @@ same day, `/v1/nba_stats/epv_player_games?season=2026&player_id=1629008&select=g
 **To regenerate:** rerun the four sdv-py calls (filtered as above) and the one read (season filter and limit as above),
 wrap them as above and gzip. Once sdv-db #202's backfill has run, `/v1/{nba_stats,wnba_stats,mbb,wbb}/player_war?season=…&player_id=…&limit=5`
 replaces the sdv-py calls.
+
+## `player-situations.json.gz`
+The player page's Situations section (BB-G55, `resources/situational.ts`), captured live on 2026-11-10, sequentially, the
+`data` array of each response, no edits, all `season=2026` and `select=team_id,family,split,games,minutes,poss,opp_poss,pts,opp_pts,plus_minus,off_rtg,def_rtg,net_rtg&limit=80`
+(the module's own read), as `{nba, wnba, mbb, wbb, mbbXwalk, wbbXwalk}`: `/v1/nba_stats/situational_player?player_id=1628983`
+(Shai Gilgeous-Alexander, 25 split rows), `/v1/wnba_stats/situational_player?player_id=1628932` (A'ja Wilson, 24),
+`/v1/mbb/situational_player?player_id=11195975` (Cameron Boozer, Duke, 19: no overtime possession, no `chance` family in
+college) and `/v1/wbb/situational_player?player_id=9342023` (Joyce Edwards, South Carolina, 23). `mbbXwalk` / `wbbXwalk` are
+the `ncaa_player_id` of `player-impact-xwalk.json.gz`'s crosswalk captures (GOP#408: ESPN 5041935 -> `11195975`, ESPN
+5239100 -> `9342023`), the column the page selects.
+
+**Used by:** `test/playerSituations.test.ts`.
+
+**To regenerate:** rerun the four reads (season filter, select and limit as above, never unfiltered), wrap them as above with
+the two crosswalk ids and gzip.

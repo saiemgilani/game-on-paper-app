@@ -15,12 +15,14 @@ import { COURT } from '../../nba/data/court';
 import { placeholderSplit } from '../../nba/data/placeholder';
 import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
-import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
+import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows, type SeasonPlayerRow } from '../../resources/nbaShots';
 import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/playerImpact';
 import { hasEpv, retrievePlayerEpv, retrievePlayerWar, type EpvPlayerGameRow, type PlayerWarRow } from '../../resources/playerWar';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
+import { retrievePlayerSituational, type PlayerSplitRow } from '../../resources/situational';
 import { isFeatureEnabled } from '../../utils/features';
 import { impactShown } from '../../utils/playerImpact';
+import { parseSituation, situationsFor, type PlayerSituations } from '../../utils/situations';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
@@ -55,6 +57,8 @@ export interface BasketballPlayerParams {
     war?: PlayerWarRow[] | null;
     /** BB-G27, only with 'bball-war' on and an NBA season from 2021-22: his EPV game rows; null when the read failed */
     epv?: EpvPlayerGameRow[] | null;
+    /** BB-G55, only with 'bball-player-situations' on: the Situations section's control and his split rows; `rows` null when the read failed */
+    situations?: PlayerSituations;
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -136,6 +140,8 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const withWar = isFeatureEnabled('bball-war', Astro.locals);
     const warP = withWar ? readDecorative('WAR', league, season, personId, retrievePlayerWar) : undefined;
     const epvP = withWar && hasEpv(league, season) ? readDecorative('EPV', league, season, personId, retrievePlayerEpv) : undefined;
+    // BB-G55: the same rule again; college maps his ESPN id to the season's stats.ncaa.org id inside the read
+    const situationsP = isFeatureEnabled('bball-player-situations', Astro.locals) ? readDecorative('situational splits', league, season, personId, retrievePlayerSituational) : undefined;
     // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
     const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
     if (poe.poe === null) degraded = true;
@@ -144,6 +150,8 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const war = warP ? { war: await warP } : {};
     const epv = epvP ? { epv: await epvP } : {};
     if (war.war === null || epv.epv === null) degraded = true;
+    const situations = situationsP ? { situations: situationsOf(Astro, league, season, rows, await situationsP) } : {};
+    if (situations.situations?.rows === null) degraded = true;
 
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
@@ -170,7 +178,15 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         ...impact,
         ...war,
         ...epv,
+        ...situations,
     };
+}
+
+/** BB-G55's section: ?situation= (whitelisted; anything else is All), his rows and his teams' tricodes (a traded player's table). */
+function situationsOf(Astro: AstroGlobal, league: BasketballLeague, season: number, players: SeasonPlayerRow[], rows: PlayerSplitRow[] | null): PlayerSituations {
+    const options = situationsFor(league, season);
+    const tricodes = new Map(players.map((r) => [String(r.team_id), r.team_tricode]));
+    return { situation: parseSituation(Astro.url.searchParams.get('situation'), options), options, rows, tricodes };
 }
 
 /** BB-G6's read (the same person id as readPlayerPoe's); null when it failed. */
