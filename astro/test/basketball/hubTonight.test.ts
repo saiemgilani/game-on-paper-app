@@ -3,6 +3,7 @@
 // and a win-probability sparkline on each final card. Real ESPN scoreboard captures with the real player_box and play_wp rows
 // of those days (fixtures/README.md); the Data API is a mocked retrieveRowsFrom and fetch fails the file on any network call.
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
@@ -46,8 +47,17 @@ beforeEach(() => { sb.mockReset(); rows.mockReset(); teams.mockClear(); });
 const reads = (table: string) => rows.mock.calls.filter((c) => c[1] === table).map((c) => c[2] as Record<string, string>);
 const noScripts = (h: string) => h.replace(/<script[\s\S]*?<\/script>/g, '');
 
+/** As the NBA byte-identity test: the checkout root (island component-urls), island uids and scoped-style ids are host bytes. */
+const ROOT = fileURLToPath(new URL('../../', import.meta.url)).replaceAll('\\', '/').replace(/\/$/, '');
+const normalize = (html: string) => html.replaceAll(ROOT, '<astro-root>').replace(/ uid="[^"]*"/g, ' uid=""').replace(/data-astro-cid-[a-z0-9]+/g, 'data-astro-cid-x');
+
 let container: AstroContainer;
-beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
+beforeAll(async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-10T16:00:00Z')); // the scoreboard's off-day check reads the clock
+    container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
+});
+afterAll(() => { vi.useRealTimers(); });
 const render = async (lg: BasketballLeague, locals: Partial<App.Locals> = { preview: true }) => {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/${lg}/index.astro`);
     return container.renderToString(Page, { request: new Request(`https://gameonpaper.com/${lg}`), locals: locals as App.Locals });
@@ -60,7 +70,7 @@ describe("flag off: BB-G47's hub, byte for byte, and no new read", () => {
             rows.mockImplementation(dataFrom(lg));
             const html = await render(lg, { preview: true, flagOverrides: { 'bball-hub-tonight': false } });
             // the snapshots were written by BB-G47's code (feat/basketball-league-hub at fb2bbed3), before this change
-            await expect(html).toMatchFileSnapshot(`./__hub_byte_identity__/${lg}.html`);
+            await expect(normalize(html)).toMatchFileSnapshot(`./__hub_byte_identity__/${lg}.html`);
             expect(new Set(rows.mock.calls.map((c) => c[1]))).toEqual(new Set(['game_lines']));
         });
     }
