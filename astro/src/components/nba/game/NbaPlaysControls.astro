@@ -8,16 +8,17 @@ import { cleanAbbreviation } from '../../../utils/misc';
 import { dash } from '../../../nba/data/game';
 import { fmtPct, fmtPts } from '../../../nba/format';
 import { periodLong } from '../../../basketball/periods';
-import { ORDER_PARAM, newestFirstFor, playControls, type ControlledPlay } from '../../../basketball/playControls';
+import { ORDER_PARAM, isLiveGame, newestFirstFor, playControls, type ControlledPlay } from '../../../basketball/playControls';
 
 interface Props { game: NbaGame }
 const { game } = Astro.props;
 const c = playControls(game);
-const newestFirst = newestFirstFor(game.status.completed, Astro.url.searchParams.get(ORDER_PARAM));
+const live = isLiveGame(game.status);
+const newestFirst = newestFirstFor(live, Astro.url.searchParams.get(ORDER_PARAM));
 const periods = [...new Set(game.plays.map((p) => p.period))].sort((a, b) => a - b);
 const shown = newestFirst ? [...periods].reverse() : periods;
-// only periods before the current one collapse, and only on a live game; a final (or unknown period) opens all
-const current = game.status.completed ? -Infinity : (game.status.period ?? -Infinity);
+// only periods before the current one collapse, and only on a live game; any other game (or an unknown period) opens all
+const current = !live ? -Infinity : (game.status.period ?? -Infinity);
 const home = cleanAbbreviation(game.home.team);
 const away = cleanAbbreviation(game.away.team);
 const rowsOf = (q: number) => { const r = c.plays.filter((x) => x.play.period === q); return newestFirst ? r.reverse() : r; };
@@ -72,7 +73,7 @@ const label = (newest: boolean) => (newest ? 'Newest first' : 'Oldest first');
                 <tbody>
                     {rowsOf(q).map((x) => (
                         <tr class:list={[{ 'nba-scoring-play fw-bold': x.play.scoringPlay }]} data-k={x.kinds.join(' ')} data-team={x.play.teamId == null ? '' : String(x.play.teamId)} data-player={x.play.athleteId == null ? '' : String(x.play.athleteId)} data-big={x.big ? '1' : undefined}>
-                            <td>{x.play.clock}</td><td class="text-end">{x.play.awayScore}-{x.play.homeScore}</td><td>{x.play.text}</td><td class="text-end text-nowrap">{points(x)}</td><td class="text-end">{dash(x.play.homeWinProb, (v) => fmtPct(v, 0))}</td><td class="text-end">{dash(x.wpa, fmtPts)}</td>
+                            <td>{x.play.clock}</td><td class="text-end numeral">{x.play.awayScore}-{x.play.homeScore}</td><td>{x.play.text}</td><td class="text-end text-nowrap numeral">{points(x)}</td><td class="text-end numeral">{dash(x.play.homeWinProb, (v) => fmtPct(v, 0))}</td><td class="text-end numeral">{dash(x.wpa, fmtPts)}</td>
                         </tr>
                     ))}
                 </tbody>
@@ -121,11 +122,12 @@ const label = (newest: boolean) => (newest ? 'Newest first' : 'Oldest first');
         order?.addEventListener('click', (e) => {
             e.preventDefault();
             const newest = order.dataset.pbpOrder !== 'newest';
-            for (const d of [...root.children].reverse()) root.appendChild(d);
-            for (const b of root.querySelectorAll('tbody')) for (const r of [...b.children].reverse()) b.appendChild(r);
             const url = new URL(location.href);
             url.searchParams.set('order', newest ? 'newest' : 'oldest');
-            history.replaceState(history.state, '', url);
+            // the URL first: a refused update (rate-limited replaceState) costs only the reload memory, never the sync below
+            try { history.replaceState(history.state, '', url); } catch { /* the rows and the button still flip together */ }
+            for (const d of [...root.children].reverse()) root.appendChild(d);
+            for (const b of root.querySelectorAll('tbody')) for (const r of [...b.children].reverse()) b.appendChild(r);
             url.searchParams.set('order', newest ? 'oldest' : 'newest');
             order.href = `${url.search}#plays`;
             order.dataset.pbpOrder = newest ? 'newest' : 'oldest';

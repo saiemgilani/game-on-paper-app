@@ -72,4 +72,7 @@ export function playControls(game: NbaGame): PlayControls {
 
 /** The `?order=` the sort toggle keeps in the URL: 'newest' or 'oldest'; anything else is the default (newest first while live). */
 export const ORDER_PARAM = 'order';
-export const newestFirstFor = (completed: boolean, order: string | null): boolean => (order === 'newest' ? true : order === 'oldest' ? false : !completed);
+export const newestFirstFor = (live: boolean, order: string | null): boolean => (order === 'newest' ? true : order === 'oldest' ? false : live);
+
+/** Live as the game header says it (listed positively): a suspended, delayed or postponed game with plays is not live. */
+export const isLiveGame = (status: NbaGame['status']): boolean => !status.completed && ['STATUS_IN_PROGRESS', 'STATUS_HALFTIME', 'STATUS_END_PERIOD'].includes(status.name);

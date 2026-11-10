@@ -7,7 +7,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { beforeAll, describe, expect, test } from 'vitest';
 import NbaPlaysTable from '../src/components/nba/game/NbaPlaysTable.astro';
 import { fromDataApi, fromProcessor, type NbaGame } from '../src/resources/nbaGame';
-import { BIG_SWING, newestFirstFor, playControls, playKinds, PLAY_KINDS } from '../src/basketball/playControls';
+import { BIG_SWING, isLiveGame, newestFirstFor, playControls, playKinds, PLAY_KINDS } from '../src/basketball/playControls';
 import { isSettle } from '../src/nba/data/game';
 import { FLAGS } from '../src/utils/features';
 import type { BasketballLeague } from '../src/utils/league';
@@ -69,12 +69,17 @@ describe('BB-G40 play-by-play controls', () => {
         expect(p('End Period')).toEqual([]);
     });
 
-    test('sort: oldest first on a final, newest first while live; `?order=` overrides either way', () => {
-        expect(newestFirstFor(true, null)).toBe(false);
-        expect(newestFirstFor(false, null)).toBe(true);
-        expect(newestFirstFor(true, 'newest')).toBe(true);
-        expect(newestFirstFor(false, 'oldest')).toBe(false);
-        expect(newestFirstFor(false, 'bogus')).toBe(true);
+    test('sort: newest first while live, oldest first otherwise; `?order=` overrides either way', () => {
+        expect(newestFirstFor(false, null)).toBe(false);
+        expect(newestFirstFor(true, null)).toBe(true);
+        expect(newestFirstFor(false, 'newest')).toBe(true);
+        expect(newestFirstFor(true, 'oldest')).toBe(false);
+        expect(newestFirstFor(true, 'bogus')).toBe(true);
+        // live as the header says it: in progress, halftime, between periods; never suspended, postponed or final
+        const st = (name: string, completed = false) => ({ name, completed, period: 2, displayClock: null, detail: null });
+        for (const n of ['STATUS_IN_PROGRESS', 'STATUS_HALFTIME', 'STATUS_END_PERIOD']) expect(isLiveGame(st(n))).toBe(true);
+        for (const n of ['STATUS_SUSPENDED', 'STATUS_POSTPONED', 'STATUS_DELAYED']) expect(isLiveGame(st(n))).toBe(false);
+        expect(isLiveGame(st('STATUS_FINAL', true))).toBe(false);
     });
 
     test.each(GAMES)('%s %s: the rendered table, in both orders, with the bar and the columns', async (lg, id) => {
@@ -90,8 +95,11 @@ describe('BB-G40 play-by-play controls', () => {
         expect(firstText(fin)).toBe(game.plays[0].text.replace(/&/g, '&amp;').replace(/</g, '&lt;') || undefined);
         // every play renders once, with its filter keys
         expect([...fin.matchAll(/<tr [^>]*data-k[ =>]/g)].length).toBe(game.plays.length);
-        // the team menu's values are the plays' team ids (header ids and pbp ids are one space)
-        for (const t of [game.home.team.id, game.away.team.id]) expect(fin).toContain(`data-team="${t}"`);
+        // the team menu's values are the plays' team ids (header ids and pbp ids are one space), and each row carries its own
+        for (const t of [game.home.team.id, game.away.team.id]) expect(fin).toContain(`<option value="${t}">`);
+        const teams = [...fin.matchAll(/<tr [^>]*?data-team(?:="(\d+)")?[ >]/g)].map((m) => m[1] ?? '');
+        expect(teams).toEqual(game.plays.map((p) => (p.teamId == null ? '' : String(p.teamId))));
+        expect(new Set(teams.filter(Boolean))).toEqual(new Set([game.home.team.id, game.away.team.id]));
         const newest = await render(game, '?order=newest');
         expect(periodsOf(newest)).toEqual(periodsOf(fin).reverse());
         expect(newest).toContain('href="?order=oldest#plays"');
@@ -99,16 +107,28 @@ describe('BB-G40 play-by-play controls', () => {
         const lv = await render(live(game, 2));
         expect(periodsOf(lv)[0]).toBe(n);
         expect([...lv.matchAll(/<details( open)? data-period="(\d+)"/g)].filter((m) => m[1]).map((m) => Number(m[2])).every((q) => q >= 2)).toBe(true);
+        // a suspended game with plays is not live: oldest first, every period open
+        const sus = await render({ ...live(game, 2), status: { ...live(game, 2).status, name: 'STATUS_SUSPENDED' } });
+        expect(periodsOf(sus)).toEqual(periodsOf(fin));
+        expect([...sus.matchAll(/<details( open)? data-period/g)].every((m) => m[1])).toBe(true);
     });
 
     test('a scoring row reads its points by side; a settle row has no WPA', async () => {
         const game = proc('nba', '401766458');
         const html = await render(game);
-        expect(html).toMatch(/<td class="text-end text-nowrap">\+[123] (ATL|ORL)<\/td>/);
+        // every row's points cell against the score columns: away first, each side by its own abbreviation
+        const cells = [...html.matchAll(/<td class="text-end text-nowrap numeral">([^<]*)<\/td>/g)].map((m) => m[1]);
+        let prev = { h: 0, a: 0 };
+        const side = (n: number, t: string) => (n ? [`${n > 0 ? '+' : '−'}${Math.abs(n)} ${t}`] : []);
+        const want = game.plays.map((p) => { const d = { h: p.homeScore - prev.h, a: p.awayScore - prev.a }; prev = { h: p.homeScore, a: p.awayScore }; return [...side(d.a, 'ATL'), ...side(d.h, 'ORL')].join(', '); });
+        expect(cells).toEqual(want);
+        // and a known play: the first ATL three is "+3 ATL", never ORL
+        const three = game.plays.findIndex((p, i) => p.awayScore - (game.plays[i - 1]?.awayScore ?? 0) === 3);
+        expect(cells[three]).toBe('+3 ATL');
         const end = game.plays.find((p) => p.typeText === 'End Game')!;
         expect(end.wpDelta).not.toBeNull(); // the settle: a delta the cell must not show
         const row = [...html.matchAll(/<tr [^>]*data-k[^>]*>([\s\S]*?)<\/tr>/g)].map((m) => m[1]).find((r) => r.includes(`<td>${end.text}</td>`))!;
-        expect(row).toMatch(/<td class="text-end">–<\/td>\s*$/);
+        expect(row).toMatch(/<td class="text-end numeral">–<\/td>\s*$/);
     });
 
     test('no plays: the plain note, no bar', async () => {
