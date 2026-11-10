@@ -217,6 +217,13 @@ describe('prepareBasketballGame', () => {
         expect(cache.at(-1)).toBe(false);
         expect(headers.get('Cache-Control')).toBe('no-store');
     });
+    test('impact rows but no units yet (BB-D32 a night behind): held for the season window, not the final\'s year', async () => {
+        box.fn = () => Promise.resolve({ gameId: 'x', teams: { home: 1, away: 2 }, players: [{}], lineups: { home: [], away: [] }, names: [], inGame: { units: [], onOff: [] } });
+        ingested();
+        const { astro, cache } = fakeAstro({ preview: true });
+        await prepareBasketballGame(astro, 'nba');
+        expect((cache.at(-1) as any).maxAge).toBe(6 * 60 * 60);
+    });
 });
 
 const render = (impact: ImpactBoxReads | null, fromLog = false, homeAbbr = 'DET', awayAbbr = 'BOS') => {

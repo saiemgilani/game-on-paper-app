@@ -103,7 +103,8 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
     if (impact === null || impact?.inGame === null || flow === null || garbage === null) uncacheable(Astro);
-    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away))) setCache(Astro, seasonCache(league));
+    // (BB-G37's units can land a night after the impact rows: no units yet is the season window too)
+    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || impact?.inGame?.units.length === 0 || (flow && !flow.home && !flow.away))) setCache(Astro, seasonCache(league));
     return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}),
         ...(garbage !== undefined ? { garbage: { reads: garbage, out: Astro.url.searchParams.get(GARBAGE_PARAM) === 'out' } } : {}) };
 }
