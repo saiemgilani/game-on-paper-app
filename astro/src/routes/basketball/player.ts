@@ -16,6 +16,7 @@ import { placeholderSplit } from '../../nba/data/placeholder';
 import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
+import { retrievePlayerImpactCareer, retrievePlayerWarCareer } from '../../resources/playerCareer';
 import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/playerImpact';
 import { hasEpv, retrievePlayerEpv, retrievePlayerWar, type EpvPlayerGameRow, type PlayerWarRow } from '../../resources/playerWar';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
@@ -55,6 +56,8 @@ export interface BasketballPlayerParams {
     war?: PlayerWarRow[] | null;
     /** BB-G27, only with 'bball-war' on and an NBA season from 2021-22: his EPV game rows; null when the read failed */
     epv?: EpvPlayerGameRow[] | null;
+    /** BB-G54, only with 'bball-career' on: every season of his player_war rows and (NBA/WNBA) player_impact rows; a failed read is null */
+    career?: { war: PlayerWarRow[] | null; impact?: PlayerImpactRow[] | null };
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -136,6 +139,13 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const withWar = isFeatureEnabled('bball-war', Astro.locals);
     const warP = withWar ? readDecorative('WAR', league, season, personId, retrievePlayerWar) : undefined;
     const epvP = withWar && hasEpv(league, season) ? readDecorative('EPV', league, season, personId, retrievePlayerEpv) : undefined;
+    // BB-G54: every season of the league's range, one cached read per player whichever season page asked; college has no
+    // impact columns (BB-D16, as BB-G6)
+    const withCareer = isFeatureEnabled('bball-career', Astro.locals);
+    const [first, last] = [resolved.seasons[0] ?? season, resolved.seasons[resolved.seasons.length - 1] ?? season];
+    const careerWarP = withCareer ? readDecorative('career WAR', league, season, personId, (lg, _s, id) => retrievePlayerWarCareer(lg, first, last, id)) : undefined;
+    const careerImpactP = withCareer && (league === 'nba' || league === 'wnba')
+        ? readDecorative('career impact', league, season, personId, (_lg, _s, id) => retrievePlayerImpactCareer(league, first, last, id)) : undefined;
     // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
     const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
     if (poe.poe === null) degraded = true;
@@ -144,6 +154,8 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const war = warP ? { war: await warP } : {};
     const epv = epvP ? { epv: await epvP } : {};
     if (war.war === null || epv.epv === null) degraded = true;
+    const career = careerWarP ? { career: { war: await careerWarP, ...(careerImpactP ? { impact: await careerImpactP } : {}) } } : {};
+    if (career.career && (career.career.war === null || career.career.impact === null)) degraded = true;
 
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
@@ -170,6 +182,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         ...impact,
         ...war,
         ...epv,
+        ...career,
     };
 }
 

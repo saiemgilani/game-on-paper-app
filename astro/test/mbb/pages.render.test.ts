@@ -10,6 +10,8 @@ vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: asy
 vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => { throw new Error('a college impact read before BB-D16'); } }));
 // BB-G27's Value panel reads the Data API with 'bball-war' on (preview): never from a test
 vi.mock('../../src/resources/playerWar', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playerWar')>()), retrievePlayerWar: async () => [], retrievePlayerEpv: async () => [] }));
+// BB-G54's Career panel reads the Data API with 'bball-career' on (preview): never from a test
+vi.mock('../../src/resources/playerCareer', () => ({ retrievePlayerWarCareer: async () => [], retrievePlayerImpactCareer: async () => [] }));
 import { BASKETBALL, courtFor } from '../../src/basketball/config';
 import { NCAA_USAGE_NOTE, defaultScatterConference, withSeasonMembers } from '../../src/basketball/dashboards';
 import { leagueContextFromRows, shotsFromRows } from '../../src/nba/adapters';

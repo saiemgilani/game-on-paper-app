@@ -832,3 +832,16 @@ same day, `/v1/nba_stats/epv_player_games?season=2026&player_id=1629008&select=g
 **To regenerate:** rerun the four sdv-py calls (filtered as above) and the one read (season filter and limit as above),
 wrap them as above and gzip. Once sdv-db #202's backfill has run, `/v1/{nba_stats,wnba_stats,mbb,wbb}/player_war?season=…&player_id=…&limit=5`
 replaces the sdv-py calls.
+
+## `player-career.json.gz`
+The rows behind the player page's Career panel (BB-G54, `resources/playerCareer.ts`), as `{nba, nbaImpact, wnba, wnbaImpact, mbb, wbb}`,
+each the `data` array of one live Data API read on 2026-11-10 (no edits), the season range and his id as the page reads them:
+`/v1/nba_stats/player_war?season__gte=1998&season__lte=2026&player_id=1629008&limit=40` (Michael Porter Jr., 7 seasons),
+`/v1/nba/player_impact?…&player_id=1629008&season_type=Regular%20Season&limit=40` (his 2022, nine games, carries null RAPM / BPM
+ranks: below the gate), `/v1/wnba_stats/player_war` and `/v1/wnba/player_impact` with `season__gte=1997` for A'ja Wilson (1628932,
+9 seasons), `/v1/mbb/player_war?season__gte=2003&…&player_id=4848625` (Dailyn Swain, 3 seasons) and `/v1/wbb/player_war` for
+Joyce Edwards (5239100, 2 seasons).
+
+**Used by:** `test/playerCareer.test.ts`.
+
+**To regenerate:** rerun the six reads (season range and limit as above), wrap the `data` arrays as above and gzip.

@@ -1,0 +1,96 @@
+---
+// src/components/nba/PlayerCareer.astro
+// BB-G54, behind 'bball-career': the player page's Career panel. One row per season from sdv-db's player_war (all four
+// leagues) and, for the NBA/WNBA, player_impact's RAPM and BPM. Clicking a ranked number opens its league rank, the cohort
+// it is out of, the percentile and the sample behind it (the producer's `_rank` / `_pct` / `_n`); a native <details>, so
+// no script. The foot row draws each ranked column's percentile by season against the league median.
+import type { PlayerImpactRow } from '../../resources/playerImpact';
+import type { PlayerWarRow } from '../../resources/playerWar';
+import { careerTable, pctLabel, trendPoints, type CareerCell, type CareerColumn } from '../../utils/playerCareer';
+import { signed1 } from '../../utils/shotQuality';
+import { fmtDec, fmtInt } from '../../nba/format';
+import { playerHref, seasonQuery } from '../../nba/links';
+import { formatRank, generateColorRampValue, ordinal } from '../../utils/misc';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+
+interface Props {
+    war: PlayerWarRow[] | null;
+    /** undefined in college (no impact columns); null when the read failed */
+    impact?: PlayerImpactRow[] | null;
+    season: number;
+    current: number;
+    /** the seasons that have a player page (he took a shot): only those rows link */
+    hisSeasons: number[];
+    personId: number;
+    name: string;
+}
+const { war, impact, season, current, hisSeasons, personId, name } = Astro.props;
+const league = basketball(Astro.locals.league).league;
+const table = war ? careerTable(war, impact) : null;
+const dash = '—';
+const fmt = (c: CareerColumn, v: number | null) => (v == null ? dash : c.format === 'int' ? fmtInt(v) : c.format === 'signed1' ? signed1(v) : fmtDec(v, 1));
+const detail = (c: CareerCell) => {
+    if (c.rank == null || c.pct == null) return 'Not ranked this season';
+    const of = c.of != null ? ` of ${fmtInt(c.of)}` : '';
+    const n = c.n != null ? ` · on ${fmtInt(c.n)} possessions` : '';
+    return `Rank ${formatRank(c.rank)}${of} · ${ordinal(pctLabel(c.pct))} percentile${n}`;
+};
+const W = 72;
+const H = 24;
+const ranked = table?.columns.filter((c) => c.ranked) ?? [];
+const trends = new Map(ranked.map((c) => [c.key, table ? trendPoints(table.rows, c.key, W, H) : null]));
+const trendTitle = (key: string, label: string) => `${label} percentile by season: ${(table?.rows ?? [])
+    .filter((r) => r.cells[key]?.pct != null)
+    .map((r) => `${seasonLabelFor(league, r.season)} ${ordinal(pctLabel(r.cells[key].pct!))}`).join(', ')}`;
+---
+<section id="career" aria-label="Career" class="mb-4">
+  <h2 class="h5">Career</h2>
+  {war === null ? (<p class="text-muted" id="career-unavailable">The career numbers are temporarily unavailable.</p>) : !table ? (<p class="text-muted" id="career-empty">No career numbers for {name} yet.</p>) : (<Fragment>
+  {impact === null && (<p class="small text-muted mb-2" id="career-impact-unavailable">RAPM and BPM are temporarily unavailable.</p>)}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0" id="career-table">
+      <caption class="small text-muted">Regular season, per season. Click a shaded number for its league rank, percentile and sample. Shading by percentile; the foot row is his percentile by season, the dashed line the league median.</caption>
+      <thead><tr><th scope="col">Season</th>{table.columns.map((c) => (<th scope="col" class="text-end"><abbr title={c.hover}>{c.label}</abbr></th>))}</tr></thead>
+      <tbody>
+        {table.rows.map((r) => (
+          <tr id={`career-${r.season}`} class:list={[r.season === season && 'table-active']} aria-current={r.season === season ? 'true' : undefined}>
+            <th scope="row" class="fw-normal text-nowrap">{r.season !== season && hisSeasons.includes(r.season)
+              ? (<a href={playerHref(personId, seasonQuery(r.season, current), league)}>{seasonLabelFor(league, r.season)}</a>)
+              : seasonLabelFor(league, r.season)}</th>
+            {table.columns.map((c) => {
+              const cell = r.cells[c.key];
+              const shown = fmt(c, cell.value);
+              return c.ranked && cell.value != null
+                ? (<td class:list={['numeral', 'text-end', generateColorRampValue(cell.pct, 100)]}>
+                    <details class="career-cell"><summary>{shown}</summary><span class="small text-muted d-block text-nowrap">{detail(cell)}</span></details>
+                  </td>)
+                : (<td class="numeral text-end">{shown}</td>);
+            })}
+          </tr>
+        ))}
+      </tbody>
+      {ranked.some((c) => trends.get(c.key)) && (
+      <tfoot>
+        <tr id="career-trend">
+          <th scope="row" class="fw-normal small text-muted">vs the league</th>
+          {table.columns.map((c) => {
+            const t = trends.get(c.key);
+            return (<td class="text-end">{t && (
+              <svg width={W} height={H} viewBox={`-2 -2 ${W + 4} ${H + 4}`} role="img" aria-label={trendTitle(c.key, c.label)} class="career-trend">
+                <title>{trendTitle(c.key, c.label)}</title>
+                <line x1="0" x2={W} y1={H / 2} y2={H / 2} stroke="currentColor" stroke-opacity="0.4" stroke-dasharray="2 2" />
+                {t.runs.map((pts) => (<polyline points={pts} fill="none" stroke="currentColor" stroke-width="1.5" />))}
+                {t.dots.map(([x, y]) => (<circle cx={x} cy={y} r="1.8" fill="currentColor" />))}
+              </svg>)}</td>);
+          })}
+        </tr>
+      </tfoot>)}
+    </table>
+  </div>
+  </Fragment>)}
+</section>
+<style is:global>
+  .career-cell summary { cursor: pointer; list-style: none; text-decoration: underline dotted; text-underline-offset: 3px; }
+  .career-cell summary::-webkit-details-marker { display: none; }
+  .career-trend { vertical-align: middle; }
+</style>
