@@ -17,6 +17,7 @@ import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterR
 import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
 import { retrieveTeamShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
+import { retrieveTeamShotZones, type TeamZoneReads } from '../../resources/shotZones';
 import { isFeatureEnabled } from '../../utils/features';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
@@ -45,6 +46,8 @@ export interface BasketballTeamParams {
     seasonBlock?: TeamSeasonReads | null;
     /** BB-G15, only with 'bball-poe' on: the team-season's shot quality rows (team and shooters); null when the read failed */
     poe?: ShotQualityRow[] | null;
+    /** BB-G51, only with 'bball-shot-profile' on: the team_shot_zones row and the season rates rows; null when a read failed */
+    shotZones?: TeamZoneReads | null;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -109,10 +112,15 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     // read only once the page will render: a 404 or 503 never spends the five reads
     const flagged = isFeatureEnabled('bball-team-season', Astro.locals);
     const poeOn = isFeatureEnabled('bball-poe', Astro.locals); // BB-G15
-    const [seasonBlock, poe] = await Promise.all([flagged ? readSeasonBlock(league, season, teamId) : undefined, poeOn ? readTeamPoe(league, season, teamId) : undefined]);
-    // both are decorative: a failed read renders the rest of the page, never cached
-    if (seasonBlock === null || poe === null) uncacheable(Astro);
-    const block = { ...(flagged ? { seasonBlock } : {}), ...(poeOn ? { poe } : {}) };
+    const zonesOn = isFeatureEnabled('bball-shot-profile', Astro.locals); // BB-G51
+    const [seasonBlock, poe, shotZones] = await Promise.all([
+        flagged ? readSeasonBlock(league, season, teamId) : undefined,
+        poeOn ? readTeamPoe(league, season, teamId) : undefined,
+        zonesOn ? readTeamShotZones(league, season, teamId) : undefined,
+    ]);
+    // all decorative: a failed read renders the rest of the page, never cached
+    if (seasonBlock === null || poe === null || shotZones === null) uncacheable(Astro);
+    const block = { ...(flagged ? { seasonBlock } : {}), ...(poeOn ? { poe } : {}), ...(zonesOn ? { shotZones } : {}) };
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);
@@ -153,6 +161,16 @@ async function readTeamPoe(league: BasketballLeague, season: number, teamId: num
         return await retrieveTeamShotQuality(league, season, teamId);
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} shot quality for team ${teamId}: ${e}, ${e?.stack}`);
+        return null;
+    }
+}
+
+/** BB-G51's reads, keyed like the season tables (the stats id for the NBA/WNBA, ESPN's in college); null when one failed. */
+async function readTeamShotZones(league: BasketballLeague, season: number, teamId: number): Promise<TeamZoneReads | null> {
+    try {
+        return await retrieveTeamShotZones(league, season, teamId);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} shot zones for team ${teamId}: ${e}, ${e?.stack}`);
         return null;
     }
 }

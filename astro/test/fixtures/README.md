@@ -832,3 +832,13 @@ same day, `/v1/nba_stats/epv_player_games?season=2026&player_id=1629008&select=g
 **To regenerate:** rerun the four sdv-py calls (filtered as above) and the one read (season filter and limit as above),
 wrap them as above and gzip. Once sdv-db #202's backfill has run, `/v1/{nba_stats,wnba_stats,mbb,wbb}/player_war?season=…&player_id=…&limit=5`
 replaces the sdv-py calls.
+
+## `shot-zones.json.gz`
+The rows behind the Shot profile (BB-G51, `resources/shotZones.ts`), as `{nba, nbaTeam, wnba, mbbTexas, mbbTeam, wbbSouthCarolina}`,
+the `data` array of each live Data API read of 2026-11-10 (sdv-db #213, BB-D35; no edits):
+`/v1/nba_stats/player_shot_zones?season=2026&player_id=1629008&limit=5` (Michael Porter Jr., the player of `nba/player_games.json`),
+`/v1/nba_stats/team_shot_zones?season=2026&team_id=1610612751&limit=2` (Brooklyn, the team of `team-season-nba-2026.json.gz`),
+`/v1/wnba_stats/player_shot_zones?season=2025&player_id=1628932&limit=5` (A'ja Wilson),
+`/v1/mbb/player_shot_zones?season=2026&team_id=251&limit=40` (Texas, 13 shooters: the team of `mbb/dashboards/season_players_2026.json.gz`'s `p26`),
+`/v1/mbb/team_shot_zones?season=2026&team_id=150&limit=2` (Duke, the team of `team-season-mbb-2026.json.gz`) and
+`/v1/wbb/player_shot_zones?season=2026&team_id=2579&limit=40` (South Carolina, 11 shooters).

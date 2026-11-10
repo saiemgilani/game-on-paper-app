@@ -91,6 +91,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // interval, from sdv-db's player_war (BB-D26) and, for the NBA from 2021-22, epv_player_games (BB-D24); the Impact
     // panel then drops player_impact's WAR. Off: no read and the player page is today's, byte for byte.
     'bball-war': 'preview',
+    // The player and team pages' Shot profile (BB-G51) inside each league's flag: rim / mid-range / corner 3 / above-the-break
+    // 3 attempts, share, FG% and assisted share with the producer's ranks, from sdv-db's player_shot_zones / team_shot_zones
+    // (BB-D35), the team's allowed side, and where the points come from. Off: no read, today's pages byte for byte.
+    'bball-shot-profile': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

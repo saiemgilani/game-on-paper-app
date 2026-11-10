@@ -11,6 +11,8 @@ import NbaRosterTable from '../nba/NbaRosterTable.astro';
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import TeamSeasonBlock from '../nba/TeamSeasonBlock.astro';
 import TeamShotQuality from '../nba/TeamShotQuality.astro';
+import ShotProfile from '../nba/ShotProfile.astro';
+import { teamViews } from '../../utils/shotProfile';
 import { fmtInt, fmtPct } from '../../nba/format';
 import { teamHref, withParams } from '../../nba/links';
 import { placeholderNote } from '../../nba/data/placeholder';
@@ -20,7 +22,7 @@ import { dashboardScope, isNcaaDashboards, NCAA_USAGE_NOTE } from '../../basketb
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaTeamParams }
-const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode, coverage, empty, noPlayers, seasonBlock, poe } = Astro.props.data;
+const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode, coverage, empty, noPlayers, seasonBlock, poe, shotZones } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -54,9 +56,9 @@ const poeShown = poe === null || (poe !== undefined && poe.some((r) => r.level =
           {!empty && !noPlayers && (<a href={withParams(lp('/players'), { season: String(season), team: byIdPlayers ? String(team.team_id) : team.tricode }, { season: String(current), team: byIdPlayers ? '' : ft ? ft.tricode(season) : 'ALL' })}>{team.tricode} player list &rarr;</a>)}
         </div>
       </div>
-    </div>{seasonBlock !== undefined && (<TeamSeasonBlock data={seasonBlock} season={season} espnId={team.espn_id || team.team_id} teamName={team.name} />)}{poeShown && (<TeamShotQuality rows={poe ?? null} season={season} seasonQuery={q} names={new Map(roster.map((r) => [r.person_id, r.name]))} />)}
+    </div>{seasonBlock !== undefined && (<TeamSeasonBlock data={seasonBlock} season={season} espnId={team.espn_id || team.team_id} teamName={team.name} />)}{poeShown && (<TeamShotQuality rows={poe ?? null} season={season} seasonQuery={q} names={new Map(roster.map((r) => [r.person_id, r.name]))} />)}{shotZones !== undefined && (<ShotProfile views={shotZones === null ? null : teamViews(shotZones)} season={season} name={team.name} team />)}
     {empty ? (<p class="text-muted" id="nba-empty">{emptyNote}</p>) : (<Fragment><nav aria-label="On this page" class="small mb-3">
-      <span class="text-muted">On this page:</span>{seasonBlock !== undefined && (<a href="#season" class="ms-2">Season</a>)}{poeShown && (<a href="#poe" class="ms-2">Points over expected</a>)}
+      <span class="text-muted">On this page:</span>{seasonBlock !== undefined && (<a href="#season" class="ms-2">Season</a>)}{poeShown && (<a href="#poe" class="ms-2">Points over expected</a>)}{shotZones !== undefined && (<a href="#shot-profile" class="ms-2">Shot profile</a>)}
       <a href="#charts" class="ms-2">Shot charts</a>
       <a href="#roster" class="ms-2">Roster</a>
     </nav>

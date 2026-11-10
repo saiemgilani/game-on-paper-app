@@ -1,0 +1,66 @@
+---
+// src/components/nba/ShotProfile.astro
+// BB-G51, behind 'bball-shot-profile': the player and team pages' Shot profile. Rim / mid-range / corner 3 /
+// above-the-break 3 attempts, share of FGA, FG% and assisted share with the producer's league rank (sdv-db's
+// player_shot_zones / team_shot_zones, BB-D35), and where the points come from (rim, mid-range, 3PT, FT). Team pages show
+// the offense and what it allowed. These zones put the paint outside the restricted area in mid-range, unlike the shot
+// charts' zones below, and the panel says so.
+import type { SideView, RateCell } from '../../utils/shotProfile';
+import { fmtInt, fmtPct } from '../../nba/format';
+import { formatRank, generateColorRampValue, ordinal } from '../../utils/misc';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+import { isNcaaDashboards } from '../../basketball/dashboards';
+
+/** `views` null: the read failed; empty: no row for the subject's season. `team` picks the cohort words. */
+interface Props { views: SideView[] | null; season: number; name: string; team?: boolean }
+const { views, season, name, team = false } = Astro.props;
+const league = basketball(Astro.locals.league).league;
+const college = isNcaaDashboards(league);
+const label = seasonLabelFor(league, season);
+const dash = '—';
+const pct = (c: RateCell) => (c.value == null ? dash : fmtPct(c.value));
+const tip = (c: RateCell) => (c.rank != null && c.pct != null ? `Rank ${formatRank(c.rank)}, ${ordinal(Math.round(c.pct))} percentile` : undefined);
+const rank = (c: RateCell) => (c.rank == null ? null : `#${formatRank(c.rank)}`);
+const SCOPE = college ? 'Every game, the postseason included.' : 'Regular season.';
+const ZONE_NOTE = 'Rim is the restricted area (within 4 ft of the hoop); mid-range is every other two, the paint outside the restricted area included; a corner 3 is a three below the break. The shot charts below draw the paint as its own zone, so their zone numbers differ from these.';
+const RANK_NOTE = `Rank among the league’s ${team ? 'teams' : 'players'} once a rate’s sample reaches its gate; a one-season three-point make rate is never ranked.${team ? ' Allowed FG% ranks the stingiest first.' : ''} FG% shading by percentile.`;
+const ASSIST_NOTE = college ? 'The share of the zone’s makes that were assisted, among the makes the play-by-play links to the chart' : 'The share of the zone’s makes that were assisted';
+const COLORS: Record<string, string> = { rim: 'bg-primary', mid: 'bg-info', three: 'bg-success', ft: 'bg-warning' };
+---
+<section id="shot-profile" aria-label="Shot profile" class="mb-4">
+  <h2 class="h5">Shot profile</h2>
+  {views === null ? (<p class="text-muted" id="shot-profile-unavailable">The {label} shot profile is temporarily unavailable.</p>) : views.length === 0 ? (<p class="text-muted" id="shot-profile-empty">No {label} shot profile for {name} yet.</p>) : (<Fragment>
+  <p class="small text-muted mb-2" id="shot-profile-note">{SCOPE} {ZONE_NOTE}</p>
+  <div class="row">
+    {views.map((v) => (
+    <div class:list={['col-lg-6', 'mb-3']} id={`shot-profile-${v.title ? v.title.toLowerCase() : 'player'}`}>
+      {v.title && (<h3 class="h6">{v.title}</h3>)}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-1">
+          <caption class="small text-muted">{fmtInt(v.side.fga)} FGA{v.side.unlocated > 0 && ` (${fmtInt(v.side.unlocated)} with no location, in no zone)`}.{v.side.ranked && ` ${RANK_NOTE}`}</caption>
+          <thead><tr><th scope="col">Zone</th><th scope="col" class="text-end">FGA</th><th scope="col" class="text-end">Share</th><th scope="col" class="text-end">FG%</th><th scope="col" class="text-end"><abbr title={ASSIST_NOTE}>Assisted</abbr></th></tr></thead>
+          <tbody>
+            {v.side.zones.map((z) => (
+            <tr data-zone={z.key}>
+              <th scope="row" class="fw-normal">{z.label}</th>
+              <td class="numeral text-end">{fmtInt(z.fga)}</td>
+              <td class="numeral text-end" title={tip(z.freq)}>{pct(z.freq)}{rank(z.freq) && (<span class="small text-muted ms-1">{rank(z.freq)}</span>)}</td>
+              <td class:list={['numeral', 'text-end', generateColorRampValue(z.fgPct.pct, 100)]} title={tip(z.fgPct)}>{pct(z.fgPct)}{rank(z.fgPct) && (<span class="small text-muted ms-1">{rank(z.fgPct)}</span>)}</td>
+              <td class="numeral text-end" title={tip(z.astPct)}>{pct(z.astPct)}{rank(z.astPct) && (<span class="small text-muted ms-1">{rank(z.astPct)}</span>)}</td>
+            </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {v.comp ? (<Fragment>
+      <p class="small mb-1"><span class="text-muted">Where the {v.title === 'Allowed' ? 'points allowed' : 'points'} come from ({fmtInt(v.comp.pts)}):</span> <span class="numeral" data-composition>{v.comp.parts.map((p, i) => (<Fragment>{i > 0 && ' · '}<span data-part={p.key}>{p.label} {fmtPct(p.share, 0)}</span></Fragment>))}</span></p>
+      <div class="d-flex rounded overflow-hidden mb-1" style="height: 0.75rem" aria-hidden="true">
+        {v.comp.parts.filter((p) => p.share > 0).map((p) => (<div class={COLORS[p.key]} style={`width: ${(p.share * 100).toFixed(1)}%`}></div>))}
+      </div>
+      <p class="small text-muted mb-0">Field goals by zone at 2 or 3 points; free throws are the rest of the box score’s points.</p>
+      </Fragment>) : v.why && (<p class="small text-muted mb-0" data-composition-missing>{v.why}</p>)}
+    </div>
+    ))}
+  </div>
+  </Fragment>)}
+</section>

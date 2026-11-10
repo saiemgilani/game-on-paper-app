@@ -19,8 +19,10 @@ import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeason
 import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/playerImpact';
 import { hasEpv, retrievePlayerEpv, retrievePlayerWar, type EpvPlayerGameRow, type PlayerWarRow } from '../../resources/playerWar';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
+import { retrievePlayerShotZones, retrieveTeamPlayerShotZones, type ShotZoneRow } from '../../resources/shotZones';
 import { isFeatureEnabled } from '../../utils/features';
 import { impactShown } from '../../utils/playerImpact';
+import { collegePlayerRows } from '../../utils/shotProfile';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
@@ -55,6 +57,8 @@ export interface BasketballPlayerParams {
     war?: PlayerWarRow[] | null;
     /** BB-G27, only with 'bball-war' on and an NBA season from 2021-22: his EPV game rows; null when the read failed */
     epv?: EpvPlayerGameRow[] | null;
+    /** BB-G51, only with 'bball-shot-profile' on: his player_shot_zones rows (one per team; college: the name match); null when the read failed */
+    zones?: ShotZoneRow[] | null;
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -136,14 +140,18 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const withWar = isFeatureEnabled('bball-war', Astro.locals);
     const warP = withWar ? readDecorative('WAR', league, season, personId, retrievePlayerWar) : undefined;
     const epvP = withWar && hasEpv(league, season) ? readDecorative('EPV', league, season, personId, retrievePlayerEpv) : undefined;
+    // BB-G51: the same rule; college reads his ESPN team's rows and matches him by name (utils/shotProfile.ts collegePlayerRows)
+    const zonesP = isFeatureEnabled('bball-shot-profile', Astro.locals) ? readShotZones(league, season, personId, player) : undefined;
     // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
-    const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
+    const poe =isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
     if (poe.poe === null) degraded = true;
     const impact = impactP ? { impact: await impactP } : {};
     if (impact.impact === null) degraded = true;
     const war = warP ? { war: await warP } : {};
     const epv = epvP ? { epv: await epvP } : {};
     if (war.war === null || epv.epv === null) degraded = true;
+    const zones = zonesP ? { zones: await zonesP } : {};
+    if (zones.zones === null) degraded = true;
 
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
@@ -170,7 +178,19 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         ...impact,
         ...war,
         ...epv,
+        ...zones,
     };
+}
+
+/** BB-G51's read: the pros' rows by his stats id, college's his team's rows narrowed to him by name; null when it failed. */
+async function readShotZones(league: BasketballLeague, season: number, personId: number, player: PlayerSeason): Promise<ShotZoneRow[] | null> {
+    try {
+        if (!isNcaaDashboards(league)) return await retrievePlayerShotZones(league, season, personId);
+        return collegePlayerRows(await retrieveTeamPlayerShotZones(league, season, player.team_id), player.player_name);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} shot zones for player ${personId}: ${e}, ${e?.stack}`);
+        return null;
+    }
 }
 
 /** BB-G6's read (the same person id as readPlayerPoe's); null when it failed. */
