@@ -92,8 +92,8 @@ describe('hubTags and hubIndex', () => {
 
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
-// BB-G48's 'bball-hub-tonight' is off here: its reads and sections are hubTonight.test.ts's
-const render = async (lg: BasketballLeague, query = '', locals: Partial<App.Locals> = { preview: true, flagOverrides: { 'bball-hub-tonight': false } }) => {
+// BB-G48's 'bball-hub-tonight' and BB-G49's 'bball-hub-dashboards' are off here: their reads and sections have their own files
+const render = async (lg: BasketballLeague, query = '', locals: Partial<App.Locals> = { preview: true, flagOverrides: { 'bball-hub-tonight': false, 'bball-hub-dashboards': false } }) => {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/${lg}/index.astro`);
     return container.renderToString(Page, { request: new Request(`https://gameonpaper.com/${lg}${query}`), locals: locals as App.Locals });
 };

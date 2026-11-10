@@ -3,6 +3,7 @@
 import type { ESPNCompetition } from '../resources/espn';
 import type { GameLineRow } from '../resources/gameLines';
 import { BASKETBALL } from './config';
+import { playerHref, teamHrefFromEspn } from '../nba/links';
 import type { BasketballLeague } from '../utils/league';
 
 /** What one card prints under its teams. Every field is null when game_lines has no value for it. */
@@ -104,4 +105,78 @@ export function sparkline(homeWp: readonly (number | null)[], maxPoints = 80): s
     const step = Math.max(1, Math.ceil(wp.length / maxPoints));
     const idx = wp.map((_, i) => i).filter((i) => i % step === 0 || i === wp.length - 1);
     return idx.map((i) => `${(i / (wp.length - 1) * 100).toFixed(1)},${((1 - Math.min(1, Math.max(0, wp[i]))) * 24).toFixed(1)}`).join(' ');
+}
+
+/** BB-G49: a player_war row (the stats id and team id of the league's player pages: stats.nba.com for the pros, ESPN for college). */
+export interface WarRow { player_id: number | string; player_name: string; team_id: number | string | null; war: number | null; min: number | null }
+export interface WarLeader { name: string; team: string; war: number; href: string | null }
+
+/** The WAR board as rows of copy, best first, each linked to its player page. A row without a WAR number is left out. */
+export function warLeaders(league: BasketballLeague, rows: readonly WarRow[]): WarLeader[] {
+    const cfg = BASKETBALL[league];
+    const pages = cfg.headerMenu.some((m) => m.path === '/players');
+    return rows.filter((r) => r.war != null && Number.isFinite(Number(r.war))).sort((a, b) => Number(b.war) - Number(a.war)).map((r) => ({
+        name: r.player_name,
+        team: cfg.teams.all.find((t) => t.team_id === Number(r.team_id))?.tricode ?? '',
+        war: Math.round(Number(r.war) * 10) / 10,
+        href: pages && Number.isFinite(Number(r.player_id)) ? playerHref(Number(r.player_id), '', league) : null,
+    }));
+}
+
+/** BB-G49: the schedule columns "follow a team" reads (the college ones also carry ESPN's poll rank, 99 = unranked). */
+export interface FollowScheduleRow {
+    game_id: number | string; game_date: string; season_type: number | null; type_abbreviation: string | null; status_type_name: string | null; status_type_completed: boolean | null;
+    home_id: number | string; away_id: number | string; home_abbreviation: string | null; away_abbreviation: string | null;
+    home_score: number | null; away_score: number | null; home_current_rank?: number | null; away_current_rank?: number | null;
+}
+export interface FollowGame { id: string; date: string; opp: string; home: boolean; /** finals: 'W 112-104' */ result: string | null }
+export interface FollowTeam { id: string; name: string; href: string | null; record: string | null; rank: string | null; last: FollowGame | null; next: FollowGame | null }
+
+const ordinal = (n: number) => `${n}${[11, 12, 13].includes(n % 100) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`;
+/** a game that will not be played as listed is never "next" */
+const NOT_NEXT = /POSTPONED|CANCELED|FORFEIT|SUSPENDED/;
+
+/**
+ * Every team the picker offers (the league's teams, college: the current D-I members), as of `today` (ESPN's day): its last final
+ * on or before it, its next game on or after it (today's game while it is not final), its record and its rank. The record is the regular season for the pros (the standings') and every final for
+ * college; the rank is the pros' place by win percentage, college's ESPN poll rank as of the latest regular-season row.
+ */
+export function followTeams(league: BasketballLeague, rows: readonly FollowScheduleRow[], today: string): FollowTeam[] {
+    const cfg = BASKETBALL[league];
+    const college = cfg.currentMembers != null;
+    const known = (id: number) => (college ? cfg.currentMembers!.ids.includes(id) : cfg.teams.byEspnId(id) != null);
+    type Acc = { w: number; l: number; last: FollowGame | null; next: FollowGame | null; poll: number | null; nextPoll: number | null };
+    const acc = new Map<number, Acc>();
+    for (const g of [...rows].sort((a, b) => a.game_date.localeCompare(b.game_date))) {
+        for (const home of [true, false]) {
+            const id = Number(home ? g.home_id : g.away_id);
+            if (!known(id)) continue;
+            const a = acc.get(id) ?? { w: 0, l: 0, last: null, next: null, poll: null, nextPoll: null };
+            acc.set(id, a);
+            const opp = (home ? g.away_abbreviation : g.home_abbreviation) ?? '';
+            const poll = Number(home ? g.home_current_rank : g.away_current_rank);
+            // the NBA Cup final ('CC') is a regular-season game the standings leave out
+            const regular = Number(g.season_type) === 2 && g.type_abbreviation !== 'CC';
+            const final = g.status_type_completed === true && g.game_date <= today;
+            if (final) {
+                const us = Number(home ? g.home_score : g.away_score), them = Number(home ? g.away_score : g.home_score);
+                if (regular || (college && Number(g.season_type) === 3)) { if (us > them) a.w++; else if (us < them) a.l++; }
+                a.last = { id: String(g.game_id), date: g.game_date, opp, home, result: `${us > them ? 'W' : us < them ? 'L' : 'T'} ${us}-${them}` };
+                if (regular && Number.isFinite(poll)) a.poll = poll;
+            } else if (!a.next && g.game_date >= today && !NOT_NEXT.test(g.status_type_name ?? '')) {
+                a.next = { id: String(g.game_id), date: g.game_date, opp, home, result: null };
+                if (regular && Number.isFinite(poll)) a.nextPoll = poll;
+            }
+        }
+    }
+    const pct = (a: Acc) => (a.w + a.l ? a.w / (a.w + a.l) : null);
+    const pcts = [...acc.values()].map(pct).filter((p): p is number => p !== null);
+    return [...acc.entries()].map(([id, a]) => {
+        const p = pct(a);
+        const poll = a.nextPoll ?? a.poll;
+        const rank = college
+            ? (poll !== null && poll >= 1 && poll <= 25 ? `No. ${poll} in the poll` : null)
+            : (p === null ? null : `${ordinal(1 + pcts.filter((x) => x > p).length)} of ${pcts.length} by record`);
+        return { id: String(id), name: cfg.teams.byEspnId(id)?.name ?? String(id), href: teamHrefFromEspn({ id }, league), record: a.w + a.l ? `${a.w}-${a.l}` : null, rank, last: a.last, next: a.next };
+    }).sort((x, y) => x.name.localeCompare(y.name));
 }

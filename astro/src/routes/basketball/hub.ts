@@ -9,8 +9,9 @@
 import type { AstroGlobal } from 'astro';
 import { prepareBasketballScoreboard, type BasketballScoreboardParams } from './scoreboard';
 import { retrieveGameLines } from '../../resources/gameLines';
-import { hubIndex, hubLine, sparkline, standouts, type HubLine, type HubLink, type Standout } from '../../basketball/hub';
+import { followTeams, hubIndex, hubLine, sparkline, standouts, warLeaders, type FollowTeam, type HubLine, type HubLink, type Standout, type WarLeader } from '../../basketball/hub';
 import { retrieveDayBox, retrieveFinalsWp } from '../../resources/hubTonight';
+import { retrieveFollowSchedule, retrieveWarLeaders } from '../../resources/hubDashboards';
 import { isFeatureEnabled } from '../../utils/features';
 import { cleanAbbreviation } from '../../utils/misc';
 import { LEAGUES, type BasketballLeague } from '../../utils/league';
@@ -22,6 +23,16 @@ export interface BasketballHubParams {
     index: HubLink[];
     /** BB-G48, behind 'bball-hub-tonight'; absent with the flag off */
     tonight?: HubTonight;
+    /** BB-G49, behind 'bball-hub-dashboards'; absent with the flag off */
+    dashboards?: HubDashboards;
+}
+
+export interface HubDashboards {
+    /** the WAR board's season (end year) */
+    warSeason: number;
+    war: WarLeader[];
+    /** every team the "follow a team" picker offers, with what its card shows; the browser keeps the choice */
+    follow: FollowTeam[];
 }
 
 export interface HubTonight {
@@ -56,7 +67,12 @@ export async function prepareBasketballHub(Astro: AstroGlobal, league: Basketbal
     const games = board.games.filter((g) => g.season?.year != null).map((g) => ({ id: g.id, season: g.season.year }));
     // a degraded board's day is the server's guess, so it gets no "Tonight" reads
     const tonightOn = isFeatureEnabled('bball-hub-tonight', Astro.locals) && !board.degraded;
-    const [rows, tonight] = await Promise.all([games.length ? retrieveGameLines(league, games) : new Map(), tonightOn ? prepareTonight(league, board) : undefined]);
+    const dashboardsOn = isFeatureEnabled('bball-hub-dashboards', Astro.locals);
+    const [rows, tonight, dashboards] = await Promise.all([
+        games.length ? retrieveGameLines(league, games) : new Map(),
+        tonightOn ? prepareTonight(league, board) : undefined,
+        dashboardsOn ? prepareDashboards(league, board) : undefined,
+    ]);
     const lines: Record<string, HubLine> = {};
     for (const g of board.games) {
         const comp = g.competitions[0];
@@ -67,5 +83,18 @@ export async function prepareBasketballHub(Astro: AstroGlobal, league: Basketbal
         const line = hubLine(rows.get(g.id), { home: cleanAbbreviation(home.team), away: cleanAbbreviation(away.team) }, done && hs !== as ? (hs > as ? 'home' : 'away') : null);
         if (line) lines[g.id] = line;
     }
-    return { board, lines, index: hubIndex(league), ...(tonight ? { tonight } : {}) };
+    return { board, lines, index: hubIndex(league), ...(tonight ? { tonight } : {}), ...(dashboards ? { dashboards } : {}) };
+}
+
+/**
+ * The WAR board is the site's current season (college: the last full one until the site's season turns); "follow a team" is
+ * the board's season. A board with no games names no season, so it offers no team to follow.
+ */
+async function prepareDashboards(league: BasketballLeague, board: BasketballScoreboardParams): Promise<HubDashboards> {
+    const seasons = LEAGUES[league].seasons;
+    const warSeason = seasons[seasons.length - 1];
+    // ponytail: an off day (no games on the board) has no ESPN season, so no follow block; a date-to-season helper if that bites
+    const season = board.games.find((g) => g.season?.year != null)?.season.year ?? null;
+    const [war, sched] = await Promise.all([retrieveWarLeaders(league, warSeason), season === null ? [] : retrieveFollowSchedule(league, season)]);
+    return { warSeason, war: warLeaders(league, war), follow: followTeams(league, sched, board.today) };
 }
