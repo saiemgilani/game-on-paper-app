@@ -907,7 +907,11 @@ export interface ESPNGameSummary {
         venue?: ESPNSummaryVenue
         weather?: ESPNSummaryWeather
         attendance?: number
+        /** the crew, once ESPN has it (basketball; ids null on the summary) */
+        officials?: { fullName?: string; displayName?: string; id?: string | number | null; order?: number; position?: { name?: string } }[]
     }
+    /** each team's current injury report (not the game day's: a final's summary carries today's) */
+    injuries?: { team?: { id?: string }; injuries?: { status?: string; athlete?: { id?: string; displayName?: string }; details?: { type?: string; side?: string; detail?: string; returnDate?: string } }[] }[]
     pickcenter?: ESPNPickcenterLine[]
     leaders?: ESPNSummaryTeamLeaders[]
     lastFiveGames?: ESPNSummaryLastFive[]

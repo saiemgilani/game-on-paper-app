@@ -1,0 +1,105 @@
+---
+// src/components/nba/game/NbaGameInfo.astro
+// BB-G42, behind 'bball-game-info': the officiating crew, each official's regular season (official_seasons, BB-D34) beside
+// the league's average official, and who is unavailable: the pros' injury report and, once the game has a box, its DNPs
+// with the box's reason (college boxes carry none). Pregame, live and final (resources/gameInfo.ts has the sources).
+import type { NbaPlayerRow } from '../../../resources/nbaGame';
+import { OFFICIAL_RATES, leagueAverage, profileFor, type GameInfoReads, type InjuryEntry, type OfficialRate } from '../../../utils/gameInfo';
+import { basketball, seasonLabelFor } from '../../../basketball/config';
+import { orderPlayers } from '../../../nba/data/game';
+import { fmtDate } from '../../../nba/format';
+import { cleanAbbreviation } from '../../../utils/misc';
+
+type Team = { id: string | number; abbreviation?: string; displayName?: string };
+interface Props {
+    /** null when a read failed */
+    info: GameInfoReads | null
+    home: Team
+    away: Team
+    season: number | null
+    /** live or final: each side's box rows (their DNPs); absent pregame */
+    players?: { home: NbaPlayerRow[]; away: NbaPlayerRow[] }
+}
+const { info, home, away, season, players } = Astro.props;
+const league = basketball(Astro.locals.league).league;
+const dash = '—';
+const minus = '−';
+const signed = (v: number, digits: number) => (v > 0 ? `+${v.toFixed(digits)}` : v < 0 ? `${minus}${Math.abs(v).toFixed(digits)}` : (0).toFixed(digits));
+const COLS: { key: OfficialRate; label: string; title: string; fmt: (v: number) => string; diff: (v: number) => string }[] = [
+    { key: 'fouls_per_game', label: 'Fouls', title: 'Fouls per game, both teams', fmt: (v) => v.toFixed(1), diff: (v) => signed(v, 1) },
+    { key: 'fta_per_game', label: 'FTA', title: 'Free-throw attempts per game, both teams', fmt: (v) => v.toFixed(1), diff: (v) => signed(v, 1) },
+    { key: 'pace', label: 'Pace', title: `Possessions per ${league === 'nba' ? 48 : 40} minutes`, fmt: (v) => v.toFixed(1), diff: (v) => signed(v, 1) },
+    { key: 'home_win_pct', label: 'Home W%', title: 'Home teams\' win share, neutral sites out', fmt: (v) => `${(v * 100).toFixed(1)}%`, diff: (v) => signed(v * 100, 1) },
+    { key: 'home_minus_away_fouls', label: 'Home − away fouls', title: 'Home fouls less away fouls per game, neutral sites out', fmt: (v) => signed(v, 1), diff: (v) => signed(v, 1) },
+];
+const profiles = info?.profiles ?? [];
+const avg = leagueAverage(profiles);
+const crew = (info?.officials ?? []).map((o) => ({ o, p: profileFor(o, profiles) }));
+const withProfiles = crew.some((c) => c.p);
+const label = season != null ? seasonLabelFor(league, season) : '';
+const cell = (p: Record<string, any> | null, k: OfficialRate, c: typeof COLS[number]) => {
+    const v = p?.[k];
+    return v == null ? null : { text: c.fmt(v), diff: avg[k] != null ? c.diff(v - avg[k]!) : null };
+};
+const sides = [{ key: 'away', team: away }, { key: 'home', team: home }] as const;
+const injured = (t: Team) => (info?.injuries?.rows ?? []).filter((r) => r.teamId === Number(t.id));
+const dnp = (k: 'home' | 'away') => (players ? orderPlayers(players[k]).dnp : []);
+const anyDnp = players != null && sides.some((s) => dnp(s.key).length > 0);
+const ret = (d: string | null) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? `est. return ${fmtDate(d.slice(0, 10))}` : null);
+const detail = (r: InjuryEntry) => [r.status, r.injury, ret(r.returnDate)].filter(Boolean).join(', ');
+---
+{info === null ? (<p class="small text-muted mb-0" id="game-info-unavailable">The crew and the injury report could not be loaded right now.</p>) : (
+<Fragment>
+<h3 class="h6">Officials</h3>
+{crew.length === 0 ? (<p class="small text-muted" id="officials-none">No officials listed yet.</p>) : !withProfiles ? (
+<ul class="list-inline small mb-3" id="officials-crew">{crew.map(({ o }) => <li class="list-inline-item">{o.name}</li>)}</ul>
+) : (
+<Fragment>
+<div class="table-responsive">
+<table class="table table-sm numeral table-fix-first-col" aria-label="Officials, season profile">
+    <thead><tr><th scope="col" class="text-start">{label} regular season</th><th scope="col" class="text-end" title="Games worked">G</th>{COLS.map((c) => <th scope="col" class="text-end" title={c.title}>{c.label}</th>)}</tr></thead>
+    <tbody>
+        {crew.map(({ o, p }) => (
+            <tr>
+                <th scope="row" class="text-start fw-normal text-nowrap">{o.name}</th>
+                <td class="text-end">{p ? p.games : dash}</td>
+                {COLS.map((c) => { const v = cell(p, c.key, c); return <td class="text-end text-nowrap">{v ? v.text : dash}{v?.diff && <span class="small text-muted"> ({v.diff})</span>}</td>; })}
+            </tr>
+        ))}
+    </tbody>
+    <tfoot><tr class="text-muted"><th scope="row" class="text-start fw-normal">League average</th><td class="text-end">{dash}</td>{COLS.map((c) => <td class="text-end">{avg[c.key] == null ? dash : c.fmt(avg[c.key]!)}</td>)}</tr></tfoot>
+</table>
+</div>
+<p class="small text-muted">{`Each official's completed regular-season games in ${label}; in brackets, the difference from the league average (every official's season, weighted by games). Home figures leave out neutral sites.`}</p>
+</Fragment>
+)}
+<h3 class="h6">Availability</h3>
+{info.injuries === undefined ? (<p class="small text-muted" id="injuries-none-college">No injury report is published for college games.</p>) : info.injuries.snapshot && !info.injuries.asOf ? (<p class="small text-muted" id="injuries-none-filed">No injury report on file for the days before this game.</p>) : (
+<Fragment>
+<div class="row" id="injury-report">
+    {sides.map((s) => (
+        <div class="col-12 col-md-6">
+            <p class="small fw-semibold mb-1">{cleanAbbreviation(s.team)} injury report</p>
+            {injured(s.team).length === 0 ? (<p class="small text-muted">No one listed.</p>) : (
+            <ul class="list-unstyled small">{injured(s.team).map((r) => <li><span>{r.name}</span>{detail(r) && <span class="text-muted"> – {detail(r)}</span>}</li>)}</ul>
+            )}
+        </div>
+    ))}
+</div>
+<p class="small text-muted">{info.injuries.asOf ? `ESPN's injury report as last filed by the game day, on ${fmtDate(info.injuries.asOf)}.` : 'ESPN\'s current injury report.'}</p>
+</Fragment>
+)}
+{anyDnp && (
+<div class="row" id="dnp-list">
+    {sides.map((s) => (
+        <div class="col-12 col-md-6">
+            <p class="small fw-semibold mb-1">{cleanAbbreviation(s.team)} did not play</p>
+            {dnp(s.key).length === 0 ? (<p class="small text-muted">Everyone played.</p>) : (
+            <ul class="list-unstyled small">{dnp(s.key).map((p) => <li><span>{p.name}</span>{p.reason && <span class="text-muted"> – {p.reason}</span>}</li>)}</ul>
+            )}
+        </div>
+    ))}
+</div>
+)}
+</Fragment>
+)}

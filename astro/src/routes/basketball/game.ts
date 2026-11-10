@@ -15,6 +15,8 @@ import type { BasketballLeague } from '../../utils/league';
 import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBox';
 import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
 import { retrieveGarbageTime, type GarbageReads } from '../../resources/garbageTime';
+import { retrieveGameInfo } from '../../resources/gameInfo';
+import type { GameInfoReads } from '../../utils/gameInfo';
 import { seasonCache, setCache, uncacheable } from './cache';
 
 /** The admin source tool's data (components/nba/game/NbaAdminSourceTools.astro); only an admin on the 'source-switch' path gets it. */
@@ -31,7 +33,9 @@ export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { 
     /** `impact`: BB-G1, only with 'bball-impact-box' on and a final; null when a read failed (the panel says so) */
     /** `flow`: BB-G28, only with 'bball-game-flow' on and a final; null when its read failed (the lead chart still draws) */
     /** `garbage`: BB-G2, only with 'bball-garbage-time' and 'bball-impact-box' on and a final; `reads` null when the log's read failed */
-    | { game: NbaGame; sourceTools?: BasketballSourceTools; impact?: ImpactBoxReads | null; flow?: GameFlowReads | null; garbage?: { reads: GarbageReads | null; out: boolean } };
+    | { game: NbaGame; sourceTools?: BasketballSourceTools; impact?: ImpactBoxReads | null; flow?: GameFlowReads | null; garbage?: { reads: GarbageReads | null; out: boolean }
+        /** `info`: BB-G42, only with 'bball-game-info' on, live or final; null when a read failed (the panel says so) */
+        info?: GameInfoReads | null };
 
 /** BB-G2's toggle: `?garbage=out` leaves the garbage-time possessions out; read only with 'bball-garbage-time' on. */
 export const GARBAGE_PARAM = 'garbage';
@@ -85,6 +89,23 @@ function degraded(id: string, message: string, league: BasketballLeague): void {
 
 export async function prepareBasketballGame(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballGamePrep> {
     const r = await prepareGame(Astro, league);
+    // BB-G42's Game info, live or final (the pregame page reads its own from the summary it holds)
+    if (!('game' in r) || !isFeatureEnabled('bball-game-info', Astro.locals)) return finalPanels(Astro, league, r);
+    const game = r.game;
+    const [p, info] = await Promise.all([finalPanels(Astro, league, r), retrieveGameInfo(league, game).catch((e: any) => {
+        console.error(`ERROR while loading the ${league} game info for game ${game.id}: ${e}, ${e?.stack}`);
+        return null;
+    })]);
+    // decorative like the final's panels: a failed read is never cached. An ingested final's season profiles move with the
+    // nightly products, so it follows their window -- unless a panel's failed read (a null) already made it uncacheable
+    const failed = (v: object) => Object.values(v).some((x) => x === null || (x && typeof x === 'object' && 'reads' in x && x.reads === null));
+    if (info === null) uncacheable(Astro);
+    else if (game.source === 'data_api' && !failed(p)) setCache(Astro, seasonCache(league));
+    return { ...(p as Extract<BasketballGamePrep, { game: NbaGame }>), info };
+}
+
+/** The final's panels (BB-G1, BB-G28, BB-G2): read only once a final will render. */
+async function finalPanels(Astro: AstroGlobal, league: BasketballLeague, r: BasketballGamePrep): Promise<BasketballGamePrep> {
     // read only once a final will render: a 404, 503, pregame or live page never spends the reads, and flag off is today's page.
     // The producer's tables are per season, so a game with no season has nothing to read (no panel, not "unavailable").
     if (!('game' in r) || !r.game.status.completed || r.game.season == null) return r;

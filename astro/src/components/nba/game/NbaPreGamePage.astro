@@ -9,6 +9,9 @@ import { basketball } from '../../../basketball/config';
 import { cleanAbbreviation } from '../../../utils/misc';
 import RecentForm from '../../game/RecentForm.astro';
 import NbaPlayersToWatch from './NbaPlayersToWatch.astro';
+import NbaGameInfo from './NbaGameInfo.astro';
+import { pregameInfo } from '../../../resources/gameInfo';
+import { isFeatureEnabled } from '../../../utils/features';
 import { basketballEventJsonLd } from '../../../basketball/parity';
 import { retrieveGameSummary, type ESPNPlayByPlayResponse } from '../../../resources/espn';
 
@@ -32,6 +35,8 @@ const description = `${away.team.displayName}${paren(away)} at ${home.team.displ
 const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: leaguePath(league, '/'), active: false }, { title: 'Scoreboard', url: scoreboardDayHref(league, comp.date), active: false }, { title: `${ab(away)} @ ${ab(home)}`, active: true }];
 const networks = ((comp as any).broadcasts ?? []).map((b: any) => b?.media?.shortName).filter(Boolean).join(', ');
 const season = espnGame.gamepackageJSON.header.season?.year ?? null;
+// BB-G42 ('bball-game-info'): the crew and the injury report from the summary above, the profiles from the Data API; a failed read costs the panel
+const info = isFeatureEnabled('bball-game-info', Astro.locals) ? await pregameInfo(league, season, summary).catch((e: any) => { console.error(`ERROR while loading the ${league} game info for game ${espnGame.gameId}: ${e}`); return null; }) : undefined;
 const jsonLd = basketballEventJsonLd({
     league, path: gameHref(league, espnGame.gameId), date: comp.date, description, venue: (comp as any).venue?.fullName ?? null, statusDetail: comp.status?.type?.description ?? null,
     home: { name: home.team.displayName, href: teamHrefFromEspn(home.team, league, season), score: null },
@@ -49,5 +54,6 @@ const jsonLd = basketballEventJsonLd({
   <div class="container">
     {season !== null && <NbaPlayersToWatch homeTeam={home.team} awayTeam={away.team} season={season} />}
     <RecentForm summary={summary} homeTeam={home.team} awayTeam={away.team} />
+    {info !== undefined && (<section id="info" class="mt-3"><h2 class="h5">Game info</h2><NbaGameInfo info={info} home={home.team} away={away.team} season={season} /></section>)}
   </div>
 </GenericPage>
