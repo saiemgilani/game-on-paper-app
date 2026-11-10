@@ -49,7 +49,7 @@ const trendTitle = (key: string, label: string) => `${label} percentile by seaso
   {impact === null && (<p class="small text-muted mb-2" id="career-impact-unavailable">RAPM and BPM are temporarily unavailable.</p>)}
   <div class="table-responsive">
     <table class="table table-sm align-middle mb-0" id="career-table">
-      <caption class="small text-muted">Regular season, per season. Click a shaded number for its league rank, percentile and sample. Shading by percentile; the foot row is his percentile by season, the dashed line the league median.</caption>
+      <caption class="small text-muted">Regular season, per season. Click a dotted number for its league rank, percentile and sample. Shading by percentile; the foot row is his percentile by season, the dashed line the league median.</caption>
       <thead><tr><th scope="col">Season</th>{table.columns.map((c) => (<th scope="col" class="text-end"><abbr title={c.hover}>{c.label}</abbr></th>))}</tr></thead>
       <tbody>
         {table.rows.map((r) => (
@@ -62,7 +62,7 @@ const trendTitle = (key: string, label: string) => `${label} percentile by seaso
               const shown = fmt(c, cell.value);
               return c.ranked && cell.value != null
                 ? (<td class:list={['numeral', 'text-end', generateColorRampValue(cell.pct, 100)]}>
-                    <details class="career-cell"><summary>{shown}</summary><span class="small text-muted d-block text-nowrap">{detail(cell)}</span></details>
+                    <details class="career-cell"><summary>{shown}</summary><span class="small d-block career-detail">{detail(cell)}</span></details>
                   </td>)
                 : (<td class="numeral text-end">{shown}</td>);
             })}
@@ -92,5 +92,8 @@ const trendTitle = (key: string, label: string) => `${label} percentile by seaso
 <style is:global>
   .career-cell summary { cursor: pointer; list-style: none; text-decoration: underline dotted; text-underline-offset: 3px; }
   .career-cell summary::-webkit-details-marker { display: none; }
+  /* the open detail wraps under its number instead of widening the column */
+  /* in the cell's own colour: muted grey is unreadable on the percentile shading */
+  .career-detail { max-width: 9rem; margin-left: auto; white-space: normal; }
   .career-trend { vertical-align: middle; }
 </style>
