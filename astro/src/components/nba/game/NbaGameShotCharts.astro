@@ -1,17 +1,23 @@
 ---
 // One shot chart per team; ESPN's sentinel locations arrive as null, so a game with none shows a message, not an empty court.
+// BB-G39 ('bball-game-shooting'): with the season's league curve, each team's signature and FG% distance bars sit under its
+// chart in one `data-shot-link` dashboard, so a distance hovered or clicked on any of the three marks it on the others.
 import GameShotChart from '../charts/GameShotChart.svelte';
+import ShootingSignature from '../charts/ShootingSignature.svelte';
+import DistanceBars from '../charts/DistanceBars.svelte';
+import { distanceCharts, type LeagueContext } from '../../../nba/dashboard';
 import type { NbaGame } from '../../../resources/nbaGame';
 import { shotsOf, unlocatedShots } from '../../../nba/data/game';
-import type { GameShot } from '../../../nba/charts/gameShotChart';
+import { gameShotsLite, type GameShot } from '../../../nba/charts/gameShotChart';
 import { cleanAbbreviation } from '../../../utils/misc';
 import { COURT } from '../../../nba/data/court';
 import { islandPeriodProps } from '../../../basketball/periods';
-import { basketball, courtFor } from '../../../basketball/config';
+import { basketball, courtFor, seasonLabelFor } from '../../../basketball/config';
 import { placeholderNote } from '../../../nba/data/placeholder';
+import { dashboardScope } from '../../../basketball/dashboards';
 
-interface Props { game: NbaGame }
-const { game } = Astro.props;
+interface Props { game: NbaGame; /** BB-G39: the league curve; absent, null (a failed read) or empty (fgPct null): the charts alone */ shooting?: LeagueContext | null }
+const { game, shooting } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const court = courtFor(league, game.season);
@@ -24,7 +30,11 @@ const toShots = (teamId: string): GameShot[] => {
         ...(un.has(p) ? { unlocated: true as const } : {}),
     }));
 };
-const sides = [game.away, game.home].map((s) => ({ side: s, shots: toShots(s.team.id) }));
+const sides = [game.away, game.home].map((s) => {
+    const shots = toShots(s.team.id);
+    const located = shooting?.fgPct != null ? gameShotsLite(shots, game.id) : [];
+    return { side: s, shots, distance: located.length > 0 ? distanceCharts(located, shooting!) : null };
+});
 const total = sides.reduce((n, s) => n + s.shots.length, 0);
 const unplaced = sides.reduce((n, s) => n + s.shots.filter((x) => x.unlocated).length, 0);
 ---
@@ -32,6 +42,13 @@ const unplaced = sides.reduce((n, s) => n + s.shots.filter((x) => x.unlocated).l
     ? <p class="text-muted m-0">ESPN has no shot locations for this game.</p>
     : unplaced === total
     ? <p class="text-muted m-0">ESPN has no shot locations for this game: {placeholderNote(unplaced, total, 'game')}</p>
-    : <div class="row">{sides.map(({ side, shots }) => (
-        <div class="col-12 col-lg-6"><h3 class="h6">{cleanAbbreviation(side.team)}</h3><GameShotChart client:load shots={shots} title={`${side.team.displayName} shots`} periods={game.periods} {...islandPeriodProps(game.regulation, game.periodKind)} {...(court === COURT ? {} : { court })} /></div>
-    ))}</div>}
+    : <div class="row">{sides.map(({ side, shots, distance }) => {
+        const chart = <GameShotChart client:load shots={shots} title={`${side.team.displayName} shots`} periods={game.periods} {...islandPeriodProps(game.regulation, game.periodKind)} {...(court === COURT ? {} : { court })} />;
+        return (
+        <div class="col-12 col-lg-6"><h3 class="h6">{cleanAbbreviation(side.team)}</h3>{distance
+            ? (<div data-shot-link>{chart}
+                <h4 class="h6 small text-muted mt-2">Shooting signature</h4><ShootingSignature client:load data={distance.signature} title={`${side.team.displayName} FG% by distance vs league`} />
+                <h4 class="h6 small text-muted mt-2">Field goal percentage by distance</h4><DistanceBars client:load data={distance.bars} metric="fgPct" subjectLabel={cleanAbbreviation(side.team)} pinnable title={`${side.team.displayName} FG% by distance vs league`} />
+                <p class="small text-muted mb-3">League: {seasonLabelFor(league, game.season!)} {dashboardScope(league, game.season!).noun}. Hover a distance to mark it on every chart; click a bar to hold it.</p></div>)
+            : chart}</div>
+    ); })}</div>}
