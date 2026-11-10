@@ -839,3 +839,22 @@ within one (the log leaves the defense's technical free throws out); rebounds hi
 
 **To regenerate:** rerun those calls in an sdv-py checkout of `origin/main` (polars, no network beyond the GitHub
 release assets), write `{...}` above with `json.dumps(..., default=str)` and gzip (`mtime=0`).
+
+## `team-grid-{nba-401585607,wnba-401736325,mbb-401820775,wbb-401805076}.json.gz`
+
+BB-G32's team stats grid (`'bball-team-grid'`). One game per league, `{league, season, payload, team_season_rates}`:
+
+- `payload`: the offline body of `GET /<league>/<id>/process` (python/app.py through Flask's test client, the ESPN download
+  patched to return `python/tests/fixtures/<league>_summary_<id>.json.gz`, sportsdataverse lock 0bb4db3e, the BB-D31 merge).
+  It carries the new `splits` key (each side's counted team split row and its players' rows). Generated 2026-11-10.
+- `team_season_rates`: the Data API's `/<schema>/team_season_rates?season=<s>&split=all&select=team_id,games,poss,pts,efg_pct,
+  tov_pct,orb_pct,ft_rate,off_rtg,def_rtg,pace&limit=1000`, read 2026-11-10: `nba_stats` 2024 (30 rows), `wnba_stats` 2025
+  (13), `mbb` 2026 (365), `wbb` 2026 (358).
+
+Games: TOR 96 at ORL 111 (2023-24), SEA 80 at ATL 78 (2025), NC State 90 at Notre Dame 96 in overtime (2025-26), UTEP 87 at
+Louisiana Tech 91 in overtime (2025-26).
+
+**Used by:** `test/teamGrid.test.ts`.
+
+**To regenerate:** in `python/`, rerun the offline route call above per game and the four reads (season filter, one capped read
+each), then write the object with `json.dumps(..., separators=(",", ":"))` and gzip (`mtime=0`).

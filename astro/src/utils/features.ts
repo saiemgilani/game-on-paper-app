@@ -88,6 +88,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // No toggle when the log has no flag (a release from before BB-D7) or no garbage time. Off: no read, `?garbage=` is
     // ignored, and the game page is today's, byte for byte.
     'bball-garbage-time': 'preview',
+    // BB-G32's team stats grid on /<league>/game/[id], live or final: the four factors and the team box in one panel, two
+    // columns at lg; the better side tinted with the gap printed, sdv-py's counted possessions (BB-D31, the processor
+    // only) beside the box estimate, each team's season rates under its game's (sdv-db team_season_rates, split all) and
+    // the four-factor point accounting against that season's league average. Off: no read, the game page is today's,
+    // byte for byte. `?garbage=out` keeps BB-G2's split tables.
+    'bball-team-grid': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

@@ -1,0 +1,114 @@
+---
+// src/components/nba/game/NbaTeamGrid.astro
+// BB-G32, behind 'bball-team-grid': the four factors and the team box in one panel, side by side at lg. The better side
+// of each rated row is tinted, with the gap printed; sdv-py's counted possessions (BB-D31, the processor only) sit beside
+// the box estimate; each team's season rate is a muted row under its game rate; and the four-factor accounting prices
+// each side's factors against the season's league-average possession (utils/teamGrid.ts). Every rate is the producer's.
+import type { NbaGame, NbaTeamRates } from '../../../resources/nbaGame';
+import type { SeasonRates, TeamGridSeason } from '../../../resources/teamGrid';
+import NbaTeamBox from './NbaTeamBox.astro';
+import { dash } from '../../../nba/data/game';
+import { fmtDec, fmtPct } from '../../../nba/format';
+import { cleanAbbreviation } from '../../../utils/misc';
+import { accounting, edge, type Accounting, type Better } from '../../../utils/teamGrid';
+
+interface Props { game: NbaGame; /** absent: flag on but no read (no season); null: the read failed */ season?: TeamGridSeason | null }
+const { game, season } = Astro.props;
+const h = game.home.rates, a = game.away.rates;
+const away = cleanAbbreviation(game.away.team), home = cleanAbbreviation(game.home.team);
+type Row = { label: string; key: keyof NbaTeamRates; fmt: (n: number) => string; gap: (n: number) => string; better: Better; season: boolean };
+const pct = (n: number) => fmtPct(n, 1), pp = (n: number) => fmtDec(n * 100, 1), dec1 = (n: number) => fmtDec(n, 1), dec3 = (n: number) => fmtDec(n, 3);
+const rows: Row[] = [
+    { label: 'eFG%', key: 'efg_pct', fmt: pct, gap: pp, better: 'high', season: true },
+    { label: 'TOV%', key: 'tov_pct', fmt: pct, gap: pp, better: 'low', season: true },
+    { label: 'ORB%', key: 'orb_pct', fmt: pct, gap: pp, better: 'high', season: true },
+    { label: 'FT rate', key: 'ft_rate', fmt: dec3, gap: dec3, better: 'high', season: true },
+    { label: 'Possessions (box estimate)', key: 'possessions', fmt: dec1, gap: dec1, better: 'none', season: false },
+    { label: 'ORtg', key: 'off_rtg', fmt: dec1, gap: dec1, better: 'high', season: true },
+    { label: 'DRtg', key: 'def_rtg', fmt: dec1, gap: dec1, better: 'low', season: true },
+    { label: 'Pace', key: 'pace', fmt: dec1, gap: dec1, better: 'none', season: true },
+];
+const counted = game.home.splits || game.away.splits ? { away: game.away.splits?.possessions ?? null, home: game.home.splits?.possessions ?? null } : null;
+const seasonOf = (s: 'away' | 'home', key: keyof NbaTeamRates) => season?.[s]?.[key as keyof SeasonRates] ?? null;
+const withSeason = !!(season?.away || season?.home);
+const minutes = h?.game_minutes ?? a?.game_minutes ?? null;
+// the accounting's possessions: the side's own count when the processor has it, else the box estimate
+const lg = season?.league ?? null;
+const acct = (s: 'away' | 'home'): Accounting => accounting(game[s], game[s === 'away' ? 'home' : 'away'], game[s].splits?.possessions ?? game[s].rates?.possessions ?? null, lg);
+const books = { away: acct('away'), home: acct('home') };
+const acctRows: { label: string; key: keyof Accounting }[] = [
+    { label: 'Shooting', key: 'shooting' }, { label: 'Turnovers', key: 'turnovers' }, { label: 'Offensive rebounding', key: 'rebounding' }, { label: 'Free throws', key: 'freeThrows' }, { label: 'Total', key: 'total' },
+];
+const signed = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1)}`;
+const tint = (side: 'away' | 'home', e: ReturnType<typeof edge>) => ['text-end', { 'table-success': e?.side === side }];
+---
+<div class="row g-4" id="team-grid">
+  <div class="col-12 col-lg-6">
+    <h3 class="h6">Four factors</h3>
+    {(!h || !a) ? <p class="text-muted">Four factors are unavailable for this game.</p> : (
+    <Fragment>
+    <div class="table-responsive"><table class="table table-sm numeral mb-2" aria-label="Four factors">
+        <thead><tr><th scope="col"><span class="visually-hidden">Metric</span></th><th scope="col" class="text-end">{away}</th><th scope="col" class="text-end">{home}</th><th scope="col" class="text-end">Gap</th></tr></thead>
+        <tbody>
+            {rows.map((r) => {
+                const e = edge(r.better, a[r.key], h[r.key]);
+                return (
+                <Fragment>
+                <tr>
+                    <th scope="row" class="fw-normal">{r.label}</th>
+                    <td class:list={tint('away', e)}>{dash(a[r.key], r.fmt)}</td>
+                    <td class:list={tint('home', e)}>{dash(h[r.key], r.fmt)}</td>
+                    <td class="text-end text-muted">{e ? r.gap(e.gap) : ''}</td>
+                </tr>
+                {r.key === 'possessions' && counted && (
+                <tr>
+                    <th scope="row" class="fw-normal">Possessions (counted)</th>
+                    <td class="text-end">{dash(counted.away, (n) => String(n))}</td>
+                    <td class="text-end">{dash(counted.home, (n) => String(n))}</td>
+                    <td></td>
+                </tr>)}
+                {r.season && withSeason && (
+                <tr class="small text-muted">
+                    <th scope="row" class="fw-normal ps-3">season</th>
+                    <td class="text-end">{dash(seasonOf('away', r.key), r.fmt)}</td>
+                    <td class="text-end">{dash(seasonOf('home', r.key), r.fmt)}</td>
+                    <td></td>
+                </tr>)}
+                </Fragment>);
+            })}
+        </tbody>
+    </table></div>
+    {lg && (
+    <Fragment>
+    <h3 class="h6 mt-3">Four-factor accounting</h3>
+    <div class="table-responsive"><table class="table table-sm numeral mb-2" aria-label="Four-factor accounting">
+        <thead><tr><th scope="col"><span class="visually-hidden">Factor</span></th><th scope="col" class="text-end">{away}</th><th scope="col" class="text-end">{home}</th><th scope="col" class="text-end">Gap</th></tr></thead>
+        <tbody>
+            {acctRows.map((r) => {
+                const e = edge('high', books.away[r.key], books.home[r.key]);
+                return (
+                <tr class:list={{ 'fw-semibold': r.key === 'total' }}>
+                    <th scope="row" class:list={{ 'fw-normal': r.key !== 'total' }}>{r.label}</th>
+                    <td class:list={tint('away', e)}>{dash(books.away[r.key], signed)}</td>
+                    <td class:list={tint('home', e)}>{dash(books.home[r.key], signed)}</td>
+                    <td class="text-end text-muted">{e ? dec1(e.gap) : ''}</td>
+                </tr>);
+            })}
+        </tbody>
+    </table></div>
+    </Fragment>)}
+    <p class="small text-muted mb-0">
+      Tinted: the better side; the gap is in percentage points for eFG%, TOV% and ORB%. Possessions (box estimate) is Oliver's
+      (FGA minus ORB plus TOV plus 0.44 FTA, averaged over both teams){counted && '; counted possessions come from the play-by-play, one team at a time, and the box estimate runs a few percent above the count in the pros'}.
+      Ratings are per 100 estimated possessions{minutes != null ? `; pace is per ${minutes} minutes${game.hasOvertime ? ' (overtime included)' : ''}` : ''}.
+      {withSeason && ' Season rows are each team\'s season rates, counted from its possessions (turnovers per possession), so they sit a little apart from the game\'s box-based rates.'}
+      {lg && ' Accounting: the points each factor added (+) or cost (−) against a league-average offense that season, on the same shots, possessions and rebound chances; a turnover saved or an extra offensive rebound is worth a league-average scoring chance, and an extra free throw the team\'s own FT% in the game less the share of a chance it uses.'}
+      {season === null && ' The season context is temporarily unavailable.'}
+    </p>
+    </Fragment>)}
+  </div>
+  <div class="col-12 col-lg-6" id="teambox">
+    <h3 class="h6">Team box</h3>
+    <NbaTeamBox game={game} />
+  </div>
+</div>
