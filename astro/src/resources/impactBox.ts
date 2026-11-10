@@ -59,6 +59,81 @@ export interface ImpactBoxReads {
     /** each side's top units, most minutes first */
     lineups: { home: LineupRow[]; away: LineupRow[] };
     names: ImpactName[];
+    /** BB-G37 ('bball-ingame-lineups'): every 1- to 5-man unit and each player's on/off; null when its reads failed, absent with the flag off */
+    inGame?: InGameReads | null;
+}
+
+/**
+ * One 1- to 5-man unit's game (sdv-db game_units, BB-D32): summed over every stretch its players were all on the floor,
+ * whoever the rest were. Rates are fractions, ratings per 100 possessions.
+ */
+export interface UnitRow {
+    team_id: number;
+    n_players: number;
+    /** the unit's player ids, sorted and joined with '-' */
+    lineup_id: string;
+    player_1: number | string;
+    player_2: number | string | null;
+    player_3: number | string | null;
+    player_4: number | string | null;
+    player_5: number | string | null;
+    minutes: number | null;
+    seconds: number;
+    poss: number;
+    opp_poss: number;
+    pts: number;
+    opp_pts: number;
+    plus_minus: number | null;
+    off_rtg: number | null;
+    def_rtg: number | null;
+    net_rtg: number | null;
+    efg_pct: number | null;
+    opp_efg_pct: number | null;
+    tov_pct: number | null;
+    opp_tov_pct: number | null;
+    orb_pct: number | null;
+    opp_orb_pct: number | null;
+    fg3_rate: number | null;
+    opp_fg3_rate: number | null;
+    rim_rate: number | null;
+    opp_rim_rate: number | null;
+}
+const UNIT_SELECT = 'team_id,n_players,lineup_id,player_1,player_2,player_3,player_4,player_5,minutes,seconds,poss,opp_poss,pts,opp_pts,plus_minus,'
+    + 'off_rtg,def_rtg,net_rtg,efg_pct,opp_efg_pct,tov_pct,opp_tov_pct,orb_pct,opp_orb_pct,fg3_rate,opp_fg3_rate,rim_rate,opp_rim_rate';
+/** ~250 units a side (every 1- to 5-man subset that shared the floor); at the cap the read is a failure, never a short table */
+export const UNIT_LIMIT = 3000;
+
+/** One player's game with him on the floor (`_on`) and the rest of his team's game (`_off`): sdv-db game_on_off (BB-D32). */
+export interface OnOffRow {
+    team_id: number;
+    player_id: number | string;
+    minutes_on: number | null; minutes_off: number | null;
+    poss_on: number; opp_poss_on: number; poss_off: number; opp_poss_off: number;
+    pts_on: number; opp_pts_on: number; pts_off: number; opp_pts_off: number;
+    plus_minus_on: number | null; plus_minus_off: number | null;
+    off_rtg_on: number | null; off_rtg_off: number | null;
+    def_rtg_on: number | null; def_rtg_off: number | null;
+    net_rtg_on: number | null; net_rtg_off: number | null;
+    off_rtg_diff: number | null; def_rtg_diff: number | null; net_rtg_diff: number | null;
+}
+const ON_OFF_SELECT = 'team_id,player_id,minutes_on,minutes_off,poss_on,opp_poss_on,poss_off,opp_poss_off,pts_on,opp_pts_on,pts_off,opp_pts_off,'
+    + 'plus_minus_on,plus_minus_off,off_rtg_on,off_rtg_off,def_rtg_on,def_rtg_off,net_rtg_on,net_rtg_off,off_rtg_diff,def_rtg_diff,net_rtg_diff';
+
+export interface InGameReads { units: UnitRow[]; onOff: OnOffRow[] }
+
+/**
+ * BB-G37's two reads for a mapped game (the producer's game id): every unit and every player's on/off, season-filtered
+ * and capped, in the impact tables' id space (so the impact box's names apply). Empty for a season BB-D32 has not built.
+ * Throws on a failed read or a units read at its cap.
+ */
+export async function retrieveInGameLineups(league: BasketballLeague, season: number, gameId: string): Promise<InGameReads> {
+    const read = <T>(table: string, q: Record<string, string>) => retrieveRowsFrom<T>(leagueSource(league), table, { season: String(season), game_id: gameId, ...q }, TTL, true, NBA_READ_TIMEOUT_MS);
+    const [units, onOff] = await Promise.all([
+        read<UnitRow>('game_units', { select: UNIT_SELECT, limit: String(UNIT_LIMIT) }),
+        read<OnOffRow>('game_on_off', { select: ON_OFF_SELECT, limit: PLAYER_LIMIT }),
+    ]);
+    if (units.length >= UNIT_LIMIT) throw new Error(`game_units for ${gameId} hit the ${UNIT_LIMIT}-row cap`);
+    return { units, onOff };
 }
 
 /** No producer rows for the game (not mapped, or not built yet). */
@@ -89,7 +164,7 @@ export async function retrieveProGame(league: BasketballLeague, season: number, 
  * then the impact rows, the stats box's names and each side's top units; college: the stats.ncaa.org box (contest id and
  * names), then the impact rows and each side's top units.
  */
-export async function retrieveImpactBox(league: BasketballLeague, season: number, espnGameId: string, homeId: number, awayId: number): Promise<ImpactBoxReads> {
+export async function retrieveImpactBox(league: BasketballLeague, season: number, espnGameId: string, homeId: number, awayId: number, inGame = false): Promise<ImpactBoxReads> {
     const s = String(season);
     // the season schema (nba_stats / wnba_stats / mbb / wbb), every read season-filtered and capped, failing fast like the game's own reads
     const read = <T>(table: string, q: Record<string, string>) => retrieveRowsFrom<T>(leagueSource(league), table, { season: s, ...q }, TTL, true, NBA_READ_TIMEOUT_MS);
@@ -111,11 +186,17 @@ export async function retrieveImpactBox(league: BasketballLeague, season: number
         namesRead = Promise.resolve(box.filter((r) => r.player_id).map((r) => ({ player_id: String(r.player_id), name: r.clean_name || titleCase(String(r.player ?? r.player_id)) })));
     }
     const units = (teamId: number) => read<LineupRow>('game_lineups_used', { game_id: gameId, team_id: String(teamId), select: LINEUP_SELECT, order: '-seconds', limit: String(TOP_UNITS) });
-    const [players, home, away, nameRows] = await Promise.all([
+    // BB-G37's reads ride the same round; their failure is their own section's (null), never the impact box's
+    const inGameRead = inGame ? retrieveInGameLineups(league, season, gameId).catch((e: any) => {
+        console.error(`ERROR while loading the ${league} in-game lineups for game ${espnGameId}: ${e}, ${e?.stack}`);
+        return null;
+    }) : undefined;
+    const [players, home, away, nameRows, inGameRows] = await Promise.all([
         read<ImpactRow>('game_player_impact', { game_id: gameId, select: IMPACT_SELECT, limit: PLAYER_LIMIT }),
         units(teams.home),
         units(teams.away),
         namesRead,
+        inGameRead,
     ]);
-    return { gameId, teams, players, lineups: { home, away }, names: nameRows };
+    return { gameId, teams, players, lineups: { home, away }, names: nameRows, ...(inGameRows !== undefined ? { inGame: inGameRows } : {}) };
 }

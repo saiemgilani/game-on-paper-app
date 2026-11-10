@@ -793,6 +793,19 @@ Temple 86 (401824983); UDC 47 at GW 86 (401824982), whose non-D1 side has no sta
 
 **To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
 
+## `ingame-lineups-{nba,wnba,mbb,wbb}.json.gz`
+The Data API reads behind BB-G37's in-game lineups (`resources/impactBox.ts` `retrieveInGameLineups`, sdv-db game_units and
+game_on_off, BB-D32), captured live on 2026-11-10 with exactly that function's queries, as `{units, onoff}` (the `data`
+array of each response, no edits): `/v1/<nba_stats|wnba_stats|mbb|wbb>/game_units?season=…&game_id=…&select=…&limit=3000`
+and `game_on_off?season=…&game_id=…&select=…&limit=80`. The games are the `impact-box-*` ones: BOS at DET (0022600001,
+season 2027), CON at NY (1022600001, 2026), Southern Miss at Buffalo (contest 6388769, 2026), GW at Temple (contest
+6387150, 2026); 536, 393, 492 and 446 unit rows. Every stretch in them lists five players a side, so the five-man rows
+sum to the team's game and the picker's inclusion-exclusion matches them exactly.
+
+**Used by:** `test/inGameLineups.test.ts`, `test/inGameLineupsIsland.test.ts`.
+
+**To regenerate:** rerun the two reads per game (season filter and limit as above), wrap them as above and gzip.
+
 ## `game-flow-{nba-401909834,nba-401909088,wnba-401856902,mbb-401823353,wbb-401812873}.json.gz`, `team-season-flow-{nba,wnba}-2026.json.gz`
 The Data API reads behind BB-G28's Game flow panel and the pro standings' Game flow view (`resources/gameFlow.ts`),
 captured live on 2026-11-05, every read season-filtered with a small limit, as `{league, season, espnGameId, resolve,

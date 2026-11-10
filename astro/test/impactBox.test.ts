@@ -205,7 +205,7 @@ describe('prepareBasketballGame with the flag', () => {
         const { astro, cache } = fakeAstro({ preview: true });
         const r = await prepareBasketballGame(astro, 'nba');
         const s = gameApi().schedule[0];
-        expect(fn).toHaveBeenCalledWith('nba', 2025, '401766458', Number(s.home_id), Number(s.away_id));
+        expect(fn).toHaveBeenCalledWith('nba', 2025, '401766458', Number(s.home_id), Number(s.away_id), true); // BB-G37's 'bball-ingame-lineups' (preview) rides this read
         expect('impact' in r && r.impact?.gameId).toBe('0022600001');
         expect(cache).toHaveLength(1);
         expect((cache[0] as any).maxAge).toBeGreaterThan(60 * 60 * 24 * 300);
