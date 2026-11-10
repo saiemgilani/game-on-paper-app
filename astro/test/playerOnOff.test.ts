@@ -1,8 +1,9 @@
-// BB-G7: the player page's On/Off section behind 'bball-player-on-off' (NBA/WNBA). The reads' queries (his id on both
-// sides of the producer's pair order), the top partners and their orientation, the page-side step (the flag gates the
-// reads, college is never read, a failed read keeps the page and is never cached), the section and the page: flag off is
-// byte for byte the NBA byte-identity capture. On sdv-db's committed player_on_off / player_wowy producer output for
-// Minnesota 2024-25, #407's fixture (fixtures/README.md: on-off-nba-2025.json.gz). Every Data API read is mocked.
+// BB-G7: the player page's On/Off section behind 'bball-player-on-off'. The reads' queries (his id on both sides of the
+// producer's pair order), the top partners and their orientation, the page-side step (the flag gates the reads, a failed
+// read keeps the page and is never cached), the section and the page: flag off is byte for byte the NBA byte-identity
+// capture. On sdv-db's committed player_on_off / player_wowy producer output for Minnesota 2024-25, #407's fixture
+// (fixtures/README.md: on-off-nba-2025.json.gz), and for college on live Duke 2025-26 reads through ncaa_player_crosswalk
+// (on-off-mbb-2026.json.gz). Every Data API read is mocked.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
@@ -27,11 +28,18 @@ const PLAYERS = CAP.players.map((r) => ({ team_id: MIN, ...r }));
 const PAIRS = CAP.pairs.map((r) => ({ team_id: MIN, ...r }));
 const NAMES: { person_id: number; player_name: string; team_id: number }[] = gz('lineups-nba-2025').names; // Minnesota's shot_season_players rows
 const EDWARDS = 1630162; // Minnesota's most minutes on the floor; the smaller id in 8 of his 19 pairs, the larger in 11
+// Duke 2025-26 (ESPN team 150): its crosswalk pairs, and its leading shooter's on/off row and WOWY pairs by his stats.ncaa.org id
+const MBB: { xwalk: any[]; players: any[]; pairsA: any[]; pairsB: any[] } = gz('on-off-mbb-2026');
+const DUKE = 150, DUKE_PID = 5041935, DUKE_NCAA = '11195975';
 
 /** The Data API's own filters over the capture: season, player_id / player_id_a / player_id_b, order=-minutes_on, limit. */
-function api(_league: string, table: string, q: Record<string, string>) {
-    const rows = table === 'player_on_off' ? PLAYERS : table === 'player_wowy' ? PAIRS : [];
-    const out = rows.filter((r: any) => ['player_id', 'player_id_a', 'player_id_b'].every((k) => q[k] === undefined || String(r[k]) === q[k]));
+function api(league: string, table: string, q: Record<string, string>) {
+    const college = league === 'mbb';
+    const rows = table === 'ncaa_player_crosswalk' ? (college ? MBB.xwalk : [])
+        : table === 'player_on_off' ? (college ? MBB.players : PLAYERS)
+        : table === 'player_wowy' ? (college ? [...MBB.pairsA, ...MBB.pairsB] : PAIRS) : [];
+    // the crosswalk's espn_team_id is an integer: the API filters it by its digits
+    const out = rows.filter((r: any) => ['player_id', 'player_id_a', 'player_id_b', 'espn_team_id'].every((k) => q[k] === undefined || String(r[k]) === q[k]));
     if (q.order === '-minutes_on') out.sort((a: any, b: any) => b.minutes_on - a.minutes_on);
     return Promise.resolve(out.slice(0, Number(q.limit)));
 }
@@ -62,11 +70,11 @@ vi.mock('../src/resources/nbaShots', async (orig) => ({
 }));
 
 import PlayerOnOff from '../src/components/nba/PlayerOnOff.astro';
-import { ON_OFF_SELECT, PAIR_LIMIT, retrievePlayerOnOff, TEAM_LIMIT, WOWY_SELECT } from '../src/resources/playerOnOff';
+import { ON_OFF_SELECT, PAIR_LIMIT, retrievePlayerOnOff, ROSTER_LIMIT, TEAM_LIMIT, WOWY_SELECT } from '../src/resources/playerOnOff';
 import { prepareBasketballPlayer } from '../src/routes/basketball/player';
 import { FLAGS } from '../src/utils/features';
 import { generateColorRampValue } from '../src/utils/misc';
-import { TOP_PARTNERS, topPartners, type PlayerOnOff as Data } from '../src/utils/playerOnOff';
+import { espnPartners, TOP_PARTNERS, topPartners, type PlayerOnOff as Data } from '../src/utils/playerOnOff';
 
 const PID = Number(Object.keys(byPlayer)[0]); // 1629008, Michael Porter Jr., a Net in seasonPlayerRows() (the page tests' player)
 const OFF = { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false, 'bball-player-on-off': false };
@@ -85,18 +93,65 @@ beforeEach(() => { sdv.fn.mockReset(); sdv.fn.mockImplementation(api); });
 
 describe('the reads', () => {
     test("three strict reads in the pros' season schema, each by season and his id, with a small cap", async () => {
-        const r = await retrievePlayerOnOff('nba', 2025, EDWARDS);
+        const r = await retrievePlayerOnOff('nba', 2025, EDWARDS, MIN);
         const tail = [21600, true];
         expect(sdv.fn).toHaveBeenCalledWith('nba', 'player_on_off', { season: '2025', player_id: String(EDWARDS), order: '-minutes_on', select: ON_OFF_SELECT, limit: String(TEAM_LIMIT) }, ...tail);
         expect(sdv.fn).toHaveBeenCalledWith('nba', 'player_wowy', { season: '2025', player_id_a: String(EDWARDS), select: WOWY_SELECT, limit: String(PAIR_LIMIT) }, ...tail);
         expect(sdv.fn).toHaveBeenCalledWith('nba', 'player_wowy', { season: '2025', player_id_b: String(EDWARDS), select: WOWY_SELECT, limit: String(PAIR_LIMIT) }, ...tail);
         expect(sdv.fn).toHaveBeenCalledTimes(3);
+        expect([r.playerId, r.toEspn]).toEqual([String(EDWARDS), null]);
         expect(r.teams).toEqual([byId.get(String(EDWARDS))]);
         // both sides of the producer's id order: all 19 of his teammates
         expect(r.pairs).toHaveLength(19);
         // select names exactly the capture's columns (plus team_id, which the API returns and the capture's team filter dropped)
         expect(ON_OFF_SELECT.split(',').sort()).toEqual(Object.keys(PLAYERS[0]).sort());
         expect(WOWY_SELECT.split(',').sort()).toEqual(Object.keys(PAIRS[0]).sort());
+    });
+});
+
+describe('college (Duke 2025-26), through ncaa_player_crosswalk', () => {
+    test("his team's crosswalk pairs first, then the three reads by his stats.ncaa.org id", async () => {
+        const r = await retrievePlayerOnOff('mbb', 2026, DUKE_PID, DUKE);
+        const tail = [21600, true];
+        expect(sdv.fn.mock.calls[0]).toEqual(['mbb', 'ncaa_player_crosswalk', { season: '2026', espn_team_id: String(DUKE), select: 'ncaa_player_id,espn_athlete_id', limit: String(ROSTER_LIMIT) }, ...tail]);
+        for (const side of ['player_id_a', 'player_id_b']) expect(sdv.fn).toHaveBeenCalledWith('mbb', 'player_wowy', { season: '2026', [side]: DUKE_NCAA, select: WOWY_SELECT, limit: String(PAIR_LIMIT) }, ...tail);
+        expect(sdv.fn).toHaveBeenCalledWith('mbb', 'player_on_off', { season: '2026', player_id: DUKE_NCAA, order: '-minutes_on', select: ON_OFF_SELECT, limit: String(TEAM_LIMIT) }, ...tail);
+        expect(sdv.fn).toHaveBeenCalledTimes(4);
+        expect(r.playerId).toBe(DUKE_NCAA);
+        // every id a string: the crosswalk's bigint espn_athlete_id and text ncaa_player_id meet in one type
+        expect([...r.toEspn!].every(([k, v]) => typeof k === 'string' && typeof v === 'string')).toBe(true);
+        expect(r.toEspn!.size).toBe(MBB.xwalk.length);
+        expect(r.teams).toEqual(MBB.players);
+        expect(r.pairs).toHaveLength(MBB.pairsA.length + MBB.pairsB.length);
+    });
+    test("top partners as ESPN athlete ids, oriented from his side (together + he without = his minutes on)", async () => {
+        const r = await retrievePlayerOnOff('mbb', 2026, DUKE_PID, DUKE);
+        const top = espnPartners(topPartners(r.pairs, r.playerId!), r.toEspn!);
+        expect(top).toHaveLength(TOP_PARTNERS);
+        const espnIds = new Set(MBB.xwalk.map((x) => String(x.espn_athlete_id)));
+        expect(top.every((l) => espnIds.has(l.teammate) && l.teammate !== String(DUKE_PID))).toBe(true);
+        for (const l of top) expect(l.together.minutes + l.without.minutes).toBeCloseTo(MBB.players[0].minutes_on, 0);
+        // the most minutes with him: stats.ncaa.org 9335969, ESPN 5061585 in the crosswalk
+        expect(top[0].teammate).toBe(String(MBB.xwalk.find((x) => x.ncaa_player_id === '9335969').espn_athlete_id));
+        // a teammate with no pair never takes another player's name or link
+        expect(espnPartners(topPartners(r.pairs, r.playerId!), new Map())[0].teammate).toBe('ncaa:9335969');
+    });
+    test('a player with no crosswalk pair: only the crosswalk read, no rows', async () => {
+        const r = await retrievePlayerOnOff('mbb', 2026, 1, DUKE);
+        expect(sdv.fn).toHaveBeenCalledTimes(1);
+        expect(r).toMatchObject({ teams: [], pairs: [], playerId: null });
+    });
+    test('the section: his Duke row, the partners linked to their ESPN player pages, and no pro source note', async () => {
+        const r = await retrievePlayerOnOff('mbb', 2026, DUKE_PID, DUKE);
+        const partners = espnPartners(topPartners(r.pairs, r.playerId!), r.toEspn!);
+        // the page's season rows supply the names; here each partner's own ESPN id stands in for one
+        const names = new Map(partners.map((l) => [l.teammate, `Player ${l.teammate}`]));
+        const html = await container.renderToString(PlayerOnOff, { props: { data: { teams: r.teams, partners, names, tricodes: new Map([[String(DUKE), 'DUKE']]) }, season: 2026, q: '', name: 'Duke guard' }, locals: { league: 'mbb' } as any });
+        expect(html).toContain(`>${MBB.players[0].games} of ${MBB.players[0].team_games}</td>`);
+        expect(html).toContain(`<a href="/mbb/players/${partners[0].teammate}">Player ${partners[0].teammate}</a>`);
+        expect(html).toMatch(/>DUKE</);
+        expect(html).not.toContain('counts the off side only while');
+        expect(html).not.toMatch(/undefined|NaN|ncaa:/);
     });
 });
 
@@ -110,7 +165,7 @@ describe('the captures', () => {
 
 describe('topPartners', () => {
     test('his five teammates with the most minutes together, read from his side whichever id is smaller', async () => {
-        const { pairs } = await retrievePlayerOnOff('nba', 2025, EDWARDS);
+        const { pairs } = await retrievePlayerOnOff('nba', 2025, EDWARDS, MIN);
         const top = topPartners(pairs, String(EDWARDS));
         expect(top).toHaveLength(TOP_PARTNERS);
         const me = byId.get(String(EDWARDS))!;
@@ -158,16 +213,18 @@ describe('the player page step', () => {
         expect(ok(await prepareBasketballPlayer(a.astro, 'nba')).onOff).toMatchObject({ teams: null, partners: [] });
         expect(a.cache.at(-1)).toBe(false);
     });
-    test("college: no read and no onOff key (its rows are keyed by stats.ncaa.org ids, the page's are ESPN's)", async () => {
+    test("college: the crosswalk read by his team first; a player it has no pair for reads nothing more and shows an empty section", async () => {
         const r = ok(await prepareBasketballPlayer(fakeAstro(true, 'mbb').astro, 'mbb'));
+        const xw = sdv.fn.mock.calls.filter((c) => c[1] === 'ncaa_player_crosswalk');
+        expect(xw.map((c) => c[2].espn_team_id)).toEqual([String(r.player.team_id)]);
         expect(onOffReads()).toEqual([]);
-        expect('onOff' in r).toBe(false);
+        expect(r.onOff).toMatchObject({ teams: [], partners: [] });
     });
 });
 
 describe('the section', () => {
     async function data(): Promise<Data> {
-        const { teams, pairs } = await retrievePlayerOnOff('nba', 2025, EDWARDS);
+        const { teams, pairs } = await retrievePlayerOnOff('nba', 2025, EDWARDS, MIN);
         return {
             teams, partners: topPartners(pairs, String(EDWARDS)),
             names: new Map(NAMES.map((n) => [String(n.person_id), n.player_name])), tricodes: new Map([[String(MIN), 'MIN']]),

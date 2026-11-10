@@ -1,6 +1,7 @@
 ---
 // src/components/nba/PlayerOnOff.astro
-// BB-G7, behind 'bball-player-on-off' (NBA/WNBA): the player page's On/Off section. On/Off: his team with him on the floor
+// BB-G7, behind 'bball-player-on-off' (all four leagues; college through ncaa_player_crosswalk, resources/playerOnOff.ts):
+// the player page's On/Off section. On/Off: his team with him on the floor
 // and off it, and the difference, per 100 possessions, one row per team he played for; a rating is shaded by the
 // producer's league percentile where he is ranked (on and on-off only). Top partners: the teammates he shared the most
 // minutes with, each split four ways (the team page's WOWY table, BB-G4). Every number is the producer's (sdv-db
@@ -8,14 +9,18 @@
 import { RATINGS, type OnOffRow, type Rating } from '../../resources/playerOnOff';
 import type { PlayerOnOff } from '../../utils/playerOnOff';
 import { fmtInt } from '../../nba/format';
-import { playerHref, teamHref } from '../../nba/links';
+import { playerHref, teamHref, teamHrefFromEspn } from '../../nba/links';
 import { generateColorRampValue, generateMarginalString } from '../../utils/misc';
 import { basketball, seasonLabelFor } from '../../basketball/config';
+import { PRO_LEAGUES } from '../../utils/league';
 
 interface Props { data: PlayerOnOff; season: number; q: string; name: string }
 const { data, season, q, name } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
+const pro = PRO_LEAGUES.includes(league);
+// college rows carry ESPN team ids, whose page is a 404 for a season's non-member: the game page's member-aware link
+const teamLink = (id: number) => (pro ? teamHref(id, q, league) : teamHrefFromEspn({ id }, league, season));
 const label = seasonLabelFor(league, season);
 const { teams, partners, names, tricodes } = data;
 
@@ -36,7 +41,7 @@ const tricode = (id: number) => tricodes.get(String(id)) ?? `#${id}`;
   <h2 class="h5">On/Off</h2>
   {teams === null ? (<p class="text-muted" id="on-off-unavailable">The {label} on/off numbers are temporarily unavailable.</p>) : teams.length === 0 ? (<p class="text-muted" id="on-off-empty">No {label} on/off numbers for {name} yet.</p>) : (
     <Fragment>
-      <p class="small text-muted mb-2" id="on-off-note">On is the team with {name} on the floor; off is the rest of the team's season: every one of its games, including any before the player joined or after the player left, and the games the player missed. So on plus off is always the team's whole season.{cfg.statsSourceLabel && ` ${cfg.statsSourceLabel} counts the off side only while the player was on the roster, so for a player traded or signed mid-season its numbers differ from these.`}</p>
+      <p class="small text-muted mb-2" id="on-off-note">On is the team with {name} on the floor; off is the rest of the team's season: every one of its games, including any before the player joined or after the player left, and the games the player missed. So on plus off is always the team's whole season.{pro && cfg.statsSourceLabel && ` ${cfg.statsSourceLabel} counts the off side only while the player was on the roster, so for a player traded or signed mid-season its numbers differ from these.`}</p>
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0" id="on-off-table">
           <caption class="small text-muted">Per 100 possessions. Shading by league percentile where {name} is ranked (on and on − off); a plain cell is below the rank gate.</caption>
@@ -58,7 +63,7 @@ const tricode = (id: number) => tricodes.get(String(id)) ?? `#${id}`;
           <tbody>
             {teams.map((t) => (
               <tr>
-                <th scope="row" class="fw-normal text-nowrap"><a href={teamHref(t.team_id, q, league)}>{tricode(t.team_id)}</a></th>
+                <th scope="row" class="fw-normal text-nowrap">{teamLink(t.team_id) ? (<a href={teamLink(t.team_id)!}>{tricode(t.team_id)}</a>) : tricode(t.team_id)}</th>
                 <td class="numeral text-end text-nowrap">{fmtInt(t.games)} of {fmtInt(t.team_games)}</td>
                 <td class="numeral text-end">{fmtInt(t.minutes_on)}</td>
                 <td class="numeral text-end">{fmtInt(t.minutes_off)}</td>

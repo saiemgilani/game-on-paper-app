@@ -56,3 +56,10 @@ export function wowyLines(pairs: WowyRow[], player: string | null): WowyLine[] {
 
 /** His top partners across every team he played for: the most minutes on the floor together. */
 export const topPartners = (pairs: WowyRow[], player: string, n = TOP_PARTNERS): WowyLine[] => wowyLines(pairs, player).slice(0, n);
+
+/**
+ * College: each partner's stats.ncaa.org id as the page's ESPN athlete id (the names and links are keyed by it). A
+ * teammate with no crosswalk pair becomes `ncaa:<id>`, which no name or link matches (it prints as `#ncaa:<id>`).
+ */
+export const espnPartners = (lines: WowyLine[], toEspn: Map<string, string>): WowyLine[] =>
+    lines.map((l) => ({ ...l, teammate: toEspn.get(l.teammate) ?? `ncaa:${l.teammate}` }));

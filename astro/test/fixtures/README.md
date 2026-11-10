@@ -832,3 +832,15 @@ player is Anthony Edwards (1630162). Nothing else is edited.
 **To regenerate:** as #407's and #402's sections. Once the backfill runs, the live
 `player_on_off?season=2026&player_id=<id>&order=-minutes_on&limit=5` and `player_wowy?season=2026&player_id_a=<id>&limit=100`
 (and `player_id_b=`) reads replace them.
+
+## `on-off-mbb-2026.json.gz` (player page, college)
+College On/Off through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of each
+response, no edits, all `season=2026`: `{xwalk, players, pairsA, pairsB}` =
+`mbb/ncaa_player_crosswalk?espn_team_id=150&limit=40` (14 rows, every Duke pair, all columns), then by Duke's leading shooter's
+stats.ncaa.org id (ESPN 5041935 -> `11195975`) with the module's own selects: `mbb/player_on_off?player_id=11195975&order=-minutes_on&limit=5`
+(1), `mbb/player_wowy?player_id_a=11195975&limit=100` (11) and `?player_id_b=11195975` (0: the producer orders the text ids, and
+`"11195975"` sorts first against every teammate). Every one of his 11 partners has a crosswalk pair.
+
+**Used by:** `test/playerOnOff.test.ts`.
+
+**To regenerate:** rerun the same five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
