@@ -39,7 +39,8 @@ export function currentImpactPanel(seasonRows: readonly PlayerImpactRow[], curre
         asOf: c.as_of,
         lastGame: c.last_game_date ?? null,
         offPoss, defPoss,
-        early: Math.min(offPoss ?? 0, defPoss ?? 0) < EARLY_POSS,
+        // a missing count is unknown, not zero: only a count the producer shipped can say "early"
+        early: [offPoss, defPoss].some((p) => p != null && p < EARLY_POSS),
     } : null;
     return season || current ? { season, current } : null;
 }

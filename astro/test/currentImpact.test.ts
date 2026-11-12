@@ -119,6 +119,8 @@ describe('currentImpactPanel', () => {
     });
     test('opening night is mostly prior; either side alone still makes a panel; neither, no panel', () => {
         expect(currentImpactPanel(CI.season, CI.opening)!.current!.early).toBe(true);
+        expect(currentImpactPanel(CI.season, [{ ...NOW, off_poss: null, def_poss: null }])!.current!.early).toBe(false);
+        expect(currentImpactPanel(CI.season, [{ ...NOW, off_poss: null }])!.current!.early).toBe(false);
         expect(currentImpactPanel([], CI.latest)!.season).toBeNull();
         expect(currentImpactPanel(CI.season, [])!.current).toBeNull();
         // a season row before BB-D38's build: reml_rapm null, so no season rating
@@ -217,6 +219,8 @@ describe('the page', () => {
         expect(on).toContain(link);
         const section = on.match(/<section id="current-impact"[\s\S]*?<\/section>/)![0];
         expect(section).toContain('id="current-impact-table"');
+        expect(section).toContain('id="current-impact-season"');
+        expect(section).toContain('id="current-impact-current"');
         expect(on.replace(section, '').replace(link, '')).toBe(off.replace(/(<\/nav>)(\s*)/, '$1$2'));
     });
 });
