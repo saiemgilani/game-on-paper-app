@@ -65,7 +65,7 @@ describe('the empty team page says "linked" (Decision 8)', () => {
             retrieveScheduleTeamRows: async () => scheduleTeams(2026),                                         // D47: and played 2026 games
         }));
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
-        const astro = { params: { id: '2441' }, url: new URL('https://gameonpaper.com/wbb/team/2441'), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } } as any;
+        const astro = { params: { id: '2441' }, url: new URL('https://gameonpaper.com/wbb/team/2441?season=2026'), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } } as any;
         const r: any = await prepareBasketballTeam(astro, 'wbb');
         expect([r.empty, r.dashboard, r.team.team_id]).toEqual([true, null, 2441]);
         const html = await container.renderToString(NbaTeamRoute, { props: { data: r }, request: new Request('https://gameonpaper.com/wbb/team/2441'), locals: { league: 'wbb', preview: true } as App.Locals });

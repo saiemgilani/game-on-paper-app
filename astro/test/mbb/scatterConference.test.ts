@@ -62,10 +62,10 @@ describe('the conference key (R2) and the default (D46)', () => {
 describe('the scatter loader', () => {
     test('default, ?conference=all, ?conference=sec, an unknown slug; only the chosen points reach the island', async () => {
         const { prepareBasketballScatter } = await import('../../src/routes/basketball/scatter');
-        const dflt: any = await prepareBasketballScatter(fakeAstro('/mbb/scatter'), 'mbb');
-        const all: any = await prepareBasketballScatter(fakeAstro('/mbb/scatter?conference=all'), 'mbb');
-        const sec: any = await prepareBasketballScatter(fakeAstro('/mbb/scatter?conference=sec'), 'mbb');
-        const junk: any = await prepareBasketballScatter(fakeAstro('/mbb/scatter?conference=nope'), 'mbb');
+        const dflt: any = await prepareBasketballScatter(fakeAstro('/mbb/scatter?season=2026'), 'mbb');
+        const all: any = await prepareBasketballScatter(fakeAstro('/mbb/scatter?season=2026&conference=all'), 'mbb');
+        const sec: any = await prepareBasketballScatter(fakeAstro('/mbb/scatter?season=2026&conference=sec'), 'mbb');
+        const junk: any = await prepareBasketballScatter(fakeAstro('/mbb/scatter?season=2026&conference=nope'), 'mbb');
         expect(dflt.conference.selected).toBe(defaultScatterConference(seasonPlayers(2026), conferences(2026), 2026, 'mbb'));
         expect([all.conference.selected, sec.conference.selected, junk.conference.selected]).toEqual(['all', 'sec', dflt.conference.selected]);
         expect(all.points.length).toBe(over.length);                                 // every player over the bar
@@ -76,7 +76,7 @@ describe('the scatter loader', () => {
         const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); // the scatter island is Svelte
         const { prepareBasketballScatter } = await import('../../src/routes/basketball/scatter');
         const { default: Route } = await import('../../src/components/routes/NbaScatterRoute.astro');
-        const html = await container.renderToString(Route, { props: { data: await prepareBasketballScatter(fakeAstro('/mbb/scatter?conference=sec'), 'mbb') }, locals: { league: 'mbb', preview: true } as App.Locals });
+        const html = await container.renderToString(Route, { props: { data: await prepareBasketballScatter(fakeAstro('/mbb/scatter?season=2026&conference=sec'), 'mbb') }, locals: { league: 'mbb', preview: true } as App.Locals });
         expect(html).toMatch(/<select[^>]*name="conference"/);
         expect(html).toMatch(/<option value="all"[^>]*>All D-I<\/option>\s*<option/);
         expect(html).toMatch(/<option value="sec" selected[^>]*>SEC<\/option>/);
@@ -85,7 +85,7 @@ describe('the scatter loader', () => {
         const { prepareBasketballScatter } = await import('../../src/routes/basketball/scatter');
         const cache: unknown[] = [];
         const headers = new Headers();
-        const astro = { params: {}, url: new URL('https://gameonpaper.com/mbb/scatter?conference=sec'), locals: {} as any, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any;
+        const astro = { params: {}, url: new URL('https://gameonpaper.com/mbb/scatter?season=2026&conference=sec'), locals: {} as any, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any;
         state.conferencesDown = true;
         const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
         try {
@@ -112,7 +112,7 @@ describe('the scatter loader', () => {
         };
         const bigTen = over.filter((r) => confOf.get(r.team_id) === 'big-ten').length;
         expect(bigTen).toBe(170); // R-P8
-        expect(await islandPoints('/mbb/scatter')).toBe(bigTen);
-        expect(await islandPoints('/mbb/scatter?conference=all')).toBe(3509); // R-P8: All D-I
+        expect(await islandPoints('/mbb/scatter?season=2026')).toBe(bigTen);
+        expect(await islandPoints('/mbb/scatter?season=2026&conference=all')).toBe(3509); // R-P8: All D-I
     });
 });

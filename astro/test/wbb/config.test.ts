@@ -22,7 +22,7 @@ describe('the wbb league entry', () => {
         const l = LEAGUES.wbb;
         expect([l.sport, l.name, l.shortName, l.urlPrefix, l.espnPath, l.espnCoreLeague, l.logoLeague, l.scoreboardCacheKey, l.sdvApiBase, l.sdvSchema, l.teamCount, l.pool, l.defaultGroup, l.scoreboardQuery])
             .toEqual(['basketball', "Women's College Basketball", 'WBB', '/wbb', 'womens-college-basketball', 'womens-college-basketball', 'ncaa', 'scoreboard:wbb', 'https://data.sportsdataverse.org/v1/wbb', 'wbb', 363, 'D-I', null, '']); // D38: 357 core + 6 reclassifiers
-        expect([l.seasons[0], l.seasons.at(-1)]).toEqual([2003, 2026]);
+        expect([l.seasons[0], l.seasons.at(-1)]).toEqual([2003, 2027]); // BB-D29: 2026-27 listed once its stats.ncaa.org shots landed
     });
     test('sources: ESPN-keyed games and the wbb schema; no stats ids', () => {
         const w = BASKETBALL.wbb;
@@ -108,7 +108,8 @@ describe('the wbb league entry', () => {
     test('team pages: season-aware links (D48, R8): core teams, reclassifiers in their seasons; West Florida not before 2027', () => {
         expect(hasTeamPages('wbb')).toBe(true);
         expect(teamHrefFromEspn({ id: '41' }, 'wbb')).toBe('/wbb/team/41');
-        expect(teamHrefFromEspn({ id: '2837' }, 'wbb', 2026)).toBe('/wbb/team/2837');        // East Texas A&M, a reclassifier (D38)
+        expect(teamHrefFromEspn({ id: '2837' }, 'wbb', 2026)).toBe('/wbb/team/2837?season=2026'); // East Texas A&M, a reclassifier (D38)
+        expect(teamHrefFromEspn({ id: '2697' }, 'wbb', 2027)).toBe('/wbb/team/2697');        // West Florida: D-I from 2027, the current season (BB-D29)
         expect(teamHrefFromEspn({ id: '2697' }, 'wbb', 2026)).toBeNull();                    // West Florida: D-I from 2027
         expect(teamHrefFromEspn({ id: '2341' }, 'wbb', 2019)).toBe('/wbb/team/2341?season=2019'); // LIU Brooklyn in 2018-19
     });

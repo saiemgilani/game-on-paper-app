@@ -33,7 +33,7 @@ describe('the college dashboard loaders use the NCAA court', () => {
     test('player page, 2026', async () => {
         const { prepareBasketballPlayer } = await import('../../src/routes/basketball/player');
         const id = p26().person_id;
-        const r: any = await prepareBasketballPlayer(fakeAstro(`/mbb/players/${id}`, { id: String(id) }), 'mbb');
+        const r: any = await prepareBasketballPlayer(fakeAstro(`/mbb/players/${id}?season=2026`, { id: String(id) }), 'mbb');
         expect(r.explorer.court).toBe(courtFor('mbb', 2026));
         expect(r.hisSeasons.every((s: number) => s >= 2019)).toBe(true);
         expect(p19().team_id).toBe(TEX);
