@@ -195,6 +195,7 @@ describe('the panel', () => {
         expect(await render([], CI.latest)).toContain('id="current-impact-no-season"');
         expect(await render(CI.season, null)).toContain('Current impact is temporarily unavailable.');
         expect(await render(null, null)).toContain('Season and current impact are temporarily unavailable.');
+        expect(await render([], null)).toContain('id="current-impact-empty">Current impact is temporarily unavailable.<');
     });
 });
 

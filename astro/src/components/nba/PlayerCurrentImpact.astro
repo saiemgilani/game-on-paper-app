@@ -28,7 +28,7 @@ const rows: { id: string; label: string; hover?: string; t: Trio; sub?: boolean 
 ---
 <section id="current-impact" aria-label="Season vs current impact" class="mb-4">
   <h2 class="h5">Season vs current impact</h2>
-  {!panel ? (<p class="text-muted" id="current-impact-empty">{failed ? 'Season and current impact are temporarily unavailable.' : `No ${label} season or current impact for ${name} yet.`}</p>) : (<Fragment>
+  {!panel ? (<p class="text-muted" id="current-impact-empty">{failed ? `${seasonRows === null && current === null ? 'Season and current impact are' : seasonRows === null ? 'Season impact is' : 'Current impact is'} temporarily unavailable.` : `No ${label} season or current impact for ${name} yet.`}</p>) : (<Fragment>
   {panel.current && (<p class="numeral small text-muted mb-2" id="current-impact-sample">Current as of {fmtDate(panel.current.asOf)}{panel.current.lastGame && (<Fragment> &middot; last game {fmtDate(panel.current.lastGame)}</Fragment>)} &middot; {fmtInt(panel.current.offPoss)} offensive and {fmtInt(panel.current.defPoss)} defensive possessions this season</p>)}
   <div class="table-responsive col-lg-6 px-0">
     <table class="table table-sm align-middle mb-0" id="current-impact-table">
