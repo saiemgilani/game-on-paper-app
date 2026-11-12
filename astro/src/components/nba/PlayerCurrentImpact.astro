@@ -1,0 +1,52 @@
+---
+// src/components/nba/PlayerCurrentImpact.astro
+// BB-G56, behind 'bball-current-impact', NBA only: the player page's Season vs Current panel. Season impact is the
+// regular season's prior-informed RAPM (player_impact's reml_rapm trio, BB-D38: credit for what happened); Current impact
+// is his expected impact as of the season's latest weekly date (current_impact, BB-D39), from games before it. Each with
+// the prior it starts from. Neither ships an interval, so none is shown.
+import type { CurrentImpactRow } from '../../resources/currentImpact';
+import type { PlayerImpactRow } from '../../resources/playerImpact';
+import { currentImpactPanel, type Trio } from '../../utils/currentImpact';
+import { signed1 } from '../../utils/shotQuality';
+import { fmtDate, fmtInt } from '../../nba/format';
+import { seasonLabelFor } from '../../basketball/config';
+
+interface Props { seasonRows: PlayerImpactRow[] | null; current: CurrentImpactRow[] | null; season: number; name: string }
+const { seasonRows, current, season, name } = Astro.props;
+const label = seasonLabelFor('nba', season);
+const panel = currentImpactPanel(seasonRows ?? [], current ?? []);
+const failed = seasonRows === null || current === null;
+const dash = '—';
+const v = (x: number | null) => (x == null ? dash : signed1(x));
+const sides = ['off', 'def', 'net'] as const;
+const SEASON_NOTE = 'The regular season’s plus-minus impact, shrunk toward his box-score prior: credit for what happened this season, per 100 possessions';
+const CURRENT_NOTE = 'His expected impact going forward, as of the date shown: the same prior, updated by how he has played against it, with older games counting less. Uses only games before the date.';
+const rows: { id: string; label: string; hover?: string; t: Trio; sub?: boolean }[] = [
+  ...(panel?.season ? [{ id: 'season', label: 'Season impact', hover: SEASON_NOTE, t: panel.season.rating }, { id: 'season-prior', label: 'its box prior', t: panel.season.prior, sub: true }] : []),
+  ...(panel?.current ? [{ id: 'current', label: 'Current impact', hover: CURRENT_NOTE, t: panel.current.rating }, { id: 'current-prior', label: 'its prior', t: panel.current.prior, sub: true }] : []),
+];
+---
+<section id="current-impact" aria-label="Season vs current impact" class="mb-4">
+  <h2 class="h5">Season vs current impact</h2>
+  {!panel ? (<p class="text-muted" id="current-impact-empty">{failed ? 'Season and current impact are temporarily unavailable.' : `No ${label} season or current impact for ${name} yet.`}</p>) : (<Fragment>
+  {panel.current && (<p class="numeral small text-muted mb-2" id="current-impact-sample">Current as of {fmtDate(panel.current.asOf)}{panel.current.lastGame && (<Fragment> &middot; last game {fmtDate(panel.current.lastGame)}</Fragment>)} &middot; {fmtInt(panel.current.offPoss)} offensive and {fmtInt(panel.current.defPoss)} defensive possessions this season</p>)}
+  <div class="table-responsive col-lg-6 px-0">
+    <table class="table table-sm align-middle mb-0" id="current-impact-table">
+      <caption class="small text-muted">Per 100 possessions, regular season. Positive is better at both ends.</caption>
+      <thead><tr><th scope="col"></th>{sides.map((s) => (<th scope="col" class="text-end">{s === 'off' ? 'Off' : s === 'def' ? 'Def' : 'Net'}</th>))}</tr></thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr id={`current-impact-${r.id}`} class:list={[r.sub && 'small text-muted']}>
+            <th scope="row" class:list={['fw-normal', r.sub && 'ps-3']}>{r.hover ? (<abbr title={r.hover}>{r.label}</abbr>) : r.label}</th>
+            {sides.map((s) => (<td class:list={['numeral', 'text-end', !r.sub && s === 'net' && 'fw-bold']}>{v(r.t[s])}</td>))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  {panel.current?.early && (<p class="small text-muted mb-0 mt-2" id="current-impact-early">Early in the season the current rating is mostly its prior: few of this season’s possessions are in it yet.</p>)}
+  {failed && (<p class="small text-muted mb-0 mt-2" id="current-impact-partial">{seasonRows === null ? 'Season impact' : 'Current impact'} is temporarily unavailable.</p>)}
+  {!failed && !panel.season && (<p class="small text-muted mb-0 mt-2" id="current-impact-no-season">No {label} season impact yet.</p>)}
+  {!failed && !panel.current && (<p class="small text-muted mb-0 mt-2" id="current-impact-no-current">No {label} current impact yet.</p>)}
+  </Fragment>)}
+</section>

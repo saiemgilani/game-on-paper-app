@@ -91,6 +91,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // interval, from sdv-db's player_war (BB-D26) and, for the NBA from 2021-22, epv_player_games (BB-D24); the Impact
     // panel then drops player_impact's WAR. Off: no read and the player page is today's, byte for byte.
     'bball-war': 'preview',
+    // Season vs Current impact (BB-G56) on the NBA player page, inside 'nba': the season's prior-informed RAPM (player_impact's
+    // reml_rapm, BB-D38) beside his expected impact as of the season's latest weekly date (current_impact, BB-D39), each with
+    // its prior. NBA from 2006-07 only. Off: no read and the player page is today's, byte for byte.
+    'bball-current-impact': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
