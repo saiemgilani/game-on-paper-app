@@ -60,7 +60,7 @@ const defaults = { season: String(current) };
     <div id="charts">
       {dashboard!.unlocated && <p class="small text-muted">{placeholderNote(dashboard!.unlocated.count, dashboard!.unlocated.total, 'season')}</p>}
       <Dashboard client:load data={dashboard!} subject={`${team.name} ${label}`} subjectLabel="Team" />
-    </div>{lineupShots && (<LineupShotChart view={lineupShots} teamName={team.name} seasonLabel={label} basePath={basePath} params={Astro.url.searchParams} />)}
+    </div>{lineupShots && (<LineupShotChart view={lineupShots} teamName={team.name} seasonLabel={label} scope={scope.noun} basePath={basePath} params={Astro.url.searchParams} />)}
     <section id="roster" aria-label="Roster by attempts" class="mt-3">
       <h2 class="h5">Roster by attempts</h2>
       {noPlayers ? (<p class="text-muted" id="nba-no-players">No player is named on these shots.</p>) : (<Fragment><NbaNameFilter tableId="nba-roster" count={roster.length} />

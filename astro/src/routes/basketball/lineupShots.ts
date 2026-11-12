@@ -19,7 +19,14 @@ export async function readLineupShots(
     const side = parseSide(q.get('side'));
     if (season < LINEUP_SHOTS_FIRST_SEASON[league]) return { status: 'unavailable', side };
     try {
-        const [rows, crosswalk] = await Promise.all([retrieveLineupShotRows(season, teamId, side, league), retrieveLineupCrosswalk(season, teamId, league)]);
+        // a failed crosswalk costs only the names (every player reads as #id), never the chart
+        const [rows, crosswalk] = await Promise.all([
+            retrieveLineupShotRows(season, teamId, side, league),
+            retrieveLineupCrosswalk(season, teamId, league).catch((e: any) => {
+                console.warn(`WARN the ${league} ${season} player crosswalk for team ${teamId} failed, lineup names fall back to ids: ${e}`);
+                return [] as [string, string][];
+            }),
+        ]);
         if (!rows.length) return { status: 'unavailable', side };
         const byPerson = new Map(players.map((r) => [String(r.person_id), r.player_name]));
         // college lineups carry stats.ncaa.org ids and the season rows ESPN ids: names go through the crosswalk, never by id alone

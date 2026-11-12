@@ -22,7 +22,7 @@ export const regularOnly = (league: BasketballLeague): Record<string, string> =>
 };
 
 /** retrieveRows, but a page that hit the cap is truncated data behind a 200: fail loud (the routes' 503). */
-export async function read<T>(...args: Parameters<typeof retrieveRows>): Promise<T[]> {
+async function read<T>(...args: Parameters<typeof retrieveRows>): Promise<T[]> {
     const rows = (await retrieveRows(...args)) as T[];
     if (rows.length >= Number(LIMIT)) throw new Error(`${args[1]} reached the ${LIMIT}-row cap: the read is truncated`);
     return rows;

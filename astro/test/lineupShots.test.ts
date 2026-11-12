@@ -2,7 +2,7 @@
 // one 2026-27 Colorado State women's game, both sides, with that team's crosswalk and season-player rows).
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
-import { describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { leagueContextFromRows } from '../src/nba/adapters';
 import { COURT } from '../src/nba/data/court';
 import { lineupOptions, lineupShots, matches, parseFilters, parseSide, teamFive, toShotLite, type LineupShotRow, type LineupSide } from '../src/nba/lineupShots';
@@ -11,10 +11,13 @@ const fx = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/lineup-shots.j
 const sideRows = (lg: 'nba' | 'wbb', side: LineupSide): LineupShotRow[] =>
     fx[lg].rows.filter((r: any) => (side === 'offense' ? r.team_id : r.opp_team_id) === fx[lg].team_id);
 
-vi.mock('../src/resources/lineupShots', () => ({
-    retrieveLineupShotRows: async (_s: number, _t: number, side: LineupSide, lg: 'nba' | 'wbb') => sideRows(lg, side),
-    retrieveLineupCrosswalk: async (_s: number, _t: number, lg: string) => (lg === 'wbb' ? fx.wbb.crosswalk.map((r: any) => [String(r.ncaa_player_id), String(r.espn_athlete_id)]) : []),
-}));
+const reads = vi.hoisted(() => ({ rows: vi.fn(), crosswalk: vi.fn() }));
+vi.mock('../src/resources/lineupShots', () => ({ retrieveLineupShotRows: reads.rows, retrieveLineupCrosswalk: reads.crosswalk }));
+const realReads = () => {
+    reads.rows.mockImplementation(async (_s: number, _t: number, side: LineupSide, lg: 'nba' | 'wbb') => sideRows(lg, side));
+    reads.crosswalk.mockImplementation(async (_s: number, _t: number, lg: string) => (lg === 'wbb' ? fx.wbb.crosswalk.map((r: any) => [String(r.ncaa_player_id), String(r.espn_athlete_id)]) : []));
+};
+beforeEach(() => { vi.clearAllMocks(); realReads(); });
 import { readLineupShots } from '../src/routes/basketball/lineupShots';
 
 const oracle = JSON.parse(readFileSync(new URL('./fixtures/nba/league_context.json', import.meta.url)).toString());
@@ -108,7 +111,9 @@ describe('the route step', () => {
     });
     test('college: a season before 2026-27 is unavailable without a read; 2026-27 names go through the crosswalk', async () => {
         expect(await readLineupShots(astro('https://x.test/wbb/team/36'), 'wbb', 2026, 36, [], ctxRows)).toEqual({ status: 'unavailable', side: 'offense' });
-        const v = await readLineupShots(astro('https://x.test/wbb/team/36'), 'wbb', 2027, 36, fx.wbb.season_players, ctxRows);
+        expect(reads.rows).not.toHaveBeenCalled();
+        expect(reads.crosswalk).not.toHaveBeenCalled();
+        const v =await readLineupShots(astro('https://x.test/wbb/team/36'), 'wbb', 2027, 36, fx.wbb.season_players, ctxRows);
         expect(v.status).toBe('ok');
         if (v.status !== 'ok') return;
         const named = v.data.options.filter((o) => !o.name.startsWith('#'));
@@ -120,5 +125,16 @@ describe('the route step', () => {
         for (const r of expected) expect(v.data.options.find((o) => o.id === String(r.ncaa_player_id))!.name).toBe(espnName.get(String(r.espn_athlete_id)));
         // an ESPN id is never read as a stats.ncaa.org id
         expect(v.data.options.some((o) => espnName.has(o.id))).toBe(false);
+        expect(reads.rows).toHaveBeenCalledWith(2027, 36, 'offense', 'wbb');
+    });
+    test('a failed crosswalk keeps the chart with #id names; a failed shot read is the error state', async () => {
+        reads.crosswalk.mockRejectedValueOnce(new Error('504'));
+        const v = await readLineupShots(astro('https://x.test/wbb/team/36'), 'wbb', 2027, 36, fx.wbb.season_players, ctxRows);
+        expect(v.status).toBe('ok');
+        if (v.status === 'ok') expect(v.data.options.every((o) => o.name.startsWith('#'))).toBe(true);
+        reads.rows.mockRejectedValueOnce(new Error('504'));
+        expect(await readLineupShots(astro('https://x.test/wbb/team/36?side=defense'), 'wbb', 2027, 36, [], ctxRows)).toEqual({ status: 'error', side: 'defense' });
+        reads.rows.mockResolvedValueOnce([]);
+        expect(await readLineupShots(astro(`https://x.test/nba/team/${nets}`), 'nba', 2026, nets, [], ctxRows)).toEqual({ status: 'unavailable', side: 'offense' });
     });
 });

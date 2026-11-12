@@ -7,8 +7,8 @@ import { fmtInt, fmtPct } from '../../nba/format';
 import { placeholderNote } from '../../nba/data/placeholder';
 import { MAX_LINEUP_FILTERS, type LineupShotsView } from '../../nba/lineupShots';
 
-interface Props { view: LineupShotsView; teamName: string; seasonLabel: string; basePath: string; params: URLSearchParams }
-const { view, teamName, seasonLabel, basePath, params } = Astro.props;
+interface Props { view: LineupShotsView; teamName: string; seasonLabel: string; scope: string; basePath: string; params: URLSearchParams }
+const { view, teamName, seasonLabel, scope, basePath, params } = Astro.props;
 const data = view.status === 'ok' ? view.data : null;
 const side = data ? data.side : (view as { side: 'offense' | 'defense' }).side;
 // the page's other parameters (season, roster sort) ride along; the form's own three are rebuilt
@@ -22,7 +22,7 @@ const clearHref = `${basePath}${clearQuery ? `?${clearQuery}` : ''}#lineup-shots
 ---
 <section id="lineup-shots" aria-labelledby="lineup-shots-h" class="mt-3">
   <h2 class="h5" id="lineup-shots-h">Lineup shot chart</h2>
-  <p class="small text-muted mb-2">{seasonLabel} regular-season shots with up to {MAX_LINEUP_FILTERS} {teamName} players on or off the floor, by square or zone against the league.</p>
+  <p class="small text-muted mb-2">{seasonLabel} {scope} shots with up to {MAX_LINEUP_FILTERS} {teamName} players on or off the floor, by square or zone against the league.</p>
   {view.status === 'unavailable' && (<p class="text-muted" id="lineup-shots-unavailable">Lineup shot data is not available for {seasonLabel}.</p>)}
   {view.status === 'error' && (<p class="text-muted" id="lineup-shots-error">The lineup shot chart could not be loaded right now.</p>)}
   {data && (<Fragment>
@@ -65,7 +65,7 @@ const clearHref = `${basePath}${clearQuery ? `?${clearQuery}` : ''}#lineup-shots
         p.forEach((v, i) => { if (v) { d.append('p', v); d.append('s', s[i] ?? 'on'); } });
       });
     </script>
-    <p class="small mb-2" id="lineup-shots-line"><span class="fw-semibold">{lineups}:</span> {fmtInt(data.line.makes)}/{fmtInt(data.line.attempts)} FG &middot; {fmtPct(data.line.fgPct)} FG% &middot; {fmtPct(data.line.efgPct)} eFG% <span class="text-muted">({fmtInt(data.line.attempts)} of {fmtInt(data.total)} {side === 'offense' ? 'team' : 'opponent'} shots{data.unknown > 0 ? `; ${fmtInt(data.unknown)} without a known lineup left out` : ''})</span></p>
+    <p class="small mb-2" id="lineup-shots-line"><span class="fw-semibold">{lineups}:</span> {fmtInt(data.line.makes)}/{fmtInt(data.line.attempts)} FG, {fmtPct(data.line.fgPct)} FG%, {fmtPct(data.line.efgPct)} eFG% <span class="text-muted">({fmtInt(data.line.attempts)} of {fmtInt(data.total)} {side === 'offense' ? 'team' : 'opponent'} shots{data.unknown > 0 ? `; ${fmtInt(data.unknown)} without a known lineup left out` : ''})</span></p>
     {data.unlocated && (<p class="small text-muted">{placeholderNote(data.unlocated.count, data.unlocated.total, 'season')}</p>)}
     {data.hex
       ? (<div id="lineup-shots-chart" style="max-width: 640px"><HexShotChart client:load data={data.hex} title={`${subject}, ${seasonLabel} (${lineups})`} /></div>)
