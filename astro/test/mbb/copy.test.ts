@@ -84,7 +84,7 @@ describe('PIE hidden and USG% labelled (D25)', () => {
             retrieveScheduleTeamRows: async () => scheduleTeams(2026),
         }));
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
-        const astro = { params: { id: String(TEX) }, url: new URL(`https://gameonpaper.com/mbb/team/${TEX}?sort=pie`), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } } as any;
+        const astro = { params: { id: String(TEX) }, url: new URL(`https://gameonpaper.com/mbb/team/${TEX}?sort=pie&season=2026`), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } } as any;
         const r: any = await prepareBasketballTeam(astro, 'mbb');
         expect(r.sort).toBe('fga');
         expect(r.coverage).toBe(coverageNote(coverage(), 2026, label));
@@ -133,13 +133,13 @@ describe('the coverage read failing', () => {
         try {
             for (const [name, run] of [['teams', prepareBasketballTeams], ['team', prepareBasketballTeam]] as const) {
                 state.fail = false;
-                const ok = fakeAstro(`/mbb/${name}`);
+                const ok = fakeAstro(`/mbb/${name}?season=2026`);
                 const r: any = await run(ok.astro, 'mbb');
                 expect(r.coverage, name).toBe(coverageNote(coverage(), 2026, label));
                 expect(ok.cache, name).not.toContain(false);   // the control: a good read leaves the page cacheable
                 expect(ok.headers.get('Cache-Control'), name).toBeNull();
                 state.fail = true;
-                const bad = fakeAstro(`/mbb/${name}`);
+                const bad = fakeAstro(`/mbb/${name}?season=2026`);
                 const r2: any = await run(bad.astro, 'mbb');
                 expect(r2.coverage, name).toBeNull();
                 expect('unavailable' in r2 || 'notFound' in r2, name).toBe(false);
@@ -187,7 +187,7 @@ describe('the college player page: the usage note sits with the season-stats lin
             retrieveCoverageRows: async () => coverage(),
         }));
         const { prepareBasketballPlayer } = await import('../../src/routes/basketball/player');
-        const astro = { params: { id: String(me) }, url: new URL(`https://gameonpaper.com/mbb/players/${me}`), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } } as any;
+        const astro = { params: { id: String(me) }, url: new URL(`https://gameonpaper.com/mbb/players/${me}?season=2026`), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } } as any;
         const r: any = await prepareBasketballPlayer(astro, 'mbb');
         vi.doUnmock('../../src/resources/nbaShots');
         return r;

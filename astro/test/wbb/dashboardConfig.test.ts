@@ -40,9 +40,9 @@ describe("the women's NCAA court zones like the SQL, every dashboard season", ()
 });
 
 describe('the dashboard seasons, the source and the three college fields', () => {
-    test('wbb lists 2019-2026 on the dashboards; an earlier ?season= is the current season', () => {
+    test('wbb lists 2019-2027 on the dashboards; an earlier ?season= is the current season', () => {
         const r = resolveBasketballSeason(fakeAstro('/wbb/teams?season=2018'), 'wbb');
-        expect([r.seasons[0], r.seasons.at(-1), r.season, r.current, r.q]).toEqual([2019, 2026, 2026, 2026, '']);
+        expect([r.seasons[0], r.seasons.at(-1), r.season, r.current, r.q]).toEqual([2019, 2027, 2027, 2027, '']);
         expect(resolveBasketballSeason(fakeAstro('/wbb/teams?season=2019'), 'wbb').season).toBe(2019);
     });
     test('the college source, and the values measured on WBB (plan #11 Measured facts)', () => {

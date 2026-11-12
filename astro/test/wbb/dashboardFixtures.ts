@@ -30,9 +30,9 @@ export const player2026Seasons = () => readFix<{ season: number }[]>('player_202
 export const player2026Games = () => readFix<PlayerGameRow[]>('player_2026_games.json');
 export const player2019Games = () => readFix<PlayerGameRow[]>('player_2019_games.json');
 export const coverage = () => readFix<ApiCoverageRow[]>('coverage.json');
-export const conferences = (season: Season | 2021) => readFix<{ team_id: string; conference_id: string }[]>(`conferences_${season}.json`);
-export const scheduleTeams = (season: Season | 2021) => readFix<{ home_id: number | null; away_id: number | null }[]>(`schedule_teams_${season}.json`);
-export const conferenceNames = (season: Season) => readFix<{ group_id: string; short_name: string }[]>(`conference_names_${season}.json`);
+export const conferences = (season: Season | 2021 | 2027) => readFix<{ team_id: string; conference_id: string }[]>(`conferences_${season}.json`);
+export const scheduleTeams = (season: Season | 2021 | 2027) => readFix<{ home_id: number | null; away_id: number | null }[]>(`schedule_teams_${season}.json`);
+export const conferenceNames = (season: Season | 2027) => readFix<{ group_id: string; short_name: string }[]>(`conference_names_${season}.json`);
 export const leadersLatest2026 = () => readFix<{ game_date: string }[]>('leaders_latest_2026.json');
 export const leadersGames2026 = () => readFix<PlayerGameRow[]>('leaders_games_2026.json.gz');
 export const windowRows = () => readFix<{ season: number; max42: number; max49: number; max56: number; at_end49: number; season_rows: number }[]>('leaders_window_rows.json');

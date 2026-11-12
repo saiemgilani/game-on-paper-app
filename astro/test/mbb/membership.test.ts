@@ -5,7 +5,7 @@
 import { describe, expect, test } from 'vitest';
 import { BASKETBALL } from '../../src/basketball/config';
 import { withSeasonMembers } from '../../src/basketball/dashboards';
-import { MBB_MEMBERS_2026 } from '../../src/nba/data/mbbMembers';
+import { MBB_MEMBERS_2027 } from '../../src/nba/data/mbbMembers';
 import { teamsFromSeasonRows } from '../../src/nba/tables';
 import { conferences, scheduleTeams, seasonPlayers } from './dashboardFixtures';
 
@@ -33,10 +33,12 @@ describe('withSeasonMembers', () => {
         const m = withSeasonMembers([], [{ team_id: '150', conference_id: 'mbb:acc' }, { team_id: 'x9', conference_id: 'mbb:sec' }], [{ home_id: 150, away_id: 9 }], 2026, 'mbb');
         expect(m).toEqual([BASKETBALL.mbb.teams.inSeason(150, 2026)]);
     });
-    test('the committed current-season table is this rule over the 2026 captures (it cannot drift); NBA/WNBA carry none', () => {
-        const ids = withSeasonMembers(teamsFromSeasonRows(seasonPlayers(2026), 2026, 'mbb'), conferences(2026), scheduleTeams(2026), 2026, 'mbb').map((t) => t.team_id).sort((a, b) => a - b);
-        expect([...MBB_MEMBERS_2026]).toEqual(ids);
-        expect(BASKETBALL.mbb.currentMembers).toEqual({ season: 2026, ids: MBB_MEMBERS_2026 });
+    test('the committed current-season table is this rule over the 2027 captures (it cannot drift); NBA/WNBA carry none', () => {
+        const ids = withSeasonMembers([], conferences(2027), scheduleTeams(2027), 2027, 'mbb').map((t) => t.team_id).sort((a, b) => a - b);
+        expect([...MBB_MEMBERS_2027]).toEqual(ids);
+        expect(ids).toHaveLength(365); // BB-D29: West Florida (2697) in, Saint Francis (2598) out
+        expect([ids.includes(2697), ids.includes(2598)]).toEqual([true, false]);
+        expect(BASKETBALL.mbb.currentMembers).toEqual({ season: 2027, ids: MBB_MEMBERS_2027 });
         for (const lg of ['nba', 'wnba'] as const) expect(Object.keys(BASKETBALL[lg])).not.toContain('currentMembers');
     });
 });
