@@ -1,0 +1,74 @@
+---
+// BB-G52, behind 'bball-lineup-shotchart': the team's offense or defense season shots with up to five of its players ON or
+// OFF the floor, in the team page's square and zone chart against the league. A plain GET form (no island but the chart):
+// the route filters on the server (nba/lineupShots.ts), so a filtered view is a URL.
+import HexShotChart from './charts/HexShotChart.svelte';
+import { fmtInt, fmtPct } from '../../nba/format';
+import { placeholderNote } from '../../nba/data/placeholder';
+import { MAX_LINEUP_FILTERS, type LineupShotsView } from '../../nba/lineupShots';
+
+interface Props { view: LineupShotsView; teamName: string; seasonLabel: string; basePath: string; params: URLSearchParams }
+const { view, teamName, seasonLabel, basePath, params } = Astro.props;
+const data = view.status === 'ok' ? view.data : null;
+const side = data ? data.side : (view as { side: 'offense' | 'defense' }).side;
+// the page's other parameters (season, roster sort) ride along; the form's own three are rebuilt
+const keep = [...params].filter(([k]) => !['side', 'p', 's'].includes(k));
+const slots = Array.from({ length: MAX_LINEUP_FILTERS }, (_, i) => data?.filters[i] ?? null);
+const nameOf = (id: string) => data?.options.find((o) => o.id === id)?.name ?? `#${id}`;
+const lineups = data?.filters.length ? data.filters.map((f) => `${nameOf(f.id)} ${f.on ? 'on' : 'off'}`).join(', ') : 'Every lineup';
+const subject = side === 'offense' ? `${teamName} shots` : `Opponent shots against ${teamName}`;
+const clearQuery = new URLSearchParams([...keep, ...(side === 'defense' ? [['side', 'defense']] : [])]).toString();
+const clearHref = `${basePath}${clearQuery ? `?${clearQuery}` : ''}#lineup-shots`;
+---
+<section id="lineup-shots" aria-labelledby="lineup-shots-h" class="mt-3">
+  <h2 class="h5" id="lineup-shots-h">Lineup shot chart</h2>
+  <p class="small text-muted mb-2">{seasonLabel} regular-season shots with up to {MAX_LINEUP_FILTERS} {teamName} players on or off the floor, by square or zone against the league.</p>
+  {view.status === 'unavailable' && (<p class="text-muted" id="lineup-shots-unavailable">Lineup shot data is not available for {seasonLabel}.</p>)}
+  {view.status === 'error' && (<p class="text-muted" id="lineup-shots-error">The lineup shot chart could not be loaded right now.</p>)}
+  {data && (<Fragment>
+    <form method="get" action={`${basePath}#lineup-shots`} class="mb-2" id="lineup-shots-form">
+      {keep.map(([k, v]) => (<input type="hidden" name={k} value={v} />))}
+      <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-auto">
+          <label class="form-label small mb-0" for="lineup-side">Shots</label>
+          <select class="form-select form-select-sm" id="lineup-side" name="side">
+            <option value="offense" selected={side === 'offense'}>Offense ({teamName} shots)</option>
+            <option value="defense" selected={side === 'defense'}>Defense (opponent shots)</option>
+          </select>
+        </div>
+        {slots.map((f, i) => (
+          <div class="col-12 col-sm-6 col-md-auto">
+            <label class="form-label small mb-0" for={`lineup-p${i + 1}`}>Player {i + 1}</label>
+            <div class="input-group input-group-sm">
+              <select class="form-select" id={`lineup-p${i + 1}`} name="p">
+                <option value="">Any</option>
+                {data.options.map((o) => (<option value={o.id} selected={f?.id === o.id}>{o.name}</option>))}
+              </select>
+              <select class="form-select" name="s" aria-label={`Player ${i + 1} on or off the floor`} style="max-width: 5.5rem">
+                <option value="on" selected={f?.on !== false}>On</option>
+                <option value="off" selected={f?.on === false}>Off</option>
+              </select>
+            </div>
+          </div>
+        ))}
+        <div class="col-12 col-md-auto">
+          <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+          <a href={clearHref} class="btn btn-sm btn-link">Clear players</a>
+        </div>
+      </div>
+    </form>
+    <script is:inline>
+      // drop the empty player rows (and their On/Off pair) so a filtered view's URL names only what it filters
+      document.getElementById('lineup-shots-form')?.addEventListener('formdata', (e) => {
+        const d = e.formData, p = d.getAll('p'), s = d.getAll('s');
+        d.delete('p'); d.delete('s');
+        p.forEach((v, i) => { if (v) { d.append('p', v); d.append('s', s[i] ?? 'on'); } });
+      });
+    </script>
+    <p class="small mb-2" id="lineup-shots-line"><span class="fw-semibold">{lineups}:</span> {fmtInt(data.line.makes)}/{fmtInt(data.line.attempts)} FG &middot; {fmtPct(data.line.fgPct)} FG% &middot; {fmtPct(data.line.efgPct)} eFG% <span class="text-muted">({fmtInt(data.line.attempts)} of {fmtInt(data.total)} {side === 'offense' ? 'team' : 'opponent'} shots{data.unknown > 0 ? `; ${fmtInt(data.unknown)} without a known lineup left out` : ''})</span></p>
+    {data.unlocated && (<p class="small text-muted">{placeholderNote(data.unlocated.count, data.unlocated.total, 'season')}</p>)}
+    {data.hex
+      ? (<div id="lineup-shots-chart" style="max-width: 640px"><HexShotChart client:load data={data.hex} title={`${subject}, ${seasonLabel} (${lineups})`} /></div>)
+      : (<p class="text-muted" id="lineup-shots-none">No {side === 'offense' ? 'team' : 'opponent'} shots match these players.</p>)}
+  </Fragment>)}
+</section>

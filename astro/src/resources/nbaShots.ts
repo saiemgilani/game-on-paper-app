@@ -16,13 +16,13 @@ export const SUBJECT_TTL = 60 * 60;
 const LIMIT = '50000';
 
 /** Regular season only: `<prefix>%` on game_id where the league's ids carry one (stats.nba.com '002'). Key order is the cache key's. */
-const regularOnly = (league: BasketballLeague): Record<string, string> => {
+export const regularOnly = (league: BasketballLeague): Record<string, string> => {
     const p = BASKETBALL[league].regularGameIdPrefix;
     return p ? { game_id__like: `${p}%` } : {};
 };
 
 /** retrieveRows, but a page that hit the cap is truncated data behind a 200: fail loud (the routes' 503). */
-async function read<T>(...args: Parameters<typeof retrieveRows>): Promise<T[]> {
+export async function read<T>(...args: Parameters<typeof retrieveRows>): Promise<T[]> {
     const rows = (await retrieveRows(...args)) as T[];
     if (rows.length >= Number(LIMIT)) throw new Error(`${args[1]} reached the ${LIMIT}-row cap: the read is truncated`);
     return rows;

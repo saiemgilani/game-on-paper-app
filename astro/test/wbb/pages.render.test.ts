@@ -17,6 +17,8 @@ import { defaultScatterConference } from '../../src/basketball/dashboards';
 
 const CAPTURED = [2019, 2022, 2026];
 const lite = ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result }: any) => ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result });
+// BB-G52's lineup shot chart reads the Data API with 'bball-lineup-shotchart' on (preview): never from a test
+vi.mock('../../src/resources/lineupShots', () => ({ retrieveLineupShotRows: async () => [], retrieveLineupCrosswalk: async () => [] }));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async (s: number, lg: string) => { if (lg !== 'wbb') throw new Error(`league ${lg}`); return CAPTURED.includes(s) ? seasonPlayers(s as Season) : []; },
