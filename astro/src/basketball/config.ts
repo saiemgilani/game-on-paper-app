@@ -146,7 +146,7 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         teams: { all: TEAMS, byEspnId: teamByEspnId, inSeason: teamInSeason, franchiseOf, seasonsOf: (id) => (teamById(id) ? LEAGUES.nba.seasons : undefined) },
         landing: 'featured-team',
         headerMenu: [
-            { label: 'Scoreboard', path: '/scoreboard' }, { label: 'Nets', path: '/' }, { label: 'Players', path: '/players' },
+            { label: 'Scoreboard', path: '/scoreboard' }, { label: 'Players', path: '/players' },
             { label: 'Teams', path: '/teams' }, { label: 'Scatter', path: '/scatter' }, { label: 'Leaders', path: '/leaders' },
         ],
         shotDashboards: 'stats-api',
