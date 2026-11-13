@@ -180,6 +180,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // team_strength, team_season_flow and lineup_seasons: every value, rank and percentile is the producer's. Off: the page
     // is the site's 404, and no other page links to it.
     'bball-leaderboards-v2': 'preview',
+    // BB-G27's boards inside 'bball-leaderboards-v2': "Players: WAR and VORP" (sdv-db's player_war, BB-D26; WAR always with
+    // its 90% interval) and "Players: Points over expected" (shot_quality_season, BB-D9); the impact board keeps
+    // player_impact's WAR. Off: the board select and every board are today's, byte for byte.
+    'bball-war-boards': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

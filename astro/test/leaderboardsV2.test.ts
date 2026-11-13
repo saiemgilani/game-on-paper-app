@@ -61,7 +61,8 @@ beforeEach(() => {
     shots.players.mockImplementation(async () => FX.nbaNames);
 });
 
-const locals = (on = true) => ({ preview: true, flagOverrides: { 'bball-leaderboards-v2': on } }) as unknown as App.Locals;
+// BB-G27's two boards ('bball-war-boards') are off here: these are BB-G8's boards (test/warBoards.test.ts has the rest)
+const locals = (on = true) => ({ preview: true, flagOverrides: { 'bball-leaderboards-v2': on, 'bball-war-boards': false } }) as unknown as App.Locals;
 const fakeAstro = (lg: BasketballLeague, query: string, on = true) => {
     const cache = { set: vi.fn() };
     return { params: {}, url: new URL(`https://gameonpaper.com/${lg}/leaderboards${query}`), locals: { ...locals(on) }, cache, response: { headers: new Headers() } } as any;
@@ -191,12 +192,13 @@ describe('§4.3 bug 1: an unknown basis never falls through silently', () => {
         expect(html).not.toMatch(/<option[^>]*>Per game<\/option>/);
     });
     test('no basis asked: no note', () => expect(parseControls(sp('board=teams'), 'wnba', () => true).basisFallback).toBeNull());
-    // every offered basis has a producer column on the board: a select option never leads to a table of dashes
+    // every offered basis has a producer column on the board: a select option never leads to a table of dashes (every board,
+    // BB-G27's two included: parseControls offers them with 'bball-war-boards' on)
     test.each(BOARDS)('%s: every offered basis resolves to a producer column', (b) => {
         for (const g of TEAM_GROUPS) {
             const spec = boardSpec(b, 'nba', g);
             for (const basis of offeredBases(spec)) expect(spec.cols.some((c) => typeof c.src !== 'string' && srcFor(c, basis) != null) || basis === spec.defaultBasis).toBe(true);
-            for (const basis of BASES.filter((x) => !offeredBases(spec).includes(x))) expect(parseControls(sp(`board=${b}&group=${g}&basis=${basis}`), 'nba', () => true).basis).toBe(spec.defaultBasis);
+            for (const basis of BASES.filter((x) => !offeredBases(spec).includes(x))) expect(parseControls(sp(`board=${b}&group=${g}&basis=${basis}`), 'nba', () => true, true).basis).toBe(spec.defaultBasis);
         }
     });
 });
