@@ -31,6 +31,9 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         feed.calls.push(req);
         return feed.override ?? rows[req.league].filter((r) => r.team_id === req.team_id);
     },
+    // the season team page's other panels: no rows, so they stay out of the way (a failed read's answers)
+    retrieveTeamOpponentSplits: async () => null,
+    retrieveTeamTendencies: async () => [],
 }));
 
 let container: AstroContainer;

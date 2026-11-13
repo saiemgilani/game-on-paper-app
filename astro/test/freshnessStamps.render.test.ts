@@ -29,6 +29,8 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     retrievePlayerSummaries: async (...a: any[]) => { h.playerArgs.push(a); return read(a[8]); },
     // each row carries the number of ingests that had landed when it was read: its version
     retrievePercentiles: async (...a: any[]) => { h.pctArgs.push(a); read(a[4]); return [{ season: 2025, pctile: a[1], EPAplay: h.ingests }]; },
+    // no team-season bands (a 404): EPAplay keeps the game ladder, the percentiles batch above
+    retrieveTeamSeasonPercentiles: async () => [],
 }));
 /** the version of each percentile row the chart island received (its serialized `value`s) */
 const chartVersions = (html: string) => [...html.matchAll(/&quot;value&quot;:\[0,(\d+)\]/g)].map((m) => Number(m[1]));

@@ -54,6 +54,9 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     },
     retrieveTeamSeasonInformation: async () => null,
     retrievePlayerSummaries: async () => [],
+    // the season team page's other panels: no rows (a failed read's answers)
+    retrieveTeamOpponentSplits: async () => null,
+    retrieveTeamTendencies: async () => [],
 }));
 vi.mock('../src/resources/espn', async (orig) => ({
     ...(await orig<typeof import('../src/resources/espn')>()),
