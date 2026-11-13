@@ -777,3 +777,27 @@ and `nba_cup_overtime_2027.parquet`), which sdv-db pins equal to the live call. 
 **Used by:** `test/nbaCup.test.ts`.
 
 **To regenerate:** rerun both producers on sdv-db main's fixtures, write the rows as JSON (dates as ISO strings) and gzip.
+
+## `nba/league_context_squares_2026.json` / `mbb/dashboards/league_squares_2026.json`
+Real Data API reads of 2025-26 `shot_league_context` captured 2026-11-05, after sdv-db #191's Nov 4 rebuild (BB-D1):
+`/v1/nba_stats/shot_league_context?season=2026&kind=zone&limit=10` (6 rows) followed by `?season=2026&kind=square&limit=1500`
+(376 rows; attempts sum to 219,159, the zone rows' sum and the season-player rows' sum), and
+`/v1/mbb/shot_league_context?season=2026&kind=square&limit=1500` (468 rows, 707,869 attempts). Each read is one page
+(`next: null`). The response's `data` arrays, concatenated, no edits.
+
+**Used by:** `test/basketball/leagueShots.test.ts`.
+
+**To regenerate:** re-fetch the URLs with a read key and write the `data` arrays (zone rows first for the NBA file).
+
+## `nba/team_context_nets_2026.json` / `nba/team_shots_nets_2026.json.gz` / `mbb/dashboards/team_context_sec_2026.json.gz`
+Real Data API reads captured 2026-11-13, after sdv-db #221 published `shot_team_context` (BB-G16):
+`/v1/nba_stats/shot_team_context?season=2026&team_id=1610612751&limit=1000` (252 rows: 251 squares and the Nets' total line,
+6,933 attempts), the read it replaces, `retrieveTeamShots`'s query for the Nets
+(`/v1/nba_stats/shots?season=2026&team_id=1610612751&game_id__like=002%&select=game_id,x_legacy,y_legacy,shot_distance,shot_value,shot_result&limit=50000`,
+6,933 rows), and `/v1/mbb/shot_team_context?season=2026&conference_id=mbb:sec&limit=50000` (3,183 rows, the 16 SEC teams; Texas's
+total is 2,101, the row count of `mbb/dashboards/tex_shots_2026.json`). Each read is one page (`next: null`). The response's
+`data` arrays, no edits; the two larger files are gzipped.
+
+**Used by:** `test/basketball/leagueShots.test.ts` (the table against the team reads it replaces, cell for cell).
+
+**To regenerate:** re-fetch the URLs with a read key and write the `data` arrays (gzip the shots and the SEC rows).

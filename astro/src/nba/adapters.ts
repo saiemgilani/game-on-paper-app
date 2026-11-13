@@ -3,12 +3,12 @@
  * is the same JavaScript d3-hexbin uses, so a league hex rebuilt from (i, j) lands on the
  * key the player's own hexbin produces (see sdv-db nba_shot_dashboards.py).
  */
-import { lineOf, ZONES, type DistanceBin, type FieldGoals, type PlayerGame, type SideBin, type Split, type Zone } from './data/aggregate';
+import { lineOf, ZONES, type DistanceBin, type FieldGoals, type LeagueHex, type PlayerGame, type ShootingLine, type SideBin, type Split, type SquareBin, type Zone } from './data/aggregate';
 import type { PlayerGames } from './data/leaders';
 import type { PlayerSeason, PlayerStats } from './data/players';
 import type { ShotLite } from './data/shots';
-import { BAR_BIN_FT, HEX_RADIUS, type LeagueContext } from './dashboard';
-import type { LeagueContextRow, PlayerGameRow, SeasonPlayerRow, ShotApiRow } from '../resources/nbaShots';
+import { BAR_BIN_FT, HEX_RADIUS, SQUARE_SIDE, type LeagueContext } from './dashboard';
+import type { LeagueContextRow, PlayerGameRow, SeasonPlayerRow, ShotApiRow, TeamContextRow } from '../resources/nbaShots';
 
 const MAX_FT = 35;
 const split = (attempts: number, makes: number): Split => ({ attempts, makes, fgPct: attempts > 0 ? makes / attempts : null });
@@ -59,6 +59,44 @@ export function leagueContextFromRows(rows: LeagueContextRow[]): LeagueContext {
         sides,
         fgPct: total ? split(total.attempts, total.makes).fgPct : null,
     };
+}
+
+/**
+ * The league's exact 2.5 ft squares, sdv-db's `kind='square'` rows (#191): (key1, key2) is the lattice index squareKey gives, so
+ * the centre is (key1 * 25, key2 * 25) tenths, the key squarebinShots produces. `|| 0` folds -0 into 0 as summarize does.
+ */
+export function leagueSquaresFromRows(rows: LeagueContextRow[]): LeagueHex[] {
+    return rows.filter((r) => r.kind === 'square').map((r) => ({
+        x: (r.key1 ?? 0) * SQUARE_SIDE || 0, y: (r.key2 ?? 0) * SQUARE_SIDE || 0, attempts: r.attempts, fgPct: split(r.attempts, r.makes).fgPct,
+    }));
+}
+
+export interface TeamSquares {
+    /** the team's on-court, located squares (squarebinShots of its read), each with its majority zone */
+    squares: SquareBin[];
+    /** every regular-season shot of the team (shootingLine of its read) */
+    line: ShootingLine;
+}
+
+/**
+ * sdv-db's `shot_team_context` rows (#221) by team: the squares as leagueSquaresFromRows lays them out, and the `kind='total'`
+ * line. A tied square's zone is the lowest ZONES index where squarebinShots keeps the first seen; only a tie can differ.
+ */
+export function teamSquaresFromRows(rows: TeamContextRow[]): Map<number, TeamSquares> {
+    const out = new Map<number, TeamSquares>();
+    const of = (id: number) => {
+        let t = out.get(id);
+        if (!t) out.set(id, (t = { squares: [], line: lineOf({ attempts: 0, makes: 0, fg3a: 0, fg3m: 0 }) }));
+        return t;
+    };
+    for (const r of rows) {
+        const t = of(Number(r.team_id));
+        if (r.kind === 'total') t.line = lineOf({ attempts: r.attempts, makes: r.makes, fg3a: r.fg3a, fg3m: r.fg3m });
+        else if (r.kind === 'square') {
+            t.squares.push({ x: (r.key1 ?? 0) * SQUARE_SIDE || 0, y: (r.key2 ?? 0) * SQUARE_SIDE || 0, ...split(r.attempts, r.makes), zone: ZONES[r.zone ?? 0] });
+        }
+    }
+    return out;
 }
 
 function statsOf(r: SeasonPlayerRow): PlayerStats | null {
