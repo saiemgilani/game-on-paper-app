@@ -107,7 +107,7 @@ const columns: [BoardSort | null, string, string][] = [
                     <div class="d-flex flex-wrap gap-1 mb-2 align-items-center" id="pro-board-scarcity">
                         <span class="text-muted text-small me-1"><abbr title="P4 starting jobs opening (final-season starters and starters in the portal) per starter-caliber entrant this cycle; 1.0 = the average position">Scarcity this cycle</abbr>:</span>
                         {board.scarcity.map((s) => (
-                            <span class:list={['badge', (s.scarcity ?? 0) > 1 ? 'text-bg-danger' : 'text-bg-light border']}>{s.unit} {s.scarcity === null ? '—' : s.scarcity.toFixed(2)}</span>
+                            <span class:list={['badge', (s.scarcity ?? 0) > 1 ? 'bg-danger text-white' : 'bg-light text-dark border']}>{s.unit} {s.scarcity === null ? '—' : s.scarcity.toFixed(2)}</span>
                         ))}
                     </div>
                 )}
