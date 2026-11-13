@@ -1,8 +1,9 @@
 ---
 // src/components/nba/game/NbaTeamGrid.astro
 // BB-G32, behind 'bball-team-grid': the four factors and the team box in one panel, side by side at lg. The better side
-// of each rated row is tinted, with the gap printed; sdv-py's counted possessions (BB-D31, the processor only) sit beside
-// the box estimate; each team's season rate is a muted row under its game rate; and the four-factor accounting prices
+// of each rated row is tinted, with the gap printed; the counted possessions sit beside the box estimate (a final: sdv-db's
+// team_game_possessions, with ORtg / DRtg from situational_team_games' family all, the season rows' own definition; live:
+// sdv-py's BB-D31 splits from the processor); each team's season rate is a muted row under its game rate; and the four-factor accounting prices
 // each side's factors against the season's league-average possession (utils/teamGrid.ts). Every rate is the producer's.
 import type { NbaGame, NbaTeamRates } from '../../../resources/nbaGame';
 import type { SeasonRates, TeamGridSeason } from '../../../resources/teamGrid';
@@ -28,13 +29,20 @@ const rows: Row[] = [
     { label: 'DRtg', key: 'def_rtg', fmt: dec1, gap: dec1, better: 'low', season: true },
     { label: 'Pace', key: 'pace', fmt: dec1, gap: dec1, better: 'none', season: true },
 ];
-const counted = game.home.splits || game.away.splits ? { away: game.away.splits?.possessions ?? null, home: game.home.splits?.possessions ?? null } : null;
+// a final's producer rows first (the season rows' definition), else the processor's live count
+const fin = season?.game;
+const finPoss = fin && (fin.poss.home != null || fin.poss.away != null) ? fin.poss : null;
+const counted = finPoss ?? (game.home.splits || game.away.splits ? { away: game.away.splits?.possessions ?? null, home: game.home.splits?.possessions ?? null } : null);
+const allRow = (s: 'away' | 'home') => fin?.[s].find((r) => r.family === 'all' && r.split === 'all') ?? null;
+const ratings = allRow('away') || allRow('home') ? { away: allRow('away'), home: allRow('home') } : null;
+// ORtg / DRtg: the producer's per 100 counted possessions when the final has its row, else the box estimate's
+const val = (s: 'away' | 'home', key: keyof NbaTeamRates) => (ratings && (key === 'off_rtg' || key === 'def_rtg') ? ratings[s]?.[key] ?? null : game[s].rates?.[key] ?? null);
 const seasonOf = (s: 'away' | 'home', key: keyof NbaTeamRates) => season?.[s]?.[key as keyof SeasonRates] ?? null;
 const withSeason = !!(season?.away || season?.home);
 const minutes = h?.game_minutes ?? a?.game_minutes ?? null;
-// the accounting's possessions: the side's own count when the processor has it, else the box estimate
+// the accounting's possessions: the side's own count (the final's producer row, or the live processor's), else the box estimate
 const lg = season?.league ?? null;
-const acct = (s: 'away' | 'home'): Accounting => accounting(game[s], game[s === 'away' ? 'home' : 'away'], game[s].splits?.possessions ?? game[s].rates?.possessions ?? null, lg);
+const acct = (s: 'away' | 'home'): Accounting => accounting(game[s], game[s === 'away' ? 'home' : 'away'], counted?.[s] ?? game[s].rates?.possessions ?? null, lg);
 const books = { away: acct('away'), home: acct('home') };
 const acctRows: { label: string; key: keyof Accounting }[] = [
     { label: 'Shooting', key: 'shooting' }, { label: 'Turnovers', key: 'turnovers' }, { label: 'Offensive rebounding', key: 'rebounding' }, { label: 'Free throws', key: 'freeThrows' }, { label: 'Total', key: 'total' },
@@ -52,13 +60,13 @@ const tint = (side: 'away' | 'home', e: ReturnType<typeof edge>) => ['text-end',
         <thead><tr><th scope="col"><span class="visually-hidden">Metric</span></th><th scope="col" class="text-end">{away}</th><th scope="col" class="text-end">{home}</th><th scope="col" class="text-end">Gap</th></tr></thead>
         <tbody>
             {rows.map((r) => {
-                const e = edge(r.better, a[r.key], h[r.key]);
+                const e = edge(r.better, val('away', r.key), val('home', r.key));
                 return (
                 <Fragment>
                 <tr>
                     <th scope="row" class="fw-normal">{r.label}</th>
-                    <td class:list={tint('away', e)}>{dash(a[r.key], r.fmt)}</td>
-                    <td class:list={tint('home', e)}>{dash(h[r.key], r.fmt)}</td>
+                    <td class:list={tint('away', e)}>{dash(val('away', r.key), r.fmt)}</td>
+                    <td class:list={tint('home', e)}>{dash(val('home', r.key), r.fmt)}</td>
                     <td class="text-end text-muted">{e ? r.gap(e.gap) : ''}</td>
                 </tr>
                 {r.key === 'possessions' && counted && (
@@ -101,8 +109,8 @@ const tint = (side: 'away' | 'home', e: ReturnType<typeof edge>) => ['text-end',
     <p class="small text-muted mb-0">
       Tinted and bold: the better side; the gap is in percentage points for eFG%, TOV% and ORB%. Possessions (box estimate) is Oliver's
       (FGA minus ORB plus TOV plus 0.44 FTA, averaged over both teams){counted && '; counted possessions come from the play-by-play, one team at a time, and the box estimate runs a few percent above the count in the pros'}.
-      Ratings are per 100 estimated possessions{minutes != null ? `; pace is per ${minutes} minutes${game.hasOvertime ? ' (overtime included)' : ''}` : ''}.
-      {withSeason && ' Season rows are each team\'s season rates, counted from its possessions (turnovers per possession), so they sit a little apart from the game\'s box-based rates.'}
+      {ratings ? 'ORtg and DRtg are per 100 counted possessions, the same count as the season rows (pace stays on the box estimate)' : 'Ratings are per 100 estimated possessions'}{minutes != null ? `; pace is per ${minutes} minutes${game.hasOvertime ? ' (overtime included)' : ''}` : ''}.
+      {withSeason && ` Season rows are each team's season rates, counted from its possessions. The game's TOV% is per play (turnovers over FGA plus 0.44 FTA plus turnovers) until the per-game counted row carries turnovers, so it sits a little apart from the season's turnovers per possession${ratings ? '' : ', as do the box-based ratings'}.`}
       {lg && ' Accounting: the points each factor added (+) or cost (−) against a league-average offense that season, on the same shots, possessions and rebound chances; a turnover saved or an extra offensive rebound is worth a league-average scoring chance, and an extra free throw the team\'s own FT% in the game less the share of a chance it uses.'}
       {season === null && ' The season context is temporarily unavailable.'}
     </p>

@@ -15,7 +15,7 @@ import type { BasketballLeague } from '../../utils/league';
 import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBox';
 import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
 import { retrieveGarbageTime, type GarbageReads } from '../../resources/garbageTime';
-import { retrieveTeamGridSeason, type TeamGridSeason } from '../../resources/teamGrid';
+import { retrieveTeamGridFinal, retrieveTeamGridSeason, type TeamGridSeason } from '../../resources/teamGrid';
 import { retrievePlayerSeasonRates, type PlayerSeasonRate } from '../../resources/playerSeasonRates';
 import { seasonCache, setCache, uncacheable } from './cache';
 
@@ -33,7 +33,7 @@ export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { 
     /** `impact`: BB-G1, only with 'bball-impact-box' on and a final; null when a read failed (the panel says so) */
     /** `flow`: BB-G28, only with 'bball-game-flow' on and a final; null when its read failed (the lead chart still draws) */
     /** `garbage`: BB-G2, only with 'bball-garbage-time' and 'bball-impact-box' on and a final; `reads` null when the log's read failed */
-    /** `season`: BB-G32, only with 'bball-team-grid' on, live or final; null when its read failed (the grid draws without it) */
+    /** `season`: BB-G32, only with 'bball-team-grid' on, live or final (a final adds `game`, its counted rows); null when a read failed (the grid draws without it) */
     | { game: NbaGame; sourceTools?: BasketballSourceTools; impact?: ImpactBoxReads | null; flow?: GameFlowReads | null; garbage?: { reads: GarbageReads | null; out: boolean }; season?: TeamGridSeason | null
         /** `playerSeason`: BB-G34, only with 'bball-player-box-views' on, live or final; null when its read failed (Vs average says so) */
         playerSeason?: PlayerSeasonRate[] | null };
@@ -107,7 +107,8 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
         withImpact ? readPanel('impact box', league, r.game, r.game.season, retrieveImpactBox) : undefined,
         withFlow ? readPanel('game flow', league, r.game, r.game.season, retrieveGameFlow) : undefined,
         withGarbage ? readPanel('garbage-time log', league, r.game, r.game.season, retrieveGarbageTime) : undefined,
-        withGrid ? readPanel('season team rates', league, r.game, r.game.season, retrieveTeamGridSeason) : undefined,
+        // a final adds its counted rows (possessions and ratings), so the game row and the season row share one definition
+        withGrid ? readPanel('team grid', league, r.game, r.game.season, final ? retrieveTeamGridFinal : retrieveTeamGridSeason) : undefined,
         withViews ? readPanel('player season rates', league, r.game, r.game.season, retrievePlayerSeasonRates) : undefined,
     ]);
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have

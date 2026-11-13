@@ -8,6 +8,7 @@
  */
 import { retrieveRowsFrom } from './sdv';
 import { NBA_READ_TIMEOUT_MS } from './nbaGames';
+import { retrieveProGame } from './impactBox';
 import { BASKETBALL } from '../basketball/config';
 import { PRO_LEAGUES, leagueSource, type BasketballLeague } from '../utils/league';
 
@@ -29,6 +30,24 @@ export interface TeamGridSeason {
     away: SeasonRates | null
     /** the possession-weighted league average; null with no rows. `ppp` is points per counted possession. */
     league: (SeasonRates & { ppp: number }) | null
+    /** a final only (retrieveTeamGridFinal): the game's counted rows; absent for a live game */
+    game?: TeamGridGame
+}
+
+/** One situational_team_games row (sdv-db BB-D21, per team-game): possessions, points and ratings per 100 counted possessions. */
+export interface GameSituationalRow {
+    family: string; split: string; poss: number | null; opp_poss: number | null; pts: number | null; opp_pts: number | null
+    off_rtg: number | null; def_rtg: number | null; net_rtg: number | null
+}
+
+/**
+ * A final's counted rows, the definition the season rows share: each side's possessions (team_game_possessions, split all)
+ * and every situational_team_games row (family all carries the game's ratings). Empty when the game is not mapped.
+ */
+export interface TeamGridGame {
+    poss: { home: number | null; away: number | null }
+    home: GameSituationalRow[]
+    away: GameSituationalRow[]
 }
 
 type Row = Record<string, unknown>;
@@ -53,6 +72,46 @@ export function teamGridSeason(rows: readonly Row[], homeId: number | null, away
 /** The season tables' team id of an ESPN team: the stats id for the pros (the league's team list), the ESPN id in college. */
 export function seasonTeamId(league: BasketballLeague, espnId: number): number | null {
     return PRO_LEAGUES.includes(league) ? (BASKETBALL[league].teams.byEspnId(espnId)?.team_id ?? null) : espnId;
+}
+
+/** Every family's rows of a team-game: ~20 splits a side, more with overtimes. The cap keeps a bad filter from paging silently. */
+const SITUATIONAL_LIMIT = '60';
+const SITUATIONAL_SELECT = 'team_id,family,split,games,minutes,poss,opp_poss,pts,opp_pts,plus_minus,off_rtg,def_rtg,net_rtg';
+
+/**
+ * A final's counted rows. Both tables are keyed like the season tables: the pros by the stats game and team ids (the ESPN
+ * game through the games schema's schedule_crosswalk, the read the Impact box shares), college by the stats.ncaa.org
+ * contest id (the ESPN game through ncaa_team_box) and the ESPN team ids. Not mapped: no rows. Strict.
+ */
+export async function retrieveTeamGridGame(league: BasketballLeague, season: number, espnGameId: string, homeId: number, awayId: number): Promise<TeamGridGame> {
+    const read = <T>(table: string, q: Record<string, string>) => retrieveRowsFrom<T>(leagueSource(league), table, { season: String(season), ...q }, TTL, true, NBA_READ_TIMEOUT_MS);
+    let gameId: string | null = null;
+    let teams = { home: homeId, away: awayId };
+    if (PRO_LEAGUES.includes(league)) {
+        const x = await retrieveProGame(league, season, espnGameId);
+        if (x) ({ gameId, teams } = x);
+    } else {
+        const box = await read<{ contest_id: string | number | null }>('ncaa_team_box', { espn_game_id: espnGameId, select: 'contest_id', limit: '4' });
+        gameId = box.find((r) => r.contest_id != null)?.contest_id?.toString() ?? null;
+    }
+    if (!gameId) return { poss: { home: null, away: null }, home: [], away: [] };
+    const [poss, sit] = await Promise.all([
+        read<Row>('team_game_possessions', { game_id: gameId, split: 'all', select: 'team_id,poss', limit: '4' }),
+        read<Row>('situational_team_games', { game_id: gameId, select: SITUATIONAL_SELECT, limit: SITUATIONAL_LIMIT }),
+    ]);
+    if (sit.length >= Number(SITUATIONAL_LIMIT)) throw new Error(`situational_team_games: ${sit.length} rows for ${league} game ${gameId}, at the ${SITUATIONAL_LIMIT} cap`);
+    const of = (id: number) => (rows: Row[]) => rows.filter((r) => num(r.team_id) === id);
+    const sitRow = (r: Row): GameSituationalRow => ({ family: String(r.family), split: String(r.split), poss: num(r.poss), opp_poss: num(r.opp_poss), pts: num(r.pts), opp_pts: num(r.opp_pts), off_rtg: num(r.off_rtg), def_rtg: num(r.def_rtg), net_rtg: num(r.net_rtg) });
+    return {
+        poss: { home: num(of(teams.home)(poss)[0]?.poss), away: num(of(teams.away)(poss)[0]?.poss) },
+        home: of(teams.home)(sit).map(sitRow), away: of(teams.away)(sit).map(sitRow),
+    };
+}
+
+/** A final's grid reads: the season context and the game's counted rows, in parallel (the readPanel signature). */
+export async function retrieveTeamGridFinal(league: BasketballLeague, season: number, espnGameId: string, homeId: number, awayId: number): Promise<TeamGridSeason> {
+    const [s, game] = await Promise.all([retrieveTeamGridSeason(league, season, espnGameId, homeId, awayId), retrieveTeamGridGame(league, season, espnGameId, homeId, awayId)]);
+    return { ...s, game };
 }
 
 /** The readPanel signature: league, season, ESPN game id, home and away ESPN ids. */
