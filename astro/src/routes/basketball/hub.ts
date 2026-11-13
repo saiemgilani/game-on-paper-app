@@ -11,10 +11,10 @@ import { prepareBasketballScoreboard, type BasketballScoreboardParams } from './
 import { retrieveGameLines } from '../../resources/gameLines';
 import { followTeams, hubIndex, hubLine, sparkline, standouts, warLeaders, type FollowTeam, type HubLine, type HubLink, type Standout, type WarLeader } from '../../basketball/hub';
 import { retrieveDayBox, retrieveFinalsWp } from '../../resources/hubTonight';
-import { retrieveFollowSchedule, retrieveWarLeaders } from '../../resources/hubDashboards';
+import { retrieveFollowSchedule, retrieveFollowStandings, retrieveFollowStrength, retrieveWarLeaders } from '../../resources/hubDashboards';
 import { isFeatureEnabled } from '../../utils/features';
 import { cleanAbbreviation } from '../../utils/misc';
-import { LEAGUES, type BasketballLeague } from '../../utils/league';
+import { LEAGUES, PRO_LEAGUES, type BasketballLeague } from '../../utils/league';
 
 export interface BasketballHubParams {
     board: BasketballScoreboardParams;
@@ -95,6 +95,11 @@ async function prepareDashboards(league: BasketballLeague, board: BasketballScor
     const warSeason = seasons[seasons.length - 1];
     // ponytail: an off day (no games on the board) has no ESPN season, so no follow block; a date-to-season helper if that bites
     const season = board.games.find((g) => g.season?.year != null)?.season.year ?? null;
-    const [war, sched] = await Promise.all([retrieveWarLeaders(league, warSeason), season === null ? [] : retrieveFollowSchedule(league, season)]);
-    return { warSeason, war: warLeaders(league, war), follow: followTeams(league, sched, board.today) };
+    const [war, sched, standings, strength] = await Promise.all([
+        retrieveWarLeaders(league, warSeason),
+        season === null ? [] : retrieveFollowSchedule(league, season),
+        season === null || !PRO_LEAGUES.includes(league) ? [] : retrieveFollowStandings(league, season),
+        season === null ? [] : retrieveFollowStrength(league, season),
+    ]);
+    return { warSeason, war: warLeaders(league, war), follow: followTeams(league, sched, board.today, { standings, strength }) };
 }

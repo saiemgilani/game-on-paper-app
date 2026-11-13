@@ -1,6 +1,6 @@
 // astro/test/basketball/hubDashboards.test.ts
 // BB-G49's dashboards on the league hub, behind 'bball-hub-dashboards' (on top of 'bball-hub'): the season's WAR leaders and
-// "follow a team" (a browser-kept pick showing that team's last and next game, record and rank). Real ESPN scoreboard captures
+// "follow a team" (a browser-kept pick showing that team's last and next game, record, conference seed or poll rank, and rating rank). Real ESPN scoreboard captures
 // with the real player_war and schedule rows (fixtures/README.md); the Data API is a mocked retrieveRowsFrom, fetch fails the
 // file on any network call, and the picker's inline script runs in jsdom against the rendered page.
 import { readFileSync } from 'node:fs';
@@ -27,6 +27,8 @@ const WP = gz('hub-play-wp.json.gz') as Record<string, number[]>;
 /** `<league>:<season>` -> the real player_war top 25 (the site's current season) / the real season schedule (the boards' seasons) */
 const WAR = JSON.parse(fix('hub-war-leaders.json').toString()) as Record<string, any[]>;
 const SCHED = gz('hub-season-schedule.json.gz') as Record<string, any[]>;
+/** the real latest season_standings snapshot (pros) and team_strength rows of the boards' seasons */
+const SS = gz('hub-standings-strength.json.gz') as { season_standings: Record<string, any[]>; team_strength: Record<string, any[]> };
 const BOARDS: Record<BasketballLeague, string> = {
     nba: 'nba/scoreboard-20250115.json', wnba: 'wnba/scoreboard-20250801.json', mbb: 'mbb/scoreboard-20250222-top25.json', wbb: 'wbb/scoreboard-20260207-top25.json',
 };
@@ -35,6 +37,7 @@ const DAYS: Record<BasketballLeague, string> = { nba: '2025-01-15', wnba: '2025-
 const LEAGUES = ['nba', 'wnba', 'mbb', 'wbb'] as const;
 const warSeason = (lg: BasketballLeague) => LEAGUE_CONFIG[lg].seasons[LEAGUE_CONFIG[lg].seasons.length - 1];
 const boardSeason = (lg: BasketballLeague) => events(lg)[0].season.year as number;
+const producer = (lg: BasketballLeague, season = boardSeason(lg)) => ({ standings: SS.season_standings[`${lg}:${season}`] ?? [], strength: SS.team_strength[`${lg}:${season}`] ?? [] });
 
 const sb = vi.fn();
 vi.mock('../../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../../src/resources/espn')>()), getScoreboardForDay: (...a: unknown[]) => sb(...a) }));
@@ -47,6 +50,8 @@ const dataFrom = (lg: string) => async (_src: unknown, table: string, q: Record<
     if (table === 'play_wp') return (WP[q.game_id] ?? []).map((home_win_prob, i) => ({ game_play_number: i + 1, home_win_prob }));
     if (table === 'player_war') return WAR[`${lg}:${q.season}`] ?? [];
     if (table === 'schedule') return SCHED[`${lg}:${q.season}`] ?? [];
+    if (table === 'season_standings') return SS.season_standings[`${lg}:${q.season}`] ?? [];
+    if (table === 'team_strength') return SS.team_strength[`${lg}:${q.season}`] ?? [];
     throw new Error(`unexpected read ${table}`);
 };
 const teams = vi.fn(async () => ({ unavailable: true }));
@@ -109,7 +114,7 @@ describe('warLeaders', () => {
 
 describe('followTeams', () => {
     for (const lg of LEAGUES) {
-        test(`${lg}: every team, its last final before the board's day and its next game from it, records that add up`, () => {
+        test(`${lg}: every team, its last final before the board's day and its next game from it`, () => {
             const sched = SCHED[`${lg}:${boardSeason(lg)}`];
             const f = followTeams(lg, sched, DAYS[lg]);
             const cfg = BASKETBALL[lg];
@@ -134,22 +139,32 @@ describe('followTeams', () => {
             expect(f.filter((t) => t.last && t.next).length / f.length).toBeGreaterThan(0.9);
         });
     }
-    test("nba: the regular-season record (the standings'), and the place by win percentage", () => {
-        const f = followTeams('nba', SCHED['nba:2025'], '2025-06-01');
+    test("pros: the record and conference seed from season_standings, the rating rank from team_strength", () => {
+        const f = followTeams('nba', SCHED['nba:2025'], '2025-06-01', producer('nba', 2025));
         const w = f.reduce((s, t) => s + Number(t.record!.split('-')[0]), 0), l = f.reduce((s, t) => s + Number(t.record!.split('-')[1]), 0);
         expect(w).toBe(l);
-        expect(w).toBe(1230); // 82 games x 30 teams / 2: play-in, playoffs and the Cup final are not in the record
+        expect(w).toBe(1230); // the standings' regular season: 82 games x 30 teams / 2
         const cle = f.find((t) => t.name === 'Cleveland Cavaliers')!;
-        expect(cle.record).toBe('64-18');
-        expect(cle.rank).toBe('2nd of 30 by record');
-        expect(f.find((t) => t.name === 'Oklahoma City Thunder')!.rank).toBe('1st of 30 by record');
+        expect([cle.record, cle.rank, cle.rating]).toEqual(['64-18', '1st in the East', '2nd in our team ratings']);
+        const okc = f.find((t) => t.name === 'Oklahoma City Thunder')!;
+        expect([okc.record, okc.rank, okc.rating]).toEqual(['68-14', '1st in the West', '1st in our team ratings']);
+        for (const t of f) expect(t.rank, t.name).toMatch(/^\d+(st|nd|rd|th) in the (East|West)$/);
+        const wn = followTeams('wnba', SCHED['wnba:2025'], DAYS.wnba, producer('wnba'));
+        expect(wn.find((t) => t.rank === '1st in the WNBA')).toBeDefined();
+        for (const t of wn) expect(t.rating, t.name).toMatch(/^\d+(st|nd|rd|th) in our team ratings$/);
     });
-    test('college: the poll rank of the latest regular-season row, top 25 only, and every final in the record', () => {
-        const f = followTeams('wbb', SCHED['wbb:2026'], DAYS.wbb);
+    test('pros without producer rows: no record, rank or rating (the site never counts them)', () => {
+        for (const t of followTeams('nba', SCHED['nba:2025'], DAYS.nba)) expect([t.record, t.rank, t.rating], t.name).toEqual([null, null, null]);
+    });
+    test("college: the poll rank of the latest regular-season row, top 25 only; record and rating rank from team_strength", () => {
+        const f = followTeams('wbb', SCHED['wbb:2026'], DAYS.wbb, producer('wbb'));
         const ranked = f.filter((t) => t.rank);
         expect(ranked.length).toBeGreaterThan(15);
         expect(ranked.length).toBeLessThanOrEqual(25);
         for (const t of ranked) expect(t.rank).toMatch(/^No\. ([1-9]|1\d|2[0-5]) in the poll$/);
+        const ucla = f.find((t) => t.id === '26')!;
+        expect([ucla.record, ucla.rating]).toEqual(['37-1', '2nd in our team ratings']);
+        expect(followTeams('mbb', SCHED['mbb:2025'], DAYS.mbb, producer('mbb')).find((t) => t.id === '2')!.rating).toBe('3rd in our team ratings'); // Auburn
         const end = followTeams('wbb', SCHED['wbb:2026'], '2026-05-01');
         const champ = end.find((t) => t.id === '26')!; // UCLA, the 2026 final above
         expect(champ.next).toBeNull();
@@ -164,11 +179,15 @@ describe('/<league> behind bball-hub-dashboards', () => {
             board(lg);
             rows.mockImplementation(dataFrom(lg));
             const html = await render(lg);
-            const war = reads('player_war'), sched = reads('schedule');
+            const war = reads('player_war'), sched = reads('schedule'), standings = reads('season_standings'), strength = reads('team_strength');
             expect(war).toEqual([expect.objectContaining({ season: String(warSeason(lg)), order: '-war', limit: '25' })]);
             expect(war[0].schema).toBe(LEAGUE_CONFIG[lg].sdvSchema);
             expect(sched).toEqual([expect.objectContaining({ schema: lg, season: String(boardSeason(lg)), limit: '50000' })]);
-            const f = followTeams(lg, SCHED[`${lg}:${boardSeason(lg)}`], DAYS[lg]);
+            const stats = LEAGUE_CONFIG[lg].sdvSchema;
+            expect(strength).toEqual([expect.objectContaining({ schema: stats, season: String(boardSeason(lg)) })]);
+            expect(standings).toEqual(lg === 'nba' || lg === 'wnba' ? [expect.objectContaining({ schema: stats, season: String(boardSeason(lg)), order: '-as_of_date' })] : []);
+            const f = followTeams(lg, SCHED[`${lg}:${boardSeason(lg)}`], DAYS[lg], producer(lg));
+            expect(f.filter((t) => t.rating).length / f.length, 'rated').toBeGreaterThan(0.9);
             expect((html.match(/<option value="\d+">/g) ?? []).length).toBe(f.length);
             const data = JSON.parse(new JSDOM(html).window.document.getElementById('hub-follow-data')!.textContent!);
             expect(data).toEqual(JSON.parse(JSON.stringify(f)));
@@ -189,11 +208,21 @@ describe('/<league> behind bball-hub-dashboards', () => {
         expect(html).not.toContain('id="hub-war"');
         expect(html).toContain('id="hub-index"');
     });
+    test('failed standings and strength reads: the follow block stands without the record, rank and rating', async () => {
+        board('nba');
+        rows.mockImplementation(async (src: unknown, table: string, q: Record<string, string>) => { if (table === 'season_standings' || table === 'team_strength') throw new Error('503'); return dataFrom('nba')(src, table, q); });
+        const html = await render('nba');
+        const data = JSON.parse(new JSDOM(html).window.document.getElementById('hub-follow-data')!.textContent!) as any[];
+        expect(data.length).toBe(30);
+        for (const t of data) expect([t.record, t.rank, t.rating]).toEqual([null, null, null]);
+    });
     test('a board with no games names no season: the WAR table, no follow block, no schedule read', async () => {
         sb.mockResolvedValue({ day: '2025-02-14', events: [], degraded: false });
         rows.mockImplementation(dataFrom('nba'));
         const html = await render('nba');
         expect(reads('schedule')).toEqual([]);
+        expect(reads('season_standings')).toEqual([]);
+        expect(reads('team_strength')).toEqual([]);
         expect(html).not.toContain('id="hub-follow"');
         expect(html).toContain('id="hub-war"');
     });
@@ -226,8 +255,8 @@ describe('the follow picker in a browser', () => {
         const card = w.document.getElementById('hub-follow-card')!;
         expect(card.hidden).toBe(false);
         expect((w.document.getElementById('hub-follow-pick') as HTMLSelectElement).value).toBe('5');
-        const cle = followTeams('nba', SCHED['nba:2025'], DAYS.nba).find((t) => t.id === '5')!;
-        expect(card.textContent).toContain(`Cleveland Cavaliers ${cle.record}, ${cle.rank}`);
+        const cle = followTeams('nba', SCHED['nba:2025'], DAYS.nba, producer('nba')).find((t) => t.id === '5')!;
+        expect(card.textContent).toContain('Cleveland Cavaliers 64-18, 1st in the East, 2nd in our team ratings');
         const links = [...card.querySelectorAll('a')].map((a) => a.getAttribute('href'));
         expect(links).toEqual([cle.href, `/nba/game/${cle.last!.id}`, `/nba/game/${cle.next!.id}`]);
         expect(card.textContent).toContain(`Last game: ${cle.last!.result} ${cle.last!.home ? 'vs' : 'at'} ${cle.last!.opp}`);

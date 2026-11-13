@@ -66,7 +66,7 @@ const subtitle = `${name} games today with the market line and win probability, 
                 if (!t) return;
                 const head = el('p', null, { className: 'mb-1' });
                 head.append(t.href ? el('a', t.name, { href: t.href, className: 'fw-semibold' }) : el('span', t.name, { className: 'fw-semibold' }));
-                const facts = [t.record, t.rank].filter(Boolean).join(', ');
+                const facts = [t.record, t.rank, t.rating].filter(Boolean).join(', ');
                 if (facts) head.append(' ', el('span', facts, { className: 'text-muted' }));
                 card.append(head, game('Last game', t.last), game('Next game', t.next));
               };

@@ -139,38 +139,53 @@ export interface FollowScheduleRow {
     home_score: number | null; away_score: number | null; home_current_rank?: number | null; away_current_rank?: number | null;
 }
 export interface FollowGame { id: string; date: string; opp: string; home: boolean; /** finals: 'W 112-104' */ result: string | null }
-export interface FollowTeam { id: string; name: string; href: string | null; record: string | null; rank: string | null; last: FollowGame | null; next: FollowGame | null }
+export interface FollowTeam {
+    id: string; name: string; href: string | null; record: string | null;
+    /** the pros' conference seed ('3rd in the West'), college's ESPN poll rank ('No. 7 in the poll', top 25 only) */
+    rank: string | null;
+    /** the team's place by our adjusted net rating ('12th in our team ratings') */
+    rating: string | null;
+    last: FollowGame | null; next: FollowGame | null;
+}
+/** BB-G49: the pros' latest season_standings snapshot (the official record and tiebreak seed), keyed by the stats.nba.com / stats.wnba.com team id */
+export interface FollowStandingRow { team_id: number | string; conference: string | null; wins: number | null; losses: number | null; seed: number | null }
+/** BB-G49: team_strength (stats.nba.com / stats.wnba.com team id for the pros, ESPN for college); adj_net_rtg_rank 1 = best */
+export interface FollowStrengthRow { team_id: number | string; wins: number | null; losses: number | null; adj_net_rtg_rank: number | null }
 
 const ordinal = (n: number) => `${n}${[11, 12, 13].includes(n % 100) ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`;
 /** a game that will not be played as listed is never "next" */
 const NOT_NEXT = /POSTPONED|CANCELED|FORFEIT|SUSPENDED/;
+const wl = (r: { wins: number | null; losses: number | null } | undefined) => (r && r.wins != null && r.losses != null ? `${r.wins}-${r.losses}` : null);
 
 /**
  * Every team the picker offers (the league's teams, college: the current D-I members), as of `today` (ESPN's day): its last final
- * on or before it, its next game on or after it (today's game while it is not final), its record and its rank. The record is the regular season for the pros (the standings') and every final for
- * college; the rank is the pros' place by win percentage, college's ESPN poll rank as of the latest regular-season row.
+ * on or before it and its next game on or after it (today's game while it is not final), from the schedule. The record, the rank
+ * and the rating are the producer's: the pros' record and conference seed from season_standings, college's record from
+ * team_strength and its ESPN poll rank from the latest regular-season schedule row, and everyone's adj_net_rtg_rank from team_strength.
+ * A team the producer has no row for shows none of them.
  */
-export function followTeams(league: BasketballLeague, rows: readonly FollowScheduleRow[], today: string): FollowTeam[] {
+export function followTeams(league: BasketballLeague, rows: readonly FollowScheduleRow[], today: string,
+    producer: { standings?: readonly FollowStandingRow[]; strength?: readonly FollowStrengthRow[] } = {}): FollowTeam[] {
     const cfg = BASKETBALL[league];
     const college = cfg.currentMembers != null;
     const members = new Set(cfg.currentMembers?.ids ?? []); // a college season is ~6,300 rows x 2 sides against 364 ids
     const known = (id: number) => (college ? members.has(id) : cfg.teams.byEspnId(id) != null);
-    type Acc = { w: number; l: number; last: FollowGame | null; next: FollowGame | null; poll: number | null; nextPoll: number | null };
+    const standings = new Map((producer.standings ?? []).map((r) => [Number(r.team_id), r]));
+    const strength = new Map((producer.strength ?? []).map((r) => [Number(r.team_id), r]));
+    type Acc = { last: FollowGame | null; next: FollowGame | null; poll: number | null; nextPoll: number | null };
     const acc = new Map<number, Acc>();
     for (const g of [...rows].sort((a, b) => a.game_date.localeCompare(b.game_date))) {
         for (const home of [true, false]) {
             const id = Number(home ? g.home_id : g.away_id);
             if (!known(id)) continue;
-            const a = acc.get(id) ?? { w: 0, l: 0, last: null, next: null, poll: null, nextPoll: null };
+            const a = acc.get(id) ?? { last: null, next: null, poll: null, nextPoll: null };
             acc.set(id, a);
             const opp = (home ? g.away_abbreviation : g.home_abbreviation) ?? '';
             const poll = Number(home ? g.home_current_rank : g.away_current_rank);
-            // the NBA Cup final ('CC') is a regular-season game the standings leave out
-            const regular = Number(g.season_type) === 2 && g.type_abbreviation !== 'CC';
+            const regular = Number(g.season_type) === 2;
             const final = g.status_type_completed === true && g.game_date <= today;
             if (final) {
                 const us = Number(home ? g.home_score : g.away_score), them = Number(home ? g.away_score : g.home_score);
-                if (regular || (college && Number(g.season_type) === 3)) { if (us > them) a.w++; else if (us < them) a.l++; }
                 a.last = { id: String(g.game_id), date: g.game_date, opp, home, result: `${us > them ? 'W' : us < them ? 'L' : 'T'} ${us}-${them}` };
                 if (regular && Number.isFinite(poll)) a.poll = poll;
             } else if (!a.next && g.game_date >= today && !NOT_NEXT.test(g.status_type_name ?? '')) {
@@ -179,14 +194,15 @@ export function followTeams(league: BasketballLeague, rows: readonly FollowSched
             }
         }
     }
-    const pct = (a: Acc) => (a.w + a.l ? a.w / (a.w + a.l) : null);
-    const pcts = [...acc.values()].map(pct).filter((p): p is number => p !== null);
     return [...acc.entries()].map(([id, a]) => {
-        const p = pct(a);
+        const seasonId = college ? id : cfg.teams.byEspnId(id)?.team_id; // the season tables' team id
+        const st = seasonId == null ? undefined : standings.get(seasonId);
+        const sr = seasonId == null ? undefined : strength.get(seasonId);
         const poll = a.nextPoll ?? a.poll;
         const rank = college
             ? (poll !== null && poll >= 1 && poll <= 25 ? `No. ${poll} in the poll` : null)
-            : (p === null ? null : `${ordinal(1 + pcts.filter((x) => x > p).length)} of ${pcts.length} by record`);
-        return { id: String(id), name: cfg.teams.byEspnId(id)?.name ?? String(id), href: teamHrefFromEspn({ id }, league), record: a.w + a.l ? `${a.w}-${a.l}` : null, rank, last: a.last, next: a.next };
+            : (st?.seed != null && st.conference ? `${ordinal(Number(st.seed))} in the ${st.conference}` : null);
+        const rating = sr?.adj_net_rtg_rank != null ? `${ordinal(Number(sr.adj_net_rtg_rank))} in our team ratings` : null;
+        return { id: String(id), name: cfg.teams.byEspnId(id)?.name ?? String(id), href: teamHrefFromEspn({ id }, league), record: wl(college ? sr : st), rank, rating, last: a.last, next: a.next };
     }).sort((x, y) => x.name.localeCompare(y.name));
 }
