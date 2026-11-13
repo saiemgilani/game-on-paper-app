@@ -1,7 +1,8 @@
 ---
 // src/components/nba/TeamShotQuality.astro
 // BB-G15, behind 'bball-poe': the team page's points over expected, laid out as the season block beside it (BB-G5): the
-// team's season line, then each shooter, most points over expected first. Every number is sdv-db's shot_quality_season
+// team's season line, then each shooter, most points over expected first, folded behind a toggle (unshaded: POE has
+// no producer percentile). Every number is sdv-db's shot_quality_season
 // (BB-D9); the names are the roster's. No team row (the model's warm-up season), no section.
 import type { ShotQualityRow } from '../../resources/shotQuality';
 import { fmtDec, fmtInt, fmtPts } from '../../nba/format';
@@ -27,10 +28,13 @@ const oe = (v: number | null) => (v == null ? dash : fmtPts(v));
   <p class="numeral mb-2" id="poe-line">
     <span class="fw-bold">{signed1(team.poe)}</span> {se(team)} points over expected &middot; {fmtInt(team.pts)} FG points on {fmtInt(team.attempts)} FGA, {dec(team.xpts, 1)} expected &middot; {dec(team.xpps, 2)} xPTS per shot &middot; {oe(team.fg_pct_oe)} FG% over expected
   </p>
+  <p class="small text-muted mb-2" id="poe-note">{XPTS_NOTE}</p>
   {players.length > 0 && (
+    <details id="poe-shooters">
+    <summary class="small mb-2">Each shooter ({fmtInt(players.length)})</summary>
     <div class="table-responsive">
       <table class="table table-sm align-middle mb-0" id="poe-players">
-        <caption class="small text-muted">Each shooter, most points over expected first. {XPTS_NOTE}</caption>
+        <caption class="small text-muted">Each shooter, most points over expected first.</caption>
         <thead><tr class="text-nowrap"><th scope="col">Player</th><th scope="col" class="text-end">FGA</th><th scope="col" class="text-end">FG pts</th><th scope="col" class="text-end">xPTS</th><th scope="col" class="text-end">POE</th><th scope="col" class="text-end">±</th><th scope="col" class="text-end"><abbr title="Shot quality: expected points per shot">xPTS/shot</abbr></th><th scope="col" class="text-end"><abbr title="Shot making: makes over expected makes, per shot, in percentage points">FG% OE</abbr></th></tr></thead>
         <tbody>
           {players.map((p) => {
@@ -51,6 +55,7 @@ const oe = (v: number | null) => (v == null ? dash : fmtPts(v));
         </tbody>
       </table>
     </div>
+    </details>
   )}
   </Fragment>)}
 </section>
