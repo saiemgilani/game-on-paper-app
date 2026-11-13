@@ -22,6 +22,11 @@ vi.mock('../../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/teamSeason')>()),
     retrieveTeamSeason: async () => ({ rates: [], strength: null, games: [], gameRates: [] }),
 }));
+// BB-G3's Lineups tab reads the Data API with 'bball-lineups' on (preview): never from a test
+vi.mock('../../src/resources/lineups', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/lineups')>()),
+    retrieveLineups: async () => ({ units: [], names: [], pairs: [] }),
+}));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async (s: number, lg: string) => { if (lg !== 'wbb') throw new Error(`league ${lg}`); return CAPTURED.includes(s) ? seasonPlayers(s as Season) : []; },

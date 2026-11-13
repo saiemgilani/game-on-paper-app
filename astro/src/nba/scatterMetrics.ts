@@ -45,16 +45,25 @@ export function surname(name: string): string {
 
 /**
  * Dot labels: the surname, or first initial and surname when two or more of `names` share it
- * (eleven plotted Williamses would otherwise all read "Williams").
+ * (eleven plotted Williamses would otherwise all read "Williams"), or the first name and surname when the
+ * initials collide too (Duke's Cameron and Cayden Boozer would both read "C. Boozer").
  */
 export function dotLabels(names: string[]): Map<string, string> {
-  const count = new Map<string, number>();
-  for (const n of names) count.set(surname(n), (count.get(surname(n)) ?? 0) + 1);
+  const distinct = [...new Set(names)];
+  const tally = (key: (n: string) => string) => {
+    const count = new Map<string, number>();
+    for (const n of distinct) count.set(key(n), (count.get(key(n)) ?? 0) + 1);
+    return (n: string) => (count.get(key(n)) ?? 0) > 1;
+  };
+  const first = (n: string) => n.trim().split(/\s+/)[0];
+  const initial = (n: string) => `${first(n)[0]}. ${surname(n)}`;
+  const sharedLast = tally(surname);
+  const sharedInitial = tally(initial);
   return new Map(
-    names.map((n) => {
+    distinct.map((n) => {
       const last = surname(n);
-      const first = n.trim().split(/\s+/)[0];
-      return [n, (count.get(last) ?? 0) > 1 && first && first !== last ? `${first[0]}. ${last}` : last];
+      if (!sharedLast(n) || !first(n) || first(n) === last) return [n, last];
+      return [n, sharedInitial(n) ? `${first(n)} ${last}` : initial(n)];
     }),
   );
 }
