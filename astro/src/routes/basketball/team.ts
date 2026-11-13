@@ -46,7 +46,7 @@ export interface BasketballTeamParams {
     seasonBlock?: TeamSeasonReads | null;
     /** BB-G15, only with 'bball-poe' on: the team-season's shot quality rows (team and shooters); null when the read failed */
     poe?: ShotQualityRow[] | null;
-    /** BB-G51, only with 'bball-shot-profile' on: the team_shot_zones row and the season rates rows; null when a read failed */
+    /** BB-G51, only with 'bball-shot-profile' on: the team_shot_zones row and its season FGM/FTM (team_season_stats); null when a read failed */
     shotZones?: TeamZoneReads | null;
 }
 

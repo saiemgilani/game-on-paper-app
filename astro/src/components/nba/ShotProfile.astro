@@ -57,7 +57,7 @@ const COLORS: Record<string, string> = { rim: 'bg-primary', mid: 'bg-info', thre
       <div class="d-flex rounded overflow-hidden mb-1" style="height: 0.75rem" aria-hidden="true">
         {v.comp.parts.filter((p) => p.share > 0).map((p) => (<div class={COLORS[p.key]} style={`width: ${(p.share * 100).toFixed(1)}%`}></div>))}
       </div>
-      <p class="small text-muted mb-0">{team ? 'Field goals by zone at 2 or 3 points; free throws are the rest of the season’s points.' : 'Field goals by zone at 2 or 3 points; free throws are the season’s free throws made, 1 point each.'}</p>
+      <p class="small text-muted mb-0">Field goals by zone at 2 or 3 points; free throws are the season’s free throws made, 1 point each.</p>
       </Fragment>) : v.why && (<p class="small text-muted mb-0" data-composition-missing>{v.why}</p>)}
     </div>
     ))}

@@ -5,9 +5,8 @@
  * `team_id` the ESPN id and `player_id` the stats.ncaa.org id). Each zone `z` of rim / mid / corner_3 / above_break_3 has
  * `{z}_fga` / `{z}_fgm` / `{z}_ast` and the rates `{z}_fg_pct` / `{z}_freq` / `{z}_ast_pct`, each with `_n` / `_rank` /
  * `_pct`; team rows add the opponents' under `opp_`. The four zones plus `unlocated_fga` add up to `fga`.
- * The team page also reads its `team_season_rates` rows (the season block's exact query, so one cached response serves
- * both) for the points the scoring split divides; the player page reads his season FGM and FTM from `player_season_stats`
- * (the split's free throws). Reads are strict and bounded, so an outage is "unavailable", never "no rows".
+ * The split's free throws are reads: the player's season FGM and FTM from `player_season_stats`, the team's (and, for the
+ * pros, its opponents') from `team_season_stats`. Reads are strict and bounded, so an outage is "unavailable", never "no rows".
  */
 import { retrieveRowsFrom } from './sdv';
 import { NBA_READ_TIMEOUT_MS } from './nbaGames';
@@ -39,10 +38,6 @@ export type ShotZoneRow = {
     unlocated_fga: number | null;
 } & Record<string, number | string | null | undefined>;
 
-/** The `team_season_rates` columns the scoring split uses (the read itself is the season block's: every column). */
-export interface TeamPointsRow { split: string; games: number | null; pts: number | null; opp_pts: number | null }
-
-export interface TeamZoneReads { zones: ShotZoneRow | null; rates: TeamPointsRow[] }
 
 const read = <T>(league: BasketballLeague, table: string, query: Record<string, string>) =>
     retrieveRowsFrom<T>(leagueSource(league), table, query, TTL, true, NBA_READ_TIMEOUT_MS);
@@ -65,8 +60,11 @@ export async function retrieveNcaaPlayerId(league: BasketballLeague, season: num
     return x?.ncaa_player_id ? String(x.ncaa_player_id) : null;
 }
 
-/** His season's field-goal and free-throw makes, as the season stats carry them: the player split's free throws (Q13). */
+/** A season's field-goal and free-throw makes, as the season stats carry them: the split's free throws (Q13). */
 export interface SeasonFt { fgm: number; ftm: number }
+
+/** The team's zone row and its season FGM/FTM: `ft` its own, `oppFt` its opponents' (null where the stats carry none). */
+export interface TeamZoneReads { zones: ShotZoneRow | null; ft: SeasonFt | null; oppFt: SeasonFt | null }
 
 /**
  * The pros' `player_season_stats` (stats.nba.com / stats.wnba.com ids): one regular-season totals row of the base measure,
@@ -78,7 +76,8 @@ const PRO_TOTALS: Record<'nba' | 'wnba', Record<string, string>> = {
 };
 /** College's ESPN `player_season_stats` is long; its totals' made-attempted stats carry the counts in `display_value` ("83-111", `value` null). */
 const MADE = { fgm: 'fieldGoalsMade-fieldGoalsAttempted', ftm: 'freeThrowsMade-freeThrowsAttempted' } as const;
-const madeOf = (v: unknown) => { const m = /^(\d+)-\d+$/.exec(String(v ?? '')); return m ? Number(m[1]) : null; };
+const madeOf = (v: unknown) => { const m = /^(\d+)(?:-\d+)?$/.exec(String(v ?? '').trim()); return m ? Number(m[1]) : null; };
+const pair = (fgm: unknown, ftm: unknown): SeasonFt | null => { const [g, f] = [numberOrNull(fgm), numberOrNull(ftm)]; return g == null || f == null ? null : { fgm: g, ftm: f }; };
 
 /**
  * His season FGM and FTM: the pros' totals row by stats id, college's season totals by ESPN athlete id (the page's own).
@@ -105,13 +104,34 @@ export function retrieveTeamPlayerShotZones(league: BasketballLeague, season: nu
     return read<ShotZoneRow>(league, 'player_shot_zones', { season: String(season), team_id: String(teamId), limit: ROSTER_LIMIT });
 }
 
-/** The team's zone row and its season rates rows, in parallel. `teamId` keys both (the stats id for the pros, ESPN's in college). */
+/**
+ * The team's zone row and its season FGM/FTM from `team_season_stats`, in parallel. `teamId` keys both (the stats id for the
+ * pros, ESPN's in college). The pros: the regular-season totals rows of the base measure (its own) and the opponent measure
+ * (its opponents'). College: ESPN's offensive totals (`value`, or `display_value` as "83-111" text); ESPN carries no
+ * opponents' free throws, so the allowed split has none.
+ */
 export async function retrieveTeamShotZones(league: BasketballLeague, season: number, teamId: number): Promise<TeamZoneReads> {
-    const s = String(season);
-    const [zones, rates] = await Promise.all([
-        read<ShotZoneRow>(league, 'team_shot_zones', { season: s, team_id: String(teamId), limit: '1' }),
-        // resources/teamSeason.ts's query, key for key in its order, so the KV cache answers both
-        read<TeamPointsRow>(league, 'team_season_rates', { season: s, team_id: String(teamId), limit: '10' }),
+    const s = String(season), id = String(teamId);
+    const zonesP = read<ShotZoneRow>(league, 'team_shot_zones', { season: s, team_id: id, limit: '1' });
+    if (league === 'nba' || league === 'wnba') {
+        const t = PRO_TOTALS[league];
+        const opp = league === 'nba' ? 'opponent' : 'Opponent';
+        const [zones, own, op] = await Promise.all([
+            zonesP,
+            read<Record<string, unknown>>(league, 'team_season_stats', { season: s, team_id: id, ...t, select: 'team_id,fgm,ftm', limit: '2' }),
+            read<Record<string, unknown>>(league, 'team_season_stats', { season: s, team_id: id, ...t, measure_type: opp, select: 'team_id,opp_fgm,opp_ftm', limit: '2' }),
+        ]);
+        return {
+            zones: zones[0] ?? null,
+            ft: own.length === 1 ? pair(own[0].fgm, own[0].ftm) : null,
+            oppFt: op.length === 1 ? pair(op[0].opp_fgm, op[0].opp_ftm) : null,
+        };
+    }
+    const [zones, rows] = await Promise.all([
+        zonesP,
+        read<{ stat_name: string; value: unknown; display_value: unknown }>(league, 'team_season_stats',
+            { season: s, team_id: id, category: 'offensive', select: 'team_id,stat_name,display_value,value', limit: '60' }),
     ]);
-    return { zones: zones[0] ?? null, rates };
+    const one = (stat: string) => { const hit = rows.filter((r) => r.stat_name === stat); return hit.length === 1 ? numberOrNull(hit[0].value) ?? madeOf(hit[0].display_value) : null; };
+    return { zones: zones[0] ?? null, ft: pair(one('fieldGoalsMade'), one('freeThrowsMade')), oppFt: null };
 }

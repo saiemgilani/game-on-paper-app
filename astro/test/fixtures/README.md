@@ -868,6 +868,13 @@ as `{nba, wnba, mbbTexas}`, the `data` array of each live Data API read of 2026-
 (Texas, ESPN's long season totals, 195 rows for the 13 shooters; the made-attempted stats carry the counts only in
 `display_value`, e.g. `83-111`, with `value` null). The page reads one athlete (`athlete_id=`, `category=totals`, limit 20).
 Zone points plus FTM equal the season stats' `pts` for both pros (1259, 937) and for 12 of the 13 Texas shooters (the 13th is one over).
+The team split's `team_season_stats` rows, added on 2026-11-13 as `nbaTeam`, `nbaTeamOpp` and `mbbTeam`:
+`/v1/nba_stats/team_season_stats?season=2026&team_id=1610612751&season_type=regular-season&per_mode=totals&measure_type=base&select=team_id,gp,fgm,ftm,pts&limit=2`
+(Brooklyn: 3071 FGM, 1471 FTM, 8686 points), the same with `measure_type=opponent&select=team_id,gp,opp_fgm,opp_ftm,opp_pts` (3457, 1564, 9505;
+zone points plus FTM give both point totals exactly; the page selects only the makes), and
+`/v1/mbb/team_season_stats?season=2026&team_id=150&category=offensive&select=team_id,stat_name,display_value,value&limit=60`
+(Duke, ESPN's long season totals, 30 rows: 973 FGM and 543 FTM over 34 games, where `team_shot_zones` counts 1079 makes over 38,
+so the page drops Duke's split and says why; ESPN's team totals carry no opponents' free throws).
 
 **Used by:** `test/shotProfile.test.ts`.
 

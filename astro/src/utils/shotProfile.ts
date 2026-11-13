@@ -2,9 +2,8 @@
  * The Shot profile's pure steps (BB-G51): zone table rows as the panel's lines, and where the points come from.
  * Every rate, rank and percentile is the producer's (sdv-db's player_shot_zones / team_shot_zones, rule B6), except for a
  * pro who played for more than one team: his teams' counts are added up and the rates recomputed from them, unranked
- * (the producer ranks each team row, not the season). The scoring split: the zone makes are worth 2 or 3, and a player's
- * free throws are his season FTM from the season stats (a read). A team's free throws are still its season points less
- * the zone points.
+ * (the producer ranks each team row, not the season). The scoring split: the zone makes are worth 2 or 3, and the free
+ * throws are the season FTM from the season stats (a read: player_season_stats for a player, team_season_stats for a team).
  */
 import { ZONE_KEYS, type SeasonFt, type ShotZoneRow, type TeamZoneReads, type ZoneKey } from '../resources/shotZones';
 import { numberOrNull } from './misc';
@@ -83,38 +82,33 @@ export function collegePlayerRows(rows: readonly ShotZoneRow[], ncaaId: string |
 }
 
 /**
- * The player panel: his side (null without a row) and the split, free throws his season FTM. The season stats' FGM must
- * be the zone table's: a different count is a different scope (games missing, a career line), so its FTM is not his.
+ * A side and its split, free throws the season stats' FTM (`none` says why when they carry none). The season stats' FGM
+ * must be the zone table's: a different count is a different scope (games missing, a career line), so its FTM is not this one's.
  */
-export function playerView(rows: readonly ShotZoneRow[], ft: SeasonFt | null): SideView | null {
-    const side = zoneSide(rows);
-    if (!side) return null;
-    if (!ft) return { title: '', side, comp: null, why: 'The season stats carry no free throws.' };
+function splitView(title: string, side: ZoneSide, ft: SeasonFt | null, none: string): SideView {
+    if (!ft) return { title, side, comp: null, why: none };
     if (ft.fgm !== side.fgm) {
-        return { title: '', side, comp: null, why: `The zone table counts ${side.fgm} makes to the season stats’ ${ft.fgm}, so the points cannot be split.` };
+        return { title, side, comp: null, why: `The zone table counts ${side.fgm} makes to the season stats’ ${ft.fgm}, so the points cannot be split.` };
     }
     const comp = composition(side, ft.ftm);
-    return { title: '', side, comp, why: comp ? null : 'The points cannot be split: a make has no location.' };
+    return { title, side, comp, why: comp ? null : 'The points cannot be split: a make has no location.' };
 }
 
-/**
- * The team panel: offense and allowed, each split against the season rates' points when the two count the same games;
- * free throws are those points less the zone points. ponytail: a remainder; read the teams' FTM once all four leagues carry it.
- */
-export function teamViews(reads: TeamZoneReads): SideView[] {
-    const row = reads.zones;
-    if (!row) return [];
-    const all = reads.rates.find((r) => r.split === 'all') ?? null;
-    const games = numberOrNull(all?.games);
-    const same = all != null && games === numberOrNull(row.games);
-    const why = !all ? 'The season’s box points are not built yet.' : same ? null
-        : `The shot charts cover ${numberOrNull(row.games) ?? 0} of the ${games ?? 0} games, so the points cannot be split.`;
-    const view = (title: string, prefix: string, pts: number | null): SideView | null => {
-        const side = zoneSide([row], prefix);
-        if (!side || side.fga === 0) return null;
-        const fg = fgPoints(side);
-        const comp = same && fg && pts != null ? composition(side, pts - fg.rim - fg.mid - fg.three) : null;
-        return { title, side, comp, why: why ?? (comp ? null : 'The points cannot be split: a make has no location.') };
+/** The player panel: his side (null without a row) and the split, free throws his season FTM. */
+export function playerView(rows: readonly ShotZoneRow[], ft: SeasonFt | null): SideView | null {
+    const side = zoneSide(rows);
+    return side ? splitView('', side, ft, 'The season stats carry no free throws.') : null;
+}
+
+/** The team panel: offense and allowed, free throws the team's and its opponents' season FTM (college carries no opponents'). */
+export function teamViews({ zones, ft, oppFt }: TeamZoneReads): SideView[] {
+    if (!zones) return [];
+    const view = (title: string, prefix: string, f: SeasonFt | null, none: string) => {
+        const side = zoneSide([zones], prefix);
+        return side && side.fga > 0 ? splitView(title, side, f, none) : null;
     };
-    return [view('Offense', '', numberOrNull(all?.pts)), view('Allowed', 'opp_', numberOrNull(all?.opp_pts))].filter((v): v is SideView => v != null);
+    return [
+        view('Offense', '', ft, 'The season stats carry no free throws.'),
+        view('Allowed', 'opp_', oppFt, 'The season stats carry no opponents’ free throws.'),
+    ].filter((v): v is SideView => v != null);
 }
