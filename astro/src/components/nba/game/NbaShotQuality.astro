@@ -1,6 +1,7 @@
 ---
-// BB-G15, behind 'bball-poe': each team's points over expected in the Four factors panel, laid out as the factors (away
-// left, home right, the better side bold). Every number is sdv-db's shot_quality_game team row (BB-D9); no pair, nothing.
+// BB-G15, behind 'bball-poe': each team's points over expected in its own panel, laid out as the four factors (away
+// left, home right; only POE bolds the better side). Every number is sdv-db's shot_quality_game team row (BB-D9);
+// no pair, nothing.
 import type { NbaGame } from '../../../resources/nbaGame';
 import type { ShotQualityRow } from '../../../resources/shotQuality';
 import { dash } from '../../../nba/data/game';
@@ -17,17 +18,16 @@ const rows: Row[] = [
     { label: 'FG points', cell: (r) => fmtInt(r.pts) },
     { label: 'xPTS', hover: 'Expected points from the shots taken', cell: (r) => dash(r.xpts, (n) => fmtDec(n, 1)) },
     { label: 'Points over expected', hover: 'FG points minus xPTS; ± one standard error', cell: (r) => (r.poe == null ? '–' : `${signed1(r.poe)}${r.poe_se == null ? '' : ` ± ${fmtDec(r.poe_se, 1)}`}`), value: (r) => r.poe },
-    { label: 'xPTS per shot', hover: 'Shot quality: the expected points of the average shot', cell: (r) => dash(r.xpps, (n) => fmtDec(n, 2)), value: (r) => r.xpps },
-    { label: 'FG% over expected', hover: 'Shot making: makes minus expected makes, per shot, in percentage points', cell: (r) => dash(r.fg_pct_oe, fmtPts), value: (r) => r.fg_pct_oe },
+    { label: 'xPTS per shot', hover: 'Shot quality: the expected points of the average shot', cell: (r) => dash(r.xpps, (n) => fmtDec(n, 2)) },
+    { label: 'FG% over expected', hover: 'Shot making: makes minus expected makes, per shot, in percentage points', cell: (r) => dash(r.fg_pct_oe, fmtPts) },
 ];
 const wins = (r: Row, mine: ShotQualityRow, theirs: ShotQualityRow) => {
     const [m, t] = [r.value?.(mine), r.value?.(theirs)];
     return m != null && t != null && m > t;
 };
 ---
-{poe === null ? (<p class="small text-muted mt-3 mb-0" id="poe-unavailable">Points over expected are temporarily unavailable.</p>) : h && a && (
-<section id="poe" aria-label="Points over expected" class="mt-3">
-<h3 class="h6">Points over expected</h3>
+{poe === null ? (<p class="small text-muted mb-0" id="poe-unavailable">Points over expected are temporarily unavailable.</p>) : h && a && (
+<section id="poe-table" aria-label="Points over expected">
 <div class="table-responsive"><table class="table table-sm numeral w-auto" aria-label="Points over expected">
     <thead><tr><th scope="col"><span class="visually-hidden">Metric</span></th><th scope="col" class="text-end">{cleanAbbreviation(game.away.team)}</th><th scope="col" class="text-end">{cleanAbbreviation(game.home.team)}</th></tr></thead>
     <tbody>
