@@ -318,6 +318,9 @@ describe('NbaGamePage', () => {
         const both = panel(await render());
         expect(both.match(/<div data-shot-link[^>]*>/g)).toHaveLength(2);
         expect(both.match(/Shooting signature/g)).toHaveLength(2);
+        // the one bar chart per team carries #444's Share / FG% toggle, FG% first
+        expect(both.match(/aria-pressed="true"[^>]*>FG%<\/button>/g)).toHaveLength(2);
+        expect(both.match(/aria-pressed="false"[^>]*>Share<\/button>/g)).toHaveLength(2);
         expect(both).toContain(`${g.home.team.displayName} FG% by distance vs league`);
         const p = g.home.players.find((r) => g.plays.some((x) => x.athleteId === r.athlete_id && x.shootingPlay && x.xLegacy != null && !(x.xLegacy === 0 && x.yLegacy === 0)))!;
         const one = panel(await render(`?shot_player=${p.athlete_id}`));
