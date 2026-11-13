@@ -24,6 +24,19 @@ export function shotKind(typeText: string | null, text: string): ShotKind {
     return 'other';
 }
 
+/**
+ * The pros' shot moves, a second menu (Saiem, #451 Q1): the NBA and WNBA type text carries them ('Driving Floating Jump Shot',
+ * 'Pullup Jump Shot', 'Layup Shot Putback'); college's ('LayUpShot', 'JumpShot') has none. A shot can carry more than one.
+ */
+export const SHOT_MOVES = {
+    driving: 'Driving', pullup: 'Pull-ups', floating: 'Floaters', turnaround: 'Turnarounds', stepback: 'Step-backs', alleyoop: 'Alley-oops', putback: 'Putbacks',
+} as const;
+export type ShotMove = keyof typeof SHOT_MOVES;
+const MOVE_RE: Record<ShotMove, RegExp> = {
+    driving: /driving/i, pullup: /pull ?up/i, floating: /floating/i, turnaround: /turnaround/i, stepback: /step ?back/i, alleyoop: /alley ?oop/i, putback: /putback/i,
+};
+export const shotMoves = (typeText: string | null): ShotMove[] => (Object.keys(MOVE_RE) as ShotMove[]).filter((m) => MOVE_RE[m].test(typeText ?? ''));
+
 /** ESPN names the passer in the make's text: '(Josh Hart assists)' (NBA), 'Assisted by Ann Wauters.' (WNBA, college). */
 export const isAssisted = (p: Pick<NbaPlay, 'scoringPlay' | 'text'>): boolean => p.scoringPlay && /\bassist/i.test(p.text);
 
@@ -35,39 +48,39 @@ export function clockSeconds(clock: string): number | null {
 }
 
 /** A shot on the chart with what the filters read: `shooter` the ESPN athlete id ('' unknown), `secs` the period clock. */
-export interface FilterShot extends GameShot { shooter: string; ast: boolean; kind: ShotKind; zone: Zone | ''; secs: number | null }
+export interface FilterShot extends GameShot { shooter: string; ast: boolean; kind: ShotKind; moves: ShotMove[]; zone: Zone | ''; secs: number | null }
 
 /** One team's attempts (shotsOf) as filter shots. `base` is the page's own GameShot for the play (NbaGameShotCharts). */
 export function filterShot(p: NbaPlay, base: GameShot, court: Court, at: PlaceholderLocation | null): FilterShot {
     // no zone for a shot ESPN did not locate, nor one at the league's placeholder location (D29), as the zone charts
     const placed = !base.unlocated && !(at && base.x === at.x && base.y === at.y);
     return {
-        ...base, shooter: p.athleteId == null ? '' : String(p.athleteId), ast: isAssisted(p), kind: shotKind(p.typeText, p.text),
+        ...base, shooter: p.athleteId == null ? '' : String(p.athleteId), ast: isAssisted(p), kind: shotKind(p.typeText, p.text), moves: shotMoves(p.typeText),
         zone: placed ? zoneOf({ x_legacy: base.x, y_legacy: base.y, shot_value: base.value }, court) : '', secs: clockSeconds(p.clock),
     };
 }
 
 /** The filter state; '' is "all". `with` is an ESPN athlete id from the stints, `withMode` whether he was on or off. */
 export interface ShotFilters {
-    team: '' | 'away' | 'home'; player: string; period: string; result: '' | 'made' | 'missed'; zone: string; kind: string
+    team: '' | 'away' | 'home'; player: string; period: string; result: '' | 'made' | 'missed'; zone: string; kind: string; move: string
     assist: '' | 'ast' | 'unast'; with: string; withMode: 'on' | 'off'
 }
-export const NO_FILTERS: ShotFilters = { team: '', player: '', period: '', result: '', zone: '', kind: '', assist: '', with: '', withMode: 'on' };
+export const NO_FILTERS: ShotFilters = { team: '', player: '', period: '', result: '', zone: '', kind: '', move: '', assist: '', with: '', withMode: 'on' };
 
 /** The URL's names: `shot_team`, `shot_player`, ..., and `shot_on=<id>` / `shot_off=<id>` for the ON/OFF filter. */
 const PARAM: Record<Exclude<keyof ShotFilters, 'with' | 'withMode'>, string> = {
-    team: 'shot_team', player: 'shot_player', period: 'shot_period', result: 'shot_result', zone: 'shot_zone', kind: 'shot_type', assist: 'shot_assist',
+    team: 'shot_team', player: 'shot_player', period: 'shot_period', result: 'shot_result', zone: 'shot_zone', kind: 'shot_type', move: 'shot_move', assist: 'shot_assist',
 };
 
 /** The values each menu offers on this page; anything else in the URL is dropped. */
-export interface FilterOptions { players: string[]; periods: string[]; zones: string[]; kinds: string[]; withPlayers: string[] }
+export interface FilterOptions { players: string[]; periods: string[]; zones: string[]; kinds: string[]; moves: string[]; withPlayers: string[] }
 
 export function parseFilters(q: URLSearchParams, o: FilterOptions): ShotFilters {
     const pick = <T extends string>(v: string | null, allowed: readonly string[]): T | '' => (v != null && allowed.includes(v) ? (v as T) : '');
     const on = pick(q.get('shot_on'), o.withPlayers), off = pick(q.get('shot_off'), o.withPlayers);
     return {
         team: pick(q.get(PARAM.team), ['away', 'home']), player: pick(q.get(PARAM.player), o.players), period: pick(q.get(PARAM.period), o.periods),
-        result: pick(q.get(PARAM.result), ['made', 'missed']), zone: pick(q.get(PARAM.zone), o.zones), kind: pick(q.get(PARAM.kind), o.kinds),
+        result: pick(q.get(PARAM.result), ['made', 'missed']), zone: pick(q.get(PARAM.zone), o.zones), kind: pick(q.get(PARAM.kind), o.kinds), move: pick(q.get(PARAM.move), o.moves),
         assist: pick(q.get(PARAM.assist), ['ast', 'unast']), with: on || off, withMode: on || !off ? 'on' : 'off',
     };
 }
@@ -96,6 +109,7 @@ export function matches(s: FilterShot, f: ShotFilters, stints: GameStints | null
     if (f.result && s.made !== (f.result === 'made')) return false;
     if (f.zone && s.zone !== f.zone) return false;
     if (f.kind && s.kind !== f.kind) return false;
+    if (f.move && !s.moves.includes(f.move as ShotMove)) return false;
     if (f.assist && !(s.made && s.ast === (f.assist === 'ast'))) return false;
     if (f.with) {
         const st = stints?.[f.with];
@@ -122,3 +136,5 @@ export const zonesOf = (shots: readonly FilterShot[]): Zone[] => ZONES.filter((z
 /** The shot types a set of shots has, in menu order. */
 export const kindsOf = (shots: readonly FilterShot[]): (keyof typeof SHOT_KINDS)[] =>
     (Object.keys(SHOT_KINDS) as (keyof typeof SHOT_KINDS)[]).filter((k) => shots.some((s) => s.kind === k));
+/** The moves a set of shots has, in menu order (none in college). */
+export const movesOf = (shots: readonly FilterShot[]): ShotMove[] => (Object.keys(SHOT_MOVES) as ShotMove[]).filter((m) => shots.some((s) => s.moves.includes(m)));

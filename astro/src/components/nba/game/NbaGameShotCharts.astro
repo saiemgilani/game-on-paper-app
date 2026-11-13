@@ -19,7 +19,8 @@ import { islandPeriodProps, periodShort } from '../../../basketball/periods';
 import { basketball, courtFor, placeholderFor, seasonLabelFor } from '../../../basketball/config';
 import { placeholderNote } from '../../../nba/data/placeholder';
 import { dashboardScope } from '../../../basketball/dashboards';
-import { filterShot, kindsOf, parseFilters, SHOT_KINDS, zonesOf, type FilterShot } from '../../../basketball/shotFilters';
+import { filterShot, kindsOf, movesOf, parseFilters, SHOT_KINDS, SHOT_MOVES, zonesOf, type FilterShot } from '../../../basketball/shotFilters';
+import { PRO_LEAGUES } from '../../../utils/league';
 
 interface Props {
     game: NbaGame; /** BB-G39: the league curve; absent, null (a failed read) or empty (fgPct null): the charts alone */ shooting?: LeagueContext | null
@@ -66,16 +67,18 @@ const filtered = filters && (() => {
     const periods = Array.from({ length: game.periods }, (_, i) => ({ value: String(i + 1), label: periodShort(i + 1, game.regulation, game.periodKind) }));
     const zones = zonesOf(all).map((z) => ({ value: z, label: ZONE_LABELS[z] }));
     const kinds = kindsOf(all).map((k) => ({ value: k, label: SHOT_KINDS[k] }));
+    // the pros' second menu (their type text names the move); college's text has none
+    const moves = PRO_LEAGUES.includes(league) ? movesOf(all).map((m) => ({ value: m, label: SHOT_MOVES[m] })) : [];
     const withPlayers = fside.filter((s) => s.withPlayers.length > 0).map((s) => ({ key: s.key, abbr: s.abbr, players: s.withPlayers }));
     const initial = parseFilters(Astro.url.searchParams, {
         players: fside.flatMap((s) => s.players.map((p) => p.id)), periods: periods.map((p) => p.value), zones: zones.map((z) => z.value),
-        kinds: kinds.map((k) => k.value), withPlayers: withPlayers.flatMap((s) => s.players.map((p) => p.id)),
+        kinds: kinds.map((k) => k.value), moves: moves.map((m) => m.value), withPlayers: withPlayers.flatMap((s) => s.players.map((p) => p.id)),
     });
     const curve = shooting?.fgPct != null;
     return {
-        sides: fside.map(({ withPlayers: _, ...s }) => s), periods, zones, kinds, withPlayers, initial, gameId: game.id,
+        sides: fside.map(({ withPlayers: _, ...s }) => s), periods, zones, kinds, moves, withPlayers, initial, gameId: game.id,
         ...(stints ? { stints } : {}),
-        ...(curve ? { league: { byFoot: shooting!.byFoot, byBin: shooting!.byBin }, caption: `League: ${seasonLabelFor(league, game.season!)} ${dashboardScope(league, game.season!).noun}. Share is each distance's part of the shots; FG% its makes. Hover a distance to mark it on every chart; click a bar to hold it.` } : {}),
+        ...(curve ? { league: { byFoot: shooting!.byFoot, byBin: shooting!.byBin }, caption: `League: ${seasonLabelFor(league, game.season!)} ${dashboardScope(league, game.season!).noun}. Share is each distance's part of the shots; FG% its makes. The signature and bars follow the team and shooter menus only and show his or the team's whole game otherwise. Hover a distance to mark it on every chart; click a bar to hold it.` } : {}),
         ...(at ? { placeholder: at } : {}), ...(court === COURT ? {} : { court }),
     };
 })();

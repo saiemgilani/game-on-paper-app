@@ -1,7 +1,8 @@
 <script lang="ts">
     // BB-G38 ('bball-shot-filters'): one filter bar over both teams' shot charts, the state kept in the URL (`?shot_*=`, the
     // server renders the asked filters first). With the league curve (BB-G39) each team's chart, signature and distance bars (Share / FG%)
-    // share a `data-shot-link` dashboard and the signature and bars follow the filters: a chosen player's are his own.
+    // share a `data-shot-link` dashboard. The signature and bars follow the team and shooter menus only (#451 Q4: a zone, period or
+    // type cut leaves too few shots to set against the league curve): a chosen player's are his whole game, a team's its whole game.
     import ChartSvg from './ChartSvg.svelte';
     import ShootingSignature from './ShootingSignature.svelte';
     import DistanceBarsToggle from './DistanceBarsToggle.svelte';
@@ -17,8 +18,10 @@
     type Option = { value: string; label: string };
     type Player = { id: string; name: string };
     type Side = { key: 'away' | 'home'; abbr: string; name: string; shots: FilterShot[]; players: Player[] };
-    let { sides, periods, zones, kinds, withPlayers = [], stints = null, league = null, placeholder = null, gameId, caption = '', initial = NO_FILTERS, court = COURT }: {
+    let { sides, periods, zones, kinds, moves = [], withPlayers = [], stints = null, league = null, placeholder = null, gameId, caption = '', initial = NO_FILTERS, court = COURT }: {
         sides: Side[]; periods: Option[]; zones: Option[]; kinds: Option[]
+        /** the pros' shot moves (driving, pull-up, ...); empty in college */
+        moves?: Option[]
         /** the ON/OFF menu: each side's players with stints; empty without stints (a live game, a season before them) */
         withPlayers?: { key: 'away' | 'home'; abbr: string; players: Player[] }[]; stints?: GameStints | null
         /** BB-G39's league curve; null: the charts alone */
@@ -80,6 +83,12 @@
             {#each kinds as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
         </select>
     {/if}
+    {#if moves.length > 0}
+        <select class="form-select form-select-sm w-auto" aria-label="Shot move" bind:value={f.move}>
+            <option value="">All moves</option>
+            {#each moves as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
+        </select>
+    {/if}
     <select class="form-select form-select-sm w-auto" aria-label="Assisted" bind:value={f.assist}>
         <option value="">Assisted or not</option><option value="ast">Assisted makes</option><option value="unast">Unassisted makes</option>
     </select>
@@ -103,7 +112,7 @@
         {@const xs = shown.get(s.key) ?? []}
         {@const line = shotLine(xs)}
         {@const who = f.player ? nameOf(f.player) : s.name}
-        {@const d = distanceFor(xs)}
+        {@const d = distanceFor(f.player ? s.shots.filter((x) => x.shooter === f.player) : s.shots)}
         <div class="col-12 col-lg-6">
             <h3 class="h6">{f.player ? `${s.abbr}: ${nameOf(f.player)}` : s.abbr}</h3>
             <p class="small mb-2" aria-live="polite">{line || (s.shots.length ? 'No shots match these filters.' : 'No field goal attempts.')}</p>
