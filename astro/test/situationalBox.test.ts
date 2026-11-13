@@ -16,13 +16,14 @@ const fetched: string[] = [];
 vi.stubGlobal('fetch', async (input: RequestInfo | URL) => { fetched.push(String(input instanceof Request ? input.url : input)); throw new Error('no network in tests'); });
 afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 
-const api = vi.hoisted(() => ({ calls: [] as { schema: string; table: string; query: Record<string, string> }[], rows: [] as any[], fail: false }));
+const api = vi.hoisted(() => ({ calls: [] as { schema: string; table: string; query: Record<string, string> }[], rows: [] as any[], tables: {} as Record<string, any[]>, fail: false }));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     retrieveRowsFrom: async (source: { schema: string }, table: string, query: Record<string, string>) => {
         api.calls.push({ schema: source.schema, table, query });
         if (api.fail) throw new Error('down');
         if (table === 'game_team_expected') return api.rows;
+        if (table in api.tables) return api.tables[table];
         throw new Error(`unexpected table ${table}`);
     },
 }));
@@ -35,13 +36,14 @@ import { gameExpected, retrieveGameExpected } from '../src/resources/gameExpecte
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import type { BasketballLeague } from '../src/utils/league';
 
-const gz = (name: string): { payload: NbaProcessorPayload } => JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/${name}.json.gz`, import.meta.url))).toString());
-const P: Record<BasketballLeague, NbaProcessorPayload> = {
-    nba: gz('team-grid-nba-401585607').payload, // TOR 96 at ORL 111, 2023-24
-    wnba: gz('team-grid-wnba-401736325').payload, // SEA 80 at ATL 78, 2025
-    mbb: gz('team-grid-mbb-401820775').payload, // NC State 90 at Notre Dame 96 (OT), 2025-26
-    wbb: gz('team-grid-wbb-401805076').payload, // UTEP 87 at Louisiana Tech 91 (OT), 2025-26
+const gz = (name: string): { payload: NbaProcessorPayload; game_map: Record<string, any>[]; situational_team_games: Record<string, any>[] } => JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/${name}.json.gz`, import.meta.url))).toString());
+const FX = {
+    nba: gz('team-grid-nba-401585607'), // TOR 96 at ORL 111, 2023-24
+    wnba: gz('team-grid-wnba-401736325'), // SEA 80 at ATL 78, 2025
+    mbb: gz('team-grid-mbb-401820775'), // NC State 90 at Notre Dame 96 (OT), 2025-26
+    wbb: gz('team-grid-wbb-401805076'), // UTEP 87 at Louisiana Tech 91 (OT), 2025-26
 };
+const P = Object.fromEntries(Object.entries(FX).map(([k, v]) => [k, v.payload])) as Record<BasketballLeague, NbaProcessorPayload>;
 /** The Data API's game_team_expected rows of the same wnba / mbb / wbb finals (each scored as of its own game date). */
 const API: Record<'wnba' | 'mbb' | 'wbb', Record<string, any>[]> = JSON.parse(readFileSync(new URL('./fixtures/game-team-expected.json', import.meta.url)).toString());
 const LEAGUES = Object.keys(P) as BasketballLeague[];
@@ -59,7 +61,20 @@ const dataApiFinal = (lg: 'wnba' | 'mbb' | 'wbb') => {
 };
 const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toFixed(1)}`;
 
-beforeEach(() => { api.calls.length = 0; api.rows = []; api.fail = false; sched.mockReset(); rows.mockReset(); });
+/** review Q23: a final with neither row (no splits, a season the expected points are not built for), carrying each side's
+ *  real situational_team_games rows (by the table's team id: the crosswalk's stats id for the pros, the ESPN id in college) */
+const situationalFinal = (lg: BasketballLeague) => {
+    const g = game(lg);
+    const pro = lg === 'nba' || lg === 'wnba';
+    for (const s of SIDES) {
+        delete g[s].splits; delete g[s].expected;
+        const id = pro ? Number(FX[lg].game_map[0][`${lg}_${s}_team_id`]) : Number(g[s].team.id);
+        g[s].situational = FX[lg].situational_team_games.filter((r) => r.team_id === id);
+    }
+    return g;
+};
+
+beforeEach(() => { api.calls.length = 0; api.rows = []; api.tables = {}; api.fail = false; sched.mockReset(); rows.mockReset(); });
 
 describe('the processor payload', () => {
     test.each(LEAGUES)('%s: each side carries every split and expected column the panel reads, as the producer wrote it', (lg) => {
@@ -196,6 +211,25 @@ describe('the page', () => {
         expect(html).toContain('id="situations"');
         expect(plain(html)).toContain('not available for this game yet'); expect(html).not.toContain('aria-label="Situations"');
     });
+    test.each(LEAGUES)('%s: neither row but the producer\'s situational rows: possessions, points and ORtg by situation, a note for the rest', async (lg) => {
+        const g = situationalFinal(lg);
+        const html = await render(lg, g);
+        expect(html).toContain('aria-label="Situations"'); expect(html).not.toContain('aria-label="Shot zones"'); expect(html).not.toContain('aria-label="Ball and flow"');
+        const at = (s: 'home' | 'away', family: string, split: string) => g[s].situational!.find((r) => r.family === family && r.split === split)!;
+        const labels: [string, string, string][] = [['All possessions', 'all', 'all'], ['Transition', 'play_type', 'transition'], ['Half-court', 'play_type', 'half_court'], ['Second chance', 'chance', 'second_chance'], ['First chance', 'chance', 'first_chance']];
+        for (const [label, family, split] of labels) {
+            // college publishes no chance family: those rows are left out, never dashed
+            if (!at('home', family, split)) { expect(hasRow(html, label)).toBe(false); continue; }
+            const r = row(html, label);
+            for (const s of SIDES) { const x = at(s, family, split); expect(r).toContain(`>${x.poss}<`); expect(r).toContain(`>${x.pts}<`); expect(r).toContain(`>${x.off_rtg.toFixed(1)}<`); }
+            expect(r.match(/table-success/g)?.length ?? 0).toBeLessThanOrEqual(1);
+        }
+        // transition plus half-court is every possession: the producer's two families split the same count
+        for (const s of SIDES) expect(at(s, 'play_type', 'transition').poss + at(s, 'play_type', 'half_court').poss).toBe(at(s, 'all', 'all').poss);
+        const text = plain(html);
+        expect(text).toContain('shot zones, the turnover types and the expected points are not available'); expect(text).not.toContain('possession factors are counted from the play-by-play and are not available');
+        clean(text);
+    });
     test('flag off: no panel and no nav entry', async () => {
         const html = await render('wbb', game('wbb'), false);
         expect(html).not.toContain('id="situations"'); expect(html).not.toContain('href="#situations"'); expect(html).not.toContain('Possession factors');
@@ -228,11 +262,12 @@ describe('prepareBasketballGame', () => {
         return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { preview: true, flagOverrides: { ...others, ...flags } } as any, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
     };
     test('a Data API final reads game_team_expected once, and a season not built is held for the season window', async () => {
-        ingested();
+        ingested(); api.tables = { schedule_crosswalk: [] };
         const { astro, cache } = fakeAstro({});
         const r: any = await prepareBasketballGame(astro, 'nba');
         const s = gameApi().schedule[0];
-        expect(api.calls.map((c) => [c.schema, c.table, c.query.season, c.query.game_id])).toEqual([['nba', 'game_team_expected', String(s.season), '401766458']]);
+        expect(api.calls.map((c) => [c.schema, c.table, c.query.season, c.query.game_id ?? c.query.espn_game_id]).sort()).toEqual([['nba', 'game_team_expected', String(s.season), '401766458'], ['nba', 'schedule_crosswalk', String(s.season), '401766458']]);
+        expect(r.game.home).not.toHaveProperty('situational');
         expect(r.game.home).not.toHaveProperty('expected');
         expect((cache.at(-1) as any).maxAge).toBe(6 * 60 * 60);
     });
@@ -242,6 +277,11 @@ describe('prepareBasketballGame', () => {
         const r: any = await prepareBasketballGame(astro, 'nba');
         expect(r.game.home).not.toHaveProperty('expected');
         expect(cache.at(-1)).toBe(false); expect(headers.get('Cache-Control')).toBe('no-store');
+    });
+    test('with the grid on, its final read carries the situational rows: no second read', async () => {
+        ingested(); api.tables = { schedule_crosswalk: [], team_season_rates: [] };
+        await prepareBasketballGame(fakeAstro({ 'bball-team-grid': true }).astro, 'nba');
+        expect(api.calls.filter((c) => c.table === 'schedule_crosswalk')).toHaveLength(1);
     });
     test('flag off: no read', async () => {
         ingested();

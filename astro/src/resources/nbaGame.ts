@@ -1,6 +1,7 @@
 // One game, one shape, two sources. The adapters rename and group; the numbers are Python's
 // (sportsdataverse.nba.nba_game_page), live through the processor or nightly through sdv-db.
 import type { ESPNGameHeader } from './espn';
+import type { GameSituationalRow } from './teamGrid';
 import type { ProcessedGame } from './python';
 import { regulationFor, type PeriodKind, type Regulation } from '../basketball/config';
 import type { BasketballLeague } from '../utils/league';
@@ -48,6 +49,9 @@ export interface NbaSide {
      *  {lg}.game_team_expected row (routes/basketball/game.ts); absent before the tip, in an older payload and for a season
      *  not built. Its expected columns are null when the processor could not read the league's shot cells. */
     expected?: NbaTeamExpected
+    /** a Data API final with no splits (BB-G33 review Q23): sdv-db's situational_team_games rows of the side, every family
+     *  (routes/basketball/game.ts); absent otherwise and when the producer has no row */
+    situational?: GameSituationalRow[]
 }
 
 /** The BB-D31 team split columns the page reads: BB-G32's counted possessions and BB-G33's possession factors. */

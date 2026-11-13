@@ -15,7 +15,7 @@ import type { BasketballLeague } from '../../utils/league';
 import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBox';
 import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
 import { retrieveGarbageTime, type GarbageReads } from '../../resources/garbageTime';
-import { retrieveTeamGridFinal, retrieveTeamGridSeason, type TeamGridSeason } from '../../resources/teamGrid';
+import { retrieveTeamGridFinal, retrieveTeamGridGame, retrieveTeamGridSeason, type TeamGridSeason } from '../../resources/teamGrid';
 import { retrieveGameExpected } from '../../resources/gameExpected';
 import { seasonCache, setCache, uncacheable } from './cache';
 
@@ -100,21 +100,27 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     const withGarbage = withImpact && isFeatureEnabled('bball-garbage-time', Astro.locals);
     // BB-G33's expected points: the processor payload carries them, so only a Data API final reads {lg}.game_team_expected
     const withExpected = final && r.game.source === 'data_api' && isFeatureEnabled('bball-situational-box', Astro.locals);
-    if (!withImpact && !withFlow && !withGrid && !withExpected) return r;
-    const [impact, flow, garbage, season, expected] = await Promise.all([
+    // BB-G33 review Q23: a final with no splits shows the producer's situational rows; the grid's final read carries them
+    const withSituational = final && !r.game.home.splits && !r.game.away.splits && !withGrid && isFeatureEnabled('bball-situational-box', Astro.locals);
+    if (!withImpact && !withFlow && !withGrid && !withExpected && !withSituational) return r;
+    const [impact, flow, garbage, season, expected, counted] = await Promise.all([
         withImpact ? readPanel('impact box', league, r.game, r.game.season, retrieveImpactBox) : undefined,
         withFlow ? readPanel('game flow', league, r.game, r.game.season, retrieveGameFlow) : undefined,
         withGarbage ? readPanel('garbage-time log', league, r.game, r.game.season, retrieveGarbageTime) : undefined,
         // a final adds its counted rows (possessions and ratings), so the game row and the season row share one definition
         withGrid ? readPanel('team grid', league, r.game, r.game.season, final ? retrieveTeamGridFinal : retrieveTeamGridSeason) : undefined,
         withExpected ? readPanel('game expected points', league, r.game, r.game.season, retrieveGameExpected) : undefined,
+        withSituational ? readPanel('situational rows', league, r.game, r.game.season, retrieveTeamGridGame) : undefined,
     ]);
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
-    if (impact === null || flow === null || garbage === null || season === null || expected === null) uncacheable(Astro);
-    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || season !== undefined || (expected && (!expected.home || !expected.away)))) setCache(Astro, seasonCache(league));
+    if (impact === null || flow === null || garbage === null || season === null || expected === null || counted === null) uncacheable(Astro);
+    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || season !== undefined || (expected && (!expected.home || !expected.away)) || (counted && !counted.home.length))) setCache(Astro, seasonCache(league));
     // the rows ride on the sides, where a processor game already has them
-    const game = expected ? { ...r.game, home: { ...r.game.home, ...(expected.home ? { expected: expected.home } : {}) }, away: { ...r.game.away, ...(expected.away ? { expected: expected.away } : {}) } } : r.game;
+    // a final with no splits: each side's situational rows (Q23), from the grid's read or its own
+    const sit = r.game.home.splits || r.game.away.splits ? undefined : (season?.game ?? counted ?? undefined);
+    const ride = (s: 'home' | 'away') => ({ ...r.game[s], ...(expected?.[s] ? { expected: expected[s] } : {}), ...(sit?.[s].length ? { situational: sit[s] } : {}) });
+    const game = expected || sit ? { ...r.game, home: ride('home'), away: ride('away') } : r.game;
     return { ...r, game, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}),
         ...(garbage !== undefined ? { garbage: { reads: garbage, out: Astro.url.searchParams.get(GARBAGE_PARAM) === 'out' } } : {}),
         ...(season !== undefined ? { season } : {}) };

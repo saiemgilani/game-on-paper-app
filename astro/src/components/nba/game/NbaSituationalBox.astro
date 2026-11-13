@@ -7,7 +7,9 @@
 // share of FGA, eFG%, expected points per shot, points over expected) and ball and flow (turnovers live vs dead, points
 // off each, shot mix, bench, leads, runs, possession length, expected TS% and the opponent's expected rating). The better
 // side is tinted and bold, as in BB-G32's grid. A row whose source is missing is left out; the expected columns show only
-// when both sides are priced (the league's shot cells read, or the season built), else a note says so.
+// when both sides are priced (the league's shot cells read, or the season built), else a note says so. A final with neither
+// row (a season the expected points are not built for) shows sdv-db's situational_team_games rows instead (review Q23):
+// transition, half-court and first / second chance possessions, points and ORtg, with a note for what is still missing.
 import type { EXPECTED_ZONES, NbaGame, NbaTeamExpected, NbaTeamSplits } from '../../../resources/nbaGame';
 import { dash } from '../../../nba/data/game';
 import { fmtDec, fmtPct } from '../../../nba/format';
@@ -115,9 +117,50 @@ const flowRows: Flow[] = [
 const transitionWindow = PRO_LEAGUES.includes(league) ? 8 : 10;
 const college = !PRO_LEAGUES.includes(league);
 const sitCols = priced ? 5 : 4, zoneCols = priced ? 5 : 3;
+// Q23: neither row, so the producer's per-game situational splits (both sides need the split; college has no chance family)
+const R = { away: game.away.situational, home: game.home.situational };
+const SITUATIONAL = [['all', 'all', 'All possessions'], ['play_type', 'transition', 'Transition'], ['play_type', 'half_court', 'Half-court'],
+    ['chance', 'second_chance', 'Second chance'], ['chance', 'first_chance', 'First chance']] as const;
+const sitFallback = !splits && !expected && R.away && R.home ? SITUATIONAL.map(([family, split, label]) => {
+    const at = (x: Side) => R[x]!.find((r) => r.family === family && r.split === split) ?? null;
+    return { label, v: { away: at('away'), home: at('home') } };
+}).filter((r) => r.v.away && r.v.home) : [];
 ---
 <div id="situational-box">
-  {(!splits && !expected) ? <p class="text-muted mb-0">The possession factors are counted from the play-by-play and are not available for this game yet.</p> : (
+  {(!splits && !expected && sitFallback.length > 0) ? (
+  <div class="row g-4">
+    <div class="col-12 col-xl-6">
+      <h3 class="h6">Situations</h3>
+      <div class="table-responsive"><table class="table table-sm numeral mb-2" aria-label="Situations">
+        <thead>
+          <tr><th scope="col" rowspan="2"><span class="visually-hidden">Situation</span></th><th scope="colgroup" colspan="3" class="text-center border-start">{away}</th><th scope="colgroup" colspan="3" class="text-center border-start">{home}</th></tr>
+          <tr>{SIDES.map(() => (<Fragment><th scope="col" class="text-end border-start">Poss</th><th scope="col" class="text-end">Pts</th><th scope="col" class="text-end"><abbr title="points per 100 possessions">ORtg</abbr></th></Fragment>))}</tr>
+        </thead>
+        <tbody>
+          {sitFallback.map((r) => {
+              const e = edge('high', r.v.away!.off_rtg, r.v.home!.off_rtg);
+              return (
+              <tr>
+                <th scope="row" class="fw-normal">{r.label}</th>
+                {SIDES.map((x) => (<Fragment>
+                  <td class="text-end border-start">{dash(r.v[x]!.poss, int)}</td>
+                  <td class="text-end">{dash(r.v[x]!.pts, int)}</td>
+                  <td class:list={tint(x, e)}>{dash(r.v[x]!.off_rtg, dec1)}</td>
+                </Fragment>))}
+              </tr>);
+          })}
+        </tbody>
+      </table></div>
+    </div>
+    <div class="col-12 col-xl-6">
+      <p class="small text-muted mb-0">
+        The producer's per-game situational splits, counted from the play-by-play: possessions, points and points per 100 possessions
+        (ORtg). Tinted and bold: the better offense. Second chance: the possession had an offensive rebound.
+      </p>
+      <p class="small text-muted mt-2 mb-0">The shot zones, the turnover types and the expected points are not available for this game yet.</p>
+    </div>
+  </div>
+  ) : (!splits && !expected) ? <p class="text-muted mb-0">The possession factors are counted from the play-by-play and are not available for this game yet.</p> : (
   <Fragment>
   <div class="row g-4">
     <div class="col-12 col-xl-6">
