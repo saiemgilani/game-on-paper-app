@@ -1,0 +1,66 @@
+---
+// BB-G41, behind 'bball-latest-strip' and a live game only (basketball/latest.ts picks the plays): the last five plays newest
+// first with the home WP and its change, beside a server-drawn half court with the last few located shots, the newest
+// ringed and the older ones faded. Only field goals carry a location; the list beside it has every other event.
+import type { NbaGame } from '../../../resources/nbaGame';
+import { RECENT_SHOTS, type Latest } from '../../../basketball/latest';
+import { basketball, courtFor } from '../../../basketball/config';
+import { periodShort } from '../../../basketball/periods';
+import { courtLines, toSvg } from '../../../nba/data/court';
+import { courtViewport } from '../../../nba/charts/court';
+import { dash, settle } from '../../../nba/data/game';
+import { fmtPct, fmtPts } from '../../../nba/format';
+import { cleanAbbreviation, pickGameColors } from '../../../utils/misc';
+
+interface Props { game: NbaGame; latest: Latest }
+const { game, latest } = Astro.props;
+const league = basketball(Astro.locals.league).league;
+const court = courtFor(league, game.season);
+const home = cleanAbbreviation(game.home.team);
+const away = cleanAbbreviation(game.away.team);
+const label = (p: { period: number; clock: string }) => `${periodShort(p.period, game.regulation, game.periodKind)} ${p.clock}`;
+const r1 = (n: number) => Math.round(n * 10) / 10;
+const v = courtViewport();
+const lines = courtLines(v, court);
+// latestStrip kept only shots on the drawn court, so the newest here is the ringed one
+const marks = latest.shots.map((s) => ({ ...s, ...toSvg({ x: s.play.xLegacy!, y: s.play.yLegacy! }, v), opacity: r1(1 - (0.75 * s.age) / (RECENT_SHOTS - 1)) }));
+const colors = pickGameColors(game.home.team, game.away.team);
+const cid = `latest-${game.id}`;
+const made = marks.filter((m) => m.play.scoringPlay).length;
+const desc = marks.length === 0 ? 'No located shots yet.' : `The last ${marks.length} located shots, newest ringed: ${made} made, ${marks.length - made} missed.`;
+const R = 6;
+---
+<div class="row">
+  <div class="col-12 col-lg-7">
+    <div class="table-responsive">
+    <table class="table table-sm numeral" aria-label="Latest plays, newest first">
+      <thead><tr><th scope="col">Period</th><th scope="col">Clock</th><th scope="col" class="text-end">Score ({away}-{home})</th><th scope="col">Play</th><th scope="col" class="text-end">{home} WP</th><th scope="col" class="text-end">Change</th></tr></thead>
+      <tbody>
+        {latest.plays.map((p) => (
+          <tr class:list={[{ 'nba-scoring-play fw-bold': p.scoringPlay }]}><td>{periodShort(p.period, game.regulation, game.periodKind)}</td><td>{p.clock}</td><td class="text-end">{p.awayScore}-{p.homeScore}</td><td>{p.text}</td><td class="text-end">{dash(p.homeWinProb, (x) => fmtPct(x, 0))}</td><td class="text-end">{dash(settle(p) ? null : p.wpDelta, fmtPts)}</td></tr>
+        ))}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <div class="col-12 col-lg-5">
+    <style set:html={`#${cid}{--latest-home:${colors.light.home};--latest-away:${colors.light.away}}@media (prefers-color-scheme: dark){#${cid}{--latest-home:${colors.dark.home};--latest-away:${colors.dark.away}}}`}></style>
+    <figure id={cid} class="mb-0">
+      <svg viewBox={`0 0 ${v.width} ${r1(v.height)}`} role="img" aria-labelledby={`${cid}-title ${cid}-desc`} class="w-100 h-auto" style="max-height: 320px">
+        <title id={`${cid}-title`}>{`Recent shots: ${away} at ${home}`}</title>
+        <desc id={`${cid}-desc`}>{desc}</desc>
+        {lines.map((l) => (<path d={l.d} fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-dasharray={l.dashed ? '4 4' : undefined} />))}
+        {[...marks].reverse().map((m) => (
+          <g opacity={m.opacity} color={`var(--latest-${m.home ? 'home' : 'away'})`}>
+            <title>{`${label(m.play)} ${m.play.text}`}</title>
+            {m.play.scoringPlay
+              ? <circle cx={r1(m.x)} cy={r1(m.y)} r={R} fill="currentColor" />
+              : <path d={`M${r1(m.x - R)},${r1(m.y - R)}L${r1(m.x + R)},${r1(m.y + R)}M${r1(m.x - R)},${r1(m.y + R)}L${r1(m.x + R)},${r1(m.y - R)}`} stroke="currentColor" stroke-width="2.5" fill="none" />}
+            {m.age === 0 && <circle cx={r1(m.x)} cy={r1(m.y)} r={R + 4} fill="none" stroke="currentColor" stroke-width="1.5" />}
+          </g>
+        ))}
+      </svg>
+      <figcaption class="small text-muted">{desc} Dots are makes, crosses misses, in each team's colour (<span style="color: var(--latest-away)">&#9679;</span> {away}, <span style="color: var(--latest-home)">&#9679;</span> {home}); older shots fade. Free throws and other events have no location.</figcaption>
+    </figure>
+  </div>
+</div>
