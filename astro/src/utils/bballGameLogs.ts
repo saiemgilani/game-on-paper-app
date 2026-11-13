@@ -5,6 +5,7 @@
  */
 import type { PlayerGame } from '../nba/data/aggregate';
 import type { FlowRow, PlayerLogReads } from '../resources/bballGameLogs';
+import type { Venue } from '../nba/data/games';
 import type { ScheduleRow } from './teamSeason';
 import { generateColorRampValue } from './misc';
 
@@ -49,8 +50,11 @@ export const PLAYER_DIRS: Record<PlayerKey, Dir> = {
     min: 0, pts: 1, reb: 1, ast: 1, stl: 1, blk: 1, tov: -1, ts_pct: 1, usg_pct: 0, poss: 0, plus_minus: 1, off_rtg: 1, def_rtg: -1, poe: 1, epv: 1,
 };
 
+/** A log row's game: its date, opponent, side and result. */
+export interface LogGame { game_id: string; date: string; opponent: string; venue: Venue; win: boolean | null }
+
 export interface PlayerLogRow extends LogRow<PlayerKey> {
-    game: PlayerGame;
+    game: LogGame;
     /** the game page's id; null when a pro game has no crosswalk row */
     espnGameId: string | null;
     /** "made/attempted" for FG, 3P, FT; null without a box row */
@@ -60,16 +64,24 @@ export interface PlayerLogRow extends LogRow<PlayerKey> {
 const ma = (m: number | null | undefined, a: number | null | undefined) => (m == null || a == null ? null : `${m}/${a}`);
 
 /**
- * One row per game of his per-game shot rows (the page's Games panel and game-set population), date order.
- * ponytail: a game he played without a field-goal attempt has no shot row and so no log row; the box read could add it once it carries the game's date and opponent.
+ * One row per game he played (`reads.played`, his ESPN box), date order, so a game without a field-goal attempt is
+ * listed. A game in his per-game shot rows (`games`) takes that row's opponent and venue (the stats tricode, and a
+ * neutral site, which the box's home/away cannot say). With no game list (that read failed) the rows are his shot-row games.
  */
 export function playerLogRows(games: PlayerGame[], reads: PlayerLogReads, college: boolean): PlayerLogRow[] {
-    return games.map((game) => {
+    const shot = new Map(games.map((g) => [g.game_id, g]));
+    const list: (LogGame & { espn?: string })[] = reads.played
+        ? reads.played.map((p) => {
+            const g = shot.get(p.game_id);
+            return { game_id: p.game_id, date: p.date, opponent: g?.opponent ?? p.opponent, venue: g?.venue ?? p.home_away, win: p.win, espn: p.espn_game_id };
+        })
+        : games;
+    return list.map((game) => {
         const id = game.game_id;
         const b = reads.box.get(id) ?? null, r = reads.rates.get(id), i = reads.impact.get(id);
         return {
             gameId: id, game,
-            espnGameId: college ? id : reads.espnGame.get(id) ?? null,
+            espnGameId: college ? id : game.espn ?? reads.espnGame.get(id) ?? null,
             fg: ma(b?.fgm, b?.fga), fg3: ma(b?.fg3m, b?.fg3a), ft: ma(b?.ftm, b?.fta),
             values: {
                 min: b?.min ?? null, pts: b?.pts ?? null, reb: b?.reb ?? null, ast: b?.ast ?? null, stl: b?.stl ?? null, blk: b?.blk ?? null, tov: b?.tov ?? null,

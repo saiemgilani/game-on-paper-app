@@ -831,6 +831,13 @@ The reads behind the advanced game logs (BB-G50, `resources/bballGameLogs.ts`), 
   his row is ESPN 5041935 -> stats.ncaa.org `11195975`, `name_jersey`), `mbb/game_player_impact?player_id=11195975` (38),
   `mbb/epv_player_games?player_id=11195975` (38) and `mbb/ncaa_player_box?player_id=11195975&select=contest_id,espn_game_id,pts` (38;
   `pts` is not in the module's select: the test uses it as the join oracle against ESPN's box), all `season=2026`.
+- The game list (`game-logs-played-2026`, captured live on 2026-11-13): every game he played is his ESPN `player_box` rows (Q20 on
+  GOP#443). `{nba: {games, box, xwalk, espnBox}, mbb: {games, box}, mpjEspnBox, boozerBox}`: Drake Powell (Nets, stats 1642962,
+  ESPN 5037873; four games without a field-goal attempt) `nba_stats/shot_player_games?person_id=1642962&limit=50000` (59),
+  `nba_stats/player_box?person_id=1642962` (69), `nba/player_crosswalk?nba_player_id=1642962` (1),
+  `nba/player_box?athlete_id=5037873` (69, the list select); Maliq Brown (Duke, ESPN 5105337; two)
+  `mbb/shot_player_games?person_id=5105337&limit=50000` (36) and `mbb/player_box?athlete_id=5105337` (38, the college select);
+  `nba/player_box?athlete_id=4278104` (54) and `mbb/player_box?athlete_id=5041935` (38) for the two players above. All `season=2026`.
 
 **Used by:** `test/bballGameLogs.test.ts`.
 

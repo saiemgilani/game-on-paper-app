@@ -2,7 +2,8 @@
  * The Data API reads behind the advanced game logs (BB-G50, behind 'bball-game-logs'). Every number is the producer's;
  * the logs read, join and format.
  *
- * Player (the page's per-game shot rows are the log's games): the box, game_player_rates (TS%, usage),
+ * Player: the log's games are every game his ESPN box (player_box, ESPN-keyed) has him playing in (not marked did-not-play,
+ * minutes over zero), so a game without a field-goal attempt still gets a row; then the box, game_player_rates (TS%, usage),
  * shot_quality_game (points over expected), game_player_impact (on-court possessions, +/-, ratings) and
  * epv_player_games (EPV added on his own events). The pro season tables are keyed by stats.nba.com / stats.wnba.com
  * ids; game_player_rates by ESPN's, so the pros map through player_crosswalk and schedule_crosswalk. College tables are
@@ -26,6 +27,8 @@ const SEASON_GAMES_LIMIT = '2500';
 export interface BoxRow { game_id: string; min: number | null; pts: number | null; reb: number | null; ast: number | null; stl: number | null; blk: number | null; tov: number | null; fgm: number | null; fga: number | null; fg3m: number | null; fg3a: number | null; ftm: number | null; fta: number | null }
 export interface RatesRow { ts_pct: number | null; usg_pct: number | null }
 export interface ImpactRow { poss: number | null; plus_minus: number | null; off_rtg: number | null; def_rtg: number | null }
+/** One game he played, from his ESPN box row: the page's game id (the stats id for the pros), ESPN's, and the box's own date, side, opponent and result. */
+export interface PlayedGame { game_id: string; espn_game_id: string; date: string; home_away: 'home' | 'away'; opponent_id: number | null; opponent: string; win: boolean | null }
 export interface PlayerLogReads {
     /** every map is keyed by the page's game id (shot_player_games': the stats id for the pros, ESPN's for college) */
     box: Map<string, BoxRow>;
@@ -35,6 +38,8 @@ export interface PlayerLogReads {
     epv: Map<string, number | null>;
     /** the page's game id -> the ESPN game id (the game page link); identity for college */
     espnGame: Map<string, string>;
+    /** every game he played (date order); null when that read failed or found no ESPN athlete: the log falls back to his shot-row games */
+    played: PlayedGame[] | null;
     /** an optional read failed: its columns are blank, and the page is not cached */
     degraded: boolean;
 }
@@ -57,6 +62,28 @@ async function proGames(league: BasketballLeague, season: number): Promise<Map<s
     return new Map(rows.filter((r) => r[`${league}_game_id`] && r.espn_game_id).map((r) => [String(r[`${league}_game_id`]), String(r.espn_game_id)]));
 }
 
+/** The box columns the game list reads (both leagues' ESPN player_box). */
+const PLAYED_SELECT = 'game_id,game_date,home_away,opponent_team_id,opponent_team_abbreviation,team_winner,did_not_play,minutes';
+
+/**
+ * The games he played, date order: his ESPN box rows not marked did-not-play and with minutes over zero. `fromEspn`
+ * (pros) maps each ESPN game to the page's stats id; a pro game with no crosswalk row keeps its ESPN id (its stats-keyed
+ * columns stay blank).
+ */
+export function playedGames(rows: Record<string, unknown>[], fromEspn: Map<string, string> | null): PlayedGame[] {
+    return rows
+        .filter((r) => r.did_not_play !== true && (num(r.minutes) ?? 0) > 0 && r.game_date && (r.home_away === 'home' || r.home_away === 'away'))
+        .map((r) => {
+            const espn = String(r.game_id);
+            return {
+                game_id: fromEspn?.get(espn) ?? espn, espn_game_id: espn, date: String(r.game_date).slice(0, 10),
+                home_away: r.home_away as 'home' | 'away', opponent_id: num(r.opponent_team_id), opponent: String(r.opponent_team_abbreviation ?? ''),
+                win: typeof r.team_winner === 'boolean' ? r.team_winner : null,
+            };
+        })
+        .sort((a, b) => a.date.localeCompare(b.date) || a.game_id.localeCompare(b.game_id));
+}
+
 /** The player log's reads. Throws when the box read fails (no log without it); any other failed read leaves its columns blank. */
 export async function retrievePlayerGameLog(league: BasketballLeague, season: number, personId: number): Promise<PlayerLogReads> {
     const s = String(season), p = String(personId);
@@ -66,18 +93,15 @@ export async function retrievePlayerGameLog(league: BasketballLeague, season: nu
 
     const boxR = pro
         ? read(stats, 'player_box', { person_id: p, select: 'game_id,minutes,points,rebounds_total,assists,steals,blocks,turnovers,field_goals_made,field_goals_attempted,three_pointers_made,three_pointers_attempted,free_throws_made,free_throws_attempted' })
-        : read(games, 'player_box', { athlete_id: p, select: 'game_id,minutes,points,rebounds,assists,steals,blocks,turnovers,field_goals_made,field_goals_attempted,three_point_field_goals_made,three_point_field_goals_attempted,free_throws_made,free_throws_attempted' });
+        : read(games, 'player_box', { athlete_id: p, select: `${PLAYED_SELECT},points,rebounds,assists,steals,blocks,turnovers,field_goals_made,field_goals_attempted,three_point_field_goals_made,three_point_field_goals_attempted,free_throws_made,free_throws_attempted` });
     // the pros' rates are ESPN-keyed: his ESPN athlete id first, then his rows, then the season's game crosswalk
     const espnGameR = pro ? proGames(league, season) : Promise.resolve(null);
-    const ratesR = (async () => {
-        let athlete = p;
-        if (pro) {
-            const [x] = await read(games, 'player_crosswalk', { [`${league}_player_id`]: p, select: 'espn_athlete_id' });
-            if (!x?.espn_athlete_id) return [];
-            athlete = String(x.espn_athlete_id);
-        }
-        return read(games, 'game_player_rates', { athlete_id: athlete, select: 'game_id,ts_pct,usg_pct' });
-    })();
+    const athleteR: Promise<string | null> = pro
+        ? read(games, 'player_crosswalk', { [`${league}_player_id`]: p, select: 'espn_athlete_id' }).then(([x]) => (x?.espn_athlete_id ? String(x.espn_athlete_id) : null))
+        : Promise.resolve(p);
+    const ratesR = athleteR.then((a) => (a ? read(games, 'game_player_rates', { athlete_id: a, select: 'game_id,ts_pct,usg_pct' }) : []));
+    // the pros' game list is his ESPN box (the stats box has no date, opponent or result); college's is the box read itself
+    const playedR: Promise<Record<string, unknown>[] | null> = pro ? athleteR.then((a) => (a ? read(games, 'player_box', { athlete_id: a, select: PLAYED_SELECT }) : null)) : boxR;
     const poeR = read(stats, 'shot_quality_game', { person_id: p, level: 'player', select: 'game_id,poe' });
     // college: his season's stats.ncaa.org id first (null: no matched pair, so no impact or EPV read), then his contests'
     // ESPN games. The crosswalk's espn_athlete_id is a bigint and ncaa_player_id text: both are compared as strings.
@@ -88,13 +112,13 @@ export async function retrievePlayerGameLog(league: BasketballLeague, season: nu
     const impactR = byPlayer('game_player_impact', 'game_id,poss,plus_minus,off_rtg,def_rtg');
     const epvR = byPlayer('epv_player_games', 'game_id,epv_own');
 
-    const [box, espnGame, rates, poe, impact, epv, contests] = await Promise.allSettled([boxR, espnGameR, ratesR, poeR, impactR, epvR, contestsR]);
+    const [box, espnGame, rates, poe, impact, epv, contests, playedRows] = await Promise.allSettled([boxR, espnGameR, ratesR, poeR, impactR, epvR, contestsR, playedR]);
     if (box.status === 'rejected') throw box.reason;
-    const optional = [espnGame, rates, poe, impact, epv, contests];
+    const optional = [espnGame, rates, poe, impact, epv, contests, playedRows];
     const degraded = optional.some((r) => r.status === 'rejected');
     for (const r of optional) if (r.status === 'rejected') console.error(`player ${personId} game log: a read failed: ${r.reason}`);
     // the impact and EPV rows' game id -> the page's: the stats id itself for the pros, the contest's ESPN game in college
-    const contestRows = settled(contests, []);
+    const contestRows = settled(contests, []) ?? [];
     const toPage = pro ? null : new Map(contestRows.filter((r) => r.contest_id && r.espn_game_id).map((r) => [String(r.contest_id), String(r.espn_game_id)]));
     const rekey = <V>(rows: Record<string, unknown>[], pick: (r: Record<string, unknown>) => V) => new Map(rows.flatMap((r) => {
         const id = toPage ? toPage.get(String(r.game_id)) : String(r.game_id);
@@ -105,6 +129,8 @@ export async function retrievePlayerGameLog(league: BasketballLeague, season: nu
     // ESPN game id -> the page's id, for the ESPN-keyed rates
     const fromEspn = toStats ? new Map([...toStats].map(([k, v]) => [v, k])) : null;
     const ratesRows = settled(rates, []);
+    const listRows = settled(playedRows, null);
+    const played = listRows ? playedGames(listRows, fromEspn) : [];
     return {
         box: by(box.value, 'game_id', (r) => ({
             game_id: String(r.game_id), min: minutes(r.minutes), pts: num(r.points), reb: num(r.rebounds_total ?? r.rebounds), ast: num(r.assists),
@@ -120,6 +146,7 @@ export async function retrievePlayerGameLog(league: BasketballLeague, season: nu
         poe: by(settled(poe, []), 'game_id', (r) => num(r.poe)),
         epv: rekey(settled(epv, []), (r) => num(r.epv_own)),
         espnGame: toStats ?? new Map(),
+        played: played.length ? played : null,
         degraded,
     };
 }

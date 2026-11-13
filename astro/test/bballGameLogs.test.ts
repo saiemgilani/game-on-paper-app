@@ -19,6 +19,9 @@ const NBA_LOG = capture('game-logs-player-nba-2026');
 const MBB_LOG = capture('game-logs-player-mbb-2026'); // Duke's leading shooter 2025-26 (ESPN 5041935)
 const MBB_XW = capture('game-logs-xwalk-mbb-2026'); // his stats.ncaa.org side: Duke's crosswalk pairs, impact, EPV, contests
 const NCAA_PID = '11195975'; // his 2025-26 stats.ncaa.org id (the crosswalk's text id)
+// Q20: the game list is the ESPN box (both players above, plus two who played games without a field-goal attempt)
+const PLAYED = capture('game-logs-played-2026');
+const POWELL = 1642962, POWELL_ESPN = PLAYED.nba.xwalk[0].espn_athlete_id, BROWN = 5105337; // Nets 2025-26; Duke 2025-26
 const FLOW = capture('game-logs-flow-2026');
 const NETS_BLOCK = capture('game-set-nba-2026');
 const DUKE_BLOCK = capture('game-set-mbb-2026');
@@ -35,15 +38,16 @@ vi.mock('../src/resources/sdv', async (orig) => {
         if (sdv.fail.has(key)) throw new Error(`503 ${key}`);
         if (sdv.empty.has(key)) return [];
         const rows: Record<string, any> = {
-            'nba_stats.player_box': q.person_id === String(PID) && NBA_LOG.box,
+            'nba_stats.player_box': (q.person_id === String(PID) && NBA_LOG.box) || (q.person_id === String(POWELL) && PLAYED.nba.box),
             'nba_stats.game_player_impact': q.player_id === String(PID) && NBA_LOG.impact,
             'nba_stats.shot_quality_game': q.person_id === String(PID) && NBA_LOG.poe,
             'nba_stats.epv_player_games': q.player_id === String(PID) && NBA_LOG.epv,
-            'nba.player_crosswalk': q.nba_player_id === String(PID) && NBA_LOG.xwalk,
+            'nba.player_crosswalk': (q.nba_player_id === String(PID) && NBA_LOG.xwalk) || (q.nba_player_id === String(POWELL) && PLAYED.nba.xwalk),
+            'nba.player_box': (q.athlete_id === NBA_LOG.xwalk[0].espn_athlete_id && PLAYED.mpjEspnBox) || (q.athlete_id === POWELL_ESPN && PLAYED.nba.espnBox),
             'nba.game_player_rates': q.athlete_id === NBA_LOG.xwalk[0].espn_athlete_id && NBA_LOG.rates,
             'nba.schedule_crosswalk': NBA_LOG.sched,
             'nba_stats.game_flow': q.team_id === String(NETS) && FLOW.nets,
-            'mbb.player_box': q.athlete_id === String(COLLEGE_PID) && MBB_LOG.box,
+            'mbb.player_box': (q.athlete_id === String(COLLEGE_PID) && PLAYED.boozerBox) || (q.athlete_id === String(BROWN) && PLAYED.mbb.box),
             'mbb.game_player_rates': q.athlete_id === String(COLLEGE_PID) && MBB_LOG.rates,
             'mbb.shot_quality_game': q.person_id === String(COLLEGE_PID) && MBB_LOG.poe,
             // the crosswalk's espn_athlete_id is a bigint (a JSON number): filtered as the API does, by its digits
@@ -82,6 +86,7 @@ vi.mock('../src/resources/nbaShots', async (orig) => ({
 
 import BbPlayerGameLog from '../src/components/nba/BbPlayerGameLog.astro';
 import BbTeamGameLog from '../src/components/nba/BbTeamGameLog.astro';
+import TeamSeasonBlock from '../src/components/nba/TeamSeasonBlock.astro';
 import { playerGamesFromRows } from '../src/nba/adapters';
 import { retrievePlayerGameLog, retrieveTeamGameFlow } from '../src/resources/bballGameLogs';
 import { prepareNbaPlayer } from '../src/routes/nba/player';
@@ -98,6 +103,7 @@ beforeEach(() => { sdv.calls.length = 0; sdv.fail.clear(); sdv.empty.clear(); bl
 const mpjGames = () => playerGamesFromRows(MPJ.games)!;
 const boozerGames = () => playerGamesFromRows(MBB_LOG.games)!;
 const ts = (b: any) => b.pts / (2 * (b.fga + 0.44 * b.fta));
+const byId = <G extends { game_id: string }>(gs: G[]) => new Map(gs.map((g) => [g.game_id, g]));
 
 describe('shading and spread', () => {
     test('rank among the season, best at the green end; ties share the better rank; lower-is-better flips', () => {
@@ -119,10 +125,13 @@ describe('player reads, NBA (Michael Porter Jr. 2025-26)', () => {
         const reads = await retrievePlayerGameLog('nba', 2026, PID);
         expect(reads.degraded).toBe(false);
         const rows = playerLogRows(mpjGames(), reads, false);
+        // he took a shot in every game he played, so the box's game list is his shot rows' games
         expect(rows).toHaveLength(MPJ.games.length);
+        const shot = byId(mpjGames());
         for (const r of rows) {
-            const b = reads.box.get(r.gameId)!;
-            expect(`${b.fgm}/${b.fga}`).toBe(`${r.game.makes}/${r.game.attempts}`);
+            const b = reads.box.get(r.gameId)!, g = shot.get(r.gameId)!;
+            expect(`${b.fgm}/${b.fga}`).toBe(`${g.makes}/${g.attempts}`);
+            expect([r.game.date, r.game.opponent, r.game.win]).toEqual([g.date, g.opponent, g.win]);
             expect(r.espnGameId).toMatch(/^\d{9}$/);
         }
         const rated = rows.filter((r) => r.values.ts_pct !== null);
@@ -149,12 +158,14 @@ describe('player reads, college (Duke 2025-26)', () => {
         expect(sdv.calls.toSorted()).toEqual(['mbb.epv_player_games', 'mbb.game_player_impact', 'mbb.game_player_rates', 'mbb.ncaa_player_box', 'mbb.ncaa_player_crosswalk', 'mbb.player_box', 'mbb.shot_quality_game']);
         const rows = playerLogRows(boozerGames(), reads, true);
         expect(rows).toHaveLength(MBB_LOG.games.length);
+        const shot = byId(boozerGames());
         // the contest -> ESPN game join, checked on the data: the stats.ncaa.org box's points for the contest whose impact
         // row landed on a game equal ESPN's box points for that game (a shifted or swapped mapping fails)
         const ncaaPts = new Map(MBB_XW.contests.map((c: any) => [c.contest_id, c.pts]));
         for (const r of rows) {
-            const b = reads.box.get(r.gameId)!;
-            expect(`${b.fgm}/${b.fga}`).toBe(`${r.game.makes}/${r.game.attempts}`);
+            const b = reads.box.get(r.gameId)!, g = shot.get(r.gameId)!;
+            expect(`${b.fgm}/${b.fga}`).toBe(`${g.makes}/${g.attempts}`);
+            expect([r.game.date, r.game.win]).toEqual([g.date, g.win]);
             expect(Math.abs(ts(b) - r.values.ts_pct!)).toBeLessThan(0.01);
             expect(r.values.poe).not.toBeNull();
             expect(r.espnGameId).toBe(r.gameId);
@@ -170,7 +181,7 @@ describe('player reads, college (Duke 2025-26)', () => {
         expect(sdv.calls).not.toContain('mbb.game_player_impact');
         expect(sdv.calls).not.toContain('mbb.ncaa_player_box');
         expect([none.impact.size, none.epv.size, none.degraded]).toEqual([0, 0, false]);
-        expect(none.box.size).toBe(MBB_LOG.box.length);
+        expect(none.box.size).toBe(PLAYED.boozerBox.length);
         sdv.empty.clear();
         sdv.fail.add('mbb.ncaa_player_crosswalk');
         const failed = await retrievePlayerGameLog('mbb', 2026, COLLEGE_PID);
@@ -181,6 +192,63 @@ describe('player reads, college (Duke 2025-26)', () => {
         sdv.fail.add('mbb.ncaa_player_box');
         const reads = await retrievePlayerGameLog('mbb', 2026, COLLEGE_PID);
         expect([reads.impact.size, reads.epv.size, reads.degraded]).toEqual([0, 0, true]);
+    });
+});
+
+describe('every game he played gets a row (Q20)', () => {
+    // the list is the point here: the per-game rate, impact, POE and EPV reads answer no rows for these two (not captured)
+    beforeEach(() => { for (const k of ['nba.game_player_rates', 'nba_stats.game_player_impact', 'nba_stats.shot_quality_game', 'nba_stats.epv_player_games', 'mbb.game_player_rates', 'mbb.shot_quality_game', 'mbb.ncaa_player_crosswalk']) sdv.empty.add(k); });
+    const noFga = (box: any[]) => box.filter((b) => b.field_goals_attempted === 0 && b.minutes && b.minutes !== '0:00' && b.minutes !== 0);
+    test("NBA (Drake Powell 2025-26): the ESPN box's games, mapped to the stats ids, include the games without a shot row", async () => {
+        const reads = await retrievePlayerGameLog('nba', 2026, POWELL);
+        expect(reads.degraded).toBe(false);
+        const shots = playerGamesFromRows(PLAYED.nba.games)!;
+        const rows = playerLogRows(shots, reads, false);
+        const played = PLAYED.nba.espnBox.filter((b: any) => !b.did_not_play);
+        expect(rows).toHaveLength(played.length);
+        expect(rows.length).toBeGreaterThan(shots.length);
+        // each listed game is one the stats box has him playing in, and the four without a field-goal attempt are there
+        const statsPlayed = new Set(PLAYED.nba.box.filter((b: any) => b.minutes).map((b: any) => b.game_id));
+        expect(rows.every((r) => statsPlayed.has(r.gameId))).toBe(true);
+        const extra = noFga(PLAYED.nba.box).map((b: any) => b.game_id);
+        expect(extra).toHaveLength(4);
+        const listed = byId(rows.map((r) => ({ ...r, game_id: r.gameId })));
+        for (const id of extra) {
+            const r = listed.get(id)!;
+            expect(r.values.pts).not.toBeNull();
+            expect(r.fg).toBe('0/0');
+            expect(r.espnGameId).toMatch(/^\d{9}$/);
+            expect(r.game.opponent).toMatch(/^[A-Z]{2,4}$/);
+        }
+        // a game in his shot rows keeps that row's opponent and venue (the stats tricode and the neutral site)
+        const shot = byId(shots);
+        for (const r of rows.filter((r) => shot.has(r.gameId))) expect([r.game.opponent, r.game.venue, r.game.date]).toEqual([shot.get(r.gameId)!.opponent, shot.get(r.gameId)!.venue, shot.get(r.gameId)!.date]);
+        const html = await render(BbPlayerGameLog, { games: shots, reads }, 'nba', `/nba/players/${POWELL}`);
+        expect(html.match(/<tr data-game=/g)).toHaveLength(played.length);
+        expect(html).not.toContain('A game without a field-goal attempt is not listed');
+    });
+    test('college (Maliq Brown, Duke 2025-26): the box read itself lists every game', async () => {
+        const reads = await retrievePlayerGameLog('mbb', 2026, BROWN);
+        const shots = playerGamesFromRows(PLAYED.mbb.games)!;
+        const rows = playerLogRows(shots, reads, true);
+        expect(rows).toHaveLength(PLAYED.mbb.box.filter((b: any) => !b.did_not_play && b.minutes > 0).length);
+        expect(rows.length - shots.length).toBe(noFga(PLAYED.mbb.box).length);
+        expect(rows.every((r) => r.espnGameId === r.gameId && r.values.min !== null)).toBe(true);
+    });
+    test('the list read failed or found no ESPN athlete: his shot-row games, as before, and the caption says so', async () => {
+        sdv.fail.add('nba.player_box');
+        const reads = await retrievePlayerGameLog('nba', 2026, POWELL);
+        expect([reads.played, reads.degraded]).toEqual([null, true]);
+        const shots = playerGamesFromRows(PLAYED.nba.games)!;
+        expect(playerLogRows(shots, reads, false)).toHaveLength(shots.length);
+        const html = await render(BbPlayerGameLog, { games: shots, reads }, 'nba', `/nba/players/${POWELL}`);
+        expect(html).toContain('A game without a field-goal attempt is not listed');
+        sdv.fail.clear();
+        sdv.calls.length = 0;
+        sdv.empty.add('nba.player_crosswalk');
+        const none = await retrievePlayerGameLog('nba', 2026, POWELL);
+        expect([none.played, none.degraded]).toEqual([null, false]);
+        expect(sdv.calls.filter((c) => c === 'nba.player_box')).toHaveLength(0);
     });
 });
 
@@ -282,6 +350,16 @@ describe('the logs', () => {
             expect(html.match(/<tr data-game=/g)).toHaveLength(sched.filter((g) => g.completed && g.rates).length);
             expect(html).toContain('All games.');
         }
+    });
+    test("team, with the log on (Q19): the schedule keeps results, upcoming games and Preview links, and drops each game's ratings and four factors", async () => {
+        const props = { data: asReads(NETS_BLOCK), season: 2026, espnId: NETS_ESPN, teamName: 'Brooklyn Nets' };
+        const schedule = (h: string) => h.split('id="season-schedule"')[1].split('</table>')[0];
+        const plain = schedule(await render(TeamSeasonBlock, props, 'nba', `/nba/team/${NETS}`));
+        const logged = schedule(await render(TeamSeasonBlock, { ...props, logged: true }, 'nba', `/nba/team/${NETS}`));
+        for (const h of ['ORtg', 'DRtg', 'Pace', 'eFG%', 'TOV%', 'ORB%', 'FT rate']) { expect(plain).toContain(`>${h}<`); expect(logged).not.toContain(`>${h}<`); }
+        expect(logged.match(/<tr>/g)?.length).toBe(plain.match(/<tr>/g)?.length);
+        expect((logged.match(/>Preview</g) ?? []).length).toBe((plain.match(/>Preview</g) ?? []).length);
+        expect(logged).toContain('ratings and four factors are in the game log');
     });
     test('the shading is a function of the season rows alone', () => {
         const rows = teamLogRows(scheduleRows(asReads(DUKE_BLOCK).games, DUKE_BLOCK.gameRates, DUKE), new Map());
