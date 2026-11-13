@@ -2,27 +2,32 @@
  * BB-G14, behind 'bball-game-set': the game-set filter on the basketball team and player pages, football's
  * `?games=` (utils/gameSet.ts) for the four basketball leagues. One URL per set, so a filtered view is a shareable link.
  *
- * Team page: All, Home and Away are the producer's own split rows (sdv-db team_season_rates, the season block's
- * read), so "All games" is exactly the season block's numbers. Wins, Losses and the last-N sets have no producer row:
- * they sum each game's counts from the block's schedule and game_team_rates reads (points from the final score,
- * possessions and minutes from the game page's box score) and divide once. A per-game rate is never averaged.
- * Player page: every set sums his per-game shot counts (the page's shot_player_games read) and divides once.
+ * Team page: All, Home, Away, Close games and Clutch are the producer's own split rows (sdv-db team_season_rates, the
+ * season block's read), so "All games" is exactly the season block's numbers. Wins, Losses, the last-N sets and (college)
+ * Conference games have no producer row: until the producer ships a per-team-game possessions row, they add up the
+ * team's per-player-game impact rows (game_player_impact, the play-by-play possessions All / Home / Away count) per
+ * team-game, then divide once. A per-game rate is never averaged.
+ * Player page: every set sums his per-game shot counts (the page's shot_player_games read) and divides once; Close games,
+ * Clutch and Conference games are team-page sets (no per-player-game producer rows), so his page offers the others.
  */
 import { lineOf, type FieldGoals, type ShootingLine } from '../nba/data/aggregate';
 import { presetGames } from '../nba/selection';
-import type { TeamSeasonRateRow } from '../resources/teamSeason';
+import type { GameSetCountReads, TeamSeasonRateRow } from '../resources/teamSeason';
 import type { ScheduleRow } from './teamSeason';
 
 export const BB_GAME_SETS = [
     { key: 'all', label: 'All games' },
     { key: 'home', label: 'Home' },
     { key: 'away', label: 'Away' },
+    { key: 'close', label: 'Close games', team: true },
+    { key: 'clutch', label: 'Clutch', team: true },
+    { key: 'conference', label: 'Conference games', team: true },
     { key: 'wins', label: 'Wins' },
     { key: 'losses', label: 'Losses' },
     { key: 'last5', label: 'Last 5 games', last: 5 },
     { key: 'last10', label: 'Last 10 games', last: 10 },
     { key: 'last20', label: 'Last 20 games', last: 20 },
-] as const satisfies readonly { key: string; label: string; last?: number }[];
+] as const satisfies readonly { key: string; label: string; last?: number; team?: true }[];
 export type BbGameSet = (typeof BB_GAME_SETS)[number]['key'];
 
 /** The `?games=` value as a set; anything else is `all`. */
@@ -32,10 +37,17 @@ export function bbGameSetOf(param: string | null | undefined): BbGameSet {
 
 export const bbGameSetLabel = (set: BbGameSet): string => BB_GAME_SETS.find((s) => s.key === set)!.label;
 
+/** The team page's producer split rows: All, Home, Away, Close games, Clutch. */
+const PRODUCER_SETS: ReadonlySet<BbGameSet> = new Set(['all', 'home', 'away', 'close', 'clutch']);
+/** True for a team-page set summed from the impact rows (the sets that need retrieveGameSetCounts). */
+export const isSummedSet = (set: BbGameSet): boolean => !PRODUCER_SETS.has(set);
+
 type Game = { game_id: string; date: string; venue: 'home' | 'away' | 'neutral'; win: boolean | null };
+/** The sets a game list can pick (no Close games / Clutch / Conference: those are the team page's). */
+type PickSet = Exclude<BbGameSet, 'close' | 'clutch' | 'conference'>;
 
 /** The games of a set. Home and Away leave out neutral sites (the player page's presets); last N is by date. */
-export function pickGames<G extends Game>(games: G[], set: BbGameSet): G[] {
+export function pickGames<G extends Game>(games: G[], set: PickSet): G[] {
     const n = BB_GAME_SETS.find((s) => s.key === set);
     if (n && 'last' in n) return games.toSorted((a, b) => a.date.localeCompare(b.date) || a.game_id.localeCompare(b.game_id)).slice(-n.last);
     const keep = new Set(presetGames(games, set as 'all' | 'home' | 'away' | 'wins' | 'losses'));
@@ -65,11 +77,11 @@ export interface TeamSetLine {
     def_rtg: number | null;
     net_rtg: number | null;
     pace: number | null;
-    /** the producer's percentiles, for the shading: present on All / Home / Away only */
+    /** the producer's percentiles, for the shading: present on the producer's split rows only */
     off_rtg_pct?: number | null;
     def_rtg_pct?: number | null;
     net_rtg_pct?: number | null;
-    /** the producer's pace rank and percentile, printed beside the unshaded pace: present on All / Home / Away only */
+    /** the producer's pace rank and percentile, printed beside the unshaded pace: present on the split rows only */
     pace_rank?: number | null;
     pace_pct?: number | null;
 }
@@ -78,31 +90,48 @@ export interface TeamGameSetView {
     set: BbGameSet;
     /** the sets with at least one game, `all` first: the select's options */
     sets: BbGameSet[];
-    line: TeamSetLine;
-    /** true: the producer's split row; false: summed from the game rows */
+    /** null: a summed set whose impact reads failed (the block says so) */
+    line: TeamSetLine | null;
+    /** true: the producer's split row; false: summed from the impact rows */
     producer: boolean;
 }
 
-/** A team's final, rated games: the summed sets' population (a game without box-score possessions has no rates). */
-const ratedGames = (schedule: ScheduleRow[]) => schedule
-    .filter((g) => g.completed && g.teamScore !== null && g.oppScore !== null && g.rates?.possessions != null && g.rates.possessions > 0 && g.rates.game_minutes != null)
-    .map((g) => ({ ...g, game_id: g.gameId, win: g.teamScore! > g.oppScore! ? true : g.teamScore! < g.oppScore! ? false : null }));
+/** One team-game's on-court totals: the player-game impact rows added up and divided by the five on the floor. */
+export interface TeamGameCounts { poss: number; opp_poss: number; pts: number; opp_pts: number; seconds: number }
+
+/** Per ESPN game, the team's player-game impact rows summed, over five. A game the map does not name is left out. */
+export function teamGameCounts(reads: GameSetCountReads): Map<string, TeamGameCounts> {
+    const out = new Map<string, TeamGameCounts>();
+    for (const r of reads.impact) {
+        const espn = reads.espnOf.get(String(r.game_id));
+        if (!espn) continue;
+        const t = out.get(espn) ?? { poss: 0, opp_poss: 0, pts: 0, opp_pts: 0, seconds: 0 };
+        t.poss += (r.poss ?? 0) / 5;
+        t.opp_poss += (r.opp_poss ?? 0) / 5;
+        t.pts += (r.pts ?? 0) / 5;
+        t.opp_pts += (r.opp_pts ?? 0) / 5;
+        t.seconds += (r.seconds ?? 0) / 5;
+        out.set(espn, t);
+    }
+    return out;
+}
 
 /**
- * The summed line: points and possessions added over the games, then divided once. game_team_rates' ratings share
- * one possession count per game (the two teams' box-score estimates averaged), so DRtg is over the same total.
- * Pace is possessions per regulation length: `regulationMinutes` × Σ possessions / Σ game minutes.
+ * The summed line: points and possessions added over the games, then divided once (ORtg over the team's possessions,
+ * DRtg over the opponent's). Pace is both sides' possessions, averaged, per regulation length.
  */
-export function summedTeamLine(games: ScheduleRow[], regulationMinutes: number): TeamSetLine {
-    let poss = 0, pts = 0, opp = 0, minutes = 0;
+export function summedTeamLine(games: TeamGameCounts[], regulationMinutes: number): TeamSetLine {
+    let poss = 0, opp_poss = 0, pts = 0, opp = 0, seconds = 0;
     for (const g of games) {
-        poss += g.rates!.possessions!;
-        minutes += g.rates!.game_minutes!;
-        pts += g.teamScore!;
-        opp += g.oppScore!;
+        poss += g.poss;
+        opp_poss += g.opp_poss;
+        pts += g.pts;
+        opp += g.opp_pts;
+        seconds += g.seconds;
     }
-    const per100 = (x: number) => (poss > 0 ? (100 * x) / poss : null);
-    return { games: games.length, poss, off_rtg: per100(pts), def_rtg: per100(opp), net_rtg: per100(pts - opp), pace: minutes > 0 ? (regulationMinutes * poss) / minutes : null };
+    const off = poss > 0 ? (100 * pts) / poss : null;
+    const def = opp_poss > 0 ? (100 * opp) / opp_poss : null;
+    return { games: games.length, poss, off_rtg: off, def_rtg: def, net_rtg: off !== null && def !== null ? off - def : null, pace: seconds > 0 ? (regulationMinutes * 60 * (poss + opp_poss)) / 2 / seconds : null };
 }
 
 const producerLine = (r: TeamSeasonRateRow): TeamSetLine => ({
@@ -110,34 +139,66 @@ const producerLine = (r: TeamSeasonRateRow): TeamSetLine => ({
     off_rtg_pct: r.off_rtg_pct, def_rtg_pct: r.def_rtg_pct, net_rtg_pct: r.net_rtg_pct, pace_rank: r.pace_rank, pace_pct: r.pace_pct,
 });
 
-/** The team's view for `requested`. A set it has no game in falls back to `all`, so a shared link never renders empty. */
-export function teamGameSet(rates: TeamSeasonRateRow[], schedule: ScheduleRow[], requested: BbGameSet, regulationMinutes: number): TeamGameSetView | null {
+/** A team's final games with both scores: the summed sets' population before the impact rows are read. */
+const finals = (schedule: ScheduleRow[]) => schedule
+    .filter((g) => g.completed && g.teamScore !== null && g.oppScore !== null)
+    .map((g) => ({ ...g, game_id: g.gameId, win: g.teamScore! > g.oppScore! ? true : g.teamScore! < g.oppScore! ? false : null }));
+
+/**
+ * The sets the select offers: a producer split with games, a summed set with at least one final (Conference games for
+ * college only), `all` first. The route reads the impact rows only once the chosen set is a summed one.
+ */
+export function teamSets(rates: TeamSeasonRateRow[], schedule: ScheduleRow[], college: boolean): BbGameSet[] {
     const split = new Map(rates.map((r) => [r.split as string, r]));
-    if (!split.has('all')) return null;
-    const rated = ratedGames(schedule);
-    const has = (s: BbGameSet) => (s === 'all' || s === 'home' || s === 'away' ? (split.get(s)?.games ?? 0) > 0 : pickGames(rated, s).length > 0);
-    const sets = BB_GAME_SETS.map((s) => s.key).filter(has);
+    if (!split.has('all')) return [];
+    const done = finals(schedule);
+    return BB_GAME_SETS.map((s) => s.key).filter((s) => {
+        if (PRODUCER_SETS.has(s)) return (split.get(s)?.games ?? 0) > 0;
+        if (s === 'conference') return college && done.length > 0;
+        return pickGames(done, s as PickSet).length > 0;
+    });
+}
+
+/**
+ * The team's view for `requested`. A set it has no game in falls back to `all`, so a shared link never renders empty.
+ * `counts` is the summed sets' reads: undefined when not read (a producer set), null when they failed.
+ */
+export function teamGameSet(rates: TeamSeasonRateRow[], schedule: ScheduleRow[], requested: BbGameSet, regulationMinutes: number, college: boolean, counts?: GameSetCountReads | null): TeamGameSetView | null {
+    const sets = teamSets(rates, schedule, college);
+    if (sets.length === 0) return null;
+    const all = { set: 'all' as const, sets, line: producerLine(rates.find((r) => r.split === 'all')!), producer: true };
     const set = sets.includes(requested) ? requested : 'all';
-    const row = split.get(set);
+    const row = PRODUCER_SETS.has(set) ? rates.find((r) => r.split === set) : undefined;
     if (row) return { set, sets, line: producerLine(row), producer: true };
-    return { set, sets, line: summedTeamLine(pickGames(rated, set), regulationMinutes), producer: false };
+    if (counts === null) return { set, sets, line: null, producer: false };
+    if (counts === undefined) return all;
+    const per = teamGameCounts(counts);
+    const rated = finals(schedule).filter((g) => per.has(g.gameId));
+    const picked = set === 'conference' ? rated.filter((g) => counts.conference?.has(g.gameId)) : pickGames(rated, set as PickSet);
+    if (picked.length === 0) return all;
+    return { set, sets, line: summedTeamLine(picked.map((g) => per.get(g.gameId)!), regulationMinutes), producer: false };
 }
 
 // ---- player page -------------------------------------------------------------------------------------------------
 
+/** The player page's sets: the team page's less Close games, Clutch and Conference games. */
+const PLAYER_SETS = BB_GAME_SETS.filter((s) => !('team' in s)).map((s) => s.key) as PickSet[];
+
 export interface PlayerGameSetView {
-    set: BbGameSet;
-    sets: BbGameSet[];
+    set: PickSet;
+    sets: PickSet[];
     games: number;
     line: ShootingLine;
+    /** the set's game ids: the explorer island starts from them */
+    gameIds: string[];
 }
 
 /** His line over the set's games: makes, attempts and threes summed, the percentages divided once (lineOf). */
 export function playerGameSet(games: (Game & FieldGoals)[], requested: BbGameSet): PlayerGameSetView | null {
     if (games.length === 0) return null;
-    const sets = BB_GAME_SETS.map((s) => s.key).filter((s) => pickGames(games, s).length > 0);
-    const set = sets.includes(requested) ? requested : 'all';
+    const sets = PLAYER_SETS.filter((s) => pickGames(games, s).length > 0);
+    const set = (sets as BbGameSet[]).includes(requested) ? (requested as PickSet) : 'all';
     const picked = pickGames(games, set);
     const sum = (k: keyof FieldGoals) => picked.reduce((t, g) => t + g[k], 0);
-    return { set, sets, games: picked.length, line: lineOf({ attempts: sum('attempts'), makes: sum('makes'), fg3a: sum('fg3a'), fg3m: sum('fg3m') }) };
+    return { set, sets, games: picked.length, line: lineOf({ attempts: sum('attempts'), makes: sum('makes'), fg3a: sum('fg3a'), fg3m: sum('fg3m') }), gameIds: picked.map((g) => g.game_id) };
 }

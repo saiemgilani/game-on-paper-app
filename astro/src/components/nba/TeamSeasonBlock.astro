@@ -14,11 +14,13 @@ import { gameHref, teamHrefFromEspn } from '../../nba/links';
 import { formatRank, generateColorRampValue, generateMarginalString, ordinal } from '../../utils/misc';
 import { basketball, regulationFor, seasonLabelFor } from '../../basketball/config';
 import { GAME_SET_NAV, bbGameSetLabel, gameSetHref, teamGameSet, type BbGameSet } from '../../utils/bballGameSet';
+import type { GameSetCountReads } from '../../resources/teamSeason';
 import { isNcaaDashboards } from '../../basketball/dashboards';
 
-// gameSet: BB-G14 ('bball-game-set'), the ?games= line; absent, the block is BB-G5's byte for byte
-interface Props { data: TeamSeasonReads | null; season: number; espnId: number; teamName: string; gameSet?: BbGameSet }
-const { data, season, espnId, teamName, gameSet } = Astro.props;
+// gameSet: BB-G14 ('bball-game-set'), the ?games= line (gameSetCounts: a summed set's impact reads, null when they
+// failed); absent, the block is BB-G5's byte for byte
+interface Props { data: TeamSeasonReads | null; season: number; espnId: number; teamName: string; gameSet?: BbGameSet; gameSetCounts?: GameSetCountReads | null }
+const { data, season, espnId, teamName, gameSet, gameSetCounts } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const college = isNcaaDashboards(league);
@@ -54,10 +56,10 @@ const MEASURES = [
 const day = (iso: string) => fmtDate(DateTime.fromISO(iso, { zone: 'utc' }).setZone(cfg.scoreboardTimeZone).toISODate() ?? iso.slice(0, 10));
 const venueMark = { home: 'vs', away: '@', neutral: 'vs' } as const;
 const reg = regulationFor(league, season);
-const view = gameSet && data ? teamGameSet(data.rates, games, gameSet, reg.periods * reg.periodMinutes) : null;
+const view = gameSet && data ? teamGameSet(data.rates, games, gameSet, reg.periods * reg.periodMinutes, college, gameSetCounts) : null;
 const viewCaption = view && (view.producer
   ? `Per possession: the season's ${bbGameSetLabel(view.set)} split (play-by-play possessions). Shading by percentile.`
-  : `Summed over these games: points from each final score, possessions and minutes from each game's box score (the game page's estimate, not the play-by-play count of All, Home and Away), divided once. Pace per ${reg.periods * reg.periodMinutes} minutes.`);
+  : `Summed over these games: each game's play-by-play points and possessions, added up from the players' on-court rows (over the five on the floor), divided once. Pace per ${reg.periods * reg.periodMinutes} minutes.`);
 const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore == null ? null : `${g.teamScore > g.oppScore ? 'W' : g.teamScore < g.oppScore ? 'L' : 'T'} ${g.teamScore}-${g.oppScore}`);
 ---
 <section id="season" aria-label={`${label} season`} class="mb-4">
@@ -123,6 +125,7 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
           {view.sets.map((k) => (<option value={gameSetHref(Astro.url, k, 'season-game-set')} selected={k === view.set}>{bbGameSetLabel(k)}</option>))}
         </select>
       </div>
+      {view.line === null ? (<p class="text-muted mb-0" id="season-game-set-unavailable">The {bbGameSetLabel(view.set)} numbers are temporarily unavailable.</p>) : (
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0" id="season-game-set-table">
           <caption class="small text-muted">{viewCaption}</caption>
@@ -139,7 +142,7 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
             </tr>
           </tbody>
         </table>
-      </div>
+      </div>)}
     </div>
   )}
   {games.length > 0 && (
