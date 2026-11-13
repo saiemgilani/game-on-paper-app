@@ -814,3 +814,18 @@ show their id, as the board does for a player the season players do not list).
 **To regenerate:** rerun the two sdv-py calls (cut as above) and the one read, wrap them as above and gzip. Once sdv-db
 #202's backfill has run, `/v1/{nba_stats,mbb}/player_war?season=2026&poss__gte=…&order=-poss&limit=500` replaces the
 sdv-py calls.
+
+## `leaderboards-v2-bases-2026.json.gz`
+The per-game and per-75 columns behind the leaderboards' basis select (#413 Q25; sdv-py#1173, sdv-db#222), captured live
+from the Data API on 2026-11-13. Every read is season-filtered with a small limit and kept as served, every column:
+- `nbaRates`, `wnbaRates`, `mbbRates`, `wbbRates`: `/v1/{nba_stats,wnba_stats,mbb,wbb}/team_season_rates?season=2026&split=all`
+  (`limit=10`; WNBA `limit=20`, all 15 teams);
+- `wnbaRates2024`: the same read for WNBA 2024, a season the producer has not backfilled (every new column null);
+- `wnbaFlow`, `wnbaFlow2024`: `/v1/wnba_stats/team_season_flow?season={2026,2024}&limit=20` (`kills_per75` null in 2024);
+- `nbaLineups`: `/v1/nba_stats/lineup_seasons?season=2026&n_players=5&poss__gte=200&order=-poss&limit=20` (early season:
+  no unit is ranked yet), `mbbLineups`: `/v1/mbb/lineup_seasons?season=2026&n_players=5&poss__gte=100&order=-poss&limit=10`.
+
+**Used by:** `test/leaderboardsV2.test.ts`.
+
+**To regenerate:** rerun the reads above (season filter and limit as listed, never unfiltered), write `{nbaRates, wnbaRates,
+mbbRates, wbbRates, wnbaRates2024, wnbaFlow, wnbaFlow2024, nbaLineups, mbbLineups, reads, captured}` as JSON and gzip.

@@ -129,9 +129,9 @@ export const POE_QUALIFIED_FGA: Record<BasketballLeague, number> = { nba: 300, w
 const RATINGS: readonly Col[] = [
     C('games', 'GP', 'Games rated', 'games', 'int', { group: 'Sample' }),
     C('poss', 'Poss', 'Offensive possessions', 'poss', 'int', { group: 'Sample' }),
-    C('off', { per100: 'ORtg', totals: 'Pts' }, 'Points scored: per 100 possessions (ORtg) or the season total', { per100: 'off_rtg', totals: 'pts' }, 'dec1', { group: 'Scoring' }),
-    C('def', { per100: 'DRtg', totals: 'Opp Pts' }, 'Points allowed: per 100 possessions (DRtg) or the season total', { per100: 'def_rtg', totals: 'opp_pts' }, 'dec1', { group: 'Scoring', lowerBetter: true }),
-    C('net', { per100: 'Net', totals: '+/-' }, 'Point margin per 100 possessions (the producer ships no season-total margin)', { per100: 'net_rtg' }, 'signed1', { group: 'Scoring' }),
+    C('off', { pergame: 'Pts', per75: 'Pts', per100: 'ORtg', totals: 'Pts' }, 'Points scored: per game, per 75 possessions, per 100 (ORtg) or the season total', { pergame: 'pts_pg', per75: 'pts_per75', per100: 'off_rtg', totals: 'pts' }, 'dec1', { group: 'Scoring' }),
+    C('def', { pergame: 'Opp Pts', per75: 'Opp Pts', per100: 'DRtg', totals: 'Opp Pts' }, 'Points allowed: per game, per 75 possessions, per 100 (DRtg) or the season total', { pergame: 'opp_pts_pg', per75: 'opp_pts_per75', per100: 'def_rtg', totals: 'opp_pts' }, 'dec1', { group: 'Scoring', lowerBetter: true }),
+    C('net', { pergame: '+/-', per75: '+/-', per100: 'Net', totals: '+/-' }, 'Point margin: per game, per 75 possessions, per 100 (Net) or the season total', { pergame: 'plus_minus_pg', per75: 'plus_minus_per75', per100: 'net_rtg', totals: 'plus_minus' }, 'signed1', { group: 'Scoring' }),
     C('pace', 'Pace', 'Possessions per 48 minutes (40 in the WNBA and college)', 'pace', 'dec1', { noShade: true }),
 ];
 const pctCol = (key: string, label: string, hover: string, group: string, lowerBetter = false) =>
@@ -165,15 +165,16 @@ const FLOW: readonly Col[] = [
     C('opp_runs', 'Opp 10-0', 'Opponents’ 10-0 runs: per game or the season total', { pergame: 'opp_runs_10_pg', totals: 'opp_runs_10' }, 'dec2', { group: 'Runs', lowerBetter: true }),
     C('drought', 'Drought', 'Average longest scoring drought, in seconds', 'avg_longest_drought_sec', 'secs', { group: 'Runs', lowerBetter: true }),
     C('stop_pct', 'Stop %', 'Stops over defensive possessions', 'stop_pct', 'pct', { group: 'Stops' }),
-    C('kills', 'Kills', 'Three stops in a row: per game, per 100 defensive possessions or the season total', { pergame: 'kills_pg', per100: 'kills_per_100', totals: 'kills' }, 'dec2', { group: 'Stops' }),
+    C('kills', 'Kills', 'Three stops in a row: per game, per 75 or 100 defensive possessions, or the season total', { pergame: 'kills_pg', per75: 'kills_per75', per100: 'kills_per_100', totals: 'kills' }, 'dec2', { group: 'Stops' }),
     C('double_kills', 'Dbl kills', 'Six stops in a row: per game or the season total', { pergame: 'double_kills_pg', totals: 'double_kills' }, 'dec2', { group: 'Stops' }),
 ];
 const LINEUPS: readonly Col[] = [
     C('minutes', 'MIN', 'Minutes together', 'minutes', 'int', { group: 'Sample' }),
     C('poss', 'Poss', 'Offensive possessions the unit started', 'poss', 'int', { group: 'Sample' }),
-    C('off', { per100: 'ORtg', totals: 'Pts' }, 'Points scored: per 100 possessions (ORtg) or the total', { per100: 'off_rtg', totals: 'pts' }, 'dec1', { group: 'Scoring' }),
-    C('def', { per100: 'DRtg', totals: 'Opp Pts' }, 'Points allowed: per 100 possessions (DRtg) or the total', { per100: 'def_rtg', totals: 'opp_pts' }, 'dec1', { group: 'Scoring', lowerBetter: true }),
-    C('net', { per100: 'Net', totals: '+/-' }, 'Point margin: per 100 possessions (Net) or the total (+/-)', { per100: 'net_rtg', totals: 'plus_minus' }, 'signed1', { group: 'Scoring' }),
+    // a lineup has no per-game basis: a unit plays a few minutes of many games
+    C('off', { per75: 'Pts', per100: 'ORtg', totals: 'Pts' }, 'Points scored: per 75 possessions, per 100 (ORtg) or the total', { per75: 'pts_per75', per100: 'off_rtg', totals: 'pts' }, 'dec1', { group: 'Scoring' }),
+    C('def', { per75: 'Opp Pts', per100: 'DRtg', totals: 'Opp Pts' }, 'Points allowed: per 75 possessions, per 100 (DRtg) or the total', { per75: 'opp_pts_per75', per100: 'def_rtg', totals: 'opp_pts' }, 'dec1', { group: 'Scoring', lowerBetter: true }),
+    C('net', { per75: '+/-', per100: 'Net', totals: '+/-' }, 'Point margin: per 75 possessions, per 100 (Net) or the total (+/-)', { per75: 'plus_minus_per75', per100: 'net_rtg', totals: 'plus_minus' }, 'signed1', { group: 'Scoring' }),
     pctCol('efg_pct', 'eFG%', 'Effective field-goal percentage', 'Offense'),
     pctCol('tov_pct', 'TOV%', 'Turnovers per possession', 'Offense', true),
     pctCol('orb_pct', 'ORB%', 'Offensive rebounds over chances', 'Offense'),
@@ -214,9 +215,16 @@ export function labelFor(col: Col, basis: Basis): string {
     return typeof col.label === 'string' ? col.label : col.label[basis] ?? Object.values(col.label)[0]!;
 }
 
-/** The bases a board ships: its default, plus every basis some count column has a producer column for, in BASES order. */
-export function offeredBases(spec: BoardSpec): Basis[] {
-    return BASES.filter((b) => b === spec.defaultBasis || spec.cols.some((c) => typeof c.src !== 'string' && c.src[b] != null));
+/**
+ * The bases a board ships: its default, plus every basis some count column has a producer column for, in BASES order.
+ * Given the season's rows, a basis is offered only when one of its columns has a value: a season the producer has not
+ * backfilled (per game and per 75 landed in 2026) hides the basis instead of showing a board of dashes.
+ */
+export function offeredBases(spec: BoardSpec, rows?: readonly Record<string, unknown>[]): Basis[] {
+    return BASES.filter((b) => b === spec.defaultBasis || spec.cols.some((c) => {
+        const s = typeof c.src === 'string' ? null : c.src[b];
+        return s != null && (rows == null || rows.some((r) => numberOrNull(r[s]) != null));
+    }));
 }
 /** Percentiles are offered when some column of the board carries a producer `_pct` (the caller checks the rows). */
 export function hasPercentiles(rows: readonly Record<string, unknown>[], spec: BoardSpec, basis: Basis): boolean {
@@ -261,7 +269,9 @@ export interface Controls {
     view: View;
     qualified: boolean;
     sort: string;
-    /** a requested basis that is not shown: one the board ships no column for, or 'unknown' (not a basis at all) */
+    /** the bases the basis select offers (offeredBases over the season's rows) */
+    bases: Basis[];
+    /** a requested basis that is not shown: one the board or this season has no column for, or 'unknown' (not a basis at all) */
     basisFallback: Basis | 'unknown' | null;
     /** the Percentiles view was asked for on a board with none */
     viewFallback: boolean;
@@ -273,20 +283,21 @@ const pick = <T extends string | number>(list: readonly T[], v: string | null, d
  * The URL's controls: every one whitelisted. An unknown basis is never passed on: it resolves to the board's default and
  * `basisFallback` names what was asked (a typo or a basis this board has no columns for), so nothing falls through silently.
  * `pctAvailable` is hasPercentiles over the board's rows; without it the view is Values and `viewFallback` says so.
+ * `rows` (the season's, once read) narrows the bases to those with values; without it every basis the board ships is offered.
  */
-export function parseControls(sp: URLSearchParams, league: BasketballLeague, pctAvailable: (spec: BoardSpec, basis: Basis) => boolean, war = false): Controls {
+export function parseControls(sp: URLSearchParams, league: BasketballLeague, pctAvailable: (spec: BoardSpec, basis: Basis) => boolean, war = false, rows?: readonly Record<string, unknown>[]): Controls {
     const board = pick(boardsFor(war), sp.get('board'), 'impact');
     const group = pick(TEAM_GROUPS, sp.get('group'), 'ratings');
     const unit = pick(UNIT_SIZES, sp.get('unit'), 5);
     const spec = boardSpec(board, league, group);
     const asked = sp.get('basis');
-    const offered = offeredBases(spec);
-    const basis = offered.find((b) => b === asked) ?? spec.defaultBasis;
+    const bases = offeredBases(spec, rows);
+    const basis = bases.find((b) => b === asked) ?? spec.defaultBasis;
     const basisFallback = asked == null || asked === basis ? null : (BASES as readonly string[]).includes(asked) ? (asked as Basis) : 'unknown';
     const wantPct = sp.get('view') === 'percentiles';
     const view: View = wantPct && pctAvailable(spec, basis) ? 'percentiles' : 'values';
     const sort = spec.cols.find((c) => c.key === sp.get('sort'))?.key ?? spec.defaultSort;
-    return { board, group, unit, basis, view, qualified: sp.get('qualified') !== 'all', sort, basisFallback, viewFallback: wantPct && view === 'values' };
+    return { board, group, unit, bases, basis, view, qualified: sp.get('qualified') !== 'all', sort, basisFallback, viewFallback: wantPct && view === 'values' };
 }
 
 /**
