@@ -19,7 +19,7 @@ import { retrieveLineups } from '../../resources/lineups';
 import { retrieveOnOff } from '../../resources/onOff';
 import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
 import { isFeatureEnabled } from '../../utils/features';
-import { parseBasis, parseUnit, playerNames, unitLabels, type LineupsTab } from '../../utils/lineups';
+import { parseBasis, parseGate, parseLineupSort, parseUnit, playerNames, playerPages, sortUnits, unitLabels, type LineupsTab } from '../../utils/lineups';
 import { parseWowy, wowyLines, type OnOffTab } from '../../utils/onOff';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
@@ -157,17 +157,25 @@ async function readSeasonBlock(league: BasketballLeague, season: number, teamId:
     }
 }
 
-/** The Lineups tab (BB-G3): ?unit= and ?basis=, the unit size's read, each unit's names; `units` null when a read failed. */
+/**
+ * The Lineups tab (BB-G3): ?unit=, ?basis=, ?min= and ?lsort=/?ldir=, the unit size's read over the gate, sorted, each
+ * unit's names and player links; `units` null when a read failed.
+ */
 async function readLineups(Astro: AstroGlobal, league: BasketballLeague, season: number, teamId: number, rows: SeasonPlayerRow[]): Promise<LineupsTab> {
-    const unit = parseUnit(Astro.url.searchParams.get('unit'));
-    const basis = parseBasis(Astro.url.searchParams.get('basis'));
+    const q = Astro.url.searchParams;
+    const unit = parseUnit(q.get('unit'));
+    const basis = parseBasis(q.get('basis'), league);
+    const controls = { unit, basis, gate: parseGate(q.get('min'), league), sort: parseLineupSort(q.get('lsort'), basis), dir: parseDir(q.get('ldir')) };
     try {
-        const { units, names } = await retrieveLineups(league, season, teamId, unit);
-        // the season rows are ESPN-keyed in college: never mix them with the units' stats.ncaa.org ids
-        return { unit, basis, units, labels: unitLabels(units, playerNames(isNcaaDashboards(league) ? [] : rows, names)) };
+        const read = await retrieveLineups(league, season, teamId, unit, controls.gate);
+        const college = isNcaaDashboards(league);
+        const units = sortUnits(read.units, controls.sort, controls.dir);
+        // the season rows are ESPN-keyed in college: they name no unit (stats.ncaa.org ids), they only say which pages exist
+        const names = playerNames(college ? [] : rows, read.names);
+        return { ...controls, units, labels: unitLabels(units, names, playerPages(rows, college ? read.pairs ?? [] : undefined)) };
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} ${unit}-man lineups for team ${teamId}: ${e}, ${e?.stack}`);
-        return { unit, basis, units: null, labels: [] };
+        return { ...controls, units: null, labels: [] };
     }
 }
 

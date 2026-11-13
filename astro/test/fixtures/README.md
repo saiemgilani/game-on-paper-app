@@ -799,14 +799,30 @@ filtered to one team and projected to the module's `select` columns, as `{units,
 `/v1/nba_stats/shot_season_players?season=2025&team_id=1610612750&select=person_id,player_name,team_id&limit=60`. MBB:
 Xavier 2024-25 (ESPN 2752, its 166 units over the fixture's two games, so no unit reaches the rank gate), with `names` the
 `data` of `/v1/mbb/ncaa_player_box?season=2025&team_espn_team_id=2752&select=player_id,clean_name&limit=2000`. The name
-reads were captured live on 2026-11-05; nothing is edited. The tests apply the API's own filter (`n_players`, `poss__gte`,
-`order=-poss`, `limit`) to `units`.
+reads were captured live on 2026-11-05; nothing is edited. The tests apply the API's own filter (`n_players`, `poss__gte`
+or `net_rtg_pct__isnull=false`, `order=-poss`, `limit`) to `units`.
+
+Xavier's `units` also carry college's shot-zone columns and their percentiles (`rim_rate` .. `opp_fg3_pct`, each with
+`_pct`, from the same parquet; rebuilt 2026-11-13 and asserted equal to the earlier rows on every earlier column), plus
+`crosswalk` (the `data` of `/v1/mbb/ncaa_player_crosswalk?season=2025&espn_team_id=2752&select=ncaa_player_id,espn_athlete_id&limit=100`,
+BB-D37) and `pages` (the `data` of `/v1/mbb/shot_season_players?season=2025&team_id=2752&select=person_id,player_name,team_id&limit=60`),
+both captured live on 2026-11-13.
+
+## `lineups-mbb-duke-2026.json.gz`
+Duke 2025-26 (ESPN 150), captured live on 2026-11-13 after the `lineup_seasons` backfill: `units` is the `data` of
+`/v1/mbb/lineup_seasons?season=2026&team_id=150&n_players=2&net_rtg_pct__isnull=false&order=-poss&limit=12&select=<the
+college select>` (its 12 most-used ranked pairs, Cameron and Cayden Boozer among them), `names` of
+`/v1/mbb/ncaa_player_box?season=2026&team_espn_team_id=150&select=player_id,clean_name&limit=2000`, `crosswalk` of
+`/v1/mbb/ncaa_player_crosswalk?season=2026&espn_team_id=150&select=ncaa_player_id,espn_athlete_id&limit=100` and `pages`
+of `/v1/mbb/shot_season_players?season=2026&team_id=150&select=person_id,player_name,team_id&limit=60`. Nothing is edited.
+It pins the labels of two players who share a surname and a first initial, and the shot-zone basis on ranked units.
 
 **Used by:** `test/lineups.test.ts`.
 
 **To regenerate:** read the two parquets from sdv-db main, filter `team_id`, select the columns above, write the rows as
-JSON with the two name reads (season filter and limit as above, never unfiltered) and gzip. Once the backfill runs, the
-live `lineup_seasons?season=2026&team_id=<id>&n_players=<n>&poss__gte=<gate>&order=-poss&limit=100` reads replace them.
+JSON with the name, crosswalk and page reads (season filter and limit as above, never unfiltered) and gzip; Duke's file
+is the four reads above. Live reads of `lineup_seasons?season=2026&team_id=<id>&n_players=<n>&poss__gte=<gate>&order=-poss&limit=100`
+can replace the parquet rows.
 
 ## `on-off-nba-2025.json.gz`, `on-off-mbb-2025.json.gz`
 The On/Off and WOWY section's reads (BB-G4, `resources/onOff.ts`) before sdv-db's `player_on_off` / `player_wowy`
