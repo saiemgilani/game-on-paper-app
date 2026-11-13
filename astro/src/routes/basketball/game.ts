@@ -15,7 +15,7 @@ import type { BasketballLeague } from '../../utils/league';
 import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBox';
 import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
 import { retrieveGarbageTime, type GarbageReads } from '../../resources/garbageTime';
-import { retrieveSeasonAverages } from '../../resources/seasonAverages';
+import { AVERAGES_LEAGUES, retrieveSeasonAverages } from '../../resources/seasonAverages';
 import type { SeasonAverage } from '../../utils/gameLeaders';
 import { seasonCache, setCache, uncacheable } from './cache';
 
@@ -102,7 +102,8 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
         withImpact ? readPanel('impact box', league, r.game, r.game.season, retrieveImpactBox) : undefined,
         withFlow ? readPanel('game flow', league, r.game, r.game.season, retrieveGameFlow) : undefined,
         withGarbage ? readPanel('garbage-time log', league, r.game, r.game.season, retrieveGarbageTime) : undefined,
-        withLeaders ? readPanel('season averages', league, r.game, r.game.season, retrieveSeasonAverages) : undefined,
+        // WNBA and WBB: no averages section (and no read) until the producer's season-only rows land
+        withLeaders && AVERAGES_LEAGUES.has(league) ? readPanel('season averages', league, r.game, r.game.season, retrieveSeasonAverages) : undefined,
     ]);
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year

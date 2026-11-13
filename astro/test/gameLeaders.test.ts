@@ -71,15 +71,15 @@ describe('leaders, against the raw player box', () => {
                 const col: Record<string, string> = { pts: 'points', reb: 'rebounds', ast: 'assists', stl: 'steals', blk: 'blocks', tov: 'turnovers', fgm: 'field_goals_made', fg3m: 'three_point_field_goals_made', fta: 'free_throws_attempted' };
                 for (const [key, c] of Object.entries(col)) {
                     const max = Math.max(...box.map((p: any) => num(p[c]) ?? -Infinity));
-                    const l = leaderOf(g[ha], key);
+                    const l = leaderOf(g[ha], key, lg);
                     if (max <= 0) { expect(l, `${ha} ${key}`).toBeNull(); continue; }
                     expect(l!.value, `${ha} ${key}`).toBe(max);
                     expect(new Set(l!.players.map((p) => p.athlete_id))).toEqual(new Set(box.filter((p: any) => num(p[c]) === max).map((p: any) => Number(p.athlete_id))));
                 }
-                const ts = leaderOf(g[ha], 'ts');
+                const ts = leaderOf(g[ha], 'ts', lg);
                 if (ts) for (const p of ts.players) {
                     const [fga, fta] = [num(raw.player_box.find((r: any) => Number(r.athlete_id) === p.athlete_id).field_goals_attempted)!, num(raw.player_box.find((r: any) => Number(r.athlete_id) === p.athlete_id).free_throws_attempted)!];
-                    expect(fga + 0.44 * fta).toBeGreaterThanOrEqual(TS_MIN_ATTEMPTS);
+                    expect(fga + 0.44 * fta).toBeGreaterThanOrEqual(TS_MIN_ATTEMPTS[lg]);
                     expect(ts.value).toBeCloseTo(p.points! / (2 * (fga + 0.44 * fta)), 12);
                 }
             }
@@ -89,17 +89,29 @@ describe('leaders, against the raw player box', () => {
         for (const lg of ['nba', 'wnba'] as const) {
             const g = gameOf(lg), raw = json(FIX[lg]);
             const best = Math.max(...raw.player_box.filter((p: any) => Number(p.team_id) === Number(g.home.team.id) && played(p) && p.plus_minus != null).map((p: any) => Number(p.plus_minus)));
-            expect(leaderOf(g.home, 'pm')!.value).toBe(best);
+            expect(leaderOf(g.home, 'pm', lg)!.value).toBe(best);
         }
-        for (const lg of ['mbb', 'wbb'] as const) expect(leaderRows(gameOf(lg).home, gameOf(lg).away).map((r) => r.cat.key)).not.toContain('pm');
+        for (const lg of ['mbb', 'wbb'] as const) expect(leaderRows(gameOf(lg).home, gameOf(lg).away, lg).map((r) => r.cat.key)).not.toContain('pm');
+    });
+    test('the TS% minimum follows game length: 10 attempts in the NBA, 8 in the WNBA and college', () => {
+        expect(TS_MIN_ATTEMPTS).toEqual({ nba: 10, wnba: 8, mbb: 8, wbb: 8 });
+        for (const lg of LEAGUES) {
+            const g = gameOf(lg);
+            // one player at 9 true-shooting attempts (9-9 FG, no free throws), everyone else below the 40-minute minimum
+            const [a] = g.home.players.filter((p) => !p.did_not_play);
+            const side = { ...g.home, players: g.home.players.map((p) => (p === a ? { ...p, fg: '9-9', ft: '0-0', points: 18 } : { ...p, fg: '1-1', ft: '0-0' })) };
+            const ts = leaderOf(side, 'ts', lg);
+            if (lg === 'nba') expect(ts, lg).toBeNull();
+            else expect(ts?.players.map((p) => p.athlete_id), lg).toEqual([a.athlete_id]);
+        }
     });
     test('a tie lists every player at the top; a count nobody recorded has no leader; a DNP never leads', () => {
         const g = gameOf('nba');
         const [a, b] = g.home.players.filter((p) => !p.did_not_play);
         const side = { ...g.home, players: g.home.players.map((p) => (p === a || p === b ? { ...p, steals: 9, blocks: 0 } : { ...p, blocks: 0 })) };
-        expect(leaderOf(side, 'stl')!.players.map((p) => p.athlete_id).sort()).toEqual([a.athlete_id, b.athlete_id].sort());
-        expect(leaderOf(side, 'blk')).toBeNull();
-        expect(leaderOf({ ...side, players: side.players.map((p) => ({ ...p, did_not_play: true })) }, 'pts')).toBeNull();
+        expect(leaderOf(side, 'stl', 'nba')!.players.map((p) => p.athlete_id).sort()).toEqual([a.athlete_id, b.athlete_id].sort());
+        expect(leaderOf(side, 'blk', 'nba')).toBeNull();
+        expect(leaderOf({ ...side, players: side.players.map((p) => ({ ...p, did_not_play: true })) }, 'pts', 'nba')).toBeNull();
         expect(statOf('pm', { ...a, plus_minus: '-7' })).toBe(-7);
         expect(statOf('fgm', { ...a, fg: '–' })).toBeNull();
     });
@@ -217,10 +229,10 @@ describe('retrieveSeasonAverages', () => {
     });
 });
 
-function fakeAstro(locals: Record<string, unknown>) {
+function fakeAstro(locals: Record<string, unknown>, lg: Lg = 'nba', id = '401766458') {
     const cache: unknown[] = []; const headers = new Headers();
     const off = { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-garbage-time': false };
-    return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { ...locals, flagOverrides: { ...off, ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id }, url: new URL(`https://gameonpaper.com/${lg}/game/${id}`), locals: { ...locals, flagOverrides: { ...off, ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 
 describe('prepareBasketballGame', () => {
@@ -248,6 +260,16 @@ describe('prepareBasketballGame', () => {
         const empty = fakeAstro({ preview: true });
         expect('game' in (await prepareBasketballGame(empty.astro, 'nba'))).toBe(true);
         expect(empty.cache.at(-1)).toEqual({ maxAge: 6 * 60 * 60, swr: 6 * 60 * 60, tags: ['nba'] });
+    });
+    test('WNBA and WBB: no averages read and no averages key (career lines under the season filter), NBA and MBB read', async () => {
+        for (const lg of ['wnba', 'wbb', 'mbb'] as const) {
+            afn.mockClear();
+            const r0 = rowsOf(lg); sched.mockResolvedValueOnce(r0.schedule[0]); rows.mockResolvedValueOnce(r0);
+            const r = await prepareBasketballGame(fakeAstro({ preview: true }, lg, cap[lg].espnGameId).astro, lg);
+            expect('game' in r, lg).toBe(true);
+            expect('averages' in r, lg).toBe(lg === 'mbb');
+            expect(afn.mock.calls.length, lg).toBe(lg === 'mbb' ? 1 : 0);
+        }
     });
     test('on, a failed read: averages null, the page renders, nothing is cached', async () => {
         afn.mockRejectedValue(new Error('down')); ingested();
@@ -291,10 +313,10 @@ describe('NbaGamePage', () => {
         expect(on).not.toContain('undefined');
         // the leader cells, by position: the away column first, then home (the header's order)
         const cells = (label: string) => table(on, 'Game leaders').split(`>${label}</abbr>`)[1].split('</tr>')[0].split('<td').slice(1).map((c) => c.replace(/^[^>]*>/, '').replace(/<[^>]+>/g, ''));
-        const cell = (s: typeof g.home, key: string) => { const l = leaderOf(s, key)!; return `${l.value} ${l.players.map((p) => p.short_name || p.name).join(', ')}`; };
+        const cell = (s: typeof g.home, key: string) => { const l = leaderOf(s, key, 'nba')!; return `${l.value} ${l.players.map((p) => p.short_name || p.name).join(', ')}`; };
         expect(cells('PTS')).toEqual([cell(g.away, 'pts'), cell(g.home, 'pts')]);
         // a tie: every name, comma-separated (ORL's two-way tie for steals in this final)
-        expect(leaderOf(g.home, 'stl')!.players.length).toBeGreaterThan(1);
+        expect(leaderOf(g.home, 'stl', 'nba')!.players.length).toBeGreaterThan(1);
         expect(cells('STL')).toEqual([cell(g.away, 'stl'), cell(g.home, 'stl')]);
         expect(on).toContain('id="leaders-over-under"');
         expect(on).toContain('id="assist-web-home"');

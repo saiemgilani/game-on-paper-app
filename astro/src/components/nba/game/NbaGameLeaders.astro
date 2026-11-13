@@ -7,20 +7,22 @@ import type { NbaGame, NbaPlayerRow, NbaSide } from '../../../resources/nbaGame'
 import { assistWeb, leaderRows, overUnder, MIN_MINUTES, OVER_UNDER_N, TS_MIN_ATTEMPTS, ZONES, type LeaderCategory, type OverUnderRow, type SeasonAverage } from '../../../utils/gameLeaders';
 import { cleanAbbreviation } from '../../../utils/misc';
 import { fmtPct } from '../../../nba/format';
+import type { BasketballLeague } from '../../../utils/league';
 
 interface Props {
     game: NbaGame
+    league: BasketballLeague
     /** a final's season averages; null when the read failed; absent (a live game): no "against their average" */
     averages?: SeasonAverage[] | null
 }
-const { game, averages } = Astro.props;
+const { game, league, averages } = Astro.props;
 const dash = '–';
 const minus = '−';
 const sides = [{ ha: 'away', side: game.away }, { ha: 'home', side: game.home }] as const;
 const abbr = (s: NbaSide) => cleanAbbreviation(s.team);
 const nameOf = (p: NbaPlayerRow) => p.short_name || p.name;
 const value = (cat: LeaderCategory, v: number) => (cat.pct ? fmtPct(v, 1) : cat.key === 'pm' && v > 0 ? `+${v}` : cat.key === 'pm' && v < 0 ? `${minus}${-v}` : String(v));
-const rows = leaderRows(game.home, game.away);
+const rows = leaderRows(game.home, game.away, league);
 const signed = (v: number) => (v > 0 ? `+${v.toFixed(1)}` : v < 0 ? `${minus}${(-v).toFixed(1)}` : '0.0');
 const avg = (v: number | null) => (v == null ? dash : v.toFixed(1));
 const ou = averages ? sides.map(({ side }) => ({ side, ...overUnder(side, averages) })) : null;
@@ -38,7 +40,7 @@ const share = (a: number, t: number) => (t > 0 ? fmtPct(a / t, 0) : dash);
     {rows.map((r) => (<tr><th scope="row" class="fw-normal text-nowrap"><abbr title={r.cat.title}>{r.cat.label}</abbr></th>{[r.away, r.home].map((l) => (<td>{l ? (<Fragment><span class="fw-semibold">{value(r.cat, l.value)}</span> {l.players.map((p, i) => (<Fragment>{i > 0 && ', '}<span class="text-nowrap">{nameOf(p)}</span></Fragment>))}</Fragment>) : dash}</td>))}</tr>))}
   </tbody>
 </table></div>
-<p class="small text-muted">True shooting leads with {TS_MIN_ATTEMPTS} or more true-shooting attempts (FGA + 0.44 FTA). A tie lists every player at the top.</p>
+<p class="small text-muted">True shooting leads with {TS_MIN_ATTEMPTS[league]} or more true-shooting attempts (FGA + 0.44 FTA). A tie lists every player at the top.</p>
 
 {averages !== undefined && (
 <Fragment>

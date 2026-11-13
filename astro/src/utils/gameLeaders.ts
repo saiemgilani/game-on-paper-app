@@ -9,13 +9,14 @@
  *   zone, assisted or not.
  */
 import type { NbaPlay, NbaPlayerRow, NbaSide } from '../resources/nbaGame';
+import type { BasketballLeague } from './league';
 
 /** A leader cell: the value and every player who reached it (a tie lists them all). */
 export interface Leader { value: number; players: NbaPlayerRow[] }
 export interface LeaderCategory { key: string; label: string; title: string; digits?: number; pct?: boolean }
 
-/** TS% needs this many true-shooting attempts (FGA + 0.44 FTA) to lead. */
-export const TS_MIN_ATTEMPTS = 10;
+/** TS% needs this many true-shooting attempts (FGA + 0.44 FTA) to lead, scaled to game length: 10 in a 48-minute game, 8 in a 40-minute one (10 x 40/48). */
+export const TS_MIN_ATTEMPTS: Record<BasketballLeague, number> = { nba: 10, wnba: 8, mbb: 8, wbb: 8 };
 /** The over/under list's floor, and how many players each side lists. */
 export const MIN_MINUTES = 8;
 export const OVER_UNDER_N = 3;
@@ -31,7 +32,7 @@ export const CATEGORIES: LeaderCategory[] = [
     { key: 'fta', label: 'FTA', title: 'Free throws attempted' },
     { key: 'pm', label: '+/-', title: 'Score margin with the player on the court' },
     { key: 'tov', label: 'TOV', title: 'Turnovers (the most)' },
-    { key: 'ts', label: 'TS%', title: `Points per two true-shooting attempts (FGA + 0.44 FTA), with ${TS_MIN_ATTEMPTS} or more attempts`, pct: true },
+    { key: 'ts', label: 'TS%', title: 'Points per two true-shooting attempts (FGA + 0.44 FTA), with 10 or more attempts in the NBA, 8 in the WNBA and college', pct: true },
 ];
 
 /** "7-15" -> [7, 15]; a dash (not recorded) is null. */
@@ -45,8 +46,8 @@ const tsa = (p: NbaPlayerRow): number | null => {
     return fg && ft ? fg[1] + 0.44 * ft[1] : null;
 };
 
-/** The category's value for one player; null when the box does not have it (college has no plus-minus). */
-export function statOf(key: string, p: NbaPlayerRow): number | null {
+/** The category's value for one player; null when the box does not have it (college has no plus-minus). TS% needs `minTsa` attempts. */
+export function statOf(key: string, p: NbaPlayerRow, minTsa = TS_MIN_ATTEMPTS.nba): number | null {
     switch (key) {
         case 'pts': return p.points;
         case 'reb': return p.rebounds;
@@ -58,15 +59,15 @@ export function statOf(key: string, p: NbaPlayerRow): number | null {
         case 'fg3m': return madeAttempted(p.fg3)?.[0] ?? null;
         case 'fta': return madeAttempted(p.ft)?.[1] ?? null;
         case 'pm': { const v = p.plus_minus == null || p.plus_minus === '' ? NaN : Number(p.plus_minus); return Number.isFinite(v) ? v : null; }
-        case 'ts': { const a = tsa(p); return a != null && a >= TS_MIN_ATTEMPTS && p.points != null ? p.points / (2 * a) : null; }
+        case 'ts': { const a = tsa(p); return a != null && a >= minTsa && p.points != null ? p.points / (2 * a) : null; }
         default: return null;
     }
 }
 
 /** One side's leader in a category: the max over players who played; none when nobody has it, or a count's max is 0. */
-export function leaderOf(side: NbaSide, key: string): Leader | null {
+export function leaderOf(side: NbaSide, key: string, league: BasketballLeague): Leader | null {
     const played = side.players.filter((p) => !p.did_not_play);
-    const vals = played.map((p) => ({ p, v: statOf(key, p) })).filter((x): x is { p: NbaPlayerRow; v: number } => x.v != null);
+    const vals = played.map((p) => ({ p, v: statOf(key, p, TS_MIN_ATTEMPTS[league]) })).filter((x): x is { p: NbaPlayerRow; v: number } => x.v != null);
     if (vals.length === 0) return null;
     const top = Math.max(...vals.map((x) => x.v));
     // plus-minus and TS% can lead at 0 or below; a count of 0 is nobody leading
@@ -75,8 +76,8 @@ export function leaderOf(side: NbaSide, key: string): Leader | null {
 }
 
 /** The category rows with at least one side's leader (college's plus-minus row drops out). */
-export function leaderRows(home: NbaSide, away: NbaSide): { cat: LeaderCategory; home: Leader | null; away: Leader | null }[] {
-    return CATEGORIES.map((cat) => ({ cat, home: leaderOf(home, cat.key), away: leaderOf(away, cat.key) })).filter((r) => r.home || r.away);
+export function leaderRows(home: NbaSide, away: NbaSide, league: BasketballLeague): { cat: LeaderCategory; home: Leader | null; away: Leader | null }[] {
+    return CATEGORIES.map((cat) => ({ cat, home: leaderOf(home, cat.key, league), away: leaderOf(away, cat.key, league) })).filter((r) => r.home || r.away);
 }
 
 /** A player's season per-game averages (the Data API's player_season_stats, ESPN-keyed). */

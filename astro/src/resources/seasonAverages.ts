@@ -25,6 +25,13 @@ const STAT: Record<string, keyof Omit<SeasonAverage, 'athleteId'>> = { gamesPlay
  */
 const SEASON_GAMES: Record<BasketballLeague, number> = { nba: 82, wnba: 44, mbb: 45, wbb: 45 };
 
+/**
+ * The leagues whose "against their average" section is drawn. WNBA and WBB `player_season_stats` carry career lines under the
+ * season filter, so the section is hidden there until the producer writes season-only rows.
+ * ponytail: add 'wnba' and 'wbb' back once the producer fix is republished.
+ */
+export const AVERAGES_LEAGUES: ReadonlySet<BasketballLeague> = new Set(['nba', 'mbb']);
+
 type Row = Record<string, unknown>;
 
 /** The long rows to one average per athlete; an athlete without games played, or with more than a season's, is left out. */
