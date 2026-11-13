@@ -2,7 +2,7 @@
 // without its interval; his EPV season from the game rows, the regular season only), the reads (player_war in the league's
 // season schema by person id, epv_player_games only for the NBA from 2021-22), the page-side step (the flag gates both
 // reads; a failed read keeps the page and is never cached), the panel and the page: flag off is byte for byte the NBA
-// byte-identity capture, and the Impact panel drops player_impact's WAR only when the Value panel shows. On real producer
+// byte-identity capture; with the Impact panel on, Value closes it and its own WAR reads "Impact WAR". On real producer
 // output (fixtures/README.md: player-war.json.gz). Every read is mocked.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -230,9 +230,13 @@ describe('the panel', () => {
 });
 
 describe('the Impact panel', () => {
-    test("drops player_impact's WAR only when asked (the Value panel shows player_war's)", () => {
-        expect(impactPanel(PI.nba, false)!.measures.map((m) => m.label)).toContain('WAR');
-        expect(impactPanel(PI.nba, false, true)!.measures.map((m) => m.label)).toEqual(['RAPM', 'Adj. RAPM', 'SPM', 'BPM', 'BOBAN']);
+    test("keeps player_impact's WAR, relabelled \"Impact WAR\" only when asked (the Value block shows player_war's)", () => {
+        expect(impactPanel(PI.nba, false)!.measures.map((m) => m.label)).toEqual(['RAPM', 'Adj. RAPM', 'SPM', 'BPM', 'BOBAN', 'WAR']);
+        const both = impactPanel(PI.nba, false, true)!;
+        expect(both.measures.map((m) => m.label)).toEqual(['RAPM', 'Adj. RAPM', 'SPM', 'BPM', 'BOBAN', 'Impact WAR']);
+        // the same producer cell, only the name and hover change
+        expect(both.measures.at(-1)!.net).toEqual(impactPanel(PI.nba, false)!.measures.at(-1)!.net);
+        expect(both.measures.at(-1)!.hover).toContain('A separate estimate from the Value WAR below');
     });
 });
 
@@ -249,7 +253,7 @@ describe('the page', () => {
         expect(await page(false)).toBe(snap);
         expect(reads.war).not.toHaveBeenCalled();
     });
-    test('on: the panel and its link in "On this page", and nothing else changes', async () => {
+    test('on, Impact off: the Value section and its link in "On this page", and nothing else changes', async () => {
         const [off, on] = [await page(false), await page(true)];
         expect(on).toContain('<a href="#value" class="ms-2">Value</a>');
         const section = on.match(/<section id="value"[\s\S]*?<\/section>/)![0];
@@ -257,12 +261,20 @@ describe('the page', () => {
         expect(section).toContain('id="value-epv"');
         expect(on.replace(section, '').replace('<a href="#value" class="ms-2">Value</a>', '')).toBe(off.replace(/(<\/nav>)(\s*)/, '$1$2'));
     });
-    test("with the Impact panel on too, its WAR row goes and the rest of it stays", async () => {
+    test('with the Impact panel on too: Value closes the Impact section, no Value link, and its WAR row reads "Impact WAR"', async () => {
         const [impactOnly, both] = [await page(false, true), await page(true, true)];
-        expect(impactOnly).toContain('id="impact-war"');
-        expect(both).not.toContain('id="impact-war"');
-        expect(both).toContain('id="impact-rapm"');
-        expect(both).toContain('Per 100 possessions, regular season.');
-        expect(both.indexOf('id="impact"')).toBeLessThan(both.indexOf('id="value"'));
+        expect(impactOnly).toMatch(/id="impact-war"[\s\S]*?>WAR<\/abbr>/);
+        expect(both).toMatch(/id="impact-war"[\s\S]*?>Impact WAR<\/abbr>/);
+        const impact = both.match(/<section id="impact"[\s\S]*?<\/section>/)![0];
+        const value = impact.match(/<div id="value" class="mt-3">[\s\S]*<\/div>/)![0];
+        expect(value).toContain('<h3 class="h6">Value</h3>');
+        expect(value).toContain('id="value-war-interval"');
+        expect(both).not.toContain('<section id="value"');
+        expect(both).not.toContain('href="#value"');
+        expect(both).toContain('<a href="#impact" class="ms-2">Impact</a>');
+        // the Impact section with Value taken out and its WAR named back is the Impact-only one
+        const impactOnlySection = impactOnly.match(/<section id="impact"[\s\S]*?<\/section>/)![0];
+        expect(impact.replace(value, '').replace(/\s+<\/section>$/, '</section>').replace('>Impact WAR</abbr>', '>WAR</abbr>').replace(/title="Wins above replacement from the impact ratings[^"]*"/, ''))
+            .toBe(impactOnlySection.replace(/\s+<\/section>$/, '</section>').replace(/title="Wins above replacement \(replacement level[^"]*"/, ''));
     });
 });

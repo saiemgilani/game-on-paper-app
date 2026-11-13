@@ -1,6 +1,7 @@
 ---
 // src/components/nba/PlayerValue.astro
-// BB-G27, behind 'bball-war': the player page's Value panel. WAR (always with its 90% interval), VORP and the rating
+// BB-G27, behind 'bball-war': the player page's Value block, inside the Impact section (`nested`, its default slot) or,
+// with 'bball-impact' off, a section of its own. WAR (always with its 90% interval), VORP and the rating
 // behind them from sdv-db's player_war (BB-D26), with the producer's rank and percentile; the NBA from 2021-22 adds his
 // regular-season EPV added from epv_player_games (BB-D24). Points over expected stay on the shooting line (BB-G15).
 import type { EpvPlayerGameRow, PlayerWarRow } from '../../resources/playerWar';
@@ -11,8 +12,10 @@ import { formatRank, generateColorRampValue, ordinal } from '../../utils/misc';
 import { basketball, seasonLabelFor } from '../../basketball/config';
 import { isNcaaDashboards } from '../../basketball/dashboards';
 
-interface Props { war: PlayerWarRow[] | null; epv?: EpvPlayerGameRow[] | null; season: number; name: string }
-const { war, epv, season, name } = Astro.props;
+interface Props { war: PlayerWarRow[] | null; epv?: EpvPlayerGameRow[] | null; season: number; name: string; nested?: boolean }
+const { war, epv, season, name, nested = false } = Astro.props;
+const Root = nested ? 'div' : 'section';
+const Head = nested ? 'h3' : 'h2';
 const league = basketball(Astro.locals.league).league;
 const college = isNcaaDashboards(league);
 const label = seasonLabelFor(league, season);
@@ -28,8 +31,8 @@ const RATING_NOTE = college
 const WAR_NOTE = 'Wins above replacement: his possessions at his rating over a replacement-level player’s, in wins. The range is a 90% interval from resampling each team’s games.';
 const VORP_NOTE = 'Value over replacement player on Basketball-Reference’s scale: a full season one point per 100 possessions above replacement is 1.';
 ---
-<section id="value" aria-label="Value" class="mb-4">
-  <h2 class="h5">Value</h2>
+<Root id="value" class:list={[nested ? 'mt-3' : 'mb-4']} {...(nested ? {} : { 'aria-label': 'Value' })}>
+  <Head class:list={[nested ? 'h6' : 'h5']}>Value</Head>
   {war === null ? (<p class="text-muted" id="value-unavailable">WAR and VORP are temporarily unavailable.</p>) : !panel ? (<p class="text-muted" id="value-empty">No {label} WAR for {name} yet.</p>) : (<Fragment>
   <p class="numeral small text-muted mb-2" id="value-sample">{fmtInt(panel.poss)} possessions &middot; {fmtInt(panel.min)} MIN{panel.teams != null && panel.teams > 1 && (<Fragment> &middot; {fmtInt(panel.teams)} teams</Fragment>)}</p>
   <div class="table-responsive col-lg-6 px-0">
@@ -63,4 +66,4 @@ const VORP_NOTE = 'Value over replacement player on Basketball-Reference’s sca
   {epv !== undefined && (epv === null ? (<p class="small text-muted mb-0 mt-2" id="value-epv-unavailable">EPV is temporarily unavailable.</p>) : ep && (
   <p class="numeral small mb-0 mt-2" id="value-epv"><abbr title="Expected possession value added on his own events (shots, turnovers, rebounds, fouls, steals and blocks): the points plus the EPV after each play minus the EPV before it, summed over his regular-season games">EPV added</abbr>: <span class="fw-bold">{signed1(ep.epvOwn)}</span> on {fmtInt(ep.ownActions)} plays in {fmtInt(ep.games)} games &middot; <abbr title="The team's EPV added minus the opponent's while he was on the floor, summed over his regular-season games">on-court EPV +/-</abbr> {signed1(ep.epvOn)}</p>
   ))}
-</section>
+</Root>
