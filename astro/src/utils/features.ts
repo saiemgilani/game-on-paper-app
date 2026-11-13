@@ -78,6 +78,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // team_season_rates, team_strength and game_team_rates); college adds adjusted efficiency margin and tempo. Off: no
     // read and the team page is today's, byte for byte.
     'bball-team-season': 'preview',
+    // BB-G14: the game-set filter (?games=all|home|away|close|clutch|conference|wins|losses|last5|last10|last20) on
+    // /<league>/team/[id], inside 'bball-team-season' (All / Home / Away / Close / Clutch are that block's producer split
+    // rows; Wins / Losses / last N / college Conference games sum the team's team_game_possessions rows, read
+    // only for those sets), and on /<league>/players/[id] over the page's own per-game shot rows (no extra read; the
+    // explorer starts from the set). Off: ?games= is never read, the pages and their requests are unchanged.
+    'bball-game-set': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
