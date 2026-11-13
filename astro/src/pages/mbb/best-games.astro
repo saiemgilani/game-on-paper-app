@@ -1,0 +1,17 @@
+---
+// src/pages/mbb/best-games.astro
+import BestGamesRoute from '../../components/routes/BestGamesRoute.astro';
+import { prepareBestGames } from '../../routes/basketball/bestGames';
+import { unavailable } from '../../routes/basketball/cache';
+import { isFeatureEnabled } from '../../utils/features';
+
+if (!isFeatureEnabled('bball-best-games', Astro.locals)) {
+    return Astro.rewrite('/404');
+}
+const r = await prepareBestGames(Astro, 'mbb');
+if ('unavailable' in r) {
+    return unavailable('mbb', 'The best games are temporarily unavailable. Please try again shortly.');
+}
+---
+
+<BestGamesRoute data={r} />

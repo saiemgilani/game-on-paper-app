@@ -253,9 +253,9 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague):
     })
 }
 
-// TODO(BB-G29): no `excitement` on this path until the Data API serves sdv-db's `{lg}.game_excitement` (sdv-py
-// season_game_excitement: gei, lead_changes, max_swing_pts, completed, gei_rank, gei_pct, gei_n). Read it here per game, and
-// per season for the Best Games board (season, team), which waits on the same table.
+// TODO(BB-G29): no `excitement` on this path yet. The Data API serves sdv-db's `{lg}.game_excitement` (sdv-py
+// season_game_excitement: gei, lead_changes, max_swing_pts, completed, gei_rank, gei_pct, gei_n), which the Best Games
+// board reads per season (resources/bestGames.ts); read it here per game too.
 export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague): NbaGame {
     const s = rows.schedule[0]
     const wpByN = new Map(rows.play_wp.map((w) => [num(w.game_play_number), w]))
