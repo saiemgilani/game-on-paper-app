@@ -1,21 +1,22 @@
-// Open a Nets player's page, follow "On this page" to the Season vs current impact panel (BB-G56) and hover its two
-// headline rows for their definitions. The page and the panel are behind the 'nba' and 'bball-current-impact' preview
-// flags: pass the preview cookie the walkthrough runner supports (WALKTHROUGH_COOKIE), or run against a tree with the
-// flags forced on.
+// Open a Nets player's page, follow "On this page" to the Impact table and hover its Season impact and Current impact
+// rows (BB-G56) for their definitions and priors; the caption carries Current impact's date. The page and the rows are
+// behind the 'nba' and 'bball-current-impact' preview flags: pass the preview cookie the walkthrough runner supports
+// (WALKTHROUGH_COOKIE), or run against a tree with the flags forced on.
 const PATH = '/nba/players/1629008?season=2026';
 
 export default async (page, base) => {
   const res = await page.goto(base + PATH, { waitUntil: 'networkidle', timeout: 90_000 });
   if (!res || !res.ok()) throw new Error(`goto ${PATH} failed: status ${res ? res.status() : '(no response)'}`);
-  const link = page.locator('a[href="#current-impact"]');
-  if ((await link.count()) !== 1) throw new Error(`${PATH}: expected one "Season vs current" link (is the preview cookie set?)`);
+  const link = page.locator('a[href="#impact"]');
+  if ((await link.count()) !== 1) throw new Error(`${PATH}: expected one "Impact" link (is the preview cookie set?)`);
+  if ((await page.locator('#impact-current_impact').count()) !== 1) throw new Error(`${PATH}: no Current impact row in the Impact table`);
   await page.waitForTimeout(1000);
   await link.click();
-  const panel = page.locator('#current-impact');
-  await panel.scrollIntoViewIfNeeded();
+  const table = page.locator('#impact-table');
+  await table.scrollIntoViewIfNeeded();
   await page.waitForTimeout(1500);
-  for (const row of ['#current-impact-season abbr', '#current-impact-current abbr']) {
-    const cell = panel.locator(row);
+  for (const row of ['#impact-reml_rapm abbr', '#impact-current_impact abbr']) {
+    const cell = table.locator(row);
     if ((await cell.count()) === 1) {
       await cell.hover();
       await page.waitForTimeout(1500);

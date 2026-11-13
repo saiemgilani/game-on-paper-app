@@ -4,25 +4,43 @@
 // RAPM, adjusted RAPM, SPM, BPM, BOBAN and WAR over the possessions they are computed from (sdv-db player_impact);
 // college: RAPM (ncaa_rapm, through ncaa_player_crosswalk) and box BPM (player_value). One number per
 // cell. Rank columns and percentile shading appear only when the producer ships `<m>_rank` / `<m>_pct` (rule B6).
+// BB-G56 ('bball-current-impact', NBA only) adds two rows, Season impact and Current impact, with Current impact's date
+// and, early in the season, the mostly-prior note in the caption; with 'bball-impact' off the table holds just those two.
 import type { PlayerImpactRow } from '../../resources/playerImpact';
+import type { CurrentImpactRow } from '../../resources/currentImpact';
 import { impactPanel, type ImpactCell } from '../../utils/playerImpact';
+import { currentImpactMeasures, currentImpactPanel } from '../../utils/currentImpact';
 import { signed1 } from '../../utils/shotQuality';
-import { fmtDec, fmtInt } from '../../nba/format';
+import { fmtDate, fmtDec, fmtInt } from '../../nba/format';
 import { formatRank, generateColorRampValue, ordinal } from '../../utils/misc';
 import { basketball, seasonLabelFor } from '../../basketball/config';
 import { isNcaaDashboards } from '../../basketball/dashboards';
 
 // `relabelWar`: BB-G27's 'bball-war' is on, so this table's WAR reads "Impact WAR" and the Value block (the default slot,
-// player_war's WAR with its interval) closes the section
-interface Props { rows: PlayerImpactRow[] | null; season: number; name: string; relabelWar?: boolean }
-const { rows, season, name, relabelWar = false } = Astro.props;
+// player_war's WAR with its interval) closes the section. `rows` is absent with 'bball-impact' off; `current` is BB-G56's
+// two reads (each null when it failed), present only with 'bball-current-impact' on
+interface Props { rows?: PlayerImpactRow[] | null; current?: { seasonRows: PlayerImpactRow[] | null; current: CurrentImpactRow[] | null }; season: number; name: string; relabelWar?: boolean }
+const { rows, current, season, name, relabelWar = false } = Astro.props;
 const league = basketball(Astro.locals.league).league;
 const college = isNcaaDashboards(league);
 const label = seasonLabelFor(league, season);
 const panel = rows ? impactPanel(rows, college, relabelWar) : null;
+const cur = current ? currentImpactPanel(current.seasonRows ?? [], current.current ?? []) : null;
+const extra = currentImpactMeasures(cur);
+// the two rows sit with the per-100 ratings, before WAR (in wins)
+const warAt = panel ? panel.measures.findIndex((m) => m.net.col === 'war') : -1;
+const measures = !panel ? extra : warAt < 0 ? [...panel.measures, ...extra] : [...panel.measures.slice(0, warAt), ...extra, ...panel.measures.slice(warAt)];
 const ranked = panel?.ranked ?? false;
 const sides = ['off', 'def', 'net'] as const;
 const head = { off: 'Off', def: 'Def', net: 'Net' };
+// BB-G56's caption: Current impact's date and sample, the mostly-prior note early on, and which of its reads failed
+const now = cur?.current;
+const failed = current ? [current.seasonRows === null && 'season', current.current === null && 'current'].filter(Boolean) : [];
+const currentNote = [
+  now && ` Current impact as of ${fmtDate(now.asOf)}${now.lastGame ? ` (last game ${fmtDate(now.lastGame)})` : ''}${now.offPoss != null && now.defPoss != null ? `, from ${fmtInt(now.offPoss)} offensive and ${fmtInt(now.defPoss)} defensive possessions this season` : ''}.`,
+  now?.early && ' Early in the season the current rating is mostly its prior: few of this season’s possessions are in it yet.',
+  failed.length && ` ${failed.length > 1 ? 'Season and current impact are' : failed[0] === 'season' ? 'Season impact is' : 'Current impact is'} temporarily unavailable.`,
+].filter(Boolean).join('');
 // a cell is shaded by its own producer percentile, whether or not the producer also ships a rank
 const shaded = panel?.measures.some((m) => [m.off, m.def, m.net].some((c) => c?.pct != null)) ?? false;
 const shade = (c: ImpactCell | null) => generateColorRampValue(c?.pct ?? null, 100);
@@ -37,18 +55,18 @@ const collegeSample = panel && [
 ---
 <section id="impact" aria-label="Impact" class="mb-4">
   <h2 class="h5">Impact</h2>
-  {rows === null ? (<p class="text-muted" id="impact-unavailable">The impact numbers are temporarily unavailable.</p>) : !panel ? (<p class="text-muted" id="impact-empty">No {label} impact numbers for {name} yet.</p>) : (<Fragment>
-  <p class="numeral small text-muted mb-2" id="impact-sample">
+  {(rows === null || (rows === undefined && failed.length)) && !measures.length ? (<p class="text-muted" id="impact-unavailable">The impact numbers are temporarily unavailable.</p>) : !measures.length ? (<p class="text-muted" id="impact-empty">No {label} impact numbers for {name} yet.</p>) : (<Fragment>
+  {panel && (<p class="numeral small text-muted mb-2" id="impact-sample">
     {college
       ? collegeSample
       : (<Fragment>{fmtInt(panel.offPoss)} offensive and {fmtInt(panel.defPoss)} defensive possessions &middot; {fmtInt(panel.gp)} GP &middot; {fmtInt(panel.min)} MIN</Fragment>)}
-  </p>
+  </p>)}
   <div class="table-responsive">
     <table class="table table-sm align-middle mb-0" id="impact-table">
-      <caption class="small text-muted">{college ? 'Per 100 possessions. Positive is better at both ends.' : 'Per 100 possessions (WAR in wins), regular season. Positive is better at both ends.'}{ranked && ' Rank among the league’s qualified players.'}{shaded && ' Shading by percentile.'}</caption>
+      <caption class="small text-muted">{!panel ? 'Per 100 possessions, regular season. Positive is better at both ends.' : college ? 'Per 100 possessions. Positive is better at both ends.' : 'Per 100 possessions (WAR in wins), regular season. Positive is better at both ends.'}{ranked && ' Rank among the league’s qualified players.'}{shaded && ' Shading by percentile.'}{currentNote}</caption>
       <thead><tr><th scope="col"></th>{sides.map((s) => (<Fragment><th scope="col" class="text-end">{head[s]}</th>{ranked && (<th scope="col" class="text-end">Rank</th>)}</Fragment>))}</tr></thead>
       <tbody>
-        {panel.measures.map((m) => (
+        {measures.map((m) => (
           <tr id={`impact-${m.net.col}`}>
             <th scope="row" class="text-nowrap fw-normal"><abbr title={m.hover}>{m.label}</abbr></th>
             {sides.map((s) => {
@@ -60,7 +78,7 @@ const collegeSample = panel && [
       </tbody>
     </table>
   </div>
-  {panel.projection && (<p class="numeral small mb-0 mt-2" id="impact-projection">BOBAN next season: <span class="fw-bold">{signed1(panel.projection.rating)}</span>{panel.projection.sd != null && (<span class="text-muted"> ± {fmtDec(panel.projection.sd, 1)}</span>)} per 100 possessions</p>)}
+  {panel?.projection && (<p class="numeral small mb-0 mt-2" id="impact-projection">BOBAN next season: <span class="fw-bold">{signed1(panel.projection.rating)}</span>{panel.projection.sd != null && (<span class="text-muted"> ± {fmtDec(panel.projection.sd, 1)}</span>)} per 100 possessions</p>)}
   </Fragment>)}
   <slot />
 </section>

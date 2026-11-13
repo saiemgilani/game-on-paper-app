@@ -1,8 +1,9 @@
-// BB-G56: the NBA player page's Season vs Current panel behind 'bball-current-impact'. The pure step (his player_impact row's
-// season rating and his latest current_impact row as the panel; early in the season, mostly prior), the read (current_impact
-// in the games schema by person id, the latest as_of), the page-side step (the flag and the NBA from 2006-07 gate the read;
-// the season rating shares BB-G6's read; a failed read keeps the page and is never cached), the panel and the page: flag off
-// is byte for byte the NBA byte-identity capture. On real producer output (fixtures/README.md: current-impact.json.gz).
+// BB-G56: the NBA player page's Season impact / Current impact rows behind 'bball-current-impact', folded into the Impact
+// table (Q17). The pure step (his player_impact row's season rating and his latest current_impact row as two table rows;
+// early in the season, mostly prior), the read (current_impact in the games schema by person id, the latest as_of), the
+// page-side step (the flag and the NBA from 2006-07 gate the read; the season rating shares BB-G6's read; a failed read keeps
+// the page and is never cached), the Impact table's rows and caption, and the page: flag off is byte for byte the NBA
+// byte-identity capture. On real producer output (fixtures/README.md: current-impact.json.gz).
 // Every read is mocked.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -58,13 +59,13 @@ vi.mock('../src/resources/nbaShots', async (orig) => ({
     retrievePlayerSeasons: async () => [2025, 2026],
 }));
 
-import PlayerCurrentImpact from '../src/components/nba/PlayerCurrentImpact.astro';
+import PlayerImpact from '../src/components/nba/PlayerImpact.astro';
 import { BASKETBALL } from '../src/basketball/config';
 import { NBA_READ_TIMEOUT_MS } from '../src/resources/nbaGames';
 import { CURRENT_IMPACT_FIRST_SEASON, hasCurrentImpact } from '../src/resources/currentImpact';
 import { prepareNbaPlayer } from '../src/routes/nba/player';
 import { FLAGS } from '../src/utils/features';
-import { currentImpactPanel, EARLY_POSS } from '../src/utils/currentImpact';
+import { currentImpactMeasures, currentImpactPanel, EARLY_POSS } from '../src/utils/currentImpact';
 import { signed1 } from '../src/utils/shotQuality';
 import { fmtDate } from '../src/nba/format';
 
@@ -127,6 +128,16 @@ describe('currentImpactPanel', () => {
         expect(currentImpactPanel([{ ...S, o_reml_rapm: null, d_reml_rapm: null, reml_rapm: null }], [])).toBeNull();
         expect(currentImpactPanel([], [])).toBeNull();
     });
+    test('as two Impact table rows: the trios as read, each prior in the hover, no rank or percentile', () => {
+        const [season, now] = currentImpactMeasures(currentImpactPanel(CI.season, CI.latest));
+        expect([season.label, season.off!.value, season.def!.value, season.net.value, season.net.col]).toEqual(['Season impact', S.o_reml_rapm, S.d_reml_rapm, S.reml_rapm, 'reml_rapm']);
+        expect([now.label, now.off!.value, now.def!.value, now.net.value, now.net.col]).toEqual(['Current impact', NOW.o_current_impact, NOW.d_current_impact, NOW.current_impact, 'current_impact']);
+        expect(season.hover).toContain(`Its box prior: off ${signed1(S.o_box_prior)}, def ${signed1(S.d_box_prior)}, net ${signed1(S.box_prior)}.`);
+        expect(now.hover).toContain(`Its prior: off ${signed1(NOW.o_prior)}, def ${signed1(NOW.d_prior)}.`);
+        expect([season, now].flatMap((m) => [m.off!, m.def!, m.net]).every((c) => c.rank === null && c.pct === null)).toBe(true);
+        expect(currentImpactMeasures(currentImpactPanel([], CI.latest)).map((m) => m.label)).toEqual(['Current impact']);
+        expect(currentImpactMeasures(null)).toEqual([]);
+    });
 });
 
 describe('the read', () => {
@@ -176,51 +187,68 @@ describe('the player page', () => {
     });
 });
 
-describe('the panel', () => {
-    const render = (seasonRows: any, current: any, season = 2026) => container.renderToString(PlayerCurrentImpact, { props: { seasonRows, current, season, name: 'Him' }, locals: { league: 'nba' } as any });
-    test('both ratings with their priors, the date and the possessions; no interval anywhere', async () => {
-        const html = await render(CI.season, CI.latest);
-        expect(html).toMatch(new RegExp(`id="current-impact-season"[\\s\\S]*?>${esc(signed1(S.reml_rapm))}</td>`));
-        expect(html).toMatch(new RegExp(`id="current-impact-current"[\\s\\S]*?>${esc(signed1(NOW.current_impact))}</td>`));
-        expect(html).toContain(`>${signed1(S.box_prior)}</td>`);
-        expect(html).toContain(`>${signed1(NOW.o_prior)}</td>`);
-        expect(html).toContain(`Current as of ${fmtDate(NOW.as_of)} &middot; last game ${fmtDate(NOW.last_game_date)}`);
-        expect(html).toContain(`${NOW.off_poss.toLocaleString('en-US')} offensive`);
-        expect(html).not.toMatch(/interval|±|undefined|NaN|current-impact-early/);
+describe('the Impact table', () => {
+    const render = (current: any, rows?: any, season = 2026) => container.renderToString(PlayerImpact, { props: { ...(rows !== undefined ? { rows } : {}), ...(current !== undefined ? { current } : {}), season, name: 'Him' }, locals: { league: 'nba' } as any });
+    const both = { seasonRows: CI.season, current: CI.latest };
+    const note = ` Current impact as of ${fmtDate(NOW.as_of)} (last game ${fmtDate(NOW.last_game_date)}), from ${NOW.off_poss.toLocaleString('en-US')} offensive and ${NOW.def_poss.toLocaleString('en-US')} defensive possessions this season.`;
+    test("'bball-impact' off: just the two rows, the date and the possessions in the caption; no interval anywhere", async () => {
+        const html = await render(both);
+        expect(html).toMatch(new RegExp(`id="impact-reml_rapm"[\\s\\S]*?Season impact[\\s\\S]*?>${esc(signed1(S.reml_rapm))}</td>`));
+        expect(html).toMatch(new RegExp(`id="impact-current_impact"[\\s\\S]*?Current impact[\\s\\S]*?>${esc(signed1(NOW.current_impact))}</td>`));
+        expect(html.match(/<tr id="impact-/g)).toHaveLength(2);
+        expect(html).toContain(`Per 100 possessions, regular season. Positive is better at both ends.${note}</caption>`);
+        expect(html).toContain(`Its box prior: off ${signed1(S.o_box_prior)}`);
+        expect(html).not.toMatch(/interval|±|undefined|NaN|mostly its prior|id="impact-sample"/);
     });
-    test('opening night says mostly prior', async () => {
-        expect(await render(CI.season, CI.opening)).toContain('id="current-impact-early"');
+    test("with 'bball-impact' on: the two rows before WAR, and the rest of the table is BB-G6's", async () => {
+        const [plain, folded] = [await render(undefined, CI.season), await render(both, CI.season)];
+        const ids = [...folded.matchAll(/<tr id="impact-([a-z_]+)"/g)].map((m) => m[1]);
+        expect(ids.slice(-3)).toEqual(['reml_rapm', 'current_impact', 'war']);
+        const strip = (h: string) => h.replace(/<tr id="impact-(reml_rapm|current_impact)"[\s\S]*?<\/tr>\s*/g, '').replace(note, '');
+        expect(strip(folded)).toBe(plain);
+    });
+    test('opening night: the caption says mostly prior', async () => {
+        expect(await render({ seasonRows: CI.season, current: CI.opening })).toContain(' Early in the season the current rating is mostly its prior: few of this season’s possessions are in it yet.</caption>');
     });
     test("an unbuilt season (2026-27's today) says so; one side missing or failed says which", async () => {
-        expect(await render([], [], 2027)).toContain('No 2026-27 season or current impact for Him yet.');
-        expect(await render(CI.season, [])).toContain('id="current-impact-no-current"');
-        expect(await render([], CI.latest)).toContain('id="current-impact-no-season"');
-        expect(await render(CI.season, null)).toContain('Current impact is temporarily unavailable.');
-        expect(await render(null, null)).toContain('Season and current impact are temporarily unavailable.');
-        expect(await render([], null)).toContain('id="current-impact-empty">Current impact is temporarily unavailable.<');
+        expect(await render({ seasonRows: [], current: [] }, undefined, 2027)).toContain('id="impact-empty">No 2026-27 impact numbers for Him yet.<');
+        expect(await render({ seasonRows: CI.season, current: [] })).not.toContain('id="impact-current_impact"');
+        expect(await render({ seasonRows: [], current: CI.latest })).not.toContain('id="impact-reml_rapm"');
+        expect(await render({ seasonRows: CI.season, current: null })).toContain(' Current impact is temporarily unavailable.</caption>');
+        expect(await render({ seasonRows: null, current: CI.latest })).toContain(' Season impact is temporarily unavailable.</caption>');
+        expect(await render({ seasonRows: null, current: null })).toContain('id="impact-unavailable"');
+        expect(await render({ seasonRows: [], current: null })).toContain('id="impact-unavailable"');
     });
 });
 
 describe('the page', () => {
     const ROOT = fileURLToPath(new URL('../', import.meta.url)).replaceAll('\\', '/').replace(/\/$/, '');
     const normalize = (html: string) => html.replaceAll(ROOT, '<astro-root>').replace(/ uid="[^"]*"/g, ' uid=""').replace(/data-astro-cid-[a-z0-9]+/g, 'data-astro-cid-x');
-    async function page(on: boolean) {
+    async function page(on: boolean, impact = false) {
         const { default: Page } = await import('../src/pages/nba/players/[id].astro');
-        return normalize(await container.renderToString(Page, { params: { id: String(PID) }, request: new Request(`https://gameonpaper.com/nba/players/${PID}?season=2026`), locals: locals(on) as unknown as App.Locals }));
+        return normalize(await container.renderToString(Page, { params: { id: String(PID) }, request: new Request(`https://gameonpaper.com/nba/players/${PID}?season=2026`), locals: locals(on, impact) as unknown as App.Locals }));
     }
+    const impactSection = (html: string) => html.match(/<section id="impact"[\s\S]*?<\/section>/)?.[0];
     test("off: byte for byte the NBA byte-identity capture (main's page)", async () => {
         const snap = readFileSync(new URL('./nba/__byte_identity__/player.html', import.meta.url)).toString().replace(/\r\n/g, '\n');
         expect(await page(false)).toBe(snap);
         expect(reads.current).not.toHaveBeenCalled();
     });
-    test('on: the panel and its link in "On this page", and nothing else changes', async () => {
+    test('on: the two rows in the Impact table, its "On this page" link, no section of their own', async () => {
         const [off, on] = [await page(false), await page(true)];
-        const link = '<a href="#current-impact" class="ms-2">Season vs current</a>';
+        const link = '<a href="#impact" class="ms-2">Impact</a>';
         expect(on).toContain(link);
-        const section = on.match(/<section id="current-impact"[\s\S]*?<\/section>/)![0];
-        expect(section).toContain('id="current-impact-table"');
-        expect(section).toContain('id="current-impact-season"');
-        expect(section).toContain('id="current-impact-current"');
+        expect(on).not.toMatch(/current-impact|Season vs current/);
+        const section = impactSection(on)!;
+        expect(section).toContain('id="impact-reml_rapm"');
+        expect(section).toContain('id="impact-current_impact"');
+        expect(section).toContain(`Current impact as of ${fmtDate(NOW.as_of)}`);
         expect(on.replace(section, '').replace(link, '')).toBe(off.replace(/(<\/nav>)(\s*)/, '$1$2'));
+    });
+    test("on with 'bball-impact' on too: one Impact section, BB-G6's measures and the two rows", async () => {
+        const section = impactSection(await page(true, true))!;
+        expect(section.match(/<section id="impact"/g)).toHaveLength(1);
+        for (const id of ['rapm', 'adj_rapm', 'reml_rapm', 'current_impact', 'war']) expect(section).toContain(`id="impact-${id}"`);
+        expect(impactSection(await page(false, true))).not.toContain('id="impact-current_impact"');
     });
 });

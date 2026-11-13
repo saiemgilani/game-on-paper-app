@@ -1,5 +1,5 @@
 /**
- * The Data API read behind the player page's Season vs Current panel (BB-G56, behind 'bball-current-impact'), NBA only:
+ * The Data API read behind the player page's Season impact / Current impact rows (BB-G56, behind 'bball-current-impact'), NBA only:
  * the games schema's `current_impact` (BB-D39), one row per player per `as_of` date (opening night, then every 7 days),
  * keyed by the stats.nba.com person id. Current impact is his expected impact as of that date, from games before it; the
  * page reads the season's latest `as_of` row. Season impact (BB-D38's `reml_rapm` trio) rides on the `player_impact` row

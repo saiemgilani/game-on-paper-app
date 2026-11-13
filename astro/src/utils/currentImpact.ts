@@ -1,11 +1,13 @@
 /**
- * The Season vs Current panel's pure step (BB-G56): his `player_impact` row's season rating (BB-D38) and his latest
- * `current_impact` row (BB-D39) as the panel's rows. Nothing is computed: each value is the producer's (rule B6), and
- * neither table ships an interval, so the panel shows none.
+ * The Season impact / Current impact rows' pure step (BB-G56): his `player_impact` row's season rating (BB-D38) and his
+ * latest `current_impact` row (BB-D39) as two rows of the Impact table. Nothing is computed: each value is the producer's
+ * (rule B6), and neither table ships an interval, so the rows show none.
  */
 import type { CurrentImpactRow } from '../resources/currentImpact';
 import type { PlayerImpactRow } from '../resources/playerImpact';
 import { numberOrNull } from './misc';
+import { signed1 } from './shotQuality';
+import type { ImpactCell, ImpactMeasure } from './playerImpact';
 
 export interface Trio { off: number | null; def: number | null; net: number | null }
 export interface CurrentImpactPanel {
@@ -43,4 +45,22 @@ export function currentImpactPanel(seasonRows: readonly PlayerImpactRow[], curre
         early: [offPoss, defPoss].some((p) => p != null && p < EARLY_POSS),
     } : null;
     return season || current ? { season, current } : null;
+}
+
+const SEASON_HOVER = 'The regular season’s plus-minus impact, shrunk toward his box-score prior: credit for what happened this season, per 100 possessions';
+const CURRENT_HOVER = 'His expected impact going forward, as of the date in the caption: the same prior, updated by how he has played against it, with older games counting less. Uses only games before the date';
+const cellOf = (col: string, value: number | null): ImpactCell => ({ col, value, rank: null, pct: null });
+const priorText = (t: Trio, net: boolean) => `off ${signed1(t.off)}, def ${signed1(t.def)}${net ? `, net ${signed1(t.net)}` : ''}`;
+
+/**
+ * Q17 (Akshay on #463): the panel as two rows of the Impact table, "Season impact" and "Current impact", each the
+ * producer's trio with its prior in the hover (the producer ships no rank or percentile for either, so those stay blank).
+ */
+export function currentImpactMeasures(panel: CurrentImpactPanel | null): ImpactMeasure[] {
+    if (!panel) return [];
+    const { season, current } = panel;
+    return [
+        ...(season ? [{ label: 'Season impact', hover: `${SEASON_HOVER}. Its box prior: ${priorText(season.prior, true)}.`, off: cellOf('o_reml_rapm', season.rating.off), def: cellOf('d_reml_rapm', season.rating.def), net: cellOf('reml_rapm', season.rating.net) }] : []),
+        ...(current ? [{ label: 'Current impact', hover: `${CURRENT_HOVER}. Its prior: ${priorText(current.prior, false)}.`, off: cellOf('o_current_impact', current.rating.off), def: cellOf('d_current_impact', current.rating.def), net: cellOf('current_impact', current.rating.net) }] : []),
+    ];
 }

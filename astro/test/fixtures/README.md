@@ -838,7 +838,7 @@ wrap them as above and gzip. Once sdv-db #202's backfill has run, `/v1/{nba_stat
 replaces the sdv-py calls.
 
 ## `current-impact.json.gz`
-The Data API reads behind the NBA player page's Season vs Current panel (BB-G56, `resources/currentImpact.ts`), captured live
+The Data API reads behind the NBA player page's Season impact / Current impact rows in the Impact table (BB-G56, `resources/currentImpact.ts`), captured live
 on 2026-11-12 as `{season, latest, opening}` (the `data` array of each response, no edits), all Michael Porter Jr. (1629008,
 the player of `nba/player_games.json`) in 2025-26: `/v1/nba/player_impact?season=2026&season_type=Regular%20Season&player_id=1629008&limit=5`
 (every column: the season rating `reml_rapm` and its box prior, BB-D38), `/v1/nba/current_impact?season=2026&player_id=1629008&order=-as_of&limit=1`

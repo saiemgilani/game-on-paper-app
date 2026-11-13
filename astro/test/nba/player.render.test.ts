@@ -9,7 +9,7 @@ vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: asy
 vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => [] }));
 // BB-G27's Value panel reads the Data API with 'bball-war' on (preview): never from a test
 vi.mock('../../src/resources/playerWar', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playerWar')>()), retrievePlayerWar: async () => [], retrievePlayerEpv: async () => [] }));
-// BB-G56's Season vs Current panel reads the Data API with 'bball-current-impact' on (preview): never from a test
+// BB-G56's Season impact / Current impact rows read the Data API with 'bball-current-impact' on (preview): never from a test
 vi.mock('../../src/resources/currentImpact', async (orig) => ({ ...(await orig<typeof import('../../src/resources/currentImpact')>()), retrieveCurrentImpact: async () => [] }));
 import { readFileSync } from 'node:fs';
 import { text } from '../helpers/tables';
