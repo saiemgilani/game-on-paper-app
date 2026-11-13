@@ -4,9 +4,9 @@
  *
  * Team page: All, Home, Away, Close games and Clutch are the producer's own split rows (sdv-db team_season_rates, the
  * season block's read), so "All games" is exactly the season block's numbers. Wins, Losses, the last-N sets and (college)
- * Conference games have no producer row: until the producer ships a per-team-game possessions row, they add up the
- * team's per-player-game impact rows (game_player_impact, the play-by-play possessions All / Home / Away count) per
- * team-game, then divide once. A per-game rate is never averaged.
+ * Conference games have no producer split row: they add up the producer's per-team-game possessions rows
+ * (team_game_possessions, the play-by-play count the split rows are built from, so a season's games give its All row)
+ * over the set's games, then divide once. A per-game rate is never averaged.
  * Player page: every set sums his per-game shot counts (the page's shot_player_games read) and divides once; Close games,
  * Clutch and Conference games are team-page sets (no per-player-game producer rows), so his page offers the others.
  */
@@ -39,7 +39,7 @@ export const bbGameSetLabel = (set: BbGameSet): string => BB_GAME_SETS.find((s) 
 
 /** The team page's producer split rows: All, Home, Away, Close games, Clutch. */
 const PRODUCER_SETS: ReadonlySet<BbGameSet> = new Set(['all', 'home', 'away', 'close', 'clutch']);
-/** True for a team-page set summed from the impact rows (the sets that need retrieveGameSetCounts). */
+/** True for a team-page set summed from the per-game possessions rows (the sets that need retrieveGameSetCounts). */
 export const isSummedSet = (set: BbGameSet): boolean => !PRODUCER_SETS.has(set);
 
 type Game = { game_id: string; date: string; venue: 'home' | 'away' | 'neutral'; win: boolean | null };
@@ -90,28 +90,21 @@ export interface TeamGameSetView {
     set: BbGameSet;
     /** the sets with at least one game, `all` first: the select's options */
     sets: BbGameSet[];
-    /** null: a summed set whose impact reads failed (the block says so) */
+    /** null: a summed set whose possessions reads failed (the block says so) */
     line: TeamSetLine | null;
-    /** true: the producer's split row; false: summed from the impact rows */
+    /** true: the producer's split row; false: summed from the per-game possessions rows */
     producer: boolean;
 }
 
-/** One team-game's on-court totals: the player-game impact rows added up and divided by the five on the floor. */
+/** One team-game's play-by-play totals: the producer's team_game_possessions row. */
 export interface TeamGameCounts { poss: number; opp_poss: number; pts: number; opp_pts: number; seconds: number }
 
-/** Per ESPN game, the team's player-game impact rows summed, over five. A game the map does not name is left out. */
+/** Per ESPN game, the team's possessions row. A game the map does not name is left out. */
 export function teamGameCounts(reads: GameSetCountReads): Map<string, TeamGameCounts> {
     const out = new Map<string, TeamGameCounts>();
-    for (const r of reads.impact) {
+    for (const r of reads.games) {
         const espn = reads.espnOf.get(String(r.game_id));
-        if (!espn) continue;
-        const t = out.get(espn) ?? { poss: 0, opp_poss: 0, pts: 0, opp_pts: 0, seconds: 0 };
-        t.poss += (r.poss ?? 0) / 5;
-        t.opp_poss += (r.opp_poss ?? 0) / 5;
-        t.pts += (r.pts ?? 0) / 5;
-        t.opp_pts += (r.opp_pts ?? 0) / 5;
-        t.seconds += (r.seconds ?? 0) / 5;
-        out.set(espn, t);
+        if (espn) out.set(espn, { poss: r.poss ?? 0, opp_poss: r.opp_poss ?? 0, pts: r.pts ?? 0, opp_pts: r.opp_pts ?? 0, seconds: r.seconds ?? 0 });
     }
     return out;
 }
@@ -139,14 +132,14 @@ const producerLine = (r: TeamSeasonRateRow): TeamSetLine => ({
     off_rtg_pct: r.off_rtg_pct, def_rtg_pct: r.def_rtg_pct, net_rtg_pct: r.net_rtg_pct, pace_rank: r.pace_rank, pace_pct: r.pace_pct,
 });
 
-/** A team's final games with both scores: the summed sets' population before the impact rows are read. */
+/** A team's final games with both scores: the summed sets' population before the possessions rows are read. */
 const finals = (schedule: ScheduleRow[]) => schedule
     .filter((g) => g.completed && g.teamScore !== null && g.oppScore !== null)
     .map((g) => ({ ...g, game_id: g.gameId, win: g.teamScore! > g.oppScore! ? true : g.teamScore! < g.oppScore! ? false : null }));
 
 /**
  * The sets the select offers: a producer split with games, a summed set with at least one final (Conference games for
- * college only), `all` first. The route reads the impact rows only once the chosen set is a summed one.
+ * college only), `all` first. The route reads the possessions rows only once the chosen set is a summed one.
  */
 export function teamSets(rates: TeamSeasonRateRow[], schedule: ScheduleRow[], college: boolean): BbGameSet[] {
     const split = new Map(rates.map((r) => [r.split as string, r]));

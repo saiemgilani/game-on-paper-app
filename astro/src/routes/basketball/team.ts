@@ -45,7 +45,7 @@ export interface BasketballTeamParams {
     seasonBlock?: TeamSeasonReads | null;
     /** BB-G14, only with 'bball-game-set' on too: the `?games=` set the block's game-set line shows */
     gameSet?: BbGameSet;
-    /** BB-G14, a summed set only: its impact reads; null when one failed (the line says so) */
+    /** BB-G14, a summed set only: its per-game possessions reads; null when one failed (the line says so) */
     gameSetCounts?: GameSetCountReads | null;
 }
 
@@ -110,7 +110,7 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     if (coverage === undefined) uncacheable(Astro);
     // read only once the page will render: a 404 or 503 never spends the five reads
     const flagged = isFeatureEnabled('bball-team-season', Astro.locals);
-    // BB-G14 rides on the block's reads; a summed set (wins, losses, last N, conference) adds the impact reads. Off,
+    // BB-G14 rides on the block's reads; a summed set (wins, losses, last N, conference) adds the per-game possessions reads. Off,
     // ?games= is never read
     const gameSetOn = flagged && isFeatureEnabled('bball-game-set', Astro.locals);
     const seasonBlock = flagged ? await readSeasonBlock(league, season, teamId) : undefined;
@@ -156,7 +156,7 @@ async function readSeasonBlock(league: BasketballLeague, season: number, teamId:
 
 const espnIdOf = (league: BasketballLeague, season: number, teamId: number) => BASKETBALL[league].teams.inSeason(teamId, season)?.espn_id ?? (BASKETBALL[league].currentMembers ? teamId : 0);
 
-/** BB-G14's summed-set reads (the impact rows and their game-id map); null when any failed (the line says so). */
+/** BB-G14's summed-set reads (the per-game possessions rows and their game-id map); null when any failed (the line says so). */
 async function readGameSetCounts(league: BasketballLeague, season: number, teamId: number, conference: boolean): Promise<GameSetCountReads | null> {
     try {
         return await retrieveGameSetCounts(league, season, teamId, espnIdOf(league, season, teamId), conference);

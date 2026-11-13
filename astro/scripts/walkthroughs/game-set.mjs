@@ -1,5 +1,5 @@
 // The game-set filter (BB-G14, 'bball-game-set'): on the Nets' team page, pick Clutch (a producer split row) and then
-// Wins (summed from the impact rows); on Duke's, pick Conference games; on a player page with ?games=last5, the explorer
+// Wins (summed from the per-game possessions rows); on Duke's, pick Conference games; on a player page with ?games=last5, the explorer
 // starts from those five games. The evidence build forces every 'preview' flag on (lighthouse-compare.mjs).
 const pick = async (page, label) => {
   const select = page.locator('#game-set-select');

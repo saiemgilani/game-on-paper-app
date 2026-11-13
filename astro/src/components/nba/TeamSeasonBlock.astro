@@ -17,7 +17,7 @@ import { GAME_SET_NAV, bbGameSetLabel, gameSetHref, teamGameSet, type BbGameSet 
 import type { GameSetCountReads } from '../../resources/teamSeason';
 import { isNcaaDashboards } from '../../basketball/dashboards';
 
-// gameSet: BB-G14 ('bball-game-set'), the ?games= line (gameSetCounts: a summed set's impact reads, null when they
+// gameSet: BB-G14 ('bball-game-set'), the ?games= line (gameSetCounts: a summed set's possessions reads, null when they
 // failed); absent, the block is BB-G5's byte for byte
 interface Props { data: TeamSeasonReads | null; season: number; espnId: number; teamName: string; gameSet?: BbGameSet; gameSetCounts?: GameSetCountReads | null }
 const { data, season, espnId, teamName, gameSet, gameSetCounts } = Astro.props;
@@ -59,7 +59,7 @@ const reg = regulationFor(league, season);
 const view = gameSet && data ? teamGameSet(data.rates, games, gameSet, reg.periods * reg.periodMinutes, college, gameSetCounts) : null;
 const viewCaption = view && (view.producer
   ? `Per possession: the season's ${bbGameSetLabel(view.set)} split (play-by-play possessions). Shading by percentile.`
-  : `Summed over these games: each game's play-by-play points and possessions, added up from the players' on-court rows (over the five on the floor), divided once. Pace per ${reg.periods * reg.periodMinutes} minutes.`);
+  : `Summed over these games: each game's play-by-play points and possessions added up, divided once. Pace per ${reg.periods * reg.periodMinutes} minutes.`);
 const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore == null ? null : `${g.teamScore > g.oppScore ? 'W' : g.teamScore < g.oppScore ? 'L' : 'T'} ${g.teamScore}-${g.oppScore}`);
 ---
 <section id="season" aria-label={`${label} season`} class="mb-4">

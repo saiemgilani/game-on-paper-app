@@ -20,13 +20,14 @@ const MBB = capture('game-set-mbb-2026'); // Duke 2025-26 (ESPN 150)
 const MPJ = capture('game-set-player-nba-2026'); // Michael Porter Jr. 2025-26: shot_player_games + his shot_season_players row
 const PID = 1629008;
 
-// the summed sets' reads (game_player_impact + the game-id maps + college conference flags), as retrieveGameSetCounts returns them
-const IMP = capture('game-set-impact-2026');
-const netsCounts = () => ({ impact: IMP.nets.impact, espnOf: new Map<string, string>([...IMP.nets.crosswalkHome, ...IMP.nets.crosswalkAway].map((r: any) => [String(r.nba_game_id), String(r.espn_game_id)])), conference: null });
+// the summed sets' reads (team_game_possessions + the game-id maps + college conference flags), as retrieveGameSetCounts
+// returns them, and each team's live season row (team_season_rates, split 'all') captured with them: the summing oracle
+const POS = capture('game-set-possessions-2026');
+const netsCounts = () => ({ games: POS.nets.possessions, espnOf: new Map<string, string>([...POS.nets.crosswalkHome, ...POS.nets.crosswalkAway].map((r: any) => [String(r.nba_game_id), String(r.espn_game_id)])), conference: null });
 const dukeCounts = (conference = false) => ({
-    impact: IMP.duke.impact,
-    espnOf: new Map<string, string>(IMP.duke.teamBox.map((r: any) => [String(r.contest_id), String(r.espn_game_id)])),
-    conference: conference ? new Set<string>([...IMP.duke.conferenceHome, ...IMP.duke.conferenceAway].filter((g: any) => g.conference_competition === true).map((g: any) => String(g.id))) : null,
+    games: POS.duke.possessions,
+    espnOf: new Map<string, string>(POS.duke.teamBox.map((r: any) => [String(r.contest_id), String(r.espn_game_id)])),
+    conference: conference ? new Set<string>([...POS.duke.conferenceHome, ...POS.duke.conferenceAway].filter((g: any) => g.conference_competition === true).map((g: any) => String(g.id))) : null,
 });
 
 const block = vi.hoisted(() => ({ fn: vi.fn(), counts: vi.fn() }));
@@ -98,7 +99,7 @@ describe('the sets', () => {
 
 describe('team: All / Home / Away / Close games / Clutch are the season numbers', () => {
     for (const [name, c, rows] of [['Nets', NBA, nets], ['Duke', MBB, duke]] as const) {
-        test(`${name}: each is the producer's split row, unchanged, with no impact read`, () => {
+        test(`${name}: each is the producer's split row, unchanged, with no possessions read`, () => {
             for (const s of ['all', 'home', 'away', 'close', 'clutch'] as const) {
                 const v = teamGameSet(c.rates, rows(), s, 48, c === MBB)!;
                 const r = split(c, s);
@@ -109,18 +110,31 @@ describe('team: All / Home / Away / Close games / Clutch are the season numbers'
     }
 });
 
-describe('team: the other sets sum the per-player-game impact rows per team-game', () => {
-    test('the Nets: each regular-season final maps once (preseason and playoff games drop out), five on the floor', () => {
+describe("team: the other sets sum the producer's per-team-game possessions rows", () => {
+    // the real-data gate: every game of the season, summed and divided once, is the producer's own season row
+    const exact = (line: ReturnType<typeof summedTeamLine>, all: any) => {
+        expect(line.poss).toBe(all.poss);
+        expect(line.off_rtg).toBeCloseTo(all.off_rtg, 9);
+        expect(line.def_rtg).toBeCloseTo(all.def_rtg, 9);
+        expect(line.net_rtg).toBeCloseTo(all.net_rtg, 9);
+        expect(line.pace).toBeCloseTo(all.pace, 9);
+    };
+    test('the Nets: each regular-season final maps once, and the 82 summed reproduce the season row', () => {
         const per = teamGameCounts(netsCounts());
-        const finals = nets().filter((g) => g.completed);
-        expect(finals.filter((g) => per.has(g.gameId))).toHaveLength(82);
-        expect(IMP.nets.impact.length).toBeGreaterThan(per.size * 5); // more player-games than five a game, and other game types
-        // the play-by-play basis All counts: summed over every final, possessions and ORtg land on the producer's All row
+        const finals = nets().filter((g) => g.completed && per.has(g.gameId));
+        expect(finals).toHaveLength(82);
+        const all = POS.nets.seasonAll[0];
+        expect(all.games).toBe(82);
         const summed = summedTeamLine(finals.map((g) => per.get(g.gameId)!), 48);
-        expect(summed.poss).toBeCloseTo(7961.2, 6); // the producer's All: 7,962
-        expect(Math.abs(summed.poss - split(NBA, 'all').poss) / split(NBA, 'all').poss).toBeLessThan(0.001);
-        expect(Math.abs(summed.off_rtg! - split(NBA, 'all').off_rtg)).toBeLessThan(0.2); // 109.07 vs 108.99
-        expect(Math.abs(summed.pace! - split(NBA, 'all').pace)).toBeLessThan(1);
+        expect(summed.games).toBe(82);
+        exact(summed, all); // 7,963 possessions, 109.08 / 119.30, pace 97.09
+    });
+    test('Duke: the 38 summed reproduce the season row (40-minute pace)', () => {
+        const per = teamGameCounts(dukeCounts());
+        const finals = duke().filter((g) => g.completed && per.has(g.gameId));
+        const all = POS.duke.seasonAll[0];
+        expect(finals).toHaveLength(all.games); // 38
+        exact(summedTeamLine(finals.map((g) => per.get(g.gameId)!), 40), all);
     });
     test('the Nets, last 10: 100 x points / possessions over the ten latest finals, never the mean of per-game ratings', () => {
         const counts = netsCounts();
@@ -144,7 +158,7 @@ describe('team: the other sets sum the per-player-game impact rows per team-game
         expect(losses.games).toBe(NBA.strength[0].losses); // 62
         expect(wins.net_rtg!).toBeGreaterThan(0);
         expect(losses.net_rtg!).toBeLessThan(0);
-        expect(wins.poss + losses.poss).toBeCloseTo(7961.2, 6);
+        expect(wins.poss + losses.poss).toBe(POS.nets.seasonAll[0].poss);
     });
     test('college: Duke maps through ncaa_team_box, and Conference games is its conference_competition games', () => {
         const per = teamGameCounts(dukeCounts());
@@ -161,7 +175,7 @@ describe('team: the other sets sum the per-player-game impact rows per team-game
         expect(teamGameSet(NBA.rates, nets(), 'conference', 48, false, netsCounts())!.sets).not.toContain('conference');
         expect(teamGameSet(NBA.rates, nets(), 'conference', 48, false, netsCounts())!.set).toBe('all');
     });
-    test('a failed impact read is a line of null; a set with no game is not offered, and a link to it renders all', () => {
+    test('a failed possessions read is a line of null; a set with no game is not offered, and a link to it renders all', () => {
         expect(teamGameSet(NBA.rates, nets(), 'wins', 48, false, null)!.line).toBeNull();
         const unplayed = nets().map((g) => ({ ...g, completed: false, teamScore: null, oppScore: null }));
         const v = teamGameSet(NBA.rates, unplayed, 'last5', 48, false, netsCounts())!;
@@ -220,14 +234,14 @@ describe('the flag', () => {
         expect(block.counts).not.toHaveBeenCalled();
         expect('gameSet' in r).toBe(false);
     });
-    test("team, on: the block's read unchanged; a summed set adds the impact reads (keyed by the season tables' id)", async () => {
+    test("team, on: the block's read unchanged; a summed set adds the possessions reads (keyed by the season tables' id)", async () => {
         const r = ok(await prepareNbaTeam(fakeAstro(TEAM, String(NETS_TEAM_ID), { preview: true })));
         expect(block.fn).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, NETS_ESPN);
         expect(block.counts).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, NETS_ESPN, false);
         expect(r.gameSet).toBe('last10');
         expect(r.gameSetCounts).toEqual(netsCounts());
     });
-    test('team, on, a producer set (or no ?games=): no impact read', async () => {
+    test('team, on, a producer set (or no ?games=): no possessions read', async () => {
         for (const q of ['&games=clutch', '&games=home', '']) {
             block.counts.mockClear();
             const r = ok(await prepareNbaTeam(fakeAstro(`/nba/team/${NETS_TEAM_ID}?season=2026${q}`, String(NETS_TEAM_ID), { preview: true })));
@@ -235,7 +249,7 @@ describe('the flag', () => {
             expect('gameSetCounts' in r).toBe(false);
         }
     });
-    test('team, on: a failed impact read keeps the page, says so in the line, and is never cached', async () => {
+    test('team, on: a failed possessions read keeps the page, says so in the line, and is never cached', async () => {
         block.counts.mockRejectedValueOnce(new Error('down'));
         const astro = fakeAstro(TEAM, String(NETS_TEAM_ID), { preview: true });
         const r = ok(await prepareNbaTeam(astro));
@@ -278,21 +292,21 @@ describe('the pages', () => {
         expect(panel).toContain(`value="/nba/team/${NETS_TEAM_ID}?season=2026#season-game-set"`);
         expect(panel).toContain(`>${v.line!.off_rtg!.toFixed(1)}<`);
         expect(panel).toContain(`>${v.line!.def_rtg!.toFixed(1)}<`);
-        expect(panel).toContain('on-court rows (over the five on the floor)');
+        expect(panel).toContain('each game&#39;s play-by-play points and possessions added up, divided once.');
         for (const s of ['Close games', 'Clutch']) expect(panel).toContain(`>${s}</option>`);
         expect(panel).not.toContain('Conference games'); // college only
         // on the /preview surface the select stays on it (the public URL is where the flag is off)
         expect(panel).toContain(`onchange="window.location.href = (location.pathname.startsWith('/preview/') ? '/preview' : '') + this.value"`);
         expect(panel).not.toMatch(/hulk-bg-level-\d/); // no producer percentile for a summed set
     });
-    test('team, on: a failed impact read renders the select and an unavailable line', async () => {
+    test('team, on: a failed possessions read renders the select and an unavailable line', async () => {
         block.counts.mockRejectedValueOnce(new Error('down'));
         const html = await page(TeamPage, TEAM, String(NETS_TEAM_ID), { preview: true });
         expect(html).toContain('id="season-game-set-unavailable"');
         expect(html).toContain('id="game-set-select"');
         expect(html).not.toContain('id="season-game-set-table"');
     });
-    test('team, on, Clutch: the producer row, with no impact read', async () => {
+    test('team, on, Clutch: the producer row, with no possessions read', async () => {
         const html = await page(TeamPage, `/nba/team/${NETS_TEAM_ID}?season=2026&games=clutch`, String(NETS_TEAM_ID), { preview: true });
         const panel = html.split('id="season-game-set"')[1].split('</table>')[0];
         expect(panel).toContain(`>${split(NBA, 'clutch').off_rtg.toFixed(1)}<`);
