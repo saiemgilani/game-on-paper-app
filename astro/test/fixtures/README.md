@@ -789,3 +789,17 @@ exactly that module's queries, as `{rates, strength, home, away, gameRates}` (th
 **Used by:** `test/teamSeason.test.ts`.
 
 **To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## BB-G12 nearby ranks (`nba/rank_neighbors_teams_2026.json`, `mbb/rank_neighbors_teams_2026_top12.json`)
+
+Live Data API reads, 2026-11-13, each filtered by season and unedited. Each uses the `select` the page sends: `team_id` plus each of the twelve measures and its `_rank` (`net_rtg, off_rtg, def_rtg, adj_net_rtg, efg_pct, opp_efg_pct, pace, tov_pct, orb_pct, ft_rate, sos, sov`).
+
+- `nba/rank_neighbors_teams_2026.json`: `GET /v1/nba_stats/team_strength?season=2026&select=...&limit=40`, all 30 teams.
+- `mbb/rank_neighbors_teams_2026_top12.json`: `GET /v1/mbb/team_strength?season=2026&net_rtg_rank__lte=12&select=...&limit=20`,
+  D-I's top 12 by net rating (Duke, 150, is 1st), enough for Duke's net-rating window.
+
+The player capture (`player_stats_advanced` rank windows) was dropped along with the player lists. Those lists wait for a producer-ranked player table with a minimum.
+
+**Used by:** `test/bballNeighbors.test.ts`.
+
+**To regenerate:** repeat the reads above and write each response's `data` array.
