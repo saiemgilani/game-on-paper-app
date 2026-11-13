@@ -47,13 +47,16 @@ export function spreadText(spreadHome: number, home: string, away: string): stri
 
 export const moneylineText = (ml: number) => (ml > 0 ? `+${ml}` : String(ml));
 
-/** The winner's pregame market WP when it was under 50%; null for a favourite's win, a tie or no market. */
+/** Q38: the Upset cut, the league hub's (#458's `UPSET_WP` in basketball/hub.ts): the winner's no-vig pregame market WP under 35%. */
+export const UPSET_WP = 0.35;
+
+/** The winner's pregame market WP when it was under UPSET_WP; null for a favourite's or a near coin flip's win, a tie or no market. */
 export function upset(l: GameLine, home: number, away: number): { side: 'home' | 'away'; wp: number } | null {
     const hw = marketHomeWp(l);
     if (hw == null || home === away) return null;
     const side = home > away ? 'home' : 'away';
     const wp = side === 'home' ? hw : 1 - hw;
-    return wp < 0.5 ? { side, wp } : null;
+    return wp < UPSET_WP ? { side, wp } : null;
 }
 
 export interface Pace { home: number; away: number; total: number; elapsed: number }

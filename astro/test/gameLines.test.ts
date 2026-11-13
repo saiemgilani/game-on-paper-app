@@ -36,7 +36,7 @@ import { fromDataApi, type NbaGame } from '../src/resources/nbaGame';
 import { retrieveGameLine } from '../src/resources/gameLines';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
-import { LINES_FROM, cover, lineSpread, lineTotal, moneylineText, overUnder, pace, spreadText, upset, type GameLine } from '../src/utils/gameLines';
+import { LINES_FROM, UPSET_WP, cover, lineSpread, lineTotal, moneylineText, overUnder, pace, spreadText, upset, type GameLine } from '../src/utils/gameLines';
 
 const FX = JSON.parse(readFileSync(new URL('./fixtures/game-lines.json', import.meta.url)).toString()) as { game_lines: GameLine[]; schedule: { league: string; id: number; home_score: number; away_score: number; home_abbreviation: string; away_abbreviation: string }[] };
 const row = (id: number) => FX.game_lines.find((r) => Number(r.game_id) === id)!;
@@ -59,14 +59,19 @@ describe('results agree with the producer', () => {
         expect(lineSpread(row(401909088))).toBe(-1.5); // a 2026-27 row: open only
         expect(lineTotal(row(401805007))).toBeNull();
     });
-    test('the upset tag: the winner under 50% in the market', () => {
+    test("the upset tag: the winner under 35% in the market, the hub's cut (Q38)", () => {
+        expect(UPSET_WP).toBe(0.35);
         const tags = played.map(({ s, l }) => [s.id, upset(l, s.home_score, s.away_score)]).filter(([, u]) => u);
-        // NY (+1.5) beat CLE, SA beat DAL (-3.5), WSH (+8) beat ATL; WKU (-3.5) lost too, but its row has no moneylines
-        expect(tags.map(([id]) => id)).toEqual([401809234, 401809235, 401736112]);
-        expect(tags[0][1]).toEqual({ side: 'home', wp: row(401809234).market_home_wp_close });
-        expect((tags[1][1] as any).side).toBe('away');
-        expect((tags[1][1] as any).wp).toBeCloseTo(row(401809235).market_away_wp_close!, 12);
-        expect(upset(row(401809235), 100, 100)).toBeNull(); // no winner
+        // WSH (+8, 26.5%) beat ATL; NY (+1.5, 46.8%) over CLE and SA (40.5%) at DAL were under 50% but are not upsets at 35%
+        expect(tags.map(([id]) => id)).toEqual([401736112]);
+        expect(tags[0][1]).toEqual({ side: 'home', wp: row(401736112).market_home_wp_close });
+        expect(upset(row(401809234), 119, 111)).toBeNull();
+        expect(upset(row(401809235), 92, 125)).toBeNull();
+        // the cut itself: 34.9% tags, 35% does not
+        const at = (hw: number) => upset({ ...row(401809234), market_home_wp_close: hw }, 1, 0);
+        expect(at(0.349)?.wp).toBe(0.349);
+        expect(at(0.35)).toBeNull();
+        expect(upset(row(401736112), 100, 100)).toBeNull(); // no winner
     });
     test('the text', () => {
         expect(spreadText(-5.5, 'NY', 'CLE')).toBe('NY -5.5');
@@ -203,9 +208,14 @@ describe('NbaGamePage', () => {
         expect(t).not.toContain('Open');
         expect(t).toMatch(/Spread CLE -1\.5 Total 229 Moneyline CLE -125 Moneyline NY \+105 Win % CLE \(no vig\) 53% Win % NY \(no vig\) 47%/);
         expect(t).toMatch(/Market pregame: CLE 53%; our pregame prior: (NY|CLE) \d+%/);
-        expect(t).toContain('NY covered CLE -1.5; over 229 (230) Upset NY won at 47% pregame');
+        expect(t).toContain('NY covered CLE -1.5; over 229 (230)');
+        expect(t).not.toContain('Upset'); // NY at 47% is under 50% but not under 35%
         expect(t).toContain('Consensus of 11 books.');
         for (const bad of ['NaN', 'undefined', 'null']) expect(t).not.toContain(bad);
+    });
+    test('the Upset tag on a real under-35% win: WSH over ATL at 27% pregame', async () => {
+        const t = lines(await page(gameAs(401736112), row(401736112)));
+        expect(t).toMatch(/Upset WSH won at 2[67]% pregame/);
     });
     test('open and latest when they differ; a missing total leaves its row out', async () => {
         const l = { ...row(401805007), spread_home_open: -2.5 };
