@@ -78,6 +78,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // team_season_rates, team_strength and game_team_rates); college adds adjusted efficiency margin and tempo. Off: no
     // read and the team page is today's, byte for byte.
     'bball-team-season': 'preview',
+    // Team strength (BB-G24) inside the season block, so it needs 'bball-team-season' too: adjusted net rating, strength
+    // of schedule, strength of victory and pace, each with its league rank (sdv-db's team_strength, BB-D19). Off: the
+    // block is BB-G5's, byte for byte.
+    'bball-team-strength': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

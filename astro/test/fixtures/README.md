@@ -789,3 +789,15 @@ exactly that module's queries, as `{rates, strength, home, away, gameRates}` (th
 **Used by:** `test/teamSeason.test.ts`.
 
 **To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `team-strength-2026.json`
+One `team_strength` row (BB-D19, sdv-db #186) per league for 2025-26, read live on 2026-11-05 as
+`/v1/<season schema>/team_strength?season=2026&team_id=<id>&select=…&limit=1` and stored as `{nba, mbb, wnba, wbb}` (the
+`data` array of each response, no edits). The select is `resources/teamSeason.ts`'s columns plus `season`, `team_id`,
+`games`, `pace` and `pace_rank` for the gates. NBA: the Brooklyn Nets (`nba_stats` 1610612751). MBB: Duke (`mbb` 150).
+WNBA: the Las Vegas Aces (`wnba_stats` 1611661319). WBB: UConn (`wbb` 41).
+
+**Used by:** `test/teamStrength.test.ts`. Its `__team_strength__/block-off-*.html` snapshots were written by BB-G5's
+template (#400's head), so the flag-off test pins the block byte for byte.
+
+**To regenerate:** rerun the four reads (season filter and `limit=1`, never unfiltered) and write them as above.
