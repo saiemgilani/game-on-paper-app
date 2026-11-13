@@ -3,6 +3,7 @@ import { METRIC_YEAR } from "../utils/constants";
 import { LEAGUES, leaguePath, type League } from "../utils/league";
 import { isFeatureEnabled, isFeaturePublic } from "../utils/features";
 import { basketball } from "../basketball/config";
+import { isCupWindow } from "../utils/nbaCup";
 import SiteSearch from "./search/SiteSearch.svelte";
 
 const league: League = Astro.locals.league ?? 'cfb';
@@ -95,6 +96,7 @@ const lp = (p: string) => leaguePath(league, p);
                             {(league === 'mbb' || league === 'wbb') && isFeatureEnabled("bball-bracketology", Astro.locals) && (<li><a href={lp("/bracketology")} class="nav-link px-2 link-secondary">Bracketology</a></li>)}
                             {(league === 'nba' || league === 'wnba') && isFeatureEnabled("bball-playoff-picture", Astro.locals) && (<li><a href={lp("/standings")} class="nav-link px-2 link-secondary">Standings</a></li>)}
                             {(league === 'nba' || league === 'wnba') && isFeatureEnabled("bball-coaches", Astro.locals) && (<li><a href={lp("/coaches")} class="nav-link px-2 link-secondary">Coaches</a></li>)}
+                            {league === 'nba' && isFeatureEnabled("bball-nba-cup", Astro.locals) && isCupWindow() && (<li><a href={lp("/cup")} class="nav-link px-2 link-secondary">NBA Cup</a></li>)}
                         </Fragment>
                     )}
                     <li class="nav-item dropdown">

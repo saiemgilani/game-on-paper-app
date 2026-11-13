@@ -18,7 +18,8 @@ import Header from '../../src/components/Header.astro';
 let container: AstroContainer;
 // the Header carries the site-search island (a Svelte component) for a preview viewer since #304
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
-const render = () => container.renderToString(Header, { locals: { league: 'nba', preview: true } as App.Locals });
+// the NBA Cup entry (BB-G30) shows in November and December only: off here, so the menu does not depend on the day
+const render = () => container.renderToString(Header, { locals: { league: 'nba', preview: true, flagOverrides: { 'bball-nba-cup': false } } as any });
 
 describe('Header basketball menu from the config', () => {
     test('the nba menu: Scoreboard, Nets, Players, Teams, Scatter, Leaders (and Standings and Coaches behind their flags)', async () => {
