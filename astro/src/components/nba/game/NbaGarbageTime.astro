@@ -1,9 +1,10 @@
 ---
 // src/components/nba/game/NbaGarbageTime.astro
-// BB-G2, behind 'bball-garbage-time': the garbage-time toggle beside the Impact box ('toggle') and, with `?garbage=out`,
+// BB-G2, behind 'bball-garbage-time': the garbage-time toggle beside the Impact box ('toggle'), the same select above the
+// four factors ('select', the same `?garbage=out` link landing on #factors) and, with `?garbage=out`,
 // the four factors ('factors') and the pros' team box rows ('teambox') from the possession log, all its possessions
 // beside those with garbage time left out; 'whole' marks a table the log cannot split. Every flag is the producer's;
-// the sums and the one division per number are utils/garbageTime.ts's.
+// Possessions, ORtg and DRtg are the producer's situational_team_games rows; the other sums are utils/garbageTime.ts's.
 import type { NbaGame } from '../../../resources/nbaGame';
 import type { GarbageView, SplitBox, SplitRates } from '../../../utils/garbageTime';
 import { clockText } from '../../../utils/garbageTime';
@@ -16,13 +17,17 @@ import { cleanAbbreviation } from '../../../utils/misc';
 import { PRO_LEAGUES } from '../../../utils/league';
 import { basketball } from '../../../basketball/config';
 
-interface Props { game: NbaGame; view: GarbageView; part: 'toggle' | 'factors' | 'teambox' | 'whole' }
+interface Props { game: NbaGame; view: GarbageView; part: 'toggle' | 'select' | 'factors' | 'teambox' | 'whole' }
 const { game, view, part } = Astro.props;
+// the select lands back on the panel it sits in
+const anchor = part === 'select' ? 'factors' : 'impact';
 const league = basketball(Astro.locals.league).league;
 const pro = PRO_LEAGUES.includes(league);
 const base = gameHref(league, game.id);
 const allHref = `${base}#impact`;
-const outHref = `${base}?${GARBAGE_PARAM}=out#impact`;
+const selectAll = `${base}#${anchor}`;
+const selectOut = `${base}?${GARBAGE_PARAM}=out#${anchor}`;
+const selectId = part === 'select' ? 'garbage-factors' : 'garbage';
 const from = view.start ? `${periodShort(view.start.period, game.regulation, game.periodKind)} ${clockText(view.start.clock)}` : null;
 const sides = (['away', 'home'] as const).map((s) => ({ s, abbr: cleanAbbreviation(game[s].team) }));
 
@@ -53,18 +58,17 @@ const shownFactors = factorRows.filter((r) => sides.some(({ s }) => val(s, 'all'
 const wins = (r: Row<SplitRates>, mine: number | null, theirs: number | null) => r.better !== 'none' && mine != null && theirs != null && (r.better === 'high' ? mine > theirs : mine < theirs);
 const excludedText = `${view.excluded} of ${view.total} possessions`;
 ---
-{part === 'toggle' && (view.unavailable ? (<p class="text-muted small" id="garbage-unavailable">The garbage-time split is temporarily unavailable: these are the whole game's numbers.</p>) : (
-<Fragment>
-<div class="d-flex flex-wrap align-items-center gap-2 mb-2" id="garbage-toggle">
-  <label class="small text-muted mb-0" for="garbage">Possessions</label>
-  <select id="garbage" class="form-select form-select-sm w-auto" onchange="window.location.href = this.value">
-    <option value={allHref} selected={!view.out}>All</option>
-    <option value={outHref} selected={view.out}>Garbage time out</option>
+{part === 'toggle' && view.unavailable && (<p class="text-muted small" id="garbage-unavailable">The garbage-time split is temporarily unavailable: these are the whole game's numbers.</p>)}
+{(part === 'toggle' || part === 'select') && !view.unavailable && (
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2" id={part === 'select' ? 'garbage-toggle-factors' : 'garbage-toggle'}>
+  <label class="small text-muted mb-0" for={selectId}>Possessions</label>
+  <select id={selectId} class="form-select form-select-sm w-auto" onchange="window.location.href = this.value">
+    <option value={selectAll} selected={!view.out}>All</option>
+    <option value={selectOut} selected={view.out}>Garbage time out</option>
   </select>
   <span class="small text-muted">Garbage time{from ? ` from ${from}` : ''}: {excludedText}.</span>
-</div>
-{view.out && (<p class="small text-muted" id="garbage-impact-note">Garbage time out, from the possession log: each possession is credited to the ten players on the floor as it starts, so a number can differ from the whole-game box by a free throw or two beyond the garbage time itself.</p>)}
-</Fragment>))}
+</div>)}
+{part === 'toggle' && !view.unavailable && view.out && (<p class="small text-muted" id="garbage-impact-note">Garbage time out, from the possession log: each possession is credited to the ten players on the floor as it starts, so a number can differ from the whole-game box by a free throw or two beyond the garbage time itself.</p>)}
 {part === 'factors' && rates && (
 <Fragment>
 <div class="table-responsive"><table class="table table-sm numeral w-auto" aria-label="Four factors, garbage time out">
@@ -84,7 +88,7 @@ const excludedText = `${view.excluded} of ${view.total} possessions`;
     ))}
   </tbody>
 </table></div>
-<p class="small text-muted" id="garbage-factors-note">Garbage time out ({excludedText} left out): from the game's possession log, All for every possession and GT out without garbage time; bold marks the better side with it out. Possessions are counted, not estimated{pro ? ' and rebounds include team rebounds' : ''}, so All can differ from the whole-game table. Ratings are per 100 possessions; pace is possessions per {view.regulationMinutes} minutes of the clock those possessions used.{!pro ? ' The college log carries points, not shots, so the shooting factors are whole-game only.' : ''} <a href={allHref.replace('#impact', '#factors')}>All possessions</a></p>
+<p class="small text-muted" id="garbage-factors-note">Garbage time out ({excludedText} left out): All for every possession and GT out without garbage time; bold marks the better side with it out. Possessions, ORtg and DRtg are the producer's per-game splits; {pro ? 'the shooting factors and pace come' : 'pace comes'} from the game's possession log{pro ? ', whose rebounds include team rebounds' : ''}. Possessions are counted, not estimated, so All can differ from the whole-game table. Ratings are per 100 possessions; pace is possessions per {view.regulationMinutes} minutes of the clock those possessions used.{!pro ? ' The college log carries points, not shots, so the shooting factors are whole-game only.' : ''} <a href={allHref.replace('#impact', '#factors')}>All possessions</a></p>
 </Fragment>
 )}
 {part === 'teambox' && (view.box ? (
