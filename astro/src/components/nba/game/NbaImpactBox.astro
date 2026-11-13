@@ -7,6 +7,8 @@ import type { NbaGame } from '../../../resources/nbaGame';
 import type { ImpactBoxReads } from '../../../resources/impactBox';
 import { TOP_UNITS } from '../../../resources/impactBox';
 import { impactSide, shortName, type ImpactSide } from '../../../utils/impactBox';
+import { inGameSide, type InGameSide } from '../../../utils/inGameLineups';
+import InGameLineups from './InGameLineups.svelte';
 import { fmtDec, fmtInt } from '../../../nba/format';
 import { cleanAbbreviation } from '../../../utils/misc';
 import { playerHref, seasonQuery } from '../../../nba/links';
@@ -28,6 +30,9 @@ const MIN_POSS = 10;
 const few = (n: number | null | undefined) => n == null || n < MIN_POSS;
 const fewTitle = `Fewer than ${MIN_POSS} possessions`;
 const built = impact && impact.players.length > 0;
+// BB-G37 ('bball-ingame-lineups'): the units and on/off are the whole game's, so the garbage-time split leaves them out
+const inGame = built && !fromLog && impact.inGame?.units.length ? impact.inGame : undefined;
+const nameOf = new Map((impact?.names ?? []).map((n) => [n.player_id, n.name]));
 // "Lineups used": the top TOP_UNITS units in the open; the rest, still by minutes, behind a native <details> closed by default
 // a player's page for the game's season: one the player pages list (resolveBasketballSeason's: a league with shot
 // dashboards from shotFirstSeason on), ?season= left off for the current one; any other season links nothing
@@ -38,9 +43,15 @@ const season = game.season;
 const listed = season != null && seasons.includes(season) && season >= (cfg.shotFirstSeason ?? seasons[0]);
 const q = listed ? seasonQuery(season, seasons[seasons.length - 1]) : null;
 const href = (pageId: string | null) => (pageId && q !== null ? playerHref(Number(pageId), q, league) : null);
-const sides: { key: 'away' | 'home'; abbr: string; name: string; rows: ImpactSide }[] = built
-    ? (['away', 'home'] as const).map((key) => ({ key, abbr: cleanAbbreviation(game[key].team), name: game[key].team.displayName, rows: impactSide(impact, key) }))
+const sides: { key: 'away' | 'home'; abbr: string; name: string; rows: ImpactSide; inGame?: InGameSide }[] = built
+    ? (['away', 'home'] as const).map((key) => ({ key, abbr: cleanAbbreviation(game[key].team), name: game[key].team.displayName, rows: impactSide(impact, key),
+        ...(inGame ? { inGame: inGameSide(inGame, impact.teams?.[key], (id) => nameOf.get(id) ?? `#${id}`) } : {}) }))
     : [];
+// absent with the flag off; a note when its reads failed, the season has no units yet, or the split is on
+const inGameNote = !built || impact.inGame === undefined ? null
+    : impact.inGame === null ? 'The in-game units and on/off are temporarily unavailable.'
+    : fromLog ? 'The in-game units and on/off cover the whole game, so they are left out of the garbage-time split.'
+    : !impact.inGame.units.length ? 'In-game units and on/off are not built for this game yet.' : null;
 ---
 {impact === null ? (<p class="text-muted" id="impact-unavailable">The impact box is temporarily unavailable.</p>) : !built ? (<p class="text-muted" id="impact-empty">The impact box is not built for this game yet; it follows the nightly ingest.</p>) : (
 <Fragment>
@@ -90,10 +101,12 @@ const sides: { key: 'away' | 'home'; abbr: string; name: string; rows: ImpactSid
         );
       })
       )}
+      {s.inGame && <InGameLineups client:visible side={s.inGame} abbr={s.abbr} id={`ingame-${s.key}`} />}
       </Fragment>)}
     </div>
   ))}
 </div>
+{inGameNote && <p class="text-muted small" id="ingame-note">{inGameNote}</p>}
 {fromLog ? (<p class="small text-muted mb-0" id="impact-source-log">From the possession log, garbage time out: the points scored and allowed on the possessions each player or unit started on the floor, and the ratings per 100 of those possessions. A rating over fewer than {MIN_POSS} possessions is shown as a dash.</p>) : (<p class="small text-muted mb-0">From the play-by-play's substitutions: the points scored and allowed while each player or unit was on the floor, and the ratings per 100 of those possessions. A rating over fewer than {MIN_POSS} possessions is shown as a dash.</p>)}
 </Fragment>
 )}

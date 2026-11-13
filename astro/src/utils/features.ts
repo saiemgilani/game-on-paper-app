@@ -90,6 +90,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // No toggle when the log has no flag (a release from before BB-D7) or no garbage time. Off: no read, `?garbage=` is
     // ignored, and the game page is today's, byte for byte.
     'bball-garbage-time': 'preview',
+    // BB-G37's in-game lineups inside the game page's Impact box (so only with 'bball-impact-box' on too): every 1- to 5-man
+    // unit with a size selector and a small-sample toggle, each player's on/off, and an on/off picker that splits the game by
+    // up to five players on or off (sdv-db game_units / game_on_off, BB-D32). Off: no read and the Impact box is BB-G1's.
+    'bball-ingame-lineups': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

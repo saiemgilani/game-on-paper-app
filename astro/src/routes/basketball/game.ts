@@ -92,16 +92,19 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     const withFlow = isFeatureEnabled('bball-game-flow', Astro.locals);
     // the toggle sits beside the Impact box: no box, no toggle and no read
     const withGarbage = withImpact && isFeatureEnabled('bball-garbage-time', Astro.locals);
+    // BB-G37's units and on/off ride the Impact box's reads (its ids and names): no box, no read
+    const withInGame = withImpact && isFeatureEnabled('bball-ingame-lineups', Astro.locals);
     if (!withImpact && !withFlow) return r;
     const [impact, flow, garbage] = await Promise.all([
-        withImpact ? readPanel('impact box', league, r.game, r.game.season, retrieveImpactBox) : undefined,
+        withImpact ? readPanel('impact box', league, r.game, r.game.season, (l, s, g, h, a) => retrieveImpactBox(l, s, g, h, a, withInGame)) : undefined,
         withFlow ? readPanel('game flow', league, r.game, r.game.season, retrieveGameFlow) : undefined,
         withGarbage ? readPanel('garbage-time log', league, r.game, r.game.season, retrieveGarbageTime) : undefined,
     ]);
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
-    if (impact === null || flow === null || garbage === null) uncacheable(Astro);
-    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away))) setCache(Astro, seasonCache(league));
+    if (impact === null || impact?.inGame === null || flow === null || garbage === null) uncacheable(Astro);
+    // (BB-G37's units can land a night after the impact rows: no units yet is the season window too)
+    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || impact?.inGame?.units.length === 0 || (flow && !flow.home && !flow.away))) setCache(Astro, seasonCache(league));
     return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}),
         ...(garbage !== undefined ? { garbage: { reads: garbage, out: Astro.url.searchParams.get(GARBAGE_PARAM) === 'out' } } : {}) };
 }
