@@ -124,3 +124,24 @@ def test_before_2009_turnover_rates_are_null_not_zero(monkeypatch):
         assert played and all(p["usg_pct"] is None for p in played)
     assert (body["teams"]["home"]["linescores"], body["teams"]["away"]["linescores"]) == LINESCORES[273130043]
     assert body["plays"][-1]["home_win_prob"] == 0.0  # Yale (home) lost 44-100
+
+
+def test_a_live_game_has_both_team_boxes(monkeypatch):
+    """A live summary (Canisius at Cornell, 7:55 of the second quarter) carries no `winner` on either competitor.
+
+    sportsdataverse-py before the partial-box fix read that as "no box score" and handed back a zero-column
+    team box, so `build_payload`'s team_id filter raised, the route answered 500 and every live WBB game
+    page was a 503. Pinned by the sportsdataverse lock.
+    """
+    summary = _summary(401914491)
+    comp = summary["header"]["competitions"][0]
+    assert comp["status"]["type"]["completed"] is False
+    assert not any("winner" in c for c in comp["competitors"])  # the capture really is the live shape
+    body = _get(monkeypatch, 401914491)
+    assert body["status"]["completed"] is False and body["status"]["period"] == 2
+    for side, score in (("home", 18), ("away", 19)):  # Cornell 18, Canisius 19
+        t = body["teams"][side]
+        assert t["box"] is not None and t["box"]["team_id"] == t["team_id"], side
+        assert t["box"]["team_score"] == score, side
+        assert body["players"][side], side
+    assert body["plays"] and body["plays"][-1]["home_win_prob"] is not None

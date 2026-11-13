@@ -3,6 +3,8 @@
 
 The baseline is from 81dbaf1e. Only prior.home_team_spread was refreshed from
 06d88c0c, using the same ESPN capture and the locked SportsDataverse dependency.
+plays[].home_win_prob and plays[].wp_delta were refreshed for sportsdataverse 485a7c6
+(its NBA in-game WP model change); every other field still matches the 81dbaf1e baseline.
 """
 
 import base64
