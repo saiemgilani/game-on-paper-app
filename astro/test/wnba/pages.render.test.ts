@@ -15,6 +15,8 @@ import {
 
 const lite = ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result }: any) => ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result });
 const SEASON_ROWS: Record<number, () => any[]> = { 2003: () => seasonPlayers(2003), 2008: () => seasonPlayers(2008), 2025: () => seasonPlayers(2025), 2026: () => seasonPlayers(2026) };
+// BB-G10's scatter views read the Data API with 'bball-impact-scatter' on (preview): never from a test
+vi.mock('../../src/resources/scatterViews', () => ({ retrieveSeasonImpact: async () => [], retrieveSeasonTeamStrength: async () => [] }));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async (s: number, lg: string) => { if (lg !== 'wnba') throw new Error(`league ${lg}`); return SEASON_ROWS[s]?.() ?? []; },
@@ -135,8 +137,9 @@ describe('the WNBA dashboard pages', () => {
     test('/wnba/scatter: the 2026 bar, no highlight', async () => {
         const html = await page('scatter.astro', '/wnba/scatter');
         wnbaPage(html, 'WNBA scatter, 2026');
-        expect(html).toContain('Players with 54+ FGA.');
-        expect(html).toMatch(/\d+ players with 54\+ FGA, /);
+        // the impact view is on in preview (Q30): 800+ offensive possessions on its axes, the 2026 FGA bar on the shooting ones
+        expect(html).toContain('Players with 800+ offensive possessions on the impact axes and 54+ FGA on the shooting axes.');
+        expect(html).toMatch(/\d+ players with 800\+ offensive possessions, /);
     });
     test('/wnba/leaders: the boards, no featured team', async () => {
         const html = await page('leaders.astro', '/wnba/leaders');

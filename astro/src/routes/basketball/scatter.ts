@@ -5,14 +5,16 @@
  * zoom are client state in ScatterExplorer.svelte.
  */
 import type { AstroGlobal } from 'astro';
-import { BASKETBALL, rankMins } from '../../basketball/config';
+import { BASKETBALL, impactPossMin, rankMins } from '../../basketball/config';
 import { defaultScatterConference, filterByConference, isNcaaDashboards, scatterConferenceOptions, type ConferenceOption } from '../../basketball/dashboards';
 import { headshotsFromRows, playerSeasonsFromRows } from '../../nba/adapters';
 import type { RankMins } from '../../nba/data/ranks';
-import { scatterPoints } from '../../nba/data/scatter';
+import { scatterPoints, teamPoints, withImpact } from '../../nba/data/scatter';
 import type { ScatterPoint } from '../../nba/scatterMetrics';
 import { retrieveConferenceRows } from '../../resources/nbaShots';
-import { leaguePath, type BasketballLeague } from '../../utils/league';
+import { retrieveSeasonImpact, retrieveSeasonTeamStrength } from '../../resources/scatterViews';
+import { isFeatureEnabled } from '../../utils/features';
+import { leaguePath, PRO_LEAGUES, teamLogoUrl, type BasketballLeague } from '../../utils/league';
 import { uncacheable } from './cache';
 import { readBasketballSeasonRows, readCoverageNote, resolveBasketballSeason } from './season';
 
@@ -28,7 +30,15 @@ export interface BasketballScatterParams {
     coverage?: string | null;
     /** college: the conference filter (D42) */
     conference?: { options: ConferenceOption[]; selected: string };
+    /**
+     * BB-G10, only with 'bball-impact-scatter' on (NBA/WNBA): the view (`?view=teams`, else players) and whether its read
+     * failed. Players: `points` carry the impact values too (a failed read leaves the shooting points). Teams: `points` are the
+     * season's teams (none when the read failed). `minOffPoss` (players, read): the impact axes' possessions bar.
+     */
+    view?: { kind: ScatterView; failed: boolean; minOffPoss?: number };
 }
+
+export type ScatterView = 'players' | 'teams';
 
 export type BasketballScatterPrep = { unavailable: true } | BasketballScatterParams;
 
@@ -40,6 +50,10 @@ export async function prepareBasketballScatter(Astro: AstroGlobal, league: Baske
     const coverageP = readCoverageNote(league, resolved.season);
     const confP = isNcaaDashboards(league) ? retrieveConferenceRows(resolved.season, league) : undefined;
     confP?.catch(() => {});
+    const kind: ScatterView | undefined = PRO_LEAGUES.includes(league) && isFeatureEnabled('bball-impact-scatter', Astro.locals)
+        ? (Astro.url.searchParams.get('view') === 'teams' ? 'teams' : 'players') : undefined;
+    const viewP = kind === 'players' ? retrieveSeasonImpact(league, resolved.season) : kind === 'teams' ? retrieveSeasonTeamStrength(league, resolved.season) : undefined;
+    viewP?.catch(() => {});
     const rows = await readBasketballSeasonRows(Astro, league, resolved.season, leaguePath(league, '/scatter'));
     if (rows === null) return { unavailable: true };
     const min = rankMins(league, resolved.season);
@@ -59,8 +73,24 @@ export async function prepareBasketballScatter(Astro: AstroGlobal, league: Baske
             uncacheable(Astro); // decorative: All D-I, no selector
         }
     }
-    const points = scatterPoints(playerSeasonsFromRows(shown), headshotsFromRows(shown), ft?.statsTeamId ?? null, { colorOf: (id) => cfg.teams.inSeason(id, resolved.season)?.color, min });
+    let points = scatterPoints(playerSeasonsFromRows(shown), headshotsFromRows(shown), ft?.statsTeamId ?? null, { colorOf: (id) => cfg.teams.inSeason(id, resolved.season)?.color, min });
+    let view: BasketballScatterParams['view'];
+    // Q30: the impact axes' own bar, offensive possessions (the shooting axes keep the FGA bar)
+    const minOffPoss = impactPossMin(league, resolved.season) ?? 0;
+    if (kind && viewP) {
+        try {
+            const viewRows = await viewP;
+            points = kind === 'players' ? withImpact(points, viewRows, minOffPoss)
+                : teamPoints(viewRows, (id) => cfg.teams.inSeason(id, resolved.season), ft?.statsTeamId ?? null, (t) => teamLogoUrl(league, t.espn_id, false, resolved.season));
+            view = kind === 'players' ? { kind, failed: false, minOffPoss } : { kind, failed: false };
+        } catch (e: any) {
+            console.error(`ERROR while loading the ${league} ${resolved.season} scatter's ${kind} view: ${e}, ${e?.stack}`);
+            uncacheable(Astro); // players keep the shooting axes; teams say the numbers are unavailable
+            if (kind === 'teams') points = [];
+            view = { kind, failed: true };
+        }
+    }
     const coverage = await coverageP;
     if (coverage === undefined) uncacheable(Astro);
-    return { ...resolved, points, min, ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}), ...(conference ? { conference } : {}) };
+    return { ...resolved, points, min, ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}), ...(conference ? { conference } : {}), ...(view ? { view } : {}) };
 }
