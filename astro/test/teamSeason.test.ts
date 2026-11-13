@@ -41,6 +41,7 @@ import { NETS_TEAM_ID } from '../src/nba/data/teams';
 import { prepareNbaTeam } from '../src/routes/nba/team';
 import { FLAGS } from '../src/utils/features';
 import { scheduleRows, splitRows } from '../src/utils/teamSeason';
+import { ordinal } from '../src/utils/misc';
 
 const NETS_ESPN = 17;
 const DUKE = 150;
@@ -174,6 +175,25 @@ describe('TeamSeasonBlock', () => {
         expect(html).toContain(Math.abs(st.adj_net_rtg).toFixed(1));
         expect(html).not.toContain('undefined');
         expect(html).not.toContain('NaN');
+    });
+    test('an unshaded value (Pace, the season line) still prints its rank and the producer percentile, without colour', async () => {
+        const html = await render(asReads(NBA), 'nba', NETS_ESPN);
+        const all = NBA.rates.find((r) => r.split === 'all');
+        const tag = (r: number, p: number) => `(#${r}, ${ordinal(Math.round(p))} pctl)`;
+        const line = html.split('id="season-line"')[1].split('</p>')[0];
+        expect(line).toContain(tag(all.pace_rank, all.pace_pct));
+        expect(line).toContain(tag(all.net_rtg_rank, all.net_rtg_pct));
+        const splits = html.split('id="season-splits"')[1].split('</table>')[0];
+        for (const r of NBA.rates) {
+            const cell = splits.split(tag(r.pace_rank, r.pace_pct))[0].split('<td').at(-1)!;
+            expect(cell).not.toMatch(/hulk-bg-level/); // Pace stays unshaded
+        }
+        const mbb = await render(asReads(MBB), 'mbb', DUKE);
+        const st = MBB.strength[0];
+        expect(mbb.split('id="season-adjusted"')[1]).toContain(tag(st.adj_net_rtg_rank, st.adj_net_rtg_pct));
+        // no producer percentile: the rank alone
+        const noPct = { ...asReads(NBA), rates: NBA.rates.map((r) => ({ ...r, pace_pct: null })) };
+        expect((await render(noPct, 'nba', NETS_ESPN)).split('id="season-line"')[1].split('</p>')[0]).toContain(`Pace ${all.pace.toFixed(1)} <span class="text-muted">(#${all.pace_rank})</span>`);
     });
     test('a failed read says unavailable; a team with no rated split says so', async () => {
         expect(await render(null, 'nba', NETS_ESPN)).toContain('id="season-unavailable"');
