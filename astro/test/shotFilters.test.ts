@@ -241,7 +241,7 @@ describe('the ON/OFF filter on the real college final', () => {
 
 function fakeAstro(locals: Record<string, unknown>) {
     const cache: unknown[] = []; const headers = new Headers();
-    return { astro: { params: { id: GAMES.nba }, url: new URL(`https://gameonpaper.com/nba/game/${GAMES.nba}`), locals: { ...locals, flagOverrides: { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-game-shooting': false, ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id: GAMES.nba }, url: new URL(`https://gameonpaper.com/nba/game/${GAMES.nba}`), locals: { ...locals, flagOverrides: { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-game-shooting': false, 'bball-shift-chart': false, ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 const espnPage = (name: string, completed: boolean) => ({ page: { gameId: 401766458, gamepackageJSON: { header: { competitions: [{ date: '2025-04-15T23:30Z', status: { type: { name, completed } }, competitors: [] }] } } }, regressed: false });
 
@@ -252,7 +252,7 @@ describe('prepareBasketballGame', () => {
     test("'bball-shot-filters' is a preview flag", () => { expect(FLAGS['bball-shot-filters']).toBe('preview'); });
     test('off: no read and no shotFilters key', async () => {
         ingested();
-        expect('shotFilters' in (await prepareBasketballGame(fakeAstro({ preview: true, flagOverrides: { 'bball-shot-filters': false } }).astro, 'nba'))).toBe(false);
+        expect('shotFilters' in (await prepareBasketballGame(fakeAstro({ preview: true, flagOverrides: { 'bball-shot-filters': false, 'bball-shift-chart': false } }).astro, 'nba'))).toBe(false);
         ingested();
         expect('shotFilters' in (await prepareBasketballGame(fakeAstro({}).astro, 'nba'))).toBe(false);
         expect(fn).not.toHaveBeenCalled();

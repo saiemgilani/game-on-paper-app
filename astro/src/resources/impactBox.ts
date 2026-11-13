@@ -98,6 +98,15 @@ export async function retrieveProGame(league: BasketballLeague, season: number, 
 }
 
 /**
+ * The producer's per-player game line (game_player_impact) for one season-schema game id: each player's minutes, points
+ * and possessions while on. One capped, season-filtered read, shared (same query, same cache entry) by the Impact box and
+ * BB-G36's shift chart, whose MIN reads it.
+ */
+export function retrieveGamePlayerImpact(league: BasketballLeague, season: number, gameId: string): Promise<ImpactRow[]> {
+    return retrieveRowsFrom<ImpactRow>(leagueSource(league), 'game_player_impact', { season: String(season), game_id: gameId, select: IMPACT_SELECT, limit: PLAYER_LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS);
+}
+
+/**
  * The reads for one ESPN game, two rounds, strict. `homeId` / `awayId` are the ESPN team ids. The pros: the crosswalk,
  * then the impact rows, the stats box's names, each side's units and the season's player pages; college: the stats.ncaa.org
  * box (contest id and names), then the impact rows, each side's units, each side's crosswalk pairs and the season's player
@@ -135,7 +144,7 @@ export async function retrieveImpactBox(league: BasketballLeague, season: number
         return new Set(rows.map((r) => String(r.person_id)));
     });
     const [players, home, away, nameRows, pageIds, pages] = await Promise.all([
-        read<ImpactRow>('game_player_impact', { game_id: gameId, select: IMPACT_SELECT, limit: PLAYER_LIMIT }),
+        retrieveGamePlayerImpact(league, season, gameId),
         units(teams.home),
         units(teams.away),
         namesRead,

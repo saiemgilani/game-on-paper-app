@@ -856,13 +856,17 @@ module's queries, as `{league, season, espnGameId, homeId, awayId, crosswalk | b
 `/v1/<nba|wnba>/player_crosswalk?season=…&espn_team_id=<ESPN id>&select=<league>_player_id,espn_athlete_id&limit=60` per side.
 College: `/v1/<mbb|wbb>/ncaa_player_box?season=…&espn_game_id=…&select=contest_id,player_id,clean_name,player&limit=80`,
 then `game_stints` by the contest id and `ncaa_player_crosswalk?season=…&espn_team_id=…&select=ncaa_player_id,espn_athlete_id&limit=60`
-per side. The stints were read with `team_id` added to the module's select. `pbp` (pros only; college uses the
+per side. The stints were read with `team_id` added to the module's select; on 2026-11-10 they were re-read with the module's widened select (BB-G36: `seconds,poss,opp_poss,pts,opp_pts,plus_minus` added) and the same filter, the same rows. `pbp` (pros only; college uses the
 `<league>/game_*_api.json` final) is `/v1/<nba|wnba>/pbp?season=…&game_id=…&order=game_play_number&limit=5000` with the game
 page's own pbp select. Games: BOS 113 at DET 121 (2026-10-20, stats 0022600001), CON 75 at NY 106 (2026-05-08,
 1022600001), NC State at Notre Dame (2026-02-28, contest 6456375), UTEP at Louisiana Tech (contest 6402602). On every field
 goal attempt exactly five of the shooting team are on the floor under the `[clock_out, clock_in)` rule; the WNBA
 crosswalk leaves one of the game's 19 players unmapped (four on for his stretches).
 
-**Used by:** `test/shotFilters.test.ts`.
+`impact` (BB-G36's MIN, #455 Q6) is the game's `/v1/<schema>/game_player_impact?season=…&game_id=<stats id | contest id>&select=team_id,player_id,minutes,poss,opp_poss,pts,opp_pts,plus_minus,off_rtg,def_rtg,net_rtg&limit=80`,
+the Impact box's own query: the pros' rows are the `impact-box-nba-2027` / `impact-box-wnba-2026` captures' `players` (the same
+games), the college rows were read live on 2026-11-13 (18 a game). Every player's stint seconds add up to his `minutes` × 60.
+
+**Used by:** `test/shotFilters.test.ts`, `test/shiftChart.test.ts`.
 
 **To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
