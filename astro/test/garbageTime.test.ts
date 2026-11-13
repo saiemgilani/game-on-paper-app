@@ -30,7 +30,7 @@ const fetched: string[] = [];
 vi.stubGlobal('fetch', async (input: RequestInfo | URL) => { fetched.push(String(input instanceof Request ? input.url : input)); throw new Error('no network in tests'); });
 afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 
-const api = vi.hoisted(() => ({ calls: [] as { schema: string; table: string; query: Record<string, string> }[], rows: [] as any[], crosswalk: [] as any[], fail: false }));
+const api = vi.hoisted(() => ({ calls: [] as { schema: string; table: string; query: Record<string, string> }[], rows: [] as any[], crosswalk: [] as any[], splits: [] as any[], box: [] as any[], fail: false }));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     retrieveRowsFrom: async (source: { schema: string }, table: string, query: Record<string, string>) => {
@@ -38,6 +38,8 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         if (api.fail) throw new Error('down');
         if (table === 'schedule_crosswalk') return api.crosswalk;
         if (table === 'possessions' || table === 'ncaa_possessions') return api.rows;
+        if (table === 'situational_team_games') return api.splits;
+        if (table === 'ncaa_team_box') return api.box;
         throw new Error(`unexpected table ${table}`);
     },
 }));
@@ -62,7 +64,8 @@ import { FLAGS } from '../src/utils/features';
 import { garbageView, hasGarbageFlag, isOut, ncaaPossessions, proPossessions, splitTotals, type SplitPossession } from '../src/utils/garbageTime';
 
 const log = (c: Capture): SplitPossession[] => (c.league === 'wbb' ? ncaaPossessions(c.possessions) : proPossessions(c.possessions, 4, c.league === 'nba' ? 720 : 600));
-const reads = (c: Capture): GarbageReads => ({ teams: c.teams, rows: c.possessions });
+/** the log and the producer's per-game team splits for the game (the oracle's team rows are situational_team_games' rows) */
+const reads = (c: Capture): GarbageReads => ({ teams: c.teams, rows: c.possessions, splits: c.oracle.team as any });
 const STATS = ['poss', 'opp_poss', 'pts', 'opp_pts', 'plus_minus'] as const;
 const RATES = ['seconds', 'minutes', 'off_rtg', 'def_rtg', 'net_rtg'] as const;
 function same(got: Record<string, any>, want: Record<string, any>) {
@@ -124,12 +127,12 @@ describe('garbageView', () => {
         }
         const unflagged = G.nba24.possessions.map(({ is_garbage_time, is_transition, seconds_to_first_shot, ...r }) => r);
         expect(hasGarbageFlag(unflagged)).toBe(false);
-        expect(garbageView({ teams: G.nba24.teams, rows: unflagged }, impactFor(G.nba24), true, 'nba', 4, 12)).toBeUndefined();
+        expect(garbageView({ teams: G.nba24.teams, rows: unflagged, splits: [] }, impactFor(G.nba24), true, 'nba', 4, 12)).toBeUndefined();
         // one unclassified possession: All would no longer be the whole log, so there is no split to show
         const partly = G.nba24.possessions.map((r, i) => (i === 0 ? { ...r, is_garbage_time: null } : r));
         expect(hasGarbageFlag(partly)).toBe(false);
-        expect(garbageView({ teams: G.nba24.teams, rows: partly }, impactFor(G.nba24), true, 'nba', 4, 12)).toBeUndefined();
-        expect(garbageView({ teams: null, rows: [] }, impactFor(G.nba24), true, 'nba', 4, 12)).toBeUndefined();
+        expect(garbageView({ teams: G.nba24.teams, rows: partly, splits: [] }, impactFor(G.nba24), true, 'nba', 4, 12)).toBeUndefined();
+        expect(garbageView({ teams: null, rows: [], splits: [] }, impactFor(G.nba24), true, 'nba', 4, 12)).toBeUndefined();
         expect(garbageView(reads(G.nba24), EMPTY_IMPACT, true, 'nba', 4, 12)).toBeUndefined();
         expect(garbageView(reads(G.nba24), null, true, 'nba', 4, 12)).toBeUndefined();
     });
@@ -160,6 +163,24 @@ describe('garbageView', () => {
             v.impact!.lineups[side].forEach((u, i) => same(u, top[i]));
         }
     });
+    test("?garbage=out: Possessions, ORtg and DRtg are situational_team_games' rows as published; pace stays on the log", () => {
+        const want = (team: number, split: string) => G.nba24.oracle.team.find((r) => r.team_id === team && r.split === split)!;
+        const v = garbageView(reads(G.nba24), impactFor(G.nba24), true, 'nba', 4, 12)!;
+        for (const side of ['home', 'away'] as const) {
+            for (const [k, split] of [['all', 'all'], ['out', 'not_garbage_time']] as const) {
+                const r = v.rates![side][k]!, w = want(G.nba24.teams[side], split);
+                expect([r.possessions, r.off_rtg, r.def_rtg]).toEqual([w.poss, w.off_rtg, w.def_rtg]);
+            }
+        }
+        // a published row is shown as published, never re-derived from the log
+        const bumped = { ...reads(G.nba24), splits: G.nba24.oracle.team.map((r) => ({ ...r, poss: r.poss + 1000 })) };
+        expect(garbageView(bumped, impactFor(G.nba24), true, 'nba', 4, 12)!.rates!.home.out!.possessions).toBe(1070);
+        // no published rows: those three are dashes, the shooting factors and pace stay on the log
+        const none = garbageView({ ...reads(G.nba24), splits: [] }, impactFor(G.nba24), true, 'nba', 4, 12)!.rates!.home.out!;
+        expect([none.possessions, none.off_rtg, none.def_rtg]).toEqual([null, null, null]);
+        expect(none.pace).toBeGreaterThan(0);
+        expect(none.efg_pct).toBeGreaterThan(0);
+    });
     test('?garbage=out, college: points only, so no shooting factors and no box rows', () => {
         const v = garbageView(reads(G.wbb), impactFor(G.wbb), true, 'wbb', 4, 10)!;
         expect(v.box).toBeNull();
@@ -170,25 +191,40 @@ describe('garbageView', () => {
 });
 
 describe('retrieveGarbageTime', () => {
-    beforeEach(() => { api.calls.length = 0; api.fail = false; hooks.garbage = null; });
-    test('the pros: the crosswalk, then the stats possessions by game, season-filtered, capped, no column list', async () => {
+    beforeEach(() => { api.calls.length = 0; api.fail = false; hooks.garbage = null; api.splits = []; api.box = []; });
+    const SPLIT_QUERY = { select: 'team_id,family,split,poss,off_rtg,def_rtg', limit: '60' };
+    test('the pros: the crosswalk, then the stats possessions and the per-game splits by the stats game id, season-filtered, capped', async () => {
         api.crosswalk = [{ nba_game_id: '0022600001', nba_home_team_id: '1610612765', nba_away_team_id: '1610612738' }];
         api.rows = G.nba27.possessions;
+        api.splits = G.nba27.oracle.team;
         const r = await retrieveGarbageTime('nba', 2027, '401909088', 8, 2);
-        expect(api.calls.map((c) => c.table)).toEqual(['schedule_crosswalk', 'possessions']);
+        expect(api.calls.map((c) => c.table)).toEqual(['schedule_crosswalk', 'possessions', 'situational_team_games']);
         expect(api.calls[1]).toEqual({ schema: 'nba_stats', table: 'possessions', query: { season: '2027', game_id: '0022600001', limit: '400' } });
+        expect(api.calls[2]).toEqual({ schema: 'nba_stats', table: 'situational_team_games', query: { season: '2027', game_id: '0022600001', ...SPLIT_QUERY } });
         expect(r.teams).toEqual({ home: 1610612765, away: 1610612738 });
+        expect(r.splits).toBe(api.splits);
     });
-    test('college: ncaa_possessions by the ESPN game id, with the flag in the column list', async () => {
+    test('college: ncaa_possessions by the ESPN game id, with the flag in the column list; the splits by the contest id from ncaa_team_box', async () => {
         api.rows = G.wbb.possessions;
+        api.box = [{ contest_id: G.wbb.game_id }, { contest_id: G.wbb.game_id }];
+        api.splits = G.wbb.oracle.team;
         const r = await retrieveGarbageTime('wbb', 2026, '401824983', 218, 45);
         expect(api.calls[0]).toMatchObject({ schema: 'wbb', table: 'ncaa_possessions', query: { season: '2026', espn_game_id: '401824983', limit: '400' } });
         expect(api.calls[0].query.select.split(',')).toContain('is_garbage_time');
+        expect(api.calls.slice(1)).toEqual([
+            { schema: 'wbb', table: 'ncaa_team_box', query: { season: '2026', espn_game_id: '401824983', select: 'contest_id', limit: '10' } },
+            { schema: 'wbb', table: 'situational_team_games', query: { season: '2026', game_id: '6387150', ...SPLIT_QUERY } },
+        ]);
         expect(r.teams).toEqual({ home: 218, away: 45 });
+        expect(r.splits).toBe(api.splits);
+        // no stats.ncaa.org contest for the game: no splits read, and none shown
+        api.calls.length = 0; api.box = [];
+        expect((await retrieveGarbageTime('wbb', 2026, '401824983', 218, 45)).splits).toEqual([]);
+        expect(api.calls.map((c) => c.table)).toEqual(['ncaa_possessions', 'ncaa_team_box']);
     });
     test('an unmapped pro game is empty after one read; a failed or capped read rejects', async () => {
         api.crosswalk = [];
-        expect(await retrieveGarbageTime('wnba', 2026, '1', 1, 2)).toEqual({ teams: null, rows: [] });
+        expect(await retrieveGarbageTime('wnba', 2026, '1', 1, 2)).toEqual({ teams: null, rows: [], splits: [] });
         expect(api.calls).toHaveLength(1);
         api.rows = Array.from({ length: 400 }, () => G.wbb.possessions[0]);
         await expect(retrieveGarbageTime('wbb', 2026, '401824983', 218, 45)).rejects.toThrow('cap'); // a cut log is a failed read
@@ -261,11 +297,11 @@ describe('NbaGamePage', () => {
     test('byte for byte the flag-off page whenever there is nothing to toggle', async () => {
         const game = gameAs('nba', 'NOP', 'TOR');
         const off = await page('nba', game, impactFor(G.nba24));
-        const unflagged = { teams: G.nba24.teams, rows: G.nba24.possessions.map(({ is_garbage_time, ...r }) => r) };
+        const unflagged = { teams: G.nba24.teams, rows: G.nba24.possessions.map(({ is_garbage_time, ...r }) => r), splits: [] };
         for (const out of [false, true]) {
             expect(await page('nba', game, impactFor(G.nba24), { reads: unflagged, out })).toBe(off); // a release before BB-D7
             expect(await page('nba', game, impactFor(G.nba24), { reads: reads(G.nba27), out })).toBe(off); // no garbage time
-            expect(await page('nba', game, impactFor(G.nba24), { reads: { teams: null, rows: [] }, out })).toBe(off); // unmapped
+            expect(await page('nba', game, impactFor(G.nba24), { reads: { teams: null, rows: [], splits: [] }, out })).toBe(off); // unmapped
         }
         expect(await page('nba', game, impactFor(G.nba24), { reads: null, out: false })).toBe(off); // a failed read, no parameter
         expect(off).not.toContain('garbage');
@@ -277,8 +313,21 @@ describe('NbaGamePage', () => {
         expect(html).toContain('id="garbage-toggle"');
         expect(html).toMatch(/<option value="\/nba\/game\/401766458\?garbage=out#impact"[^>]*>Garbage time out/);
         expect(html).toContain('53 of 193 possessions');
-        const strip = (h: string) => h.replace(/<div class="d-flex flex-wrap align-items-center gap-2 mb-2" id="garbage-toggle">[\s\S]*?<\/div>/, '');
+        // the toggle and its copy above the four factors (Q8) are the only change
+        const strip = (h: string) => h.replace(/<div class="d-flex flex-wrap align-items-center gap-2 mb-2" id="garbage-toggle(?:-factors)?">[\s\S]*?<\/div>/g, '');
         expect(strip(html)).toBe(off);
+    });
+    test('the same select above the four factors, landing back on #factors, with and without ?garbage=out', async () => {
+        const game = gameAs('nba', 'NOP', 'TOR');
+        for (const out of [false, true]) {
+            const html = await page('nba', game, impactFor(G.nba24), { reads: reads(G.nba24), out });
+            const factors = html.slice(html.indexOf('id="factors"'), html.indexOf('id="teambox"'));
+            expect(factors).toContain('id="garbage-toggle-factors"');
+            expect(factors).toContain('<select id="garbage-factors"');
+            expect(factors).toMatch(out ? /<option value="\/nba\/game\/401766458\?garbage=out#factors" selected/ : /<option value="\/nba\/game\/401766458#factors" selected/);
+            expect(html.match(/id="garbage-toggle"/g)).toHaveLength(1); // the Impact panel's own, unchanged
+        }
+        expect(await page('nba', game, impactFor(G.nba24), { reads: null, out: true })).not.toContain('garbage-toggle-factors');
     });
     test('?garbage=out, the pros: split four factors and team box, a whole-game note on the players, the Impact box split', async () => {
         const html = await page('nba', gameAs('nba', 'NOP', 'TOR'), impactFor(G.nba24), { reads: reads(G.nba24), out: true });
