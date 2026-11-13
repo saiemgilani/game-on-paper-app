@@ -87,6 +87,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // Stays 'preview' until the producer ships player_impact's <m>_rank / <m>_pct (Akshay on #408); the Rank columns and
     // shading then appear with no GOP change. College's panel: RAPM (ncaa_rapm, through ncaa_player_crosswalk) and box BPM.
     'bball-impact': 'preview',
+    // The player page's On/Off section (BB-G7) on /<league>/players/[id], inside each league's flag: his team on and
+    // off the floor and his top teammates with and without him (sdv-db's player_on_off and player_wowy). College's rows
+    // are keyed by stats.ncaa.org ids and go through ncaa_player_crosswalk (BB-D37). Off: no read and the player page is
+    // today's, byte for byte.
+    'bball-player-on-off': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

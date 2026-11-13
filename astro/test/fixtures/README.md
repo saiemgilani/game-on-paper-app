@@ -817,6 +817,34 @@ player, so one capture covers several players; the page reads one player (`playe
 
 **To regenerate:** rerun the four reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
 
+## `on-off-nba-2025.json.gz`, `lineups-nba-2025.json.gz` (player page)
+The player page's On/Off section (BB-G7, `resources/playerOnOff.ts`) reuses two fixtures from the team-page PRs, copied
+byte for byte (same blob, so the identical adds merge cleanly): `on-off-nba-2025.json.gz` from #407 (BB-G4) and
+`lineups-nba-2025.json.gz` from #402 (BB-G3), whose sections in those PRs give the provenance. In short: sdv-db's committed
+producer output `tests/fixtures/season_products/nba_player_{on_off,wowy}_2025.parquet` (sdv-db #198) for the Minnesota
+Timberwolves 2024-25 (`team_id` 1610612750, 20 players, 190 pairs), and Minnesota's live `shot_season_players` name rows.
+The capture was filtered by `team_id`, so its rows carry no `team_id`; the test adds Minnesota's id, as the API's rows
+would carry it, and applies the API's own filters (`player_id`, `player_id_a`, `player_id_b`, `order`, `limit`). The
+player is Anthony Edwards (1630162). Nothing else is edited.
+
+**Used by:** `test/playerOnOff.test.ts`.
+
+**To regenerate:** as #407's and #402's sections. Once the backfill runs, the live
+`player_on_off?season=2026&player_id=<id>&order=-minutes_on&limit=5` and `player_wowy?season=2026&player_id_a=<id>&limit=100`
+(and `player_id_b=`) reads replace them.
+
+## `on-off-mbb-2026.json.gz` (player page, college)
+College On/Off through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of each
+response, no edits, all `season=2026`: `{xwalk, players, pairsA, pairsB}` =
+`mbb/ncaa_player_crosswalk?espn_team_id=150&limit=40` (14 rows, every Duke pair, all columns), then by Duke's leading shooter's
+stats.ncaa.org id (ESPN 5041935 -> `11195975`) with the module's own selects: `mbb/player_on_off?player_id=11195975&order=-minutes_on&limit=5`
+(1), `mbb/player_wowy?player_id_a=11195975&limit=100` (11) and `?player_id_b=11195975` (0: the producer orders the text ids, and
+`"11195975"` sorts first against every teammate). Every one of his 11 partners has a crosswalk pair.
+
+**Used by:** `test/playerOnOff.test.ts`.
+
+**To regenerate:** rerun the same five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
 ## `player-impact-xwalk.json.gz`
 College's Impact panel through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of
 each response, no edits, all `season=2026`, as `{mbbXwalk, mbbRapm, mbbPv, wbbXwalk, wbbRapm}`:
@@ -829,3 +857,11 @@ crosswalk and RAPM reads carry every column here; the page selects `ncaa_player_
 **Used by:** `test/playerImpact.test.ts`.
 
 **To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `on-off-nba-2025-fox.json.gz` (player page, a traded player)
+Top partners split by team (BB-G7), captured live on 2026-11-13, sequentially, the `data` array of each response, no edits,
+all `nba_stats`, `season=2025`, with the module's own selects: `{players, pairsA, pairsB}` =
+`player_on_off?player_id=1628368&order=-minutes_on&limit=5` (2 rows: De'Aaron Fox's Sacramento and San Antonio seasons),
+`player_wowy?player_id_a=1628368&limit=100` (31) and `?player_id_b=1628368` (13): 24 Sacramento pairs and 20 San Antonio pairs.
+
+**Used by:** `test/playerOnOff.test.ts`.
