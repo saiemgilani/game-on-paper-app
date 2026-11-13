@@ -69,7 +69,7 @@ describe("flag off: BB-G47's hub, byte for byte, and no new read", () => {
             sb.mockResolvedValue({ day: DAYS[lg], events: events(lg), degraded: false });
             rows.mockImplementation(dataFrom(lg));
             const html = await render(lg, { preview: true, flagOverrides: { 'bball-hub-tonight': false } });
-            // the snapshots were written by BB-G47's code (feat/basketball-league-hub at fb2bbed3), before this change
+            // the snapshots were written by BB-G47's code (feat/basketball-league-hub at 45415528), before this change
             await expect(normalize(html)).toMatchFileSnapshot(`./__hub_byte_identity__/${lg}.html`);
             expect(new Set(rows.mock.calls.map((c) => c[1]))).toEqual(new Set(['game_lines']));
         });
