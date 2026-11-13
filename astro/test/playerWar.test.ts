@@ -28,7 +28,7 @@ const fx = (path: string) => JSON.parse(readFileSync(new URL(`./fixtures/${path}
 
 const reads = vi.hoisted(() => ({ war: vi.fn(), epv: vi.fn(), impact: vi.fn() }));
 // BB-G51's Shot profile reads the Data API with 'bball-shot-profile' on (preview): never from a test
-vi.mock('../src/resources/shotZones', async (orig) => ({ ...(await orig<typeof import('../src/resources/shotZones')>()), retrievePlayerShotZones: async () => [], retrieveTeamPlayerShotZones: async () => [], retrieveTeamShotZones: async () => ({ zones: null, rates: [] }) }));
+vi.mock('../src/resources/shotZones', async (orig) => ({ ...(await orig<typeof import('../src/resources/shotZones')>()), retrievePlayerShotZones: async () => [], retrieveTeamPlayerShotZones: async () => [], retrieveTeamShotZones: async () => ({ zones: null, rates: [] }), retrieveSeasonFt: async () => null }));
 vi.mock('../src/resources/playerWar', async (orig) => ({
     ...(await orig<typeof import('../src/resources/playerWar')>()),
     retrievePlayerWar: (...a: unknown[]) => reads.war(...a),

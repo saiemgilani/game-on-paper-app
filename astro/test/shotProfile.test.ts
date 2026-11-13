@@ -1,9 +1,10 @@
 // BB-G51: the player and team pages' Shot profile behind 'bball-shot-profile'. The pure steps (a zone row as the panel's
-// lines, a traded pro's rows added up unranked, where the points come from, college's name match inside his team), the
-// reads (player_shot_zones / team_shot_zones in the league's season schema; the team's season rates on the season block's
-// exact query), the page-side steps (the flag gates every read; a failed read keeps the page and is never cached), the
-// panel and the player page: flag off is byte for byte the NBA byte-identity capture. On real Data API rows
-// (fixtures/README.md: shot-zones.json.gz, shot-zones-xwalk-mbb-2026.json.gz). Every read is mocked.
+// lines, a traded pro's rows added up unranked, where the points come from with his season FTM, college's crosswalk pick
+// inside his team), the reads (player_shot_zones / team_shot_zones in the league's season schema; his player_season_stats
+// FGM and FTM; the team's season rates on the season block's exact query), the page-side steps (the flag gates every
+// read; a failed read keeps the page and is never cached), the panel and the player page: flag off is byte for byte the
+// NBA byte-identity capture. On real Data API rows (fixtures/README.md: shot-zones.json.gz, shot-zones-xwalk-mbb-2026.json.gz,
+// shot-profile-ft.json.gz). Every read is mocked.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
@@ -27,15 +28,17 @@ const SZ = gz('shot-zones') as Record<'nba' | 'nbaTeam' | 'wnba' | 'mbbTexas' | 
 const XWALK = gz('shot-zones-xwalk-mbb-2026').xwalk as Row[];
 const RATES = { nba: gz('team-season-nba-2026').rates as Row[], mbb: gz('team-season-mbb-2026').rates as Row[] };
 const MBB_PLAYERS = gz('mbb/dashboards/season_players_2026') as Row[];
-const NBA_PLAYERS = JSON.parse(readFileSync(new URL('./fixtures/nba/season_players_2026_api.json', import.meta.url)).toString());
+// player_season_stats: the pros' totals rows (MPJ 2025-26, A'ja Wilson 2025) and Texas 2025-26's ESPN season totals
+const FT = gz('shot-profile-ft') as Record<'nba' | 'wnba' | 'mbbTexas', Row[]>;
 
-const reads = vi.hoisted(() => ({ player: vi.fn(), roster: vi.fn(), team: vi.fn(), ncaa: vi.fn() }));
+const reads = vi.hoisted(() => ({ player: vi.fn(), roster: vi.fn(), team: vi.fn(), ncaa: vi.fn(), ft: vi.fn() }));
 vi.mock('../src/resources/shotZones', async (orig) => ({
     ...(await orig<typeof import('../src/resources/shotZones')>()),
     retrievePlayerShotZones: (...a: unknown[]) => reads.player(...a),
     retrieveTeamPlayerShotZones: (...a: unknown[]) => reads.roster(...a),
     retrieveTeamShotZones: (...a: unknown[]) => reads.team(...a),
     retrieveNcaaPlayerId: (...a: unknown[]) => reads.ncaa(...a),
+    retrieveSeasonFt: (...a: unknown[]) => reads.ft(...a),
 }));
 const sdv = vi.hoisted(() => ({ from: vi.fn() }));
 vi.mock('../src/resources/sdv', async (orig) => ({ ...(await orig<typeof import('../src/resources/sdv')>()), retrieveRowsFrom: (...a: unknown[]) => sdv.from(...a) }));
@@ -64,7 +67,7 @@ vi.mock('../src/resources/nbaShots', async (orig) => ({
 }));
 
 import ShotProfile from '../src/components/nba/ShotProfile.astro';
-import { playerSeasonsFromRows } from '../src/nba/adapters';
+import { BASKETBALL } from '../src/basketball/config';
 import { NBA_READ_TIMEOUT_MS } from '../src/resources/nbaGames';
 import { ZONE_KEYS } from '../src/resources/shotZones';
 import { prepareNbaPlayer } from '../src/routes/nba/player';
@@ -72,13 +75,13 @@ import { prepareBasketballPlayer } from '../src/routes/basketball/player';
 import { prepareBasketballTeam } from '../src/routes/basketball/team';
 import { FLAGS } from '../src/utils/features';
 import { leagueSource } from '../src/utils/league';
-import { collegePlayerRows, composition, nameKey, playerView, teamViews, zoneSide } from '../src/utils/shotProfile';
+import { collegePlayerRows, composition, playerView, teamViews, zoneSide } from '../src/utils/shotProfile';
 
 const [MPJ] = SZ.nba; // Michael Porter Jr., 1629008, Brooklyn 2025-26
 const PID = MPJ.player_id;
 const [BKN] = SZ.nbaTeam;
 const [DUKE] = SZ.mbbTeam;
-const mpjStats = playerSeasonsFromRows(NBA_PLAYERS.data ?? NBA_PLAYERS).find((p) => p.person_id === PID)!.stats;
+const MPJ_FT = { fgm: FT.nba[0].fgm, ftm: FT.nba[0].ftm }; // 444 and 195, his regular-season totals
 const OFF = { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false, 'bball-war': false, 'bball-career': false, 'bball-shot-profile': false };
 const locals = (on: boolean) => ({ preview: true, flagOverrides: { ...OFF, 'bball-shot-profile': on } });
 const zoneSum = (r: Row, p = '') => ZONE_KEYS.reduce((a, z) => a + r[`${p}${z}_fga`], 0) + r[`${p}unlocated_fga`];
@@ -96,6 +99,7 @@ beforeEach(() => {
     reads.roster.mockResolvedValue(SZ.mbbTexas);
     reads.team.mockResolvedValue({ zones: BKN, rates: RATES.nba });
     reads.ncaa.mockResolvedValue(null);
+    reads.ft.mockResolvedValue(MPJ_FT);
 });
 function ok<T extends object>(r: T | { notFound: true } | { unavailable: true }): T { if ('notFound' in r || 'unavailable' in r) throw new Error(JSON.stringify(r)); return r as T; }
 function fake(path: string, id: string, on: boolean) {
@@ -151,31 +155,24 @@ describe('zoneSide', () => {
 });
 
 describe('composition', () => {
-    test('2 × the rim and mid makes, 3 × the threes, free throws the rest; the shares add up to one', () => {
+    test('2 × the rim and mid makes, 3 × the threes, his FTM as the free throws: the total is the producer\'s points', () => {
         const s = zoneSide(SZ.nba)!;
-        const pts = Math.round(mpjStats!.pts_pg! * mpjStats!.gp); // 24.2 × 52
-        const c = composition(s, pts)!;
+        const c = composition(s, MPJ_FT.ftm)!;
         const threes = 3 * (MPJ.corner_3_fgm + MPJ.above_break_3_fgm);
-        expect(c.parts.map((p) => [p.key, p.pts])).toEqual([['rim', 2 * MPJ.rim_fgm], ['mid', 2 * MPJ.mid_fgm], ['three', threes], ['ft', pts - 2 * (MPJ.rim_fgm + MPJ.mid_fgm) - threes]]);
+        expect(c.parts.map((p) => [p.key, p.pts])).toEqual([['rim', 2 * MPJ.rim_fgm], ['mid', 2 * MPJ.mid_fgm], ['three', threes], ['ft', 195]]);
+        expect(c.pts).toBe(1259); // his player_season_stats `pts` (the totals row), not a number the page made up
         expect(c.parts.reduce((a, p) => a + p.share, 0)).toBeCloseTo(1, 12);
-        expect(c.parts[3].pts).toBeGreaterThan(0);
     });
-    test('no points, a make with no location, or FG points above the points: no split', () => {
+    test('no free throws given, fewer than none, a make with no location, or no points at all: no split', () => {
         const s = zoneSide(SZ.nba)!;
         expect(composition(s, null)).toBeNull();
-        expect(composition(s, 0)).toBeNull();
-        expect(composition({ ...s, fgm: s.fgm + 1 }, 2000)).toBeNull();
-        expect(composition(s, 100)).toBeNull();
+        expect(composition(s, -1)).toBeNull();
+        expect(composition({ ...s, fgm: s.fgm + 1 }, 10)).toBeNull();
+        expect(composition({ ...s, fgm: 0, zones: s.zones.map((z) => ({ ...z, fgm: 0 })) }, 0)).toBeNull();
     });
 });
 
-describe('the college name match', () => {
-    test("nameKey folds case, accents, punctuation and suffixes, and turns 'Last, First' round", () => {
-        expect(nameKey('Declan Duru Jr.')).toBe('declan duru');
-        expect(nameKey("Ta'Niya Latson")).toBe('taniya latson');
-        expect(nameKey('Vokietaitis, Matas')).toBe('matas vokietaitis');
-        expect(nameKey('Dëmin III')).toBe('demin');
-    });
+describe('the college pick', () => {
     test("by the crosswalk: every Texas 2025-26 shooter with a pair finds exactly his zone row by id, with the box's FGA", () => {
         const roster = MBB_PLAYERS.filter((r) => r.team_id === 251);
         const toNcaa = new Map(XWALK.map((x) => [String(x.espn_athlete_id), String(x.ncaa_player_id)]));
@@ -184,41 +181,51 @@ describe('the college name match', () => {
         for (const p of paired) {
             const ncaaId = toNcaa.get(String(p.person_id))!;
             expect(ncaaId).not.toBe(String(p.person_id)); // the page's id is not the table's: reading by it finds nothing
-            expect(collegePlayerRows(SZ.mbbTexas, String(p.person_id), 'Nobody Here')).toEqual([]);
-            // the name is never consulted when he has a pair: a wrong name still finds his row
-            const hit = collegePlayerRows(SZ.mbbTexas, ncaaId, 'Nobody Here');
+            expect(collegePlayerRows(SZ.mbbTexas, String(p.person_id))).toEqual([]);
+            const hit = collegePlayerRows(SZ.mbbTexas, ncaaId);
             expect(hit).toHaveLength(1);
             expect(hit[0].player_id).toBe(ncaaId);
             expect(hit[0].fga).toBe(p.fga_total);
         }
     });
-    test("by name, only the fallback for no pair: every Texas 2025-26 shooter finds exactly his zone row, with the box's FGA", () => {
-        const roster = MBB_PLAYERS.filter((r) => r.team_id === 251);
-        expect(roster.length).toBe(SZ.mbbTexas.length);
-        for (const p of roster) {
-            const hit = collegePlayerRows(SZ.mbbTexas, null, p.player_name);
-            expect(hit).toHaveLength(1);
-            expect(hit[0].fga).toBe(p.fga_total);
-        }
-    });
-    test('no pair and no match or two matches: no row; a pair with no zone row is no row, whatever the name', () => {
-        expect(collegePlayerRows(SZ.mbbTexas, null, 'Nobody Here')).toEqual([]);
-        expect(collegePlayerRows([...SZ.mbbTexas, { ...SZ.mbbTexas[0], player_id: 'x' }], null, SZ.mbbTexas[0].player_name)).toEqual([]);
-        expect(collegePlayerRows(SZ.mbbTexas, '0', SZ.mbbTexas[0].player_name)).toEqual([]);
+    test('no pair is no row, even when his name is on one (Q12: never a name match); a pair with no zone row is no row', () => {
+        expect(SZ.mbbTexas[0].player_name).toBeTruthy();
+        expect(collegePlayerRows(SZ.mbbTexas, null)).toEqual([]);
+        expect(collegePlayerRows(SZ.mbbTexas, '0')).toEqual([]);
     });
 });
 
 describe('the views', () => {
-    test("player: the split against his box points; a box FGA the zone table misses by more than 1% drops it, saying why", () => {
-        const v = playerView(SZ.nba, mpjStats)!;
-        expect(v.comp!.pts).toBe(Math.round(24.2 * 52));
+    test("player: the split with his season FTM; the season stats' FGM not the zone table's drops it, saying why", () => {
+        const v = playerView(SZ.nba, MPJ_FT)!;
+        expect(v.comp!.parts.at(-1)).toMatchObject({ key: 'ft', pts: 195 });
         expect(v.why).toBeNull();
-        const off = playerView(SZ.nba, { ...mpjStats!, fga: MPJ.fga + 20 })!;
+        const off = playerView(SZ.nba, { ...MPJ_FT, fgm: MPJ.fgm + 1 })!;
         expect(off.comp).toBeNull();
-        expect(off.why).toContain(`${MPJ.fga} FGA to the box score’s ${MPJ.fga + 20}`);
-        expect(playerView(SZ.nba, { ...mpjStats!, fga: MPJ.fga + 5 })!.comp).not.toBeNull(); // within 1%
-        expect(playerView(SZ.nba, null)!.why).toBe('The season stats carry no points.');
-        expect(playerView([], mpjStats)).toBeNull();
+        expect(off.why).toBe(`The zone table counts ${MPJ.fgm} makes to the season stats’ ${MPJ.fgm + 1}, so the points cannot be split.`);
+        expect(playerView(SZ.nba, null)!.why).toBe('The season stats carry no free throws.');
+        expect(playerView([], MPJ_FT)).toBeNull();
+    });
+    test("real rows: A'ja Wilson's and every paired Texas shooter's zone points plus FTM are the season stats' points", async () => {
+        const actual = await vi.importActual<typeof import('../src/resources/shotZones')>('../src/resources/shotZones');
+        const [wilson] = SZ.wnba;
+        sdv.from.mockResolvedValue(FT.wnba);
+        const w = playerView(SZ.wnba, await actual.retrieveSeasonFt('wnba', 2025, wilson.player_id))!;
+        expect(w.comp!.pts).toBe(937); // her 2025 regular-season totals row's pts
+        const toNcaa = new Map(XWALK.map((x) => [String(x.espn_athlete_id), String(x.ncaa_player_id)]));
+        const ids = [...new Set(FT.mbbTexas.map((r) => r.athlete_id))];
+        expect(ids).toHaveLength(13);
+        let exact = 0;
+        for (const id of ids) {
+            sdv.from.mockResolvedValue(FT.mbbTexas.filter((r) => r.athlete_id === id));
+            const ft = (await actual.retrieveSeasonFt('mbb', 2026, id))!;
+            const v = playerView(collegePlayerRows(SZ.mbbTexas, toNcaa.get(String(id)) ?? null), ft)!;
+            expect(v.why).toBeNull();
+            const espnPts = FT.mbbTexas.find((r) => r.athlete_id === id && r.stat_name === 'points').display_value;
+            expect(Math.abs(v.comp!.pts - Number(espnPts))).toBeLessThanOrEqual(1); // one shooter's zone points are one over ESPN's (the FG and FT counts agree)
+            if (v.comp!.pts === Number(espnPts)) exact++;
+        }
+        expect(exact).toBe(12);
     });
     test("team: offense and allowed, each against the season rates' points when the games agree", () => {
         for (const [zones, rates] of [[BKN, RATES.nba], [DUKE, RATES.mbb]] as const) {
@@ -254,6 +261,23 @@ describe('the reads', () => {
         expect(sdv.from).toHaveBeenLastCalledWith(leagueSource('mbb'), 'ncaa_player_crosswalk', { season: '2026', espn_athlete_id: String(pair.espn_athlete_id), select: 'ncaa_player_id', limit: '5' }, 21600, true, NBA_READ_TIMEOUT_MS);
         expect(await actual.retrieveNcaaPlayerId('mbb', 2025, pair.espn_athlete_id)).toBeNull();
         sdv.from.mockReset();
+        // his season FGM and FTM (Q13): the pros' one regular-season totals row (the two schemas spell the filters differently)
+        sdv.from.mockResolvedValue(FT.nba);
+        expect(await actual.retrieveSeasonFt('nba', 2026, PID)).toEqual({ fgm: 444, ftm: 195 });
+        expect(sdv.from).toHaveBeenLastCalledWith(leagueSource('nba'), 'player_season_stats', { season: '2026', player_id: String(PID), season_type: 'regular-season', per_mode: 'totals', measure_type: 'base', select: 'player_id,fgm,ftm', limit: '5' }, 21600, true, NBA_READ_TIMEOUT_MS);
+        sdv.from.mockResolvedValue(FT.wnba);
+        expect(await actual.retrieveSeasonFt('wnba', 2025, 1628932)).toEqual({ fgm: 332, ftm: 248 });
+        expect(sdv.from).toHaveBeenLastCalledWith(leagueSource('wnba'), 'player_season_stats', { season: '2025', player_id: '1628932', season_type: 'Regular Season', per_mode: 'Totals', measure_type: 'Base', select: 'player_id,fgm,ftm', limit: '5' }, 21600, true, NBA_READ_TIMEOUT_MS);
+        sdv.from.mockResolvedValue([...FT.nba, ...FT.nba]);
+        expect(await actual.retrieveSeasonFt('nba', 2026, PID)).toBeNull(); // two rows are never added up
+        // college: ESPN's long season totals by the page's own athlete id; the counts sit in the made-attempted display value
+        const texas = FT.mbbTexas.filter((r) => r.athlete_id === 4432243);
+        sdv.from.mockResolvedValue(texas);
+        expect(texas.find((r) => r.stat_name === 'freeThrowsMade-freeThrowsAttempted')).toMatchObject({ display_value: '83-111', value: null });
+        expect(await actual.retrieveSeasonFt('mbb', 2026, 4432243)).toEqual({ fgm: 184, ftm: 83 });
+        expect(sdv.from).toHaveBeenLastCalledWith(BASKETBALL.mbb.gamesSource, 'player_season_stats', { season: '2026', athlete_id: '4432243', category: 'totals', select: 'athlete_id,stat_name,display_value', limit: '20' }, 21600, true, NBA_READ_TIMEOUT_MS);
+        sdv.from.mockResolvedValue(texas.filter((r) => r.stat_name !== 'freeThrowsMade-freeThrowsAttempted'));
+        expect(await actual.retrieveSeasonFt('mbb', 2026, 4432243)).toBeNull();
         sdv.from.mockReset();
         sdv.from.mockImplementation(async (_s: unknown, table: string) => (table === 'team_shot_zones' ? [BKN] : RATES.nba));
         expect(await actual.retrieveTeamShotZones('nba', 2026, 1610612751)).toEqual({ zones: BKN, rates: RATES.nba });
@@ -273,13 +297,17 @@ describe('the pages', () => {
         expect('zones' in off).toBe(false);
         expect(reads.player).not.toHaveBeenCalled();
         const a = fake(`/nba/players/${PID}`, String(PID), true);
-        expect(ok(await prepareNbaPlayer(a.astro)).zones).toEqual(SZ.nba);
+        const on = ok(await prepareNbaPlayer(a.astro));
+        expect([on.zones, on.zonesFt]).toEqual([SZ.nba, MPJ_FT]);
         expect(reads.player).toHaveBeenCalledWith('nba', 2026, PID);
+        expect(reads.ft).toHaveBeenCalledWith('nba', 2026, PID);
         expect(a.cache.at(-1)).not.toBe(false);
-        reads.player.mockRejectedValueOnce(new Error('503'));
-        const b = fake(`/nba/players/${PID}`, String(PID), true);
-        expect(ok(await prepareNbaPlayer(b.astro)).zones).toBeNull();
-        expect(b.cache.at(-1)).toBe(false);
+        for (const failing of [reads.player, reads.ft]) {
+            failing.mockRejectedValueOnce(new Error('503'));
+            const b = fake(`/nba/players/${PID}`, String(PID), true);
+            expect(ok(await prepareNbaPlayer(b.astro)).zones).toBeNull();
+            expect(b.cache.at(-1)).toBe(false);
+        }
     });
     test('team, off: no read; on: the reads by team id; a failed read is null and never cached', async () => {
         const off = ok(await prepareBasketballTeam(fake('/nba/team/1610612751', '1610612751', false).astro, 'nba'));
@@ -304,10 +332,11 @@ describe('the pages', () => {
         expect(reads.player).not.toHaveBeenCalled();
         expect(r.zones).toHaveLength(1);
         expect(r.zones![0].player_id).toBe(SZ.mbbTexas[1].player_id);
-        // no pair: the name fallback
+        expect(reads.ft).toHaveBeenCalledWith('mbb', 2026, first.person_id); // ESPN's id: the season stats' own
+        // no pair: no row, though his name is on row 0 (Q12)
         reads.ncaa.mockResolvedValue(null);
         const n = ok(await prepareBasketballPlayer(fake(`/mbb/players/${first.person_id}`, String(first.person_id), true).astro, 'mbb'));
-        expect(n.zones!.map((z) => z.player_id)).toEqual([SZ.mbbTexas[0].player_id]);
+        expect(n.zones).toEqual([]);
         // a failed crosswalk read is "unavailable", never a name guess
         reads.ncaa.mockRejectedValueOnce(new Error('503'));
         const b = fake(`/mbb/players/${first.person_id}`, String(first.person_id), true);
@@ -319,7 +348,7 @@ describe('the pages', () => {
 describe('the panel', () => {
     const render = (views: any, league: string, team = false, season = 2026) => container.renderToString(ShotProfile, { props: { views, season, name: 'Them', ...(team ? { team } : {}) }, locals: { league } as any });
     test("player: the four zones, the producer's rank, FG% shading, the zone note and where the points come from", async () => {
-        const html = await render([playerView(SZ.nba, mpjStats)], 'nba');
+        const html = await render([playerView(SZ.nba, MPJ_FT)], 'nba');
         expect(html.match(/data-zone="/g)).toHaveLength(4);
         expect(html).toContain('Above-the-break 3');
         expect(html).toContain(`>#${MPJ.rim_fg_pct_rank}</span>`);
@@ -328,6 +357,7 @@ describe('the panel', () => {
         expect(html).toContain('The shot charts below draw the paint as its own zone');
         expect(html).toContain('Regular season.');
         expect(html).toMatch(/data-part="ft">FT \d+%/);
+        expect(html).toContain('free throws are the season’s free throws made, 1 point each.');
         expect(html).not.toMatch(/undefined|NaN/);
     });
     test('team (college): offense and allowed, every game, the allowed ranking note', async () => {
@@ -342,7 +372,7 @@ describe('the panel', () => {
     test('a failed read says so; no row says so; a missing split says why', async () => {
         expect(await render(null, 'nba')).toContain('id="shot-profile-unavailable"');
         expect(await render([], 'wnba', false, 2025)).toContain('id="shot-profile-empty"');
-        expect(await render([playerView(SZ.nba, null)], 'nba')).toContain('The season stats carry no points.');
+        expect(await render([playerView(SZ.nba, null)], 'nba')).toContain('The season stats carry no free throws.');
     });
 });
 

@@ -20,7 +20,7 @@ import { dashboardScope, isNcaaDashboards, NCAA_USAGE_NOTE } from '../../basketb
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaPlayerParams }
-const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons, min, unlocated, coverage, poe, impact, war, epv, zones } = Astro.props.data;
+const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons, min, unlocated, coverage, poe, impact, war, epv, zones, zonesFt } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -36,7 +36,7 @@ const description = `${player.player_name} (${teams.join(', ')}) ${label}: ${fmt
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Players', url: `${lp('/players')}${q}`, active: false }, { title: player.player_name, active: true }];
 const subject = `${player.player_name} ${label}`;
 // BB-G51: null, the read failed; [], no zone row for him
-const zonesView = zones == null ? null : ((v) => (v ? [v] : []))(playerView(zones, player.stats));
+const zonesView = zones == null ? null : ((v) => (v ? [v] : []))(playerView(zones, zonesFt ?? null));
 const sections = [...(impact !== undefined ? [['#impact', 'Impact']] : []), ...(war !== undefined && impact === undefined ? [['#value', 'Value']] : []), ...(zones !== undefined ? [['#shot-profile', 'Shot profile']] : []), ['#ranks', 'League ranks'], ...(explorer.games ? [['#nba-games-panel', 'Games']] : []), ['#charts', 'Shot charts'], ...(explorer.games ? [['#nba-rolling-panel', 'Rolling shooting'], ['#nba-versus-panel', 'Versus each opponent']] : [])];
 ---
 <GenericPage title={title} subtitle={description} slug={lp(`/players/${player.person_id}`)} breadcrumbs={breadcrumbs} description={description} canonicalPath={playerHref(player.person_id, q, league)}>

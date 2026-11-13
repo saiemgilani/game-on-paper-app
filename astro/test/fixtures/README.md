@@ -850,12 +850,28 @@ the `data` array of each live Data API read of 2026-11-10 (sdv-db #213, BB-D35; 
 ## `shot-zones-xwalk-mbb-2026.json.gz`
 Texas 2025-26's `ncaa_player_crosswalk` pairs (BB-D37), the id the Shot profile's college path picks a player's
 `player_shot_zones` row by: `{xwalk}` = the `data` array of `/v1/mbb/ncaa_player_crosswalk?season=2026&espn_team_id=251&limit=40`,
-captured live on 2026-11-10, no edits (15 pairs, all columns; all 13 shooters of `shot-zones.json.gz`'s `mbbTexas` have one, and
-each id picks the same row as the name match). The page reads one player's pair (`espn_athlete_id=`, `select=ncaa_player_id`).
+captured live on 2026-11-10, no edits (15 pairs, all columns; all 13 shooters of `shot-zones.json.gz`'s `mbbTexas` have one).
+The page reads one player's pair (`espn_athlete_id=`, `select=ncaa_player_id`); no pair is no row.
 
 **Used by:** `test/shotProfile.test.ts`.
 
 **To regenerate:** rerun the read (season filter and limit as above, never unfiltered), wrap it as above and gzip.
+
+## `shot-profile-ft.json.gz`
+The `player_season_stats` rows the player Shot profile's scoring split reads its free throws from (Q13: his season FTM, a read),
+as `{nba, wnba, mbbTexas}`, the `data` array of each live Data API read of 2026-11-13, no edits:
+`/v1/nba_stats/player_season_stats?season=2026&player_id=1629008&season_type=regular-season&per_mode=totals&measure_type=base&select=player_id,fgm,ftm&limit=5`
+(Michael Porter Jr.: 444 FGM, 195 FTM),
+`/v1/wnba_stats/player_season_stats?season=2025&player_id=1628932&season_type=Regular%20Season&per_mode=Totals&measure_type=Base&select=player_id,fgm,ftm&limit=5`
+(A'ja Wilson: 332, 248; this schema spells the three filters in title case) and
+`/v1/mbb/player_season_stats?season=2026&team_id=251&category=totals&select=season,athlete_id,team_id,category,stat_name,display_value,value&limit=400`
+(Texas, ESPN's long season totals, 195 rows for the 13 shooters; the made-attempted stats carry the counts only in
+`display_value`, e.g. `83-111`, with `value` null). The page reads one athlete (`athlete_id=`, `category=totals`, limit 20).
+Zone points plus FTM equal the season stats' `pts` for both pros (1259, 937) and for 12 of the 13 Texas shooters (the 13th is one over).
+
+**Used by:** `test/shotProfile.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
 
 ## `player-impact-xwalk.json.gz`
 College's Impact panel through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of

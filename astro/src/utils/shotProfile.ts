@@ -2,11 +2,11 @@
  * The Shot profile's pure steps (BB-G51): zone table rows as the panel's lines, and where the points come from.
  * Every rate, rank and percentile is the producer's (sdv-db's player_shot_zones / team_shot_zones, rule B6), except for a
  * pro who played for more than one team: his teams' counts are added up and the rates recomputed from them, unranked
- * (the producer ranks each team row, not the season). The scoring split divides the box points: the zone makes are worth
- * 2 or 3, and free throws are what is left.
+ * (the producer ranks each team row, not the season). The scoring split: the zone makes are worth 2 or 3, and a player's
+ * free throws are his season FTM from the season stats (a read). A team's free throws are still its season points less
+ * the zone points.
  */
-import type { PlayerStats } from '../nba/data/players';
-import { ZONE_KEYS, type ShotZoneRow, type TeamZoneReads, type ZoneKey } from '../resources/shotZones';
+import { ZONE_KEYS, type SeasonFt, type ShotZoneRow, type TeamZoneReads, type ZoneKey } from '../resources/shotZones';
 import { numberOrNull } from './misc';
 
 export const ZONE_LABELS: Record<ZoneKey, string> = { rim: 'Rim', mid: 'Mid-range', corner_3: 'Corner 3', above_break_3: 'Above-the-break 3' };
@@ -53,66 +53,54 @@ export function zoneSide(rows: readonly ShotZoneRow[], prefix = ''): ZoneSide | 
 
 const PARTS: [PartKey, string][] = [['rim', 'Rim'], ['mid', 'Mid-range'], ['three', '3PT'], ['ft', 'FT']];
 
-/**
- * Where the points come from: 2 × the rim and mid makes, 3 × the three makes, and the rest of `pts` as free throws. Null
- * when the split cannot be trusted: no points, a make with no location (its value is unknown), or FG points above `pts`.
- */
-export function composition(side: ZoneSide, pts: number | null): Composition | null {
-    if (pts == null || !(pts > 0)) return null;
+/** The zone makes' points (2 × rim and mid, 3 × the threes); null when a make has no location (its value is unknown). */
+function fgPoints(side: ZoneSide): Record<Exclude<PartKey, 'ft'>, number> | null {
     const m = Object.fromEntries(side.zones.map((l) => [l.key, l.fgm])) as Record<ZoneKey, number>;
     if (m.rim + m.mid + m.corner_3 + m.above_break_3 !== side.fgm) return null;
-    const by: Record<PartKey, number> = { rim: 2 * m.rim, mid: 2 * m.mid, three: 3 * (m.corner_3 + m.above_break_3), ft: 0 };
-    by.ft = pts - by.rim - by.mid - by.three;
-    if (by.ft < 0) return null;
-    return { pts, parts: PARTS.map(([key, label]) => ({ key, label, pts: by[key], share: by[key] / pts })) };
+    return { rim: 2 * m.rim, mid: 2 * m.mid, three: 3 * (m.corner_3 + m.above_break_3) };
 }
 
-/** Lower case, accents and punctuation off, suffixes dropped, "Last, First" turned round: the key a college name match uses. */
-export function nameKey(name: string): string {
-    const turned = name.includes(',') ? name.split(',').map((s) => s.trim()).reverse().join(' ') : name;
-    return turned.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z ]+/g, '').split(/\s+/)
-        .filter((t) => t && !['jr', 'sr', 'ii', 'iii', 'iv', 'v'].includes(t)).join(' ');
+/**
+ * Where the points come from: the zone makes' points and `ft` free-throw points; the total is their sum. Null when the
+ * split cannot be trusted: no free throws given, fewer than none, a make with no location, or no points at all.
+ */
+export function composition(side: ZoneSide, ft: number | null): Composition | null {
+    const fg = fgPoints(side);
+    if (ft == null || ft < 0 || !fg) return null;
+    const by: Record<PartKey, number> = { ...fg, ft };
+    const pts = by.rim + by.mid + by.three + by.ft;
+    if (!(pts > 0)) return null;
+    return { pts, parts: PARTS.map(([key, label]) => ({ key, label, pts: by[key], share: by[key] / pts })) };
 }
 
 /**
  * College: his row among his team's. The table keys players by the stats.ncaa.org id and the page by ESPN's, so `ncaaId`
- * (his season's id from ncaa_player_crosswalk, BB-D37) picks it. The name match is only the fallback for a player with no
- * matched pair (`ncaaId` null), and only a unique match counts; none or two is no row. A pair with no zone row is no row:
- * the id wins over a name.
+ * (his season's id from ncaa_player_crosswalk, BB-D37) picks it. No matched pair (`ncaaId` null) is no row, and so is a
+ * pair with no zone row: never a name match.
  */
-export function collegePlayerRows(rows: readonly ShotZoneRow[], ncaaId: string | null, name: string): ShotZoneRow[] {
-    if (ncaaId !== null) return rows.filter((r) => String(r.player_id) === ncaaId);
-    const key = nameKey(name);
-    const hit = rows.filter((r) => r.player_name != null && nameKey(String(r.player_name)) === key);
-    return hit.length === 1 ? hit : [];
-}
-
-/** The player's box points this season and the FGA they go with: points per game × games, as the season stats carry them. */
-export function boxPoints(stats: PlayerStats | null): { pts: number; fga: number } | null {
-    if (!stats || stats.pts_pg == null || stats.fga == null || !stats.gp) return null;
-    return { pts: Math.round(stats.pts_pg * stats.gp), fga: stats.fga };
+export function collegePlayerRows(rows: readonly ShotZoneRow[], ncaaId: string | null): ShotZoneRow[] {
+    return ncaaId === null ? [] : rows.filter((r) => String(r.player_id) === ncaaId);
 }
 
 /**
- * The share of the box's FGA the zone table may miss before the split is dropped: its free throws are what is left over,
- * so every missing make lands there. ponytail: 1% (~2 points a missing FGA); exact once the box ships FTM to this page.
+ * The player panel: his side (null without a row) and the split, free throws his season FTM. The season stats' FGM must
+ * be the zone table's: a different count is a different scope (games missing, a career line), so its FTM is not his.
  */
-export const FGA_TOLERANCE = 0.01;
-
-/** The player panel: the player's side (null without a row) and the split against his box points. */
-export function playerView(rows: readonly ShotZoneRow[], stats: PlayerStats | null): SideView | null {
+export function playerView(rows: readonly ShotZoneRow[], ft: SeasonFt | null): SideView | null {
     const side = zoneSide(rows);
     if (!side) return null;
-    const box = boxPoints(stats);
-    if (!box) return { title: '', side, comp: null, why: 'The season stats carry no points.' };
-    if (Math.abs(box.fga - side.fga) > Math.max(1, FGA_TOLERANCE * box.fga)) {
-        return { title: '', side, comp: null, why: `The zone table counts ${side.fga} FGA to the box score’s ${box.fga}, so the points cannot be split.` };
+    if (!ft) return { title: '', side, comp: null, why: 'The season stats carry no free throws.' };
+    if (ft.fgm !== side.fgm) {
+        return { title: '', side, comp: null, why: `The zone table counts ${side.fgm} makes to the season stats’ ${ft.fgm}, so the points cannot be split.` };
     }
-    const comp = composition(side, box.pts);
+    const comp = composition(side, ft.ftm);
     return { title: '', side, comp, why: comp ? null : 'The points cannot be split: a make has no location.' };
 }
 
-/** The team panel: offense and allowed, each split against the season rates' points when the two count the same games. */
+/**
+ * The team panel: offense and allowed, each split against the season rates' points when the two count the same games;
+ * free throws are those points less the zone points. ponytail: a remainder; read the teams' FTM once all four leagues carry it.
+ */
 export function teamViews(reads: TeamZoneReads): SideView[] {
     const row = reads.zones;
     if (!row) return [];
@@ -124,7 +112,8 @@ export function teamViews(reads: TeamZoneReads): SideView[] {
     const view = (title: string, prefix: string, pts: number | null): SideView | null => {
         const side = zoneSide([row], prefix);
         if (!side || side.fga === 0) return null;
-        const comp = same ? composition(side, pts) : null;
+        const fg = fgPoints(side);
+        const comp = same && fg && pts != null ? composition(side, pts - fg.rim - fg.mid - fg.three) : null;
         return { title, side, comp, why: why ?? (comp ? null : 'The points cannot be split: a make has no location.') };
     };
     return [view('Offense', '', numberOrNull(all?.pts)), view('Allowed', 'opp_', numberOrNull(all?.opp_pts))].filter((v): v is SideView => v != null);
