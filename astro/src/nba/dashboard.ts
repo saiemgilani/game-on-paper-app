@@ -83,7 +83,7 @@ export function buildDashboard(subject: ShotLite[], league: LeagueContext, court
 }
 
 /** The signature and the distance bars for located shots against the league; BB-G39's game page draws only these two. */
-export function distanceCharts(located: ShotLite[], league: LeagueContext): Pick<DashboardData, "signature" | "bars"> {
+export function distanceCharts(located: ShotLite[], league: Pick<LeagueContext, "byFoot" | "byBin">): Pick<DashboardData, "signature" | "bars"> {
   return {
     signature: vsLeague(fgPctByDistance(located), league.byFoot),
     bars: { player: fgPctByDistance(located, BAR_BIN_FT), league: league.byBin, binFt: BAR_BIN_FT },

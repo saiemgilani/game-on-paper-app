@@ -846,3 +846,23 @@ within one (the log leaves the defense's technical free throws out); rebounds hi
 
 **To regenerate:** rerun those calls in an sdv-py checkout of `origin/main` (polars, no network beyond the GitHub
 release assets), write `{...}` above with `json.dumps(..., default=str)` and gzip (`mtime=0`).
+
+## `game-stints-{nba-401909088,wnba-401856890,mbb-401820775,wbb-401805076}.json.gz`
+The Data API reads behind BB-G38's ON/OFF shot filter (`resources/gameStints.ts`), captured live on 2026-11-10 with that
+module's queries, as `{league, season, espnGameId, homeId, awayId, crosswalk | box, stints, roster: {home, away}, pbp?}`
+(the `data` array of each response, no edits). The pros: `crosswalk` is the BB-G1 capture's
+`/v1/<nba|wnba>/schedule_crosswalk?season=…&espn_game_id=…&limit=1` row (the same query, `impact-box-*`), then
+`/v1/<nba_stats|wnba_stats>/game_stints?season=…&game_id=<stats id>&limit=600` and
+`/v1/<nba|wnba>/player_crosswalk?season=…&espn_team_id=<ESPN id>&select=<league>_player_id,espn_athlete_id&limit=60` per side.
+College: `/v1/<mbb|wbb>/ncaa_player_box?season=…&espn_game_id=…&select=contest_id,player_id,clean_name,player&limit=80`,
+then `game_stints` by the contest id and `ncaa_player_crosswalk?season=…&espn_team_id=…&select=ncaa_player_id,espn_athlete_id&limit=60`
+per side. The stints were read with `team_id` added to the module's select. `pbp` (pros only; college uses the
+`<league>/game_*_api.json` final) is `/v1/<nba|wnba>/pbp?season=…&game_id=…&order=game_play_number&limit=5000` with the game
+page's own pbp select. Games: BOS 113 at DET 121 (2026-10-20, stats 0022600001), CON 75 at NY 106 (2026-05-08,
+1022600001), NC State at Notre Dame (2026-02-28, contest 6456375), UTEP at Louisiana Tech (contest 6402602). On every field
+goal attempt exactly five of the shooting team are on the floor under the `[clock_out, clock_in)` rule; the WNBA
+crosswalk leaves one of the game's 19 players unmapped (four on for his stretches).
+
+**Used by:** `test/shotFilters.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
