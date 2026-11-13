@@ -837,6 +837,49 @@ league's 2025-26 EPV leader). `nbaEpvSeason` is the first one's `season_row`.
 wrap them as above and gzip. Once sdv-db #202's backfill has run, `/v1/{nba_stats,wnba_stats,mbb,wbb}/player_war?season=…&player_id=…&limit=5`
 replaces the sdv-py calls.
 
+## `shot-zones.json.gz`
+The rows behind the Shot profile (BB-G51, `resources/shotZones.ts`), as `{nba, nbaTeam, wnba, mbbTexas, mbbTeam, wbbSouthCarolina}`,
+the `data` array of each live Data API read of 2026-11-10 (sdv-db #213, BB-D35; no edits):
+`/v1/nba_stats/player_shot_zones?season=2026&player_id=1629008&limit=5` (Michael Porter Jr., the player of `nba/player_games.json`),
+`/v1/nba_stats/team_shot_zones?season=2026&team_id=1610612751&limit=2` (Brooklyn, the team of `team-season-nba-2026.json.gz`),
+`/v1/wnba_stats/player_shot_zones?season=2025&player_id=1628932&limit=5` (A'ja Wilson),
+`/v1/mbb/player_shot_zones?season=2026&team_id=251&limit=40` (Texas, 13 shooters: the team of `mbb/dashboards/season_players_2026.json.gz`'s `p26`),
+`/v1/mbb/team_shot_zones?season=2026&team_id=150&limit=2` (Duke, the team of `team-season-mbb-2026.json.gz`) and
+`/v1/wbb/player_shot_zones?season=2026&team_id=2579&limit=40` (South Carolina, 11 shooters).
+
+## `shot-zones-xwalk-mbb-2026.json.gz`
+Texas 2025-26's `ncaa_player_crosswalk` pairs (BB-D37), the id the Shot profile's college path picks a player's
+`player_shot_zones` row by: `{xwalk}` = the `data` array of `/v1/mbb/ncaa_player_crosswalk?season=2026&espn_team_id=251&limit=40`,
+captured live on 2026-11-10, no edits (15 pairs, all columns; all 13 shooters of `shot-zones.json.gz`'s `mbbTexas` have one).
+The page reads one player's pair (`espn_athlete_id=`, `select=ncaa_player_id`); no pair is no row.
+
+**Used by:** `test/shotProfile.test.ts`.
+
+**To regenerate:** rerun the read (season filter and limit as above, never unfiltered), wrap it as above and gzip.
+
+## `shot-profile-ft.json.gz`
+The `player_season_stats` rows the player Shot profile's scoring split reads its free throws from (Q13: his season FTM, a read),
+as `{nba, wnba, mbbTexas}`, the `data` array of each live Data API read of 2026-11-13, no edits:
+`/v1/nba_stats/player_season_stats?season=2026&player_id=1629008&season_type=regular-season&per_mode=totals&measure_type=base&select=player_id,fgm,ftm&limit=5`
+(Michael Porter Jr.: 444 FGM, 195 FTM),
+`/v1/wnba_stats/player_season_stats?season=2025&player_id=1628932&season_type=Regular%20Season&per_mode=Totals&measure_type=Base&select=player_id,fgm,ftm&limit=5`
+(A'ja Wilson: 332, 248; this schema spells the three filters in title case) and
+`/v1/mbb/player_season_stats?season=2026&team_id=251&category=totals&select=season,athlete_id,team_id,category,stat_name,display_value,value&limit=400`
+(Texas, ESPN's long season totals, 195 rows for the 13 shooters; the made-attempted stats carry the counts only in
+`display_value`, e.g. `83-111`, with `value` null). The page reads one athlete (`athlete_id=`, `category=totals`, limit 20).
+Zone points plus FTM equal the season stats' `pts` for both pros (1259, 937) and for 12 of the 13 Texas shooters (the 13th is one over).
+The team split's `team_season_stats` rows, added on 2026-11-13 as `nbaTeam`, `nbaTeamOpp` and `mbbTeam`:
+`/v1/nba_stats/team_season_stats?season=2026&team_id=1610612751&season_type=regular-season&per_mode=totals&measure_type=base&select=team_id,gp,fgm,ftm,pts&limit=2`
+(Brooklyn: 3071 FGM, 1471 FTM, 8686 points), the same with `measure_type=opponent&select=team_id,gp,opp_fgm,opp_ftm,opp_pts` (3457, 1564, 9505;
+zone points plus FTM give both point totals exactly; the page selects only the makes), and
+`/v1/mbb/team_season_stats?season=2026&team_id=150&category=offensive&select=team_id,stat_name,display_value,value&limit=60`
+(Duke, ESPN's long season totals, 30 rows: 973 FGM and 543 FTM over 34 games, where `team_shot_zones` counts 1079 makes over 38,
+so the page drops Duke's split and says why; ESPN's team totals carry no opponents' free throws).
+
+**Used by:** `test/shotProfile.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
 ## `player-impact-xwalk.json.gz`
 College's Impact panel through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of
 each response, no edits, all `season=2026`, as `{mbbXwalk, mbbRapm, mbbPv, wbbXwalk, wbbRapm}`:
