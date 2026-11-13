@@ -4,6 +4,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { describe, expect, test } from 'vitest';
 import Leaderboards from '../../src/components/nba/Leaderboards.svelte';
+import BoardSelectLeaderboards from '../../src/components/nba/BoardSelectLeaderboards.svelte';
 import { seasonPlayerGamesFromRows } from '../../src/nba/adapters';
 import { leaderBoards } from '../../src/nba/data/leaders';
 import { playerGames2026, seasonPlayers } from './dashboardFixtures';
@@ -26,13 +27,20 @@ describe('Leaderboards without a featured team', () => {
         unmount(c);
         target.remove();
     });
-    test('BB-G11 movers: a Most declined button, the change ranked from the largest drop, the definition always shown', () => {
+    test('BB-G11 movers: five boards in a select, Most declined ranked from the largest drop, the definition always shown', () => {
         const boards = leaderBoards(seasonPlayerGamesFromRows(playerGames2026(), seasonPlayers(2026)), null, 15, { fga: 4, fg3a: 2 }, { movers: true });
         const target = document.createElement('div');
         document.body.appendChild(target);
-        const c = mount(Leaderboards, { target, props: { boards, netsTeamId: null, seasonQuery: '', pronoun: 'her', bars: { fga: 4, fg3a: 2 }, league: 'wnba', movers: true } });
+        const c = mount(BoardSelectLeaderboards, { target, props: { boards, netsTeamId: null, seasonQuery: '', pronoun: 'her', bars: { fga: 4, fg3a: 2 }, league: 'wnba', movers: true } });
+        flushSync();
         expect(target.textContent).toContain("The change: the window's eFG% minus her season eFG% to date");
-        [...target.querySelectorAll('button')].find((b) => b.textContent === 'Most declined')!.click();
+        expect(target.querySelector('[aria-label="Board"]')!.className).toBe('d-none');
+        const select = target.querySelector('select')!;
+        expect(select.id).toBe('leaders-board');
+        expect([...select.querySelectorAll('option')].map((o) => o.textContent)).toEqual(['FG%', 'eFG%', '3P%', 'Most improved', 'Most declined']);
+        expect(select.value).toBe('efgPct');
+        select.value = 'declined';
+        select.dispatchEvent(new Event('change'));
         flushSync();
         const heads = [...target.querySelectorAll('#nba-leaders thead th')].map((th) => th.textContent);
         expect(heads).toEqual(['#', 'Player', 'Team', 'eFG% change', 'FGM/FGA', 'Season eFG%', 'Window']);

@@ -2,15 +2,14 @@
 <script lang="ts">
     // blazing-the-nets' Leaderboards.tsx on runes: pick the window and the board; a featured team (the NBA's Nets) is
     // highlighted, shown below the top rows and the rest behind a <details>; with none (netsTeamId null) those parts never render.
-    import { ACTIVE_DAYS, LEADER_LABELS, LEADER_METRICS, LEADER_WINDOWS, minAttempts, MOVER_METRIC, minThrees, NBA_LEADER_BARS, type Boards, type LeaderBars, type LeaderMetric, type LeaderRow, type LeaderWindow } from '../../nba/data/leaders';
+    import { ACTIVE_DAYS, LEADER_LABELS, LEADER_METRICS, LEADER_WINDOWS, minAttempts, MOVER_METRIC, MOVER_MIN_SEASON_FGA, minThrees, NBA_LEADER_BARS, type Boards, type LeaderBars, type LeaderMetric, type LeaderRow, type LeaderWindow } from '../../nba/data/leaders';
     import { fmtDate, fmtInt, fmtPct, fmtPts } from '../../nba/format';
     import { playerHref } from '../../nba/hrefs';
     import type { BasketballLeague } from '../../utils/league';
-    let { boards, netsTeamId, seasonQuery, pronoun = 'his', bars = NBA_LEADER_BARS, league = 'nba', windows = LEADER_WINDOWS, windowNote = '', activeByTeam = false, movers = false }: { boards: Boards; netsTeamId: number | null; seasonQuery: string; pronoun?: 'his' | 'her'; bars?: LeaderBars; league?: BasketballLeague; windows?: readonly LeaderWindow[]; windowNote?: string; activeByTeam?: boolean; movers?: boolean } = $props();
+    let { boards, netsTeamId, seasonQuery, pronoun = 'his', bars = NBA_LEADER_BARS, league = 'nba', windows = LEADER_WINDOWS, windowNote = '', activeByTeam = false, movers = false, metric = $bindable('efgPct'), boardButtons = true }: { boards: Boards; netsTeamId: number | null; seasonQuery: string; pronoun?: 'his' | 'her'; bars?: LeaderBars; league?: BasketballLeague; windows?: readonly LeaderWindow[]; windowNote?: string; activeByTeam?: boolean; movers?: boolean; metric?: LeaderMetric; boardButtons?: boolean } = $props();
     /** Nets rows shown below the top 15; the rest sit in a <details>. */
     const NETS_SHOWN = 5;
     let n = $state<LeaderWindow>(10);
-    let metric = $state<LeaderMetric>('efgPct');
     // BB-G11: with movers the boards carry "declined" (the route builds it only then)
     const metrics: readonly LeaderMetric[] = $derived(movers ? [...LEADER_METRICS, MOVER_METRIC] : LEADER_METRICS);
     const board = $derived(boards[n][metric]!);
@@ -44,7 +43,9 @@
         <button type="button" class="btn btn-sm btn-outline-secondary" class:active={n === w} aria-pressed={n === w} onclick={() => (n = w)}>{w} games</button>
     {/each}
 </div>
-<div class="d-flex flex-wrap gap-2 mb-2" role="group" aria-label="Board">
+<!-- with a picker outside (BoardSelectLeaderboards.svelte) the button row is hidden: a class swap, not a block, so the
+     four-board page's markup stays byte for byte -->
+<div class={boardButtons ? 'd-flex flex-wrap gap-2 mb-2' : 'd-none'} role="group" aria-label="Board">
     {#each metrics as m (m)}
         <button type="button" class="btn btn-sm btn-outline-secondary" class:active={metric === m} aria-pressed={metric === m} onclick={() => (metric = m)}>{LEADER_LABELS[m]}</button>
     {/each}
@@ -52,7 +53,7 @@
 <p class="small text-muted">
     Each player's last {n} games with a field-goal attempt (a full {n}-game window), {minAttempts(n, bars)}+ FGA in it{metric === 'fg3Pct' ? ` and ${minThrees(n, bars)}+ threes` : ''}.
     {movers
-        ? `The change: the window's eFG% minus ${pronoun} season eFG% to date (the window's games included). Most improved ranks the largest rise first, Most declined the largest drop. `
+        ? `The change: the window's eFG% minus ${pronoun} season eFG% to date (the window's games included), for players with ${MOVER_MIN_SEASON_FGA}+ FGA on the season. Most improved lists only rises and Most declined only drops, the largest first. `
         : metric === 'improved' ? `Most improved: window eFG% minus ${pronoun} season eFG%. ` : ''}
     Active shooters only: last game within {ACTIVE_DAYS} days of {activeByTeam ? `${pronoun} team's` : "the season's"} latest game. {board.eligible} players qualify.{windowNote}
 </p>

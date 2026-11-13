@@ -35,7 +35,7 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
 
 import { BASKETBALL } from '../../src/basketball/config';
 import { seasonLinesFromRows, seasonPlayerGamesFromRows } from '../../src/nba/adapters';
-import { activeSince, activeSinceByTeam, LEADER_WINDOWS, leaderboard, topRows } from '../../src/nba/data/leaders';
+import { activeSince, activeSinceByTeam, LEADER_WINDOWS, leaderboard, MOVER_MIN_SEASON_FGA, topRows, windowLine } from '../../src/nba/data/leaders';
 import { prepareBasketballLeaders } from '../../src/routes/basketball/leaders';
 
 const LEAGUES: BasketballLeague[] = ['nba', 'wnba', 'mbb', 'wbb'];
@@ -57,8 +57,17 @@ async function render(lg: BasketballLeague, on: boolean) {
 const fakeAstro = (lg: BasketballLeague, on: boolean) =>
     ({ params: {}, url: new URL(`https://gameonpaper.com${URL_OF(lg)}`), locals: locals(on), cache: { set: () => {} }, response: { headers: new Headers() } }) as any;
 
+test('flag off, Most improved is as before: the NBA 5-game board keeps its sub-100 season-FGA leader; on, it does not', async () => {
+    const off = await prepareBasketballLeaders(fakeAstro('nba', false), 'nba');
+    const on = await prepareBasketballLeaders(fakeAstro('nba', true), 'nba');
+    if ('unavailable' in off || 'unavailable' in on) throw new Error('unavailable');
+    // Ben Saraf: +8.7 over his last 5 on 62 season FGA (the real 2025-26 rows)
+    expect(off.boards![5].improved.rows[0].name).toBe('Ben Saraf');
+    expect(on.boards![5].improved.rows.map((x) => x.name)).not.toContain('Ben Saraf');
+});
+
 describe.each(LEAGUES)('/%s/leaders, Most declined', (lg) => {
-    test('flag on: every window has the board, the improved change ranked from the largest drop, over the same players', async () => {
+    test('flag on: every window has the board, drops only from the largest, rises only on Most improved, 100+ season FGA on both', async () => {
         const r = await prepareBasketballLeaders(fakeAstro(lg, true), lg);
         if ('unavailable' in r) throw new Error('unavailable');
         expect(r.movers).toBe(true);
@@ -70,16 +79,23 @@ describe.each(LEAGUES)('/%s/leaders, Most declined', (lg) => {
         const since = lr ? activeSinceByTeam(placed) : activeSince(placed);
         const lines = lr ? seasonLinesFromRows(FIX[lg].players()) : undefined;
         const bars = BASKETBALL[lg].leaderBars(2026);
+        const seasonFga = (pid: number) => lines?.get(pid)?.attempts ?? windowLine(placed.find((p) => p.person_id === pid)!.games, Infinity)!.attempts;
         for (const n of windows) {
             const b = r.boards![n];
             const down = b.declined!;
-            const fullDown = leaderboard(placed, n, 'declined', since, bars, lines);
-            const fullUp = leaderboard(placed, n, 'improved', since, bars, lines);
-            expect(fullDown.map((x) => x.person_id).sort()).toEqual(fullUp.map((x) => x.person_id).sort());
+            const fullDown = leaderboard(placed, n, 'declined', since, bars, lines, MOVER_MIN_SEASON_FGA);
+            const fullUp = leaderboard(placed, n, 'improved', since, bars, lines, MOVER_MIN_SEASON_FGA);
+            // the unfiltered change ranking, as the boards were before the movers' rules
+            const plain = leaderboard(placed, n, 'improved', since, bars, lines);
             expect(down.rows).toEqual(topRows(fullDown, 15));
             expect(b.improved.rows).toEqual(topRows(fullUp, 15));
             expect(down.rows.length, `${lg} ${n}`).toBeGreaterThan(0);
-            expect(down.eligible).toBe(b.improved.eligible);
+            expect([down.eligible, b.improved.eligible]).toEqual([fullDown.length, fullUp.length]);
+            // the two boards split the plain ranking's 100+ season-FGA players by sign (an exact zero is on neither)
+            expect(fullUp.every((x) => x.value > 0) && fullDown.every((x) => x.value < 0)).toBe(true);
+            expect([...fullUp, ...fullDown].every((x) => seasonFga(x.person_id) >= MOVER_MIN_SEASON_FGA)).toBe(true);
+            const kept = plain.filter((x) => x.value !== 0 && seasonFga(x.person_id) >= MOVER_MIN_SEASON_FGA).map((x) => x.person_id).sort();
+            expect([...fullUp, ...fullDown].map((x) => x.person_id).sort()).toEqual(kept);
             const v = down.rows.map((row) => row.value);
             expect(v).toEqual([...v].sort((a, c) => a - c));
             expect(down.rows[0].value).toBeLessThan(0);
@@ -96,10 +112,17 @@ describe.each(LEAGUES)('/%s/leaders, Most declined', (lg) => {
         const offHtml = await render(lg, false);
         expect(offHtml).not.toContain('declined');
         expect(offHtml).not.toContain('The change:');
+        // four boards: the button row, as today
+        expect(offHtml).toContain('role="group" aria-label="Board"');
+        expect(offHtml).not.toContain('id="leaders-board"');
         const onHtml = await render(lg, true);
-        expect(onHtml).toContain('>Most declined</button>');
+        // five boards: one select at every width, no button row
+        expect(onHtml).toMatch(/<label class="small text-muted" for="leaders-board">Board<\/label>\s*<select id="leaders-board"/);
+        expect(onHtml).toMatch(/<option value="declined"[^>]*>Most declined<\/option>/);
+        expect(onHtml).toMatch(/<option value="efgPct" selected[^>]*>eFG%<\/option>/);
+        expect(onHtml).toContain('<div class="d-none" role="group" aria-label="Board">');
         expect(onHtml).toContain("The change: the window's eFG% minus");
-        expect(onHtml).toContain('Most declined the largest drop.');
+        expect(onHtml).toContain(`for players with ${MOVER_MIN_SEASON_FGA}+ FGA on the season. Most improved lists only rises and Most declined only drops, the largest first.`);
         expect(onHtml).toContain('most improved and declined');
     });
 });

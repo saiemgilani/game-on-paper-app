@@ -3,6 +3,7 @@
 // blazing-the-nets' app/leaders/[season]/page.tsx on GenericPage.
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import Leaderboards from '../nba/Leaderboards.svelte';
+import BoardSelectLeaderboards from '../nba/BoardSelectLeaderboards.svelte';
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import type { NbaLeadersParams } from '../../routes/nba/leaders';
 import { basketball, islandLeagueProps, seasonLabelFor } from '../../basketball/config';
@@ -34,7 +35,10 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
     <div class="row">
       <div class="col-12">
         {boards
-          ? (<Leaderboards client:load boards={boards} netsTeamId={ft?.statsTeamId ?? null} seasonQuery={q} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} {...(ip.leaderBars ? { bars: ip.leaderBars } : {})} {...(league === 'nba' ? {} : { league })} {...(windows ? { windows } : {})} {...(windowNote ? { windowNote } : {})} {...(activeByTeam ? { activeByTeam } : {})} {...(movers ? { movers } : {})} />)
+          // BB-G11: the movers' fifth board turns the board buttons into a select (BoardSelectLeaderboards); four boards keep the buttons
+          ? movers
+            ? (<BoardSelectLeaderboards client:load boards={boards} netsTeamId={ft?.statsTeamId ?? null} seasonQuery={q} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} {...(ip.leaderBars ? { bars: ip.leaderBars } : {})} {...(league === 'nba' ? {} : { league })} {...(windows ? { windows } : {})} {...(windowNote ? { windowNote } : {})} {...(activeByTeam ? { activeByTeam } : {})} movers />)
+            : (<Leaderboards client:load boards={boards} netsTeamId={ft?.statsTeamId ?? null} seasonQuery={q} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} {...(ip.leaderBars ? { bars: ip.leaderBars } : {})} {...(league === 'nba' ? {} : { league })} {...(windows ? { windows } : {})} {...(windowNote ? { windowNote } : {})} {...(activeByTeam ? { activeByTeam } : {})} />)
           : (<p class="text-muted">The Data API has no game logs for {label}, and rolling windows need game dates, so there are no leaderboards for this season.</p>)}
       </div>
     </div>
