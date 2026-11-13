@@ -73,6 +73,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // standings with playoff / play-in / lottery odds, the seed distribution, the NBA's divisions, the first round on the
     // CFP page's bracket component and the draft lottery. Off: the pages are the site's 404 and the Header is today's.
     'bball-playoff-picture': 'preview',
+    // The team season block (BB-G5) on /<league>/team/[id], inside each league's flag: the record, the season rates with
+    // ranks, the all / home / away / close / clutch splits and the schedule with each game's four factors (sdv-db's
+    // team_season_rates, team_strength and game_team_rates); college adds adjusted efficiency margin and tempo. Off: no
+    // read and the team page is today's, byte for byte.
+    'bball-team-season': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

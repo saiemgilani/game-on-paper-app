@@ -777,3 +777,15 @@ and `nba_cup_overtime_2027.parquet`), which sdv-db pins equal to the live call. 
 **Used by:** `test/nbaCup.test.ts`.
 
 **To regenerate:** rerun both producers on sdv-db main's fixtures, write the rows as JSON (dates as ISO strings) and gzip.
+
+## `team-season-nba-2026.json.gz`, `team-season-mbb-2026.json.gz`
+The five Data API reads behind the team season block (BB-G5, `resources/teamSeason.ts`), captured live on 2026-11-04 with
+exactly that module's queries, as `{rates, strength, home, away, gameRates}` (the `data` array of each response, no edits):
+`/v1/<season schema>/team_season_rates?season=2026&team_id=<id>&limit=10`, `/v1/<season schema>/team_strength?season=2026&team_id=<id>&select=…&limit=1`,
+`/v1/<games schema>/schedule?season=2026&season_type=2&home_id=<espn>` and `&away_id=<espn>` (`select=…&limit=200`), and
+`/v1/<games schema>/game_team_rates?season=2026&team_id=<espn>&select=…&limit=200`. NBA: the Brooklyn Nets 2025-26
+(`nba_stats` id 1610612751, `nba` ESPN id 17). MBB: Duke 2025-26 (ESPN 150 in both `mbb` reads).
+
+**Used by:** `test/teamSeason.test.ts`.
+
+**To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
