@@ -6,4 +6,4 @@ import type { NbaGamePrep } from '../../routes/nba/game';
 interface Props { data: Exclude<NbaGamePrep, { notFound: true } | { unavailable: true }> }
 const { data } = Astro.props;
 ---
-{'pregame' in data ? <NbaPreGamePage espnGame={data.espnGame} /> : <NbaGamePage game={data.game} sourceTools={data.sourceTools} impact={data.impact} flow={data.flow} garbage={data.garbage} />}
+{'pregame' in data ? <NbaPreGamePage espnGame={data.espnGame} /> : <NbaGamePage game={data.game} sourceTools={data.sourceTools} impact={data.impact} flow={data.flow} garbage={data.garbage} playerProps={data.playerProps} />}
