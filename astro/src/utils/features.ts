@@ -174,6 +174,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404, and the
     // standings page and the Header have no link.
     'bball-nba-cup': 'preview',
+    // Head-coach boards (BB-G9): /nba/coaches and /wnba/coaches and their Header entry, inside each league's flag.
+    // Football's coach boards on sdv-db's coach_seasons / coach_careers: Career or a season, Ratings or Four Factors,
+    // the producer's ranks and percentiles, with the partial-coverage notice. College waits on an NCAA coach release.
+    // Off: the pages are the site's 404 and the Header is today's.
+    'bball-coaches': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
