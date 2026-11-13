@@ -8,6 +8,8 @@ const prep = vi.fn();
 vi.mock('../../src/routes/nba/game', () => ({ prepareNbaGame: (...a: unknown[]) => prep(...a) }));
 const summary = vi.fn();
 vi.mock('../../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../../src/resources/espn')>()), retrieveGameSummary: (...a: unknown[]) => summary(...a) }));
+// BB-G43's market row ('bball-lines', preview, live or final): no row, never a read
+vi.mock('../../src/resources/gameLines', async (orig) => ({ ...(await orig<typeof import('../../src/resources/gameLines')>()), retrieveGameLine: async () => null }));
 import Page from '../../src/pages/nba/game/[id].astro';
 import { fromDataApi, fromProcessor } from '../../src/resources/nbaGame';
 import { biggestPlays } from '../../src/nba/data/game';

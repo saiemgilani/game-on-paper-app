@@ -9,6 +9,9 @@ import { basketball } from '../../../basketball/config';
 import { cleanAbbreviation } from '../../../utils/misc';
 import RecentForm from '../../game/RecentForm.astro';
 import NbaPlayersToWatch from './NbaPlayersToWatch.astro';
+import NbaGameLines from './NbaGameLines.astro';
+import { retrieveGameLine } from '../../../resources/gameLines';
+import { isFeatureEnabled } from '../../../utils/features';
 import { basketballEventJsonLd } from '../../../basketball/parity';
 import { retrieveGameSummary, type ESPNPlayByPlayResponse } from '../../../resources/espn';
 
@@ -24,6 +27,8 @@ const ab = (c: any) => cleanAbbreviation(c.team);
 // "ATL 0-0", or just "ATL" when the record is missing
 const side = (c: any) => [ab(c), rec(c)].filter(Boolean).join(' ');
 const paren = (c: any) => (rec(c) ? ` (${rec(c)})` : '');
+// BB-G43 ('bball-lines'): the market row beside the summary's read; no row, no panel; a failed read says so
+const linesRead = isFeatureEnabled('bball-lines', Astro.locals) ? retrieveGameLine(league, espnGame.gamepackageJSON.header.season?.year ?? null, String(espnGame.gameId)).then((row) => row ?? undefined, (e: any) => { console.error(`ERROR while loading the ${league} game lines for game ${espnGame.gameId}: ${e}`); return null; }) : undefined;
 // the line is the summary's pickcenter, shown only when ESPN has one (never a default)
 const summary = await retrieveGameSummary(espnGame.gameId, league, AbortSignal.timeout(3000)); // a slow ESPN must not stall a cold pregame render
 const line = summary?.pickcenter?.[0]?.details || null;
@@ -32,6 +37,7 @@ const description = `${away.team.displayName}${paren(away)} at ${home.team.displ
 const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: leaguePath(league, '/'), active: false }, { title: 'Scoreboard', url: scoreboardDayHref(league, comp.date), active: false }, { title: `${ab(away)} @ ${ab(home)}`, active: true }];
 const networks = ((comp as any).broadcasts ?? []).map((b: any) => b?.media?.shortName).filter(Boolean).join(', ');
 const season = espnGame.gamepackageJSON.header.season?.year ?? null;
+const lines = await linesRead;
 const jsonLd = basketballEventJsonLd({
     league, path: gameHref(league, espnGame.gameId), date: comp.date, description, venue: (comp as any).venue?.fullName ?? null, statusDetail: comp.status?.type?.description ?? null,
     home: { name: home.team.displayName, href: teamHrefFromEspn(home.team, league, season), score: null },
@@ -49,5 +55,6 @@ const jsonLd = basketballEventJsonLd({
   <div class="container">
     {season !== null && <NbaPlayersToWatch homeTeam={home.team} awayTeam={away.team} season={season} />}
     <RecentForm summary={summary} homeTeam={home.team} awayTeam={away.team} />
+    {lines !== undefined && (<section id="lines" class="mt-3"><h2 class="h5">Lines and markets</h2><NbaGameLines line={lines} home={home.team} away={away.team} /></section>)}
   </div>
 </GenericPage>

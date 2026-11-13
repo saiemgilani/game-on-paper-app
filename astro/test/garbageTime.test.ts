@@ -54,6 +54,8 @@ vi.mock('../src/resources/garbageTime', async (orig) => {
 });
 const sched = vi.fn(), rows = vi.fn();
 vi.mock('../src/resources/nbaGames', async (orig) => ({ ...(await orig<typeof import('../src/resources/nbaGames')>()), retrieveNbaSchedule: (...a: unknown[]) => sched(...a), retrieveNbaGameRows: (...a: unknown[]) => rows(...a) }));
+// BB-G43's market row ('bball-lines', preview, live or final): no row, never a read
+vi.mock('../src/resources/gameLines', async (orig) => ({ ...(await orig<typeof import('../src/resources/gameLines')>()), retrieveGameLine: async () => null }));
 
 import NbaGamePage from '../src/components/nba/game/NbaGamePage.astro';
 import { EMPTY_IMPACT, type ImpactBoxReads } from '../src/resources/impactBox';

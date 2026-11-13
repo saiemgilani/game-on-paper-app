@@ -846,3 +846,18 @@ within one (the log leaves the defense's technical free throws out); rebounds hi
 
 **To regenerate:** rerun those calls in an sdv-py checkout of `origin/main` (polars, no network beyond the GitHub
 release assets), write `{...}` above with `json.dumps(..., default=str)` and gzip (`mtime=0`).
+
+## `game-lines.json`
+Ten real `game_lines` rows (BB-D33, sdv-db #216) and the eight finals' scores, the oracle for BB-G43's Lines and markets
+panel (`utils/gameLines.ts`). Read from the Data API on 2026-11-10 as `{game_lines, schedule}`:
+
+- **`game_lines`**: `GET /v1/{lg}/game_lines?season=S&limit=2` for nba 2026 and 2027, wnba 2025, mbb 2026 and wbb 2026, as
+  served. The 2026-27 NBA rows are open-only (no close, no results: the current season's odds crosswalk is not rebuilt);
+  WKU-DEL (wbb, 401805007) has a spread but no total and no moneylines.
+- **`schedule`**: `GET /v1/{lg}/schedule?id=<game_id>&select=id,season,home_score,away_score,home_abbreviation,away_abbreviation`
+  for the eight finals, with `league` added.
+
+**Used by:** `test/gameLines.test.ts` (the cover and total results against the rows' own `ats_result` / `total_result`).
+
+**To regenerate:** repeat the reads (a season filter and a small limit, `Authorization: Bearer` with the read key); the
+rows' game ids are asserted, so keep the same ones.

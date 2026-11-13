@@ -15,6 +15,8 @@ import type { BasketballLeague } from '../../utils/league';
 import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBox';
 import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
 import { retrieveGarbageTime, type GarbageReads } from '../../resources/garbageTime';
+import { retrieveGameLine, settled } from '../../resources/gameLines';
+import type { GameLine } from '../../utils/gameLines';
 import { seasonCache, setCache, uncacheable } from './cache';
 
 /** The admin source tool's data (components/nba/game/NbaAdminSourceTools.astro); only an admin on the 'source-switch' path gets it. */
@@ -31,7 +33,12 @@ export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { 
     /** `impact`: BB-G1, only with 'bball-impact-box' on and a final; null when a read failed (the panel says so) */
     /** `flow`: BB-G28, only with 'bball-game-flow' on and a final; null when its read failed (the lead chart still draws) */
     /** `garbage`: BB-G2, only with 'bball-garbage-time' and 'bball-impact-box' on and a final; `reads` null when the log's read failed */
-    | { game: NbaGame; sourceTools?: BasketballSourceTools; impact?: ImpactBoxReads | null; flow?: GameFlowReads | null; garbage?: { reads: GarbageReads | null; out: boolean } };
+    | { game: NbaGame; sourceTools?: BasketballSourceTools; impact?: ImpactBoxReads | null; flow?: GameFlowReads | null; garbage?: { reads: GarbageReads | null; out: boolean }
+        /** `lines`: BB-G43, only with 'bball-lines' on, live or final, and only when the game has a row; null when the read failed */
+        lines?: GameLine | null };
+
+/** BB-G43: how long after the game a final without a settled market row is still re-read on the nightly's window (a season). */
+export const LINES_RECENT_MS = 200 * 24 * 60 * 60 * 1000;
 
 /** BB-G2's toggle: `?garbage=out` leaves the garbage-time possessions out; read only with 'bball-garbage-time' on. */
 export const GARBAGE_PARAM = 'garbage';
@@ -85,6 +92,26 @@ function degraded(id: string, message: string, league: BasketballLeague): void {
 
 export async function prepareBasketballGame(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballGamePrep> {
     const r = await prepareGame(Astro, league);
+    // BB-G43's Lines and markets, live or final (the pregame page reads its own)
+    if (!('game' in r) || !isFeatureEnabled('bball-lines', Astro.locals)) return finalPanels(Astro, league, r);
+    const game = r.game;
+    const [p, read] = await Promise.all([finalPanels(Astro, league, r), retrieveGameLine(league, game.season, game.id).then((row) => ({ row }), (e: any) => {
+        console.error(`ERROR while loading the ${league} game lines for game ${game.id}: ${e}, ${e?.stack}`);
+        return null;
+    })]);
+    // decorative like the final's panels: a failed read is never cached; a recent ingested final with no settled row yet (the
+    // current season's are mostly unmapped) follows the nightly's window, unless a panel's failed read made it uncacheable.
+    // ponytail: "recent" is the game date within LINES_RECENT_MS, not the season; an older unmapped game keeps its year
+    const failed = Object.values(p).some((x) => x === null || (x && typeof x === 'object' && 'reads' in x && x.reads === null));
+    const recent = Date.now() - Date.parse(game.date) < LINES_RECENT_MS;
+    if (read === null) uncacheable(Astro);
+    else if (game.source === 'data_api' && recent && !settled(read.row) && !failed) setCache(Astro, seasonCache(league));
+    const lines = read === null ? null : read.row ?? undefined;
+    return lines === undefined ? p : { ...(p as Extract<BasketballGamePrep, { game: NbaGame }>), lines };
+}
+
+/** The final's panels (BB-G1, BB-G28, BB-G2): read only once a final will render. */
+async function finalPanels(Astro: AstroGlobal, league: BasketballLeague, r: BasketballGamePrep): Promise<BasketballGamePrep> {
     // read only once a final will render: a 404, 503, pregame or live page never spends the reads, and flag off is today's page.
     // The producer's tables are per season, so a game with no season has nothing to read (no panel, not "unavailable").
     if (!('game' in r) || !r.game.status.completed || r.game.season == null) return r;

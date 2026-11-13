@@ -65,6 +65,8 @@ vi.mock('../src/resources/impactBox', async (orig) => {
 const sched = vi.fn(), rows = vi.fn(), proc = vi.fn(), espn = vi.fn();
 vi.mock('../src/resources/nbaGames', async (orig) => ({ ...(await orig<typeof import('../src/resources/nbaGames')>()), retrieveNbaSchedule: (...a: unknown[]) => sched(...a), retrieveNbaGameRows: (...a: unknown[]) => rows(...a), retrieveNbaProcessedGame: (...a: unknown[]) => proc(...a) }));
 vi.mock('../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../src/resources/espn')>()), retrieveGamePageGuarded: (...a: unknown[]) => espn(...a) }));
+// BB-G43's market row ('bball-lines', preview, live or final): no row, never a read
+vi.mock('../src/resources/gameLines', async (orig) => ({ ...(await orig<typeof import('../src/resources/gameLines')>()), retrieveGameLine: async () => null }));
 
 import NbaImpactBox from '../src/components/nba/game/NbaImpactBox.astro';
 import { EMPTY_IMPACT, retrieveImpactBox, TOP_UNITS, UNIT_LIMIT, type ImpactBoxReads } from '../src/resources/impactBox';
