@@ -846,3 +846,26 @@ within one (the log leaves the defense's technical free throws out); rebounds hi
 
 **To regenerate:** rerun those calls in an sdv-py checkout of `origin/main` (polars, no network beyond the GitHub
 release assets), write `{...}` above with `json.dumps(..., default=str)` and gzip (`mtime=0`).
+
+## `game-info.json.gz`
+The reads behind BB-G42's Game info (`resources/gameInfo.ts`), captured on 2026-11-10, as `{captured, summary,
+official_seasons, officials, espn_injuries}`:
+
+- **`summary`**: ESPN's site summary (`site.api.espn.com/.../summary?event=<id>`) for six games, trimmed to `header` (id,
+  date, the two competitors), `gameInfo.officials` and `injuries` (each player's status, athlete id and name, details).
+  NBA 401766458 (ORL-ATL final, 2025-04-15: its `injuries` are the 2026-11-09 report, which is why a final reads the
+  snapshot), 401909952 (LAL at ATL, 2026-11-09 Eastern), 401909960 (MIL at NY, scheduled: no crew named yet); WNBA
+  401856902, MBB 401823353, WBB 401812873 (the BB-G28 games).
+- **`official_seasons`**: the Data API's `{nba_stats,wnba_stats,mbb,wbb}/official_seasons` (BB-D34) for NBA 2025 (78
+  officials) and WNBA, MBB and WBB 2026 (35, 813, 839), the columns `PROFILE_SELECT` names, `limit=5000`.
+  Added 2026-11-13 for Q33 (the previous season beside a thin one), captured live with the same query: NBA 2024, 2026
+  and 2027 (80, 81, 83 officials), WNBA 2025 (38), MBB 2025 (823) and WBB 2025 (0: its officials release starts in 2026).
+- **`officials`**: `nba/officials?season=2025&game_id=401766458` (names only) and `wnba/officials?season=2026&game_id=401856902`
+  (with ESPN's `official_id`).
+- **`espn_injuries`**: `nba/espn_injuries?season=2027&as_of_date__gte=2026-11-06&as_of_date__lte=2026-11-09&order=-as_of_date`
+  (the 6th, 7th and 8th: no Nov 9 filing) and `season=2025&as_of_date=2025-04-15` (empty: no snapshot that far back).
+
+**Used by:** `test/gameInfo.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered, one at a time), trim the summaries
+to the keys above and gzip.

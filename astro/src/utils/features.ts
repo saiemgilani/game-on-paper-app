@@ -90,6 +90,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // No toggle when the log has no flag (a release from before BB-D7) or no garbage time. Off: no read, `?garbage=` is
     // ignored, and the game page is today's, byte for byte.
     'bball-garbage-time': 'preview',
+    // BB-G42's Game info on /<league>/game/[id], pregame, live and final: the officiating crew with each official's season
+    // profile (official_seasons, BB-D34) against the league's games-weighted average, and availability: the pros' injury
+    // report (ESPN's, pregame and live; the day's espn_injuries snapshot for a final) and the box's DNPs with their reasons.
+    // Off: no read, and the pregame and game pages are today's.
+    'bball-game-info': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
