@@ -24,13 +24,12 @@ interface Props { data: BasketballCompareParams }
 const { season, seasons, current, entries, teams, roster, team } = Astro.props.data;
 const league = basketball(Astro.locals.league).league;
 const college = isNcaaDashboards(league);
-const label = seasonLabelFor(league, season);
+// season null: each card shows the player's latest season (football's compare); a picked season is always in the URL
+const label = season === null ? null : seasonLabelFor(league, season);
 const ids = entries.map((e) => e.id);
-// the current season is the canonical (season-less) URL, as on every basketball page
-const at = (s: number) => (s === current ? null : s);
-const href = (list: string[], s = season) => compareHref(league, list, at(s));
-const q = seasonQuery(season, current);
-const withoutWar = isFeatureEnabled('bball-war', Astro.locals);
+const href = (list: string[], s: number | null = season) => compareHref(league, list, s);
+const q = seasonQuery(season ?? current, current);
+const relabelWar = isFeatureEnabled('bball-war', Astro.locals);
 
 const cards = entries.map((e) => {
     const remove = href(ids.filter((x) => x !== e.id));
@@ -40,9 +39,10 @@ const cards = entries.map((e) => {
         name: e.player.player_name,
         headshot: e.headshot,
         teams: e.teams.join(', ') || e.player.team_tricode,
-        href: playerHref(e.player.person_id, q, league),
+        season: seasonLabelFor(league, e.season),
+        href: playerHref(e.player.person_id, seasonQuery(e.season, current), league),
         sections: [
-            ...(e.impact !== undefined ? [{ id: 'impact', title: 'Impact', rows: impactRows(e.impact, college, withoutWar), failed: e.impact === null }] : []),
+            ...(e.impact !== undefined ? [{ id: 'impact', title: 'Impact', rows: impactRows(e.impact, college, relabelWar), failed: e.impact === null }] : []),
             ...(e.war !== undefined ? [{ id: 'value', title: 'Value', rows: valueRows(e.war), failed: e.war === null }] : []),
             { id: 'shooting', title: 'Shooting', rows: shootingRows(e.player), failed: false },
         ],
@@ -56,7 +56,8 @@ const addRoute = (t: number) => { const u = href(ids); return `${u}${u.includes(
 const name = LEAGUES[league].shortName;
 const pageUrl = href(ids);
 const names = loaded.map((c) => c.name).join(' vs. ');
-const title = names ? `${names}: ${label} player comparison` : `${label} player comparison`;
+const kind = label ? `${label} player comparison` : 'player comparison';
+const title = names ? `${names}: ${kind}` : kind[0].toUpperCase() + kind.slice(1);
 const breadcrumbs: PageBreadcrumb[] = [
     { title: name, url: leaguePath(league, '/'), active: false },
     { title: 'Players', url: `${leaguePath(league, '/players')}${q}`, active: false },
@@ -64,7 +65,7 @@ const breadcrumbs: PageBreadcrumb[] = [
 ];
 ---
 
-<GenericPage title={title} subtitle="Player comparison" description={`Compare ${name} players side by side: impact, value and shooting for the ${label} season.`} slug={pageUrl} canonicalPath={pageUrl} breadcrumbs={breadcrumbs} heading={title}>
+<GenericPage title={title} subtitle="Player comparison" description={`Compare ${name} players side by side: impact, value and shooting for ${label ? `the ${label} season` : 'each player\'s latest season'}.`} slug={pageUrl} canonicalPath={pageUrl} breadcrumbs={breadcrumbs} heading={title}>
     <div class="container">
         <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2 mb-3" id="player-compare-controls">
             {ids.length < MAX_COMPARE ? (
@@ -87,6 +88,7 @@ const breadcrumbs: PageBreadcrumb[] = [
             <div class="d-flex align-items-center gap-2 ms-md-auto">
                 <label class="form-label text-muted text-small mb-0" for="player-compare-season">Season</label>
                 <select id="player-compare-season" class="form-select form-select-md w-auto" onchange="window.location.href = this.value">
+                    <option value={href(ids, null)} selected={season === null}>Latest</option>
                     {[...seasons].reverse().map((s) => <option value={href(ids, s)} selected={s === season}>{seasonLabelFor(league, s)}</option>)}
                 </select>
             </div>
@@ -101,7 +103,7 @@ const breadcrumbs: PageBreadcrumb[] = [
                     <div class="card-body p-2 p-md-3">
                         {'missing' in c ? (
                             <Fragment>
-                                <p class="text-muted text-small">No {label} line for this player.</p>
+                                <p class="text-muted text-small">{label ? `No ${label} line for this player.` : 'No line for this player.'}</p>
                                 <a class="btn btn-sm btn-outline-secondary" href={c.remove} data-compare-remove>Remove</a>
                             </Fragment>
                         ) : (
@@ -110,7 +112,7 @@ const breadcrumbs: PageBreadcrumb[] = [
                             <NbaHeadshot src={c.headshot} name={c.name} size={96} class="mb-2" />
                             <h2 class="h5 mb-1"><a href={c.href}>{c.name}</a></h2>
                             <p class="mb-0 text-muted">{c.teams}</p>
-                            <p class="mb-2 text-muted text-small">{label}</p>
+                            <p class="mb-2 text-muted text-small" data-compare-season>{c.season}</p>
                             <a class="btn btn-sm btn-outline-secondary" href={c.remove} data-compare-remove>Remove</a>
                         </div>
                         {c.sections.map((s) => (
@@ -143,7 +145,7 @@ const breadcrumbs: PageBreadcrumb[] = [
         </div>
 
         <p class="text-muted text-small" id="player-compare-provenance">
-            Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>, {label}.{ranked && ' Ranks and shading (percentile) are the producer’s own; the shooting rows carry none.'}
+            Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>, {label ?? 'each player’s latest season'}.{ranked && ' Ranks and shading (percentile) are the producer’s own; the shooting rows carry none.'}
         </p>
     </div>
 </GenericPage>

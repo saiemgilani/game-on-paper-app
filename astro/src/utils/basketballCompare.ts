@@ -26,8 +26,8 @@ const orDash = (v: number | null, f: (v: number) => string) => (v == null ? DASH
  * The Impact rows: each measure's net number, then its offense and defense when it has them. `rows` null (the read
  * failed) or empty gives the same rows with dashes: impactPanel over an empty row is every measure with no value.
  */
-export function impactRows(rows: PlayerImpactRow[] | null, college: boolean, withoutWar: boolean): CompareRow[] {
-    const panel = impactPanel(rows?.length ? rows : [{}], college, withoutWar)!;
+export function impactRows(rows: PlayerImpactRow[] | null, college: boolean, relabelWar: boolean): CompareRow[] {
+    const panel = impactPanel(rows?.length ? rows : [{}], college, relabelWar)!;
     return panel.measures.flatMap((m) => ([['', m.net], [' off', m.off], [' def', m.def]] as const).flatMap(([side, c]) => (c ? [{
         key: c.col, label: `${m.label}${side}`, hover: m.hover, text: orDash(c.value, signed1), rank: c.rank, pct: c.pct,
     }] : [])));

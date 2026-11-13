@@ -30,13 +30,14 @@ const SWAIN = 4848625; // Texas 2025-26
 const MARK = 4432243;
 
 const byId = (rows: any[], id: number) => rows.filter((r) => Number(r.player_id) === id);
-const reads = vi.hoisted(() => ({ season: vi.fn(), impact: vi.fn(), war: vi.fn() }));
+const reads = vi.hoisted(() => ({ season: vi.fn(), impact: vi.fn(), war: vi.fn(), seasons: vi.fn() }));
 const feed = { seasonRows: (league: string) => (league === 'mbb' ? PC.mbbSeasonPlayers : PC.nbaSeasonPlayers) };
 beforeEach(() => {
     for (const m of Object.values(reads)) m.mockReset();
     reads.season.mockImplementation(async (_s: number, league: string) => feed.seasonRows(league));
     reads.impact.mockImplementation(async (league: string, _s: number, id: number) => byId(league === 'mbb' ? PI.mbbTeam : PC.nbaImpact, id));
     reads.war.mockImplementation(async (league: string, _s: number, id: number) => byId(league === 'mbb' ? PW.mbbTeam : PC.nbaWar, id));
+    reads.seasons.mockResolvedValue([2025, 2026]);
 });
 
 // the player page's own reads, for the Compare button tests (playerWar.test.ts's mocks)
@@ -52,7 +53,7 @@ vi.mock('../src/resources/nbaShots', async (orig) => ({
     ],
     retrievePlayerShots: async (_s: number, id: number) => shots.filter((s) => s.person_id === id).map(lite),
     retrievePlayerGameRows: async () => [],
-    retrievePlayerSeasons: async () => [2025, 2026],
+    retrievePlayerSeasons: (...a: unknown[]) => reads.seasons(...a),
     retrieveCoverageRows: async () => [],
 }));
 vi.mock('../src/resources/playerImpact', () => ({ retrievePlayerImpact: (...a: unknown[]) => reads.impact(...a) }));
@@ -113,12 +114,14 @@ describe('the rows (pure)', () => {
             expect(impactRows(none, false, true).map((r) => r.key)).toEqual(impactRows(byId(PC.nbaImpact, MPJ), false, true).map((r) => r.key));
         }
     });
-    test("Impact: player_impact ships no ranks yet, so no rank and no shade; 'bball-war' on drops its WAR", () => {
+    test("Impact: player_impact ships no ranks yet, so no rank and no shade; 'bball-war' on names its WAR \"Impact WAR\"", () => {
         const rows = impactRows(byId(PC.nbaImpact, MPJ), false, false);
         expect(rows.every((r) => r.rank === null && r.pct === null)).toBe(true);
         expect(rows.find((r) => r.key === 'rapm')!.text).toBe(`+${byId(PC.nbaImpact, MPJ)[0].rapm.toFixed(1)}`);
         expect(rows.some((r) => r.key === 'war')).toBe(true);
-        expect(impactRows(byId(PC.nbaImpact, MPJ), false, true).some((r) => r.key === 'war')).toBe(false);
+        expect(rows.find((r) => r.key === 'war')!.label).toBe('WAR');
+        const relabelled = impactRows(byId(PC.nbaImpact, MPJ), false, true).find((r) => r.key === 'war')!;
+        expect([relabelled.label, relabelled.text]).toEqual(['Impact WAR', rows.find((r) => r.key === 'war')!.text]);
         // college: player_value's box BPM, net then offense and defense
         expect(impactRows(byId(PI.mbbTeam, SWAIN), true, true).map((r) => r.key)).toEqual(['box_bpm', 'box_obpm', 'box_dbpm']);
     });
@@ -169,7 +172,30 @@ describe('the page-side step', () => {
         const { r } = await prep('nba', `?ids=${MPJ}&season=2026`, on({ 'bball-impact': false, 'bball-war': false }));
         expect(reads.impact).not.toHaveBeenCalled();
         expect(reads.war).not.toHaveBeenCalled();
-        expect('entries' in r && Object.keys(r.entries[0]).sort()).toEqual(['headshot', 'id', 'player', 'teams']);
+        expect('entries' in r && Object.keys(r.entries[0]).sort()).toEqual(['headshot', 'id', 'player', 'season', 'teams']);
+    });
+    test("no ?season=: each card is that player's latest listed season (as football's), read by that season", async () => {
+        const latest: Record<number, number[]> = { [MPJ]: [2019, 2025, 2026], [CLOWNEY]: [2025], 999: [] };
+        reads.seasons.mockImplementation(async (id: number) => latest[id] ?? []);
+        const { r, set } = await prep('nba', `?ids=${MPJ},${CLOWNEY},999`);
+        if (!('entries' in r)) throw new Error('no page');
+        expect(r.season).toBeNull();
+        expect(reads.seasons.mock.calls.map((c) => c[0]).sort()).toEqual([999, MPJ, CLOWNEY].sort());
+        // the add control's season (the current one) and each card's own, each read once
+        expect(reads.season.mock.calls.map((c) => c[0]).sort()).toEqual([2025, 2026, r.current].sort());
+        expect(r.entries.map((e) => ('season' in e ? e.season : null))).toEqual([2026, 2025, null]);
+        expect(reads.impact.mock.calls.map((c) => c.slice(1, 3)).sort()).toEqual([[2025, CLOWNEY], [2026, MPJ]]);
+        expect(reads.war.mock.calls.map((c) => c.slice(1, 3)).sort()).toEqual([[2025, CLOWNEY], [2026, MPJ]]);
+        expect(r.entries[2]).toEqual({ id: '999', missing: true }); // no season with a row: a "no line" card, never cached
+        expect(set).toHaveBeenLastCalledWith(false);
+    });
+    test('?season= pins every card to that season, with no season-list read; a failed season-list read keeps the card on the current season, uncached', async () => {
+        await prep('nba', `?ids=${MPJ}&season=2026`);
+        expect(reads.seasons).not.toHaveBeenCalled();
+        reads.seasons.mockImplementation(async () => { throw new Error('Data API 502'); });
+        const { r, set } = await prep('nba', `?ids=${MPJ}`);
+        expect('entries' in r && r.entries[0]).toMatchObject({ season: 'current' in r ? r.current : 0 });
+        expect(set).toHaveBeenLastCalledWith(false);
     });
     test('the add control: ?team= lists that team\'s players not already compared; an unknown team lists none', async () => {
         const { r } = await prep('nba', `?ids=${MPJ}&season=2026&team=1610612751`);
@@ -196,17 +222,25 @@ describe('the page', () => {
                 expect(text).not.toContain('#');
             }
         }
-        expect(cells(mpj, 'impact').some(([label]) => label === 'WAR')).toBe(false); // 'bball-war' on: WAR is Value's
+        // 'bball-war' on: Impact's WAR keeps its row as "Impact WAR"; plain WAR is Value's
+        expect(cells(mpj, 'impact').filter(([label]) => label.includes('WAR')).map(([label]) => label)).toEqual(['Impact WAR']);
         expect(cells(card(page, CLOWNEY), 'value')[0][2]).toBe(`${byId(PC.nbaWar, CLOWNEY)[0].war.toFixed(1)} #286`);
         // the rows line up: both cards list the same labels in the same order
         for (const section of ['impact', 'value', 'shooting']) {
             expect(cells(card(page, CLOWNEY), section).map((c) => c[0])).toEqual(cells(mpj, section).map((c) => c[0]));
         }
-        expect(page).toMatch(/<option value="\/nba\/players\/compare\?ids=1629008,1641730"[^>]*>2026-27<\/option>/);
+        // every season is in its URL; the season-less URL is "Latest" (each player's latest season)
+        expect(page).toMatch(/<option value="\/nba\/players\/compare\?ids=1629008,1641730&amp;season=2027"[^>]*>2026-27<\/option>/);
+        expect(page).toContain('<option value="/nba/players/compare?ids=1629008,1641730">Latest</option>');
+        expect(mpj).toContain('data-compare-season>2025-26</p>');
         expect(page).toContain(`value="/nba/players/compare?ids=${MPJ},${CLOWNEY}&amp;season=2026&amp;team=1610612751"`);
     });
-    test('MBB: Texas cards, player_value BPM and player_war WAR (#48 for Swain)', async () => {
+    test("MBB, no ?season=: each player's latest season; Texas cards, player_value BPM and player_war WAR (#48 for Swain)", async () => {
         const page = await render('mbb', `?ids=${SWAIN},${MARK}`);
+        expect(page).toMatch(/<option value="\/mbb\/players\/compare\?ids=4848625,4432243" selected[^>]*>Latest<\/option>/);
+        expect(card(page, SWAIN)).toContain('data-compare-season>2025-26</p>');
+        expect(card(page, SWAIN)).toContain(`href="/mbb/players/${SWAIN}"`); // 2025-26 is the MBB current season: his canonical page
+        expect(page).toContain('each player’s latest season.');
         const swain = card(page, SWAIN);
         expect(swain).toContain('Dailyn Swain');
         expect(cells(swain, 'value')[0][2]).toBe(`${byId(PW.mbbTeam, SWAIN)[0].war.toFixed(1)} #48`);
