@@ -23,7 +23,7 @@ vi.mock('../../src/resources/teamSeason', async (orig) => ({
 // BB-G3's Lineups tab reads the Data API with 'bball-lineups' on (preview): never from a test
 vi.mock('../../src/resources/lineups', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/lineups')>()),
-    retrieveLineups: async () => ({ units: [], names: [] }),
+    retrieveLineups: async () => ({ units: [], names: [], pairs: [] }),
 }));
 // BB-G25's Situations section reads the Data API with 'bball-situational' on (preview): never from a test
 vi.mock('../../src/resources/situational', async (orig) => ({
@@ -105,7 +105,7 @@ describe('the WNBA dashboard pages', () => {
         expect(html).toContain('424 of 2,045 shots this season have no recorded location.');
     });
     test("a team page's season picker lists only its franchise's seasons (Charlotte 1997-2006, Detroit's franchise 1998-2026)", async () => {
-        // the season select only (BB-G3's Lineups tab adds two more selects with 'bball-lineups' on)
+        // the season select only (BB-G3's Lineups tab adds three more selects with 'bball-lineups' on)
         const options = (html: string) => [...html.match(/<select id="nba-season"[\s\S]*?<\/select>/)![0].matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]);
         const cha = options(await page('team/[id].astro', '/wnba/team/1611661314?season=2003', { id: '1611661314' }));
         expect(cha).toEqual(Array.from({ length: 10 }, (_, i) => `/wnba/team/1611661314?season=${2006 - i}`));

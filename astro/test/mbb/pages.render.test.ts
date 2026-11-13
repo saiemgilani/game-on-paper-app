@@ -21,7 +21,7 @@ vi.mock('../../src/resources/teamSeason', async (orig) => ({
     retrieveTeamSeason: async () => ({ rates: [], strength: null, games: [], gameRates: [] }),
 }));
 // BB-G3's Lineups tab reads the Data API with 'bball-lineups' on (preview): never from a test
-const lineupsRead = vi.hoisted(() => ({ value: { units: [] as any[], names: [] as any[] } }));
+const lineupsRead = vi.hoisted(() => ({ value: { units: [] as any[], names: [] as any[], pairs: [] as any[] } }));
 vi.mock('../../src/resources/lineups', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/lineups')>()),
     retrieveLineups: async () => lineupsRead.value,
@@ -100,13 +100,14 @@ describe('the MBB dashboard pages', () => {
     });
     test("/mbb/team/<Texas>, Lineups: a unit's stats.ncaa.org ids are never named from the ESPN-keyed season rows", async () => {
         const [p1, p2] = seasonPlayers(2026).filter((r) => r.team_id === TEX);
-        lineupsRead.value = { units: [{ lineup_id: `${p1.person_id}-${p2.person_id}`, n_players: 2, player_1: String(p1.person_id), player_2: String(p2.person_id), player_3: null, player_4: null, player_5: null, minutes: 10, poss: 60, opp_poss: 60, pts: 60, opp_pts: 60, plus_minus: 0 }], names: [] };
+        lineupsRead.value = { units: [{ lineup_id: `${p1.person_id}-${p2.person_id}`, n_players: 2, player_1: String(p1.person_id), player_2: String(p2.person_id), player_3: null, player_4: null, player_5: null, minutes: 10, poss: 60, opp_poss: 60, pts: 60, opp_pts: 60, plus_minus: 0 }], names: [], pairs: [] };
         try {
             const tab = (await page('team/[id].astro', `/mbb/team/${TEX}?unit=2`, { id: String(TEX) })).split('id="lineups"')[1].split('</section>')[0];
-            expect(tab).toContain(`#${p1.person_id} · #${p2.person_id}`);
+            expect(tab.replace(/<[^>]+>/g, '')).toContain(`#${p1.person_id} · #${p2.person_id}`);
+            expect(tab).not.toContain(`/mbb/players/${p1.person_id}`); // no crosswalk pair: no link
             expect(tab).not.toContain(p1.player_name);
         } finally {
-            lineupsRead.value = { units: [], names: [] };
+            lineupsRead.value = { units: [], names: [], pairs: [] };
         }
     });
     test('/mbb/team/<Texas>?season=2019: the 20\' 9" court', async () => {

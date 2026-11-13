@@ -23,7 +23,7 @@ vi.mock('../src/resources/teamSeason', async (orig) => ({
 // BB-G3's Lineups tab reads the Data API with 'bball-lineups' on (preview): never from a test
 vi.mock('../src/resources/lineups', async (orig) => ({
     ...(await orig<typeof import('../src/resources/lineups')>()),
-    retrieveLineups: async () => ({ units: [], names: [] }),
+    retrieveLineups: async () => ({ units: [], names: [], pairs: [] }),
 }));
 // BB-G25's Situations section reads the Data API with 'bball-situational' on (preview): never from a test
 vi.mock('../src/resources/situational', async (orig) => ({

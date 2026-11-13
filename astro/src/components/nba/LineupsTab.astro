@@ -1,14 +1,16 @@
 ---
 // src/components/nba/LineupsTab.astro
-// BB-G3, behind 'bball-lineups': the team page's Lineups tab. The team's 5-, 3- or 2-man units over the possession gate,
-// most possessions first, per 100 possessions (ratings and the four factors for and against) or in totals. The unit
-// size and the basis are two plain <select>s of URLs (NbaSeasonSelect's pattern: no JS island). Every number and
-// percentile is the producer's (sdv-db lineup_seasons): a cell is shaded by its league percentile on the site's
-// green-to-purple ramp where the producer ranked the unit, and left plain below its rank gate.
-import { MIN_POSS, UNIT_LIMIT, UNIT_SIZES, type LineupRow, type Rated } from '../../resources/lineups';
-import { BASES, BASIS_LABEL, DEFAULT_BASIS, DEFAULT_UNIT, type LineupsTab } from '../../utils/lineups';
+// BB-G3, behind 'bball-lineups': the team page's Lineups tab. The team's 5-, 3- or 2-man units over a possession gate
+// (50 / 100 / 200, or only the units the producer ranked), most possessions first or by any column, per 100 possessions
+// (ratings and the four factors for and against), in totals, or (college) by shot zone. The unit size, the basis and the
+// gate are plain <select>s of URLs and the column sort is header links (NbaSeasonSelect's and the roster's patterns: no
+// JS island). Every number and percentile is the producer's (sdv-db lineup_seasons): a cell is shaded by its league
+// percentile on the site's green-to-purple ramp where the producer ranked the unit, and left plain below its rank gate.
+// A player's surname links to his player page where he has one.
+import { RANK_POSS, UNIT_LIMIT, UNIT_SIZES, DEFAULT_GATE, GATES, type LineupRow } from '../../resources/lineups';
+import { basesFor, BASIS_LABEL, DEFAULT_BASIS, DEFAULT_SORT, DEFAULT_UNIT, GATE_LABEL, type LineupsTab } from '../../utils/lineups';
 import { fmtDec, fmtInt, fmtPct } from '../../nba/format';
-import { withParams } from '../../nba/links';
+import { playerHref, seasonQuery, withParams } from '../../nba/links';
 import { generateColorRampValue, generateMarginalString } from '../../utils/misc';
 import { basketball, seasonLabelFor } from '../../basketball/config';
 
@@ -16,11 +18,17 @@ interface Props { data: LineupsTab; season: number; current: number; basePath: s
 const { data, season, current, basePath, teamName } = Astro.props;
 const league = basketball(Astro.locals.league).league;
 const label = seasonLabelFor(league, season);
-const gate = MIN_POSS[league];
-const { unit, basis, units, labels } = data;
+const { unit, basis, gate, sort, dir, units, labels } = data;
+const ranked = gate === 'ranked';
+const pq = seasonQuery(season, current);
 
-const href = (u: number, b: string) =>
-    `${withParams(basePath, { season: String(season), unit: String(u), basis: b }, { season: String(current), unit: String(DEFAULT_UNIT), basis: DEFAULT_BASIS })}#lineups`;
+const defaults = { season: String(current), unit: String(DEFAULT_UNIT), basis: DEFAULT_BASIS, min: DEFAULT_GATE[league], lsort: DEFAULT_SORT, ldir: 'desc' };
+const state = { season: String(season), unit: String(unit), basis, min: gate, lsort: sort, ldir: dir };
+const href = (over: Partial<typeof state>) => `${withParams(basePath, { ...state, ...over }, defaults)}#lineups`;
+// a new basis has other columns, so it drops the sort
+const basisHref = (b: string) => href({ basis: b as typeof basis, lsort: DEFAULT_SORT, ldir: 'desc' });
+const sortHref = (key: string) => href({ lsort: key, ldir: key === sort && dir === 'desc' ? 'asc' : 'desc' });
+const ariaSort = (key: string) => (key === sort ? (dir === 'desc' ? 'descending' : 'ascending') : undefined);
 
 const dash = '—';
 const shade = (pct: number | null | undefined) => generateColorRampValue(pct ?? null, 100);
@@ -30,57 +38,82 @@ const net = (v: number | null | undefined) => (v == null ? dash : generateMargin
 const pct = (v: number | null | undefined) => (v == null ? dash : fmtPct(v));
 const rate = (v: number | null | undefined) => (v == null ? dash : fmtDec(v, 3));
 
+type Col = { key: string; label: string; hover: string; fmt: (v: number | null) => string; shaded: boolean };
+const col = (key: string, label: string, hover: string, fmt: Col['fmt'], shaded = true): Col => ({ key, label, hover, fmt, shaded });
 // per 100 possessions: the ratings, then the four factors for and against (the season block's measures)
-const PER100: { key: Rated; label: string; hover: string; fmt: (v: number | null) => string }[] = [
-    { key: 'off_rtg', label: 'ORtg', hover: 'Points scored per 100 possessions', fmt: rtg },
-    { key: 'def_rtg', label: 'DRtg', hover: 'Points allowed per 100 possessions', fmt: rtg },
-    { key: 'net_rtg', label: 'Net', hover: 'ORtg minus DRtg', fmt: net },
-    { key: 'efg_pct', label: 'eFG%', hover: 'Effective field-goal percentage: (FGM + 0.5 × 3PM) / FGA', fmt: pct },
-    { key: 'tov_pct', label: 'TOV%', hover: 'Turnovers per possession', fmt: pct },
-    { key: 'orb_pct', label: 'ORB%', hover: 'Offensive rebounds over offensive-rebound chances', fmt: pct },
-    { key: 'ft_rate', label: 'FT rate', hover: 'Free-throw attempts per field-goal attempt', fmt: rate },
-    { key: 'opp_efg_pct', label: 'Opp eFG%', hover: "The opponents' effective field-goal percentage", fmt: pct },
-    { key: 'opp_tov_pct', label: 'Opp TOV%', hover: "The opponents' turnovers per possession", fmt: pct },
-    { key: 'opp_orb_pct', label: 'Opp ORB%', hover: "The opponents' offensive rebounds over their chances", fmt: pct },
-    { key: 'opp_ft_rate', label: 'Opp FT rate', hover: "The opponents' free-throw attempts per field-goal attempt", fmt: rate },
+const PER100: Col[] = [
+    col('off_rtg', 'ORtg', 'Points scored per 100 possessions', rtg),
+    col('def_rtg', 'DRtg', 'Points allowed per 100 possessions', rtg),
+    col('net_rtg', 'Net', 'ORtg minus DRtg', net),
+    col('efg_pct', 'eFG%', 'Effective field-goal percentage: (FGM + 0.5 × 3PM) / FGA', pct),
+    col('tov_pct', 'TOV%', 'Turnovers per possession', pct),
+    col('orb_pct', 'ORB%', 'Offensive rebounds over offensive-rebound chances', pct),
+    col('ft_rate', 'FT rate', 'Free-throw attempts per field-goal attempt', rate),
+    col('opp_efg_pct', 'Opp eFG%', "The opponents' effective field-goal percentage", pct),
+    col('opp_tov_pct', 'Opp TOV%', "The opponents' turnovers per possession", pct),
+    col('opp_orb_pct', 'Opp ORB%', "The opponents' offensive rebounds over their chances", pct),
+    col('opp_ft_rate', 'Opp FT rate', "The opponents' free-throw attempts per field-goal attempt", rate),
 ];
-const TOTALS: { key: keyof LineupRow; label: string; hover: string; fmt: (v: number | null) => string }[] = [
-    { key: 'opp_poss', label: 'Opp poss', hover: "The opponents' possessions against the unit", fmt: int },
-    { key: 'pts', label: 'Pts', hover: 'Points scored', fmt: int },
-    { key: 'opp_pts', label: 'Opp pts', hover: 'Points allowed', fmt: int },
-    { key: 'plus_minus', label: '+/-', hover: 'Points scored minus points allowed', fmt: (v) => (v == null ? dash : `${v > 0 ? '+' : ''}${fmtInt(v)}`) },
+const TOTALS: Col[] = [
+    col('opp_poss', 'Opp poss', "The opponents' possessions against the unit", int, false),
+    col('pts', 'Pts', 'Points scored', int, false),
+    col('opp_pts', 'Opp pts', 'Points allowed', int, false),
+    col('plus_minus', '+/-', 'Points scored minus points allowed', (v) => (v == null ? dash : `${v > 0 ? '+' : ''}${fmtInt(v)}`), false),
 ];
+// college: the shares of field-goal attempts at the rim, from mid-range and from three, and their make rates, for and against
+const ZONE_COLS: Col[] = [
+    col('rim_rate', 'Rim rate', 'Share of field-goal attempts at the rim', pct),
+    col('mid_rate', 'Mid rate', 'Share of field-goal attempts from mid-range', pct),
+    col('fg3_rate', '3P rate', 'Share of field-goal attempts from three', pct),
+    col('rim_pct', 'Rim FG%', 'Field-goal percentage at the rim', pct),
+    col('mid_pct', 'Mid FG%', 'Field-goal percentage from mid-range', pct),
+    col('fg3_pct', '3P%', 'Three-point percentage', pct),
+    col('opp_rim_rate', 'Opp rim rate', "The opponents' share of field-goal attempts at the rim", pct),
+    col('opp_mid_rate', 'Opp mid rate', "The opponents' share of field-goal attempts from mid-range", pct),
+    col('opp_fg3_rate', 'Opp 3P rate', "The opponents' share of field-goal attempts from three", pct),
+    col('opp_rim_pct', 'Opp rim FG%', "The opponents' field-goal percentage at the rim", pct),
+    col('opp_mid_pct', 'Opp mid FG%', "The opponents' field-goal percentage from mid-range", pct),
+    col('opp_fg3_pct', 'Opp 3P%', "The opponents' three-point percentage", pct),
+];
+const COLS = basis === 'per100' ? PER100 : basis === 'zones' ? ZONE_COLS : TOTALS;
+const LEAD: Col[] = [col('minutes', 'Min', 'Minutes on the floor together', int, false), col('poss', 'Poss', 'Offensive possessions', int, false)];
+const cell = (u: LineupRow, key: string) => (u as Record<string, unknown>)[key] as number | null;
 const capped = units !== null && units.length >= UNIT_LIMIT;
+const gateText = ranked ? `each ranked by the producer (${fmtInt(RANK_POSS[league])} possessions on offense and defense)` : `each with at least ${gate} on offense`;
+const emptyText = ranked ? `No ${teamName} ${unit}-man unit has the ${fmtInt(RANK_POSS[league])} possessions the producer ranks in ${label} yet.` : `No ${teamName} ${unit}-man unit has ${gate} possessions in ${label} yet.`;
 ---
 <section id="lineups" aria-label={`${label} lineups`} class="mb-4">
   <h2 class="h5">Lineups</h2>
   <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
     <label class="visually-hidden" for="lineups-unit">Unit size</label>
     <select id="lineups-unit" class="form-select form-select-sm w-auto" onchange="window.location.href = this.value">
-      {UNIT_SIZES.map((u) => (<option value={href(u, basis)} selected={u === unit}>{u}-man units</option>))}
+      {UNIT_SIZES.map((u) => (<option value={href({ unit: String(u) })} selected={u === unit}>{u}-man units</option>))}
     </select>
     <label class="visually-hidden" for="lineups-basis">Basis</label>
     <select id="lineups-basis" class="form-select form-select-sm w-auto" onchange="window.location.href = this.value">
-      {BASES.map((b) => (<option value={href(unit, b)} selected={b === basis}>{BASIS_LABEL[b]}</option>))}
+      {basesFor(league).map((b) => (<option value={basisHref(b)} selected={b === basis}>{BASIS_LABEL[b]}</option>))}
+    </select>
+    <label class="visually-hidden" for="lineups-min">Minimum possessions</label>
+    <select id="lineups-min" class="form-select form-select-sm w-auto" onchange="window.location.href = this.value">
+      {GATES.map((g) => (<option value={href({ min: g })} selected={g === gate}>{GATE_LABEL[g]}</option>))}
     </select>
   </div>
-  {units === null ? (<p class="text-muted" id="lineups-unavailable">The {label} lineups are temporarily unavailable.</p>) : units.length === 0 ? (<p class="text-muted" id="lineups-empty">No {teamName} {unit}-man unit has {gate} possessions in {label} yet.</p>) : (
+  {units === null ? (<p class="text-muted" id="lineups-unavailable">The {label} lineups are temporarily unavailable.</p>) : units.length === 0 ? (<p class="text-muted" id="lineups-empty">{emptyText}</p>) : (
     <div class="table-responsive">
       <table class="table table-sm align-middle mb-0" id="lineups-table">
-        <caption class="small text-muted">{capped ? `The ${fmtInt(UNIT_LIMIT)} ${unit}-man units with the most possessions` : `${fmtInt(units.length)} ${unit}-man units`}, each with at least {gate} on offense. {basis === 'per100' ? 'Shading by league percentile where the unit is ranked; a plain cell is below the rank gate.' : 'Each possession counts for the unit on the floor when it starts.'}</caption>
+        <caption class="small text-muted">{capped ? `The ${fmtInt(UNIT_LIMIT)} ${unit}-man units with the most possessions` : `${fmtInt(units.length)} ${unit}-man units`}, {gateText}. {basis === 'totals' ? 'Each possession counts for the unit on the floor when it starts.' : 'Shading by league percentile where the unit is ranked; a plain cell is below the rank gate.'} Sort by any column.</caption>
         <thead><tr>
-          <th scope="col">Unit</th><th scope="col" class="text-end">Min</th><th scope="col" class="text-end">Poss</th>
-          {(basis === 'per100' ? PER100 : TOTALS).map((c) => (<th scope="col" class="text-end text-nowrap"><abbr title={c.hover}>{c.label}</abbr></th>))}
+          <th scope="col">Unit</th>
+          {[...LEAD, ...COLS].map((c) => (
+            <th scope="col" class="text-end text-nowrap" aria-sort={ariaSort(c.key)} data-sort={c.key}><a href={sortHref(c.key)} class="link-secondary text-decoration-none"><abbr title={c.hover}>{c.label}</abbr>{c.key === sort && (<span aria-hidden="true"> {dir === 'desc' ? '▾' : '▴'}</span>)}</a></th>
+          ))}
         </tr></thead>
         <tbody>
           {units.map((u, i) => (
             <tr>
-              <th scope="row" class="fw-normal text-nowrap"><span title={labels[i]?.full}>{labels[i]?.short}</span></th>
-              <td class="numeral text-end">{int(u.minutes)}</td>
-              <td class="numeral text-end">{int(u.poss)}</td>
-              {basis === 'per100'
-                ? PER100.map((c) => (<td class:list={['numeral', 'text-end', shade(u[`${c.key}_pct`])]}>{c.fmt(u[c.key])}</td>))
-                : TOTALS.map((c) => (<td class="numeral text-end">{c.fmt(u[c.key] as number | null)}</td>))}
+              <th scope="row" class="fw-normal text-nowrap">{(labels[i]?.players ?? []).map((p, j) => (<Fragment>{j > 0 && ' · '}{p.page ? (<a href={playerHref(Number(p.page), pq, league)} title={p.name}>{p.label}</a>) : (<span title={p.name}>{p.label}</span>)}</Fragment>))}</th>
+              {LEAD.map((c) => (<td class="numeral text-end">{c.fmt(cell(u, c.key))}</td>))}
+              {COLS.map((c) => (<td class:list={['numeral', 'text-end', c.shaded && shade(cell(u, `${c.key}_pct`))]}>{c.fmt(cell(u, c.key))}</td>))}
             </tr>
           ))}
         </tbody>
