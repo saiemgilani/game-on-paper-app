@@ -21,6 +21,9 @@ const NBA: Capture = gz('on-off-nba-2025'); // Minnesota 2024-25 (stats id 16106
 const MBB: Capture = gz('on-off-mbb-2025'); // Xavier 2024-25 (ESPN 2752) over the fixture's two games
 const NBA_NAMES: any[] = gz('lineups-nba-2025').names; // Minnesota's shot_season_players rows
 const MBB_NAMES: any[] = gz('lineups-mbb-2025').names; // Xavier's ncaa_player_box rows
+// Philadelphia 2024-25, the live player_on_off read with the producer's span columns (Quentin Grimes joined in February)
+const PHI: Capture = { ...gz('on-off-phi-2025'), pairs: [] };
+const GRIMES = 1629656;
 const BIO: any[] = gz('player-bio-nba-2025'); // the NBA's 2024-25 regular-season player_bio names (Jesse Edwards, 1642399, among them)
 
 const sdv = vi.hoisted(() => ({ fn: vi.fn() }));
@@ -51,7 +54,8 @@ import { prepareNbaTeam } from '../src/routes/nba/team';
 import { FLAGS } from '../src/utils/features';
 import { playerNames } from '../src/utils/lineups';
 import { generateColorRampValue } from '../src/utils/misc';
-import { isShortTenure, ON_OFF_MIN_MINUTES, parseWowy, shownLines, shownPlayers, WOWY_MIN_MINUTES, wowyLines, type OnOffTab as Tab } from '../src/utils/onOff';
+import { isShortTenure, ON_OFF_MIN_MINUTES, parseWowy, shownLines, shownPlayers, sideValue, usesSpan, WOWY_MIN_MINUTES, wowyLines, type OnOffTab as Tab } from '../src/utils/onOff';
+import { fmtInt as fmtIntT } from '../src/nba/format';
 
 const MIN = 1610612750;
 const XAVIER = 2752;
@@ -97,8 +101,8 @@ describe('retrieveOnOff', () => {
         expect(sdv.fn.mock.calls.every((c) => c[0] === 'nba' && c[4] === true)).toBe(true);
         expect(q.player_on_off).toMatchObject({ season: '2025', team_id: String(MIN), order: '-minutes_on', limit: String(PLAYER_LIMIT) });
         expect(q.player_wowy).toMatchObject({ season: '2025', team_id: String(MIN), limit: String(PAIR_LIMIT) });
-        // every column the section reads is selected, nothing else
-        expect(q.player_on_off.select.split(',').sort()).toEqual(Object.keys(NBA.players[0]).sort());
+        // every column the section reads is selected, nothing else (the live capture was projected to it)
+        expect(q.player_on_off.select.split(',').sort()).toEqual(Object.keys(PHI.players[0]).sort());
         expect(q.player_wowy.select.split(',').sort()).toEqual(Object.keys(NBA.pairs[0]).sort());
         expect(r).toEqual({ players: NBA.players, pairs: NBA.pairs, names: [] });
     });
@@ -268,6 +272,35 @@ describe('OnOffTab', () => {
         expect(html.match(/>†</g)).toHaveLength(short.length);
         expect(html).toMatch(/title="Played 39 of the team('|&#39;)s 82 games, so his off side includes games he was not with the team or did not play"/);
         expect(html).toContain('† marks a player who played under three quarters');
+    });
+    test("a † player's off side and on − off are the producer's span columns (his time with the team); everyone else's the full season", async () => {
+        const grimes = PHI.players.find((p) => p.player_id === GRIMES)!;
+        expect([grimes.games, grimes.team_games, grimes.team_games_span, grimes.span_first_date, grimes.span_last_date]).toEqual([28, 82, 34, '2025-02-04', '2025-04-13']);
+        expect(Math.round(grimes.minutes_off_span)).toBe(694);
+        expect(Math.round(grimes.minutes_off)).toBe(3018);
+        expect(usesSpan(grimes)).toBe(true);
+        expect(sideValue(grimes, 'net_rtg', 'off')).toBe(grimes.net_rtg_off_span);
+        expect(sideValue(grimes, 'net_rtg', 'diff')).toBe(grimes.net_rtg_diff_span);
+        expect(sideValue(grimes, 'net_rtg', 'on')).toBe(grimes.net_rtg_on);
+        // a full-season player keeps the full-season columns; a † row without span columns (an older capture) falls back
+        const maxey = PHI.players.find((p) => !isShortTenure(p))!; // Tyrese Maxey
+        expect(sideValue(maxey, 'off_rtg', 'off')).toBe(maxey.off_rtg_off);
+        expect(NBA.players.some((p) => isShortTenure(p) && !usesSpan(p))).toBe(true);
+        const html = await render('nba', tabOf(PHI, new Map(BIO.map((b) => [String(b.player_id), b.player_name]))));
+        const row = html.split('id="on-off-table"')[1].split('<tr>').find((r) => r.includes('Quentin Grimes'))!;
+        const cells = [...row.matchAll(/<td[^>]*>([^<]*)<\/td>/g)].map((m) => m[1]);
+        expect(cells.slice(0, 3)).toEqual(['28', '943', '694']);
+        expect(cells.slice(6, 9)).toEqual([grimes.off_rtg_off_span.toFixed(1), grimes.def_rtg_off_span.toFixed(1), '-5.3']);
+        expect(cells[11]).toBe('-8.3'); // the span on − off, not the full season's -9.3
+        // the span on − off is unranked, so never shaded
+        expect(row.split('<td').slice(-3).join('')).not.toMatch(/hulk-bg-level/);
+        expect(row).toMatch(/title="Played 28 of the team('|&#39;)s 82 games\. His off side and on − off cover only his time with the team: its 34 games from Feb 4 to Apr 13"/);
+        expect(html).toContain('his off side and on − off cover only his time with the team, the team');
+        expect(html).toContain("So on plus off is the team's whole season for a player without †.");
+        // Tyrese Maxey: full season, his own numbers
+        const mrow = html.split('id="on-off-table"')[1].split('<tr>').find((r) => r.includes(BIO.find((b) => b.player_id === maxey.player_id).player_name))!;
+        expect(mrow).toContain(`>${fmtIntT(maxey.minutes_off)}<`);
+        for (const bad of ['undefined', 'NaN', 'Invalid']) expect(html).not.toContain(bad);
     });
     test("WOWY: Edwards by default, against his 19 teammates, unshaded; the select's URLs keep the season and drop the default", async () => {
         const html = await render('nba', NBA_TAB(true));

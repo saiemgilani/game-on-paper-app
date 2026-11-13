@@ -841,6 +841,17 @@ names are the `names` of `lineups-{nba,mbb}-2025.json.gz` above; Minnesota's 164
 JSON and gzip. Once the backfill runs, the live `player_on_off?season=2026&team_id=<id>&order=-minutes_on&limit=100` and
 `player_wowy?season=2026&team_id=<id>&limit=1225` reads replace them.
 
+## `on-off-phi-2025.json.gz`
+The On/Off section's span columns (BB-G4 review, Q12): the `data` of
+`/v1/nba_stats/player_on_off?season=2025&team_id=1610612755&order=-minutes_on&limit=100`, captured live on 2026-11-13 (the
+Philadelphia 76ers 2024-25, 30 players), projected to `resources/onOff.ts`'s `select` columns, as `{players}`. Quentin Grimes
+(1629656) played 28 of 82 games and the team's 34 from 2025-02-04 to 2025-04-13: 3,018 full-season off minutes, 694 over his span.
+Nothing else is edited.
+
+**Used by:** `test/onOff.test.ts`.
+
+**To regenerate:** the same read (season filter and limit as above), projected to the module's `select`.
+
 ## `player-bio-nba-2025.json.gz`
 The On/Off section's name read for pros with no `shot_season_players` row (BB-G4 review, `retrieveBioNames`): the `data` of
 `/v1/nba_stats/player_bio?season=2025&season_type=Regular%20Season&select=player_id,player_name&limit=1000`, captured live on

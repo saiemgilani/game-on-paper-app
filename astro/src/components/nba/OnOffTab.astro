@@ -6,8 +6,8 @@
 // plain <select> of URLs (LineupsTab's pattern: no JS island), against each teammate: together, each without the other,
 // neither. Every number is the producer's (sdv-db player_on_off / player_wowy).
 import { RATINGS, type OnOffRow, type Rating } from '../../resources/onOff';
-import { isShortTenure, ON_OFF_MIN_MINUTES, shownLines, shownPlayers, WOWY_MIN_MINUTES, type OnOffTab } from '../../utils/onOff';
-import { fmtInt } from '../../nba/format';
+import { isShortTenure, ON_OFF_MIN_MINUTES, shownLines, shownPlayers, sideValue, usesSpan, WOWY_MIN_MINUTES, type OnOffTab } from '../../utils/onOff';
+import { fmtDate, fmtInt } from '../../nba/format';
 import { withParams } from '../../nba/links';
 import { generateColorRampValue, generateMarginalString } from '../../utils/misc';
 import { basketball, seasonLabelFor } from '../../basketball/config';
@@ -30,7 +30,8 @@ const HEAD: Record<Rating, { label: string; hover: string }> = {
     def_rtg: { label: 'DRtg', hover: 'Points allowed per 100 possessions' },
     net_rtg: { label: 'Net', hover: 'ORtg minus DRtg' },
 };
-const pctOf = (p: OnOffRow, m: Rating, side: 'on' | 'off' | 'diff') => (side === 'off' ? null : p[`${m}_${side}_pct`]);
+// the off side is never ranked; a span on − off (a † player's time with the team) is not either
+const pctOf = (p: OnOffRow, m: Rating, side: 'on' | 'off' | 'diff') => (side === 'off' || (side === 'diff' && usesSpan(p)) ? null : p[`${m}_${side}_pct`]);
 const teamGames = players?.[0]?.team_games;
 const wowyName = wowy === null ? '' : name(wowy);
 const defaults = { season: String(current), wowy: String(players?.[0]?.player_id ?? ''), onoff: '' };
@@ -42,8 +43,11 @@ const rows = players ? shownPlayers(players, all) : [];
 const hidden = players ? players.length - rows.length : 0;
 const mates = shownLines(lines, all);
 const hiddenMates = lines.length - mates.length;
-const shortOf = (p: OnOffRow) => isShortTenure(p) ? `Played ${fmtInt(p.games)} of the team's ${fmtInt(p.team_games)} games, so his off side includes games he was not with the team or did not play` : null;
+const shortOf = (p: OnOffRow) => !isShortTenure(p) ? null : usesSpan(p)
+  ? `Played ${fmtInt(p.games)} of the team's ${fmtInt(p.team_games)} games. His off side and on − off cover only his time with the team: its ${fmtInt(p.team_games_span)} games from ${fmtDate(p.span_first_date!)} to ${fmtDate(p.span_last_date!)}`
+  : `Played ${fmtInt(p.games)} of the team's ${fmtInt(p.team_games)} games, so his off side includes games he was not with the team or did not play`;
 const anyShort = rows.some((p) => isShortTenure(p));
+const anySpan = rows.some((p) => usesSpan(p));
 // the pros' off side differs from stats.nba.com's / stats.wnba.com's; college has no such reference to differ from
 const proSource = isNcaaDashboards(cfg.league) ? null : cfg.statsSourceLabel;
 ---
@@ -51,12 +55,12 @@ const proSource = isNcaaDashboards(cfg.league) ? null : cfg.statsSourceLabel;
   <h2 class="h5">On/Off</h2>
   {players === null ? (<p class="text-muted" id="on-off-unavailable">The {label} on/off numbers are temporarily unavailable.</p>) : players.length === 0 ? (<p class="text-muted" id="on-off-empty">No {teamName} on/off numbers for {label} yet.</p>) : (
     <Fragment>
-      <p class="small text-muted mb-2" id="on-off-note">On is the team with the player on the floor; off is the rest of the team's season: all {teamGames ? fmtInt(teamGames) : ''} of its games, including any before the player joined or after the player left, and the games the player missed. So on plus off is always the team's whole season.{proSource && ` ${proSource} counts the off side only while the player was on the roster, so for a player traded or signed mid-season its numbers differ from these.`}{anyShort && " † marks a player who played under three quarters of the team's games."}</p>
+      <p class="small text-muted mb-2" id="on-off-note">On is the team with the player on the floor; off is the rest of the team's season: all {teamGames ? fmtInt(teamGames) : ''} of its games, including any before the player joined or after the player left, and the games the player missed. So on plus off is {anySpan ? '' : 'always '}the team's whole season{anySpan && ' for a player without †'}.{proSource && ` ${proSource} counts the off side only while the player was on the roster, so for a player traded or signed mid-season${anySpan ? ' without †' : ''} its numbers differ from these.`}{anyShort && (anySpan ? " † marks a player who played under three quarters of the team's games: his off side and on − off cover only his time with the team, the team's games from his first game for it to his last (the dates are on the mark), and his on − off is not ranked." : " † marks a player who played under three quarters of the team's games.")}</p>
       <p class="small mb-2" id="on-off-minimum">{all ? (<Fragment>Every player and teammate is shown. <a href={allHref}>Hide players under {ON_OFF_MIN_MINUTES} minutes on the floor and teammates under {WOWY_MIN_MINUTES} minutes together</a></Fragment>) : (<Fragment><span class="text-muted">Players with {ON_OFF_MIN_MINUTES}+ minutes on the floor{hidden > 0 && ` (${fmtInt(hidden)} hidden)`}; WOWY teammates with {WOWY_MIN_MINUTES}+ minutes together.</span> <a href={allHref}>Show all</a></Fragment>)}</p>
       {rows.length === 0 ? (<p class="text-muted" id="on-off-few">No {teamName} player has {ON_OFF_MIN_MINUTES} minutes on the floor in {label} yet. <a href={allHref}>Show all</a></p>) : (
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0" id="on-off-table">
-          <caption class="small text-muted">Per 100 possessions. Shading by league percentile where the player is ranked (on and on − off); a plain cell is below the rank gate.</caption>
+          <caption class="small text-muted">Per 100 possessions. Shading by league percentile where the player is ranked (on and on − off); a plain cell is below the rank gate{anySpan ? ", or a † player's on − off over his time with the team" : ''}.</caption>
           <thead>
             <tr>
               <td colspan="4"></td>
@@ -78,8 +82,8 @@ const proSource = isNcaaDashboards(cfg.league) ? null : cfg.statsSourceLabel;
                 <th scope="row" class="fw-normal text-nowrap">{name(p.player_id)}{shortOf(p) && (<span class="text-muted ms-1" title={shortOf(p)!}>†<span class="visually-hidden"> ({shortOf(p)})</span></span>)}</th>
                 <td class="numeral text-end">{fmtInt(p.games)}</td>
                 <td class="numeral text-end">{fmtInt(p.minutes_on)}</td>
-                <td class="numeral text-end">{fmtInt(p.minutes_off)}</td>
-                {(['on', 'off', 'diff'] as const).flatMap((side) => RATINGS.map((m) => (<td class:list={['numeral', 'text-end', shade(pctOf(p, m, side))]}>{fmt(m, side, p[`${m}_${side}`])}</td>)))}
+                <td class="numeral text-end">{fmtInt(usesSpan(p) ? p.minutes_off_span : p.minutes_off)}</td>
+                {(['on', 'off', 'diff'] as const).flatMap((side) => RATINGS.map((m) => (<td class:list={['numeral', 'text-end', shade(pctOf(p, m, side))]}>{fmt(m, side, sideValue(p, m, side))}</td>)))}
               </tr>
             ))}
           </tbody>

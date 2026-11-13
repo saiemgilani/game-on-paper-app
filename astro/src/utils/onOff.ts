@@ -2,7 +2,7 @@
  * The On/Off and WOWY section's pure steps (BB-G4): the WOWY player (?wowy=, whitelisted to the team's on/off players)
  * and that player's pairs, turned to read from his side. Nothing here aggregates: every number is the producer's row.
  */
-import type { OnOffRow, WowyRow } from '../resources/onOff';
+import type { OnOffRow, Rating, WowyRow } from '../resources/onOff';
 
 /** One split of a pair: the team's minutes and net rating in it. */
 export interface WowySide {
@@ -46,11 +46,24 @@ export function shownLines(lines: WowyLine[], all: boolean): WowyLine[] {
 
 /**
  * A player whose games for the team are well short of the team's (under three quarters): traded, signed or hurt, so his
- * off side carries games he was not there for. ponytail: one fixed share; a tenure-limited off side is the producer's (BB-D5).
+ * full-season off side carries games he was not there for. ponytail: one fixed share.
  */
 export const SHORT_SHARE = 0.75;
 export function isShortTenure(p: Pick<OnOffRow, 'games' | 'team_games'>): boolean {
     return p.team_games > 0 && p.games < SHORT_SHARE * p.team_games;
+}
+
+/**
+ * A † row the producer has span columns for: his off side and on − off are shown over his time with the team (the
+ * team's games from his first game for it to his last), never the full season's. Everyone else keeps the full season.
+ */
+export function usesSpan(p: OnOffRow): boolean {
+    return isShortTenure(p) && p.team_games_span != null && p.minutes_off_span != null;
+}
+
+/** The off side or on − off shown for one rating: the span column for a usesSpan row, the full season's otherwise. */
+export function sideValue(p: OnOffRow, m: Rating, side: 'on' | 'off' | 'diff'): number | null {
+    return side !== 'on' && usesSpan(p) ? p[`${m}_${side}_span`] : p[`${m}_${side}`];
 }
 
 /** ?wowy=: one of the team's on/off players; anything else is the one with the most minutes on the floor. */

@@ -37,7 +37,17 @@ export type OnOffRow = {
     minutes_off: number;
     poss_on: number;
     poss_off: number;
-} & { [K in `${Rating}_${Side}`]: number | null } & { [K in `${Rating}_${'on' | 'diff'}_pct`]: number | null };
+    /**
+     * The producer's span columns: the off side over only the team's games from his first game for it to his last
+     * (team_games_span of them, span_first_date to span_last_date), unranked. Null where the producer has no span.
+     */
+    team_games_span: number | null;
+    span_first_date: string | null;
+    span_last_date: string | null;
+    minutes_off_span: number | null;
+    poss_off_span: number | null;
+} & { [K in `${Rating}_${Side}`]: number | null } & { [K in `${Rating}_${'on' | 'diff'}_pct`]: number | null }
+    & { [K in `${Rating}_${'off' | 'diff'}_span`]: number | null };
 
 export const WOWY_SPLITS = ['both', 'a_only', 'b_only', 'neither'] as const;
 export type WowySplit = (typeof WOWY_SPLITS)[number];
@@ -52,6 +62,8 @@ const ON_OFF_SELECT = [
     'player_id', 'games', 'team_games', 'minutes_on', 'minutes_off', 'poss_on', 'poss_off',
     ...SIDES.flatMap((s) => RATINGS.map((m) => `${m}_${s}`)),
     ...(['on', 'diff'] as const).flatMap((s) => RATINGS.map((m) => `${m}_${s}_pct`)),
+    'team_games_span', 'span_first_date', 'span_last_date', 'minutes_off_span', 'poss_off_span',
+    ...(['off', 'diff'] as const).flatMap((s) => RATINGS.map((m) => `${m}_${s}_span`)),
 ].join(',');
 const WOWY_SELECT = ['player_id_a', 'player_id_b', ...WOWY_SPLITS.flatMap((s) => [`minutes_${s}`, `net_rtg_${s}`])].join(',');
 
