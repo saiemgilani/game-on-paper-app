@@ -112,6 +112,10 @@ describe('the template', () => {
         const html = await render({ league: 'nba', seasons: seasonsOf('nba'), season: 2025, board: 'ratings', sort: 'net_rtg', rows: fx.nba.seasons });
         expect(html).toContain('2024-25 NBA Head Coaches: Ratings');
         expect(html).toMatch(/id="coach-coverage"[^>]*>[\s\S]*?about 23% of NBA regular-season games have no coach credited/);
+        // a muted one-line note like football's, not a warning box, and no list of the uncredited teams
+        expect(html).toMatch(/<p class="[^"]*text-muted[^"]*" id="coach-coverage">[^<]*<\/p>/);
+        expect(html).not.toContain('alert-warning');
+        expect(html).not.toContain('Not listed');
         const body = html.slice(html.indexOf('<tbody'));
         const trs = body.split('<tr').slice(1);
         expect(trs).toHaveLength(27 + 1); // 27 rows and the divider

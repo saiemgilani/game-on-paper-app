@@ -65,9 +65,7 @@ const cutoff = careers ? 'one full season of games' : "half the most games any t
                 <p class="m-0 mb-2 text-muted">Regular season, each coach's own games: a coach who took over mid-season is credited only the games after taking over.</p>
                 <p class="m-0 text-muted text-small">Ranked among coaches with at least {cutoff}; the rest are listed below the divider without a rank. Ratings and the four factors come from the games with play-by-play.</p>
                 <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>; head coaches per the {LEAGUES[league].name} staff lists and ESPN's coaching records. Click a column heading to sort by it.</p>
-                <div class="alert alert-warning small py-2" role="note" id="coach-coverage">
-                    <strong>Partial coverage.</strong> A team-season whose head coach of record cannot be placed game by game is left out rather than guessed: {BBALL_COACH_UNCREDITED[league]} of {shortName} regular-season games have no coach credited, so some teams have no row{careers ? ' and careers count only the credited games' : ' this season'}.
-                </div>
+                <p class="m-0 mb-2 text-muted text-small" id="coach-coverage">A season counts for a head coach only when his games can be placed one by one: {BBALL_COACH_UNCREDITED[league]} of {shortName} regular-season games have no coach credited{careers ? ', so careers count only the credited games' : ''}.</p>
             </div>
             <div class="ms-auto col-lg-5 col-xs-12">
                 <form class="mb-3 d-flex justify-content-xs-start justify-content-lg-end coach-board-form" id="coach-board-form">
