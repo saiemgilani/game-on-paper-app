@@ -75,10 +75,17 @@ export function buildDashboard(subject: ShotLite[], league: LeagueContext, court
       // only a non-NBA court rides along: the NBA team page's island props stay byte-identical (plan #4's island rule)
       ...(court === COURT ? {} : { court }),
     },
-    signature: vsLeague(fgPctByDistance(located), league.byFoot),
-    bars: { player: fgPctByDistance(located, BAR_BIN_FT), league: league.byBin, binFt: BAR_BIN_FT },
+    ...distanceCharts(located, league),
     sides: { player: statsBySide(located, BAR_BIN_FT), league: league.sides, binFt: BAR_BIN_FT },
     // D29: the note's numbers, only when a shot sat at the placeholder (never for the NBA, which sets none)
     ...(unlocated > 0 ? { unlocated: { count: unlocated, total: subject.length } } : {}),
+  };
+}
+
+/** The signature and the distance bars for located shots against the league; BB-G39's game page draws only these two. */
+export function distanceCharts(located: ShotLite[], league: LeagueContext): Pick<DashboardData, "signature" | "bars"> {
+  return {
+    signature: vsLeague(fgPctByDistance(located), league.byFoot),
+    bars: { player: fgPctByDistance(located, BAR_BIN_FT), league: league.byBin, binFt: BAR_BIN_FT },
   };
 }

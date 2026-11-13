@@ -24,6 +24,7 @@ import type { BasketballSourceTools } from '../../../routes/basketball/game';
 import type { ImpactBoxReads } from '../../../resources/impactBox';
 import type { GameFlowReads } from '../../../resources/gameFlow';
 import type { GarbageReads } from '../../../resources/garbageTime';
+import type { LeagueContext } from '../../../nba/dashboard';
 import { garbageView } from '../../../utils/garbageTime';
 
 interface Props {
@@ -34,8 +35,10 @@ interface Props {
     flow?: GameFlowReads | null
     /** BB-G2, 'bball-garbage-time' with the Impact box and a final only: the possession log and `?garbage=out`; absent: no toggle */
     garbage?: { reads: GarbageReads | null; out: boolean }
+    /** BB-G39, 'bball-game-shooting' and a final only: the league curve beside the shot charts; null/absent: the charts alone */
+    shooting?: LeagueContext | null
 }
-const { game, sourceTools, impact, flow, garbage } = Astro.props;
+const { game, sourceTools, impact, flow, garbage, shooting } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const title = `${game.away.team.displayName} ${game.away.score ?? ''} at ${game.home.team.displayName} ${game.home.score ?? ''} | Game on Paper`.replace(/\s+/g, ' ');
@@ -58,7 +61,7 @@ const split = gt?.rates ? gt : undefined;
     <Panel id="factors" title="Four factors" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="select" />}{split ? <NbaGarbageTime game={game} view={split} part="factors" /> : <NbaFourFactors game={game} />}</div></Panel>
     <Panel id="teambox" title="Team box" show={true}><div slot="panel-body">{split?.box ? <NbaGarbageTime game={game} view={split} part="teambox" /> : (<Fragment>{split && <NbaGarbageTime game={game} view={split} part="teambox" />}<NbaTeamBox game={game} /></Fragment>)}</div></Panel>
     <Panel id="players" title="Players" show={true}><div slot="panel-body">{split && <NbaGarbageTime game={game} view={split} part="whole" />}<div class="row"><div class="col-12 col-xl-6"><NbaPlayerBox side={game.away} id="box-away" league={league} /></div><div class="col-12 col-xl-6"><NbaPlayerBox side={game.home} id="box-home" league={league} /></div></div></div></Panel>{impact !== undefined && (<Panel id="impact" title="Impact and lineups" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="toggle" />}<NbaImpactBox game={game} impact={gt?.impact ?? impact} fromLog={gt?.impact !== undefined} /></div></Panel>)}
-    <Panel id="shots" title="Shot charts" show={true}><div slot="panel-body"><NbaGameShotCharts game={game} /></div></Panel>
+    <Panel id="shots" title="Shot charts" show={true}><div slot="panel-body"><NbaGameShotCharts game={game} shooting={shooting} /></div></Panel>
     <Panel id="plays" title="Play-by-play" show={true}><div slot="panel-body"><NbaPlaysTable game={game} /></div></Panel>
   </div>
 </GenericPage>
