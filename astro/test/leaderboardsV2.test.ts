@@ -414,3 +414,91 @@ describe('per game and per 75 (#413 Q25): producer columns only, hidden where a 
         });
     });
 });
+
+// #463 Q18: Season vs Current impact on the NBA Impact board, on the 2026-11-13 capture (fixtures/README.md:
+// leaderboards-current-impact-2026.json.gz): player_impact's reml_rapm trio beside current_impact at the latest as_of
+describe('Season vs Current impact (#463 Q18): two producer reads joined by player id, NBA only', () => {
+    const CI = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/leaderboards-current-impact-2026.json.gz', import.meta.url))).toString()) as Record<'seasonRows' | 'latest' | 'currentRows', Row[]>;
+    const serveCurrent = (current: Row[] = CI.currentRows, latest: Row[] = CI.latest) => sdv.from.mockImplementation(async (_src: unknown, table: string, q: Record<string, string>) =>
+        table === 'player_impact' ? CI.seasonRows : q.select === 'as_of' ? latest : current.filter((r) => r.as_of === q.as_of));
+    const byId = new Map(CI.currentRows.map((r) => [r.player_id, r]));
+
+    test('the reads: the season rows, the latest as_of, then that date’s rows; current_impact unselected, so a rank it ships arrives', async () => {
+        serveCurrent();
+        const r = await retrieveBoard('nba', 2026, 'impact', 'ratings', 5, 'current');
+        const calls = sdv.from.mock.calls.map(([src, table, q, ttl, strict]) => [src.schema, table, q, ttl, strict]);
+        expect(calls).toHaveLength(3);
+        expect(calls[0]).toEqual(['nba', 'player_impact', { season: '2026', off_poss__gte: String(IMPACT_FLOOR.nba), order: '-off_poss', limit: String(BOARD_CAP), season_type: 'Regular Season', select: 'player_id,player_name,team_id,team_abbreviation,teams,gp,off_poss,def_poss,o_reml_rapm,d_reml_rapm,reml_rapm' }, 21600, true]);
+        expect(calls[1]).toEqual(['nba', 'current_impact', { season: '2026', select: 'as_of', order: '-as_of', limit: '1' }, 21600, true]);
+        expect(calls[2]).toEqual(['nba', 'current_impact', { season: '2026', as_of: '2026-04-07', order: '-off_poss', limit: String(BOARD_CAP) }, 21600, true]);
+        // the select names only columns the real player_impact rows have (an unknown one is a 400)
+        expect(calls[0][2].select.split(',').filter((c: string) => !(c in CI.seasonRows[0]))).toEqual([]);
+        expect(r.asOf).toBe('2026-04-07');
+        // nothing computed: each row is the season row, plus the current trio of the same player id, copied
+        expect(r.rows).toHaveLength(CI.seasonRows.length);
+        const joined = r.rows.filter((x) => x.current_impact != null);
+        expect(joined).toHaveLength(CI.seasonRows.filter((x) => byId.has(x.player_id)).length);
+        for (const x of r.rows) {
+            const c = byId.get(x.player_id as number);
+            expect([x.o_current_impact, x.d_current_impact, x.current_impact]).toEqual(c ? [c.o_current_impact, c.d_current_impact, c.current_impact] : [undefined, undefined, undefined]);
+            expect(x.off_poss).toBe(CI.seasonRows.find((s) => s.player_id === x.player_id)!.off_poss); // the season's sample, never current_impact's
+        }
+    });
+    test('no current rows for the season yet: no third read, the season rows alone', async () => {
+        serveCurrent([], []);
+        const r = await retrieveBoard('nba', 2027, 'impact', 'ratings', 5, 'current');
+        expect(sdv.from).toHaveBeenCalledTimes(2);
+        expect(r.asOf).toBeNull();
+        expect(r.rows.every((x) => x.current_impact === undefined)).toBe(true);
+    });
+    test('the control: NBA only, whitelisted; elsewhere the Impact board is unchanged', () => {
+        expect(parseControls(new URLSearchParams('impact=current'), 'nba', () => true).impact).toBe('current');
+        for (const lg of ['wnba', 'mbb', 'wbb'] as const) expect(parseControls(new URLSearchParams('impact=current'), lg, () => true).impact).toBe('measures');
+        expect(parseControls(new URLSearchParams('impact=<x>'), 'nba', () => true).impact).toBe('measures');
+        expect(boardSpec('impact', 'wnba', 'ratings', 'current').cols).toBe(boardSpec('impact', 'wnba', 'ratings').cols);
+        expect(boardSpec('impact', 'nba', 'ratings', 'current').cols.map((c) => c.key)).toEqual(['gp', 'off_poss', 'def_poss', 'season_o', 'season_d', 'season', 'current_o', 'current_d', 'current']);
+    });
+    test('the page: the Columns select, best Current impact first, the producer’s values, the as-of date in the caption', async () => {
+        serveCurrent();
+        const { data, html } = await board('nba', '?season=2026&impact=current');
+        expect(html).toContain('NBA leaderboards: Players: Season vs Current impact');
+        expect(html).toMatch(/<select id="lb-impact"[\s\S]*?<option value="[^"]*impact=current[^"]*" selected>Season vs Current<\/option>/);
+        expect(html).toContain('Current impact is his expected impact going forward, as of Apr 7, from games before that date.');
+        expect(html).toContain('Per 100 possessions.');
+        expect(data.controls.sort).toBe('current');
+        const top = data.rows![0];
+        expect(top.player_name).toBe('Nikola Jokić');
+        expect(top.current_impact).toBe(Math.max(...data.rows!.map((r) => Number(r.current_impact ?? -Infinity))));
+        const row = cells(html)[0];
+        expect(row[colIndex(data, 'current')]).toBe(generateMarginalString(Number(top.current_impact), 1, 1));
+        expect(row[colIndex(data, 'season')]).toBe(generateMarginalString(Number(top.reml_rapm), 1, 1));
+        // qualified: the board's own possessions gate, as on the other impact view
+        expect(data.rows!.every((r) => Number(r.off_poss) >= IMPACT_QUALIFIED_POSS.nba)).toBe(true);
+        // neither table ships a rank or percentile today: unshaded, and the caption says so
+        expect(html).not.toContain('hulk-bg-level');
+        expect(html).toContain('Unshaded: the producer publishes no percentiles for this board yet.');
+    });
+    test("ranks and shading are the producer's own _rank / _pct once current_impact ships them (copied with the trio)", async () => {
+        // the capture's rows plus the two columns the producer would add; nothing else changes
+        const ranked = CI.currentRows.map((r, i) => ({ ...r, current_impact_rank: i + 1, current_impact_pct: 99 }));
+        serveCurrent(ranked);
+        const { data, html } = await board('nba', '?season=2026&impact=current');
+        expect(data.pctAvailable).toBe(true);
+        const top = data.rows![0];
+        const cell = [...html.matchAll(/<tr>\s*(<td[\s\S]*?)<\/tr>/g)][0][1].match(/<td[^>]*>/g)![colIndex(data, 'current')];
+        expect(cell).toContain(generateColorRampValue(99, 100));
+        expect(cell).toContain(`title="Rank ${top.current_impact_rank}, percentile 99"`);
+    });
+    test('the season’s current impact not built yet: the season column stays, dashes, and the caption says so', async () => {
+        serveCurrent([], []);
+        const { data, html } = await board('nba', '?season=2026&impact=current&qualified=all');
+        expect(data.rows!.length).toBe(CI.seasonRows.length);
+        expect(html).toContain('Current impact is his expected impact going forward, not built for this season yet.');
+        expect(cells(html)[0][colIndex(data, 'current')]).toBe('—');
+    });
+    test('WNBA and college: no Columns select on the Impact board', async () => {
+        const { html } = await board('mbb', '?impact=current');
+        expect(html).not.toContain('id="lb-impact"');
+        expect(html).not.toContain('Season vs Current');
+    });
+});

@@ -829,3 +829,16 @@ from the Data API on 2026-11-13. Every read is season-filtered with a small limi
 
 **To regenerate:** rerun the reads above (season filter and limit as listed, never unfiltered), write `{nbaRates, wnbaRates,
 mbbRates, wbbRates, wnbaRates2024, wnbaFlow, wnbaFlow2024, nbaLineups, mbbLineups, reads, captured}` as JSON and gzip.
+
+## `leaderboards-current-impact-2026.json.gz`
+The NBA Impact board's Season vs Current view (#463 Q18), the `data` arrays of the board's three live Data API reads of
+2026-11-13, no edits:
+- `seasonRows`: `/v1/nba/player_impact?season=2026&off_poss__gte=250&order=-off_poss&limit=500&season_type=Regular%20Season&select=player_id,player_name,team_id,team_abbreviation,teams,gp,off_poss,def_poss,o_reml_rapm,d_reml_rapm,reml_rapm` (496 rows);
+- `latest`: `/v1/nba/current_impact?season=2026&select=as_of&order=-as_of&limit=1` (`2026-04-07`);
+- `currentRows`: `/v1/nba/current_impact?season=2026&as_of=2026-04-07&order=-off_poss&limit=500` (500 rows, every column).
+491 season rows have a current row of the same player id; neither table ships a `_rank` / `_pct` for these columns yet.
+
+**Used by:** `test/leaderboardsV2.test.ts`.
+
+**To regenerate:** rerun the three reads (season filter and limit as above, never unfiltered), write
+`{seasonRows, latest, currentRows}` as JSON and gzip.

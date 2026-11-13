@@ -5,11 +5,12 @@
 // column's percentile on the site's green-to-purple ramp. GP / minutes / possessions lead, the identity column is frozen
 // and the headers are grouped two rows deep (spec §4.2). Every select is a select of URLs (the Cup page's pattern).
 // BB-G27, behind 'bball-war-boards': the WAR and VORP board (WAR beside its 90% interval) and the points over expected board.
+// The NBA's Impact board also offers Season vs Current impact (#463 Q18), its date in the caption.
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import type { LeaderboardsParams } from '../../routes/basketball/leaderboards';
-import { BASIS_LABEL, BOARD_LABEL, TEAM_GROUP_LABEL, TEAM_GROUPS, UNIT_SIZES, IMPACT_QUALIFIED_POSS, cellOf, labelFor, shown, ncaaName, offeredBases, type Col } from '../../utils/leaderboards';
+import { BASIS_LABEL, BOARD_LABEL, TEAM_GROUP_LABEL, TEAM_GROUPS, UNIT_SIZES, IMPACT_QUALIFIED_POSS, IMPACT_VIEW_LABEL, impactViewsFor, cellOf, labelFor, shown, ncaaName, offeredBases, type Col } from '../../utils/leaderboards';
 import { IMPACT_FLOOR, LINEUP_FLOOR, POE_FLOOR, BOARD_CAP } from '../../resources/leaderboards';
-import { fmtDec, fmtInt, fmtPct, fmtPts } from '../../nba/format';
+import { fmtDate, fmtDec, fmtInt, fmtPct, fmtPts } from '../../nba/format';
 import { playerHref, seasonQuery, teamHrefFromEspn, withParams } from '../../nba/links';
 import { dotLabels } from '../../nba/scatterMetrics';
 import { formatRank, generateColorRampValue, generateMarginalString } from '../../utils/misc';
@@ -17,24 +18,26 @@ import { BASKETBALL, seasonLabelFor } from '../../basketball/config';
 import { LEAGUES, PRO_LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: LeaderboardsParams }
-const { league, season, seasons, current, controls, spec, rows, read, capped, pctAvailable, names, boards } = Astro.props.data;
-const { board, group, unit, bases, basis, view, qualified, sort, basisFallback, viewFallback } = controls;
+const { league, season, seasons, current, controls, spec, rows, read, capped, pctAvailable, names, boards, asOf } = Astro.props.data;
+const { board, group, unit, impact, bases, basis, view, qualified, sort, basisFallback, viewFallback } = controls;
+const vsCurrent = board === 'impact' && impact === 'current';
 const pro = PRO_LEAGUES.includes(league);
 const lname = LEAGUES[league].shortName;
 const lp = (p: string) => leaguePath(league, p);
 const path = lp('/leaderboards');
 const label = seasonLabelFor(league, season);
-const boardTitle = board === 'teams' ? `Teams: ${TEAM_GROUP_LABEL[group]}` : board === 'lineups' ? `${unit}-man lineups` : BOARD_LABEL[board];
+const boardTitle = board === 'teams' ? `Teams: ${TEAM_GROUP_LABEL[group]}` : board === 'lineups' ? `${unit}-man lineups` : vsCurrent ? 'Players: Season vs Current impact' : BOARD_LABEL[board];
 const title = `${lname} leaderboards: ${boardTitle}, ${label}`;
 const description = `${lname} ${label} leaderboards: player impact (RAPM, SPM, BPM, WAR), team ratings, four factors, strength and game flow, and lineups, with league ranks and percentiles.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: lname, url: lp('/'), active: false }, { title: 'Leaderboards', active: true }];
 
 // every select keeps the other parameters; a default leaves its parameter out (the canonical URL). A new board or group
 // starts from its own default sort and basis.
-const params: Record<string, string> = { season: String(season), board, group, unit: String(unit), basis, view, qualified: qualified ? 'yes' : 'all', sort };
-const defaults: Record<string, string> = { season: String(current), board: 'impact', group: 'ratings', unit: '5', basis: spec.defaultBasis, view: 'values', qualified: 'yes', sort: spec.defaultSort };
+const params: Record<string, string> = { season: String(season), board, group, unit: String(unit), impact, basis, view, qualified: qualified ? 'yes' : 'all', sort };
+const defaults: Record<string, string> = { season: String(current), board: 'impact', group: 'ratings', unit: '5', impact: 'measures', basis: spec.defaultBasis, view: 'values', qualified: 'yes', sort: spec.defaultSort };
 const url = (p: Record<string, string>) => withParams(path, { ...params, ...p }, defaults);
-const fresh = (p: Record<string, string>) => withParams(path, { season: String(season), ...p }, { season: String(current), board: 'impact', group: 'ratings', unit: '5' });
+const fresh = (p: Record<string, string>) => withParams(path, { season: String(season), ...p }, { season: String(current), board: 'impact', group: 'ratings', unit: '5', impact: 'measures' });
+const impactViews = impactViewsFor(league);
 // stay on the uncacheable /preview surface (utils/preview.ts keepPreviewSurface), as on /nba/cup
 const NAV = "window.location.href = (location.pathname.startsWith('/preview/') ? '/preview' : '') + this.value";
 // a basis the board ships but this season has no values for (not backfilled yet) is hidden, and a link to it says so
@@ -101,9 +104,11 @@ const scope = board === 'impact' ? (pro ? 'Regular season.' : 'Every game.') : (
 // player_war ranks every player of the season (sdv-py attach_ranks with no qualifier); BB-G8's boards rank qualifiers
 const among = board === 'value' ? 'the season’s players' : 'qualifiers';
 // the impact board keeps player_impact's WAR beside the WAR board's (Q41 B); college VORP reads above WAR by definition (Q43 A)
-const unitNote = board === 'impact' ? 'Per 100 possessions, WAR in wins.'
+const unitNote = board === 'impact' ? (vsCurrent ? 'Per 100 possessions.' : 'Per 100 possessions, WAR in wins.')
     : board === 'value' ? `Rating per 100 possessions; VORP and WAR are season totals, WAR in wins with its 90% interval (Low to High).${pro ? '' : ' College seasons are short, so VORP (a full season one point per 100 above replacement is 1) reads above WAR (wins); both are the producer’s.'}`
     : board === 'poe' ? 'Field goals only: free throws are not shots in the model.' : false;
+// Season vs Current: what each rating is, and Current impact's date (the producer's latest weekly as_of)
+const currentNote = !vsCurrent ? '' : `Season impact is the regular season’s plus-minus impact, shrunk toward his box-score prior. Current impact is his expected impact going forward, ${asOf ? `as of ${fmtDate(asOf)}, from games before that date` : 'not built for this season yet'}.`;
 ---
 <GenericPage title={`${title} | Game on Paper`} subtitle={description} slug={path} breadcrumbs={breadcrumbs} description={description} canonicalPath={url({})}>
   <link href="/assets/css/sticky-table.css" rel="stylesheet">
@@ -122,6 +127,14 @@ const unitNote = board === 'impact' ? 'Per 100 possessions, WAR in wins.'
               <label class="visually-hidden" for="lb-group">Columns</label>
               <select id="lb-group" class="form-select w-auto" onchange={NAV}>
                 {TEAM_GROUPS.map((g) => (<option value={fresh({ board, group: g })} selected={g === group}>{TEAM_GROUP_LABEL[g]}</option>))}
+              </select>
+            </Fragment>
+          )}
+          {board === 'impact' && impactViews.length > 1 && (
+            <Fragment>
+              <label class="visually-hidden" for="lb-impact">Columns</label>
+              <select id="lb-impact" class="form-select w-auto" onchange={NAV}>
+                {impactViews.map((v) => (<option value={fresh({ board, impact: v })} selected={v === impact}>{IMPACT_VIEW_LABEL[v]}</option>))}
               </select>
             </Fragment>
           )}
@@ -178,7 +191,7 @@ const unitNote = board === 'impact' ? 'Per 100 possessions, WAR in wins.'
       <p class="text-muted" id="lb-empty">{read === 0 ? `There are no ${label} rows for this board yet.` : 'No row qualifies yet. Choose "All" to see every row.'}</p>
     ) : (
       <Fragment>
-        <p class="small text-muted mb-2" id="lb-caption">{sample} {scope} {capped && `The ${fmtInt(BOARD_CAP)} with the most ${board === 'poe' ? 'field-goal attempts' : 'possessions'} are read.`} {!pctAvailable ? 'Unshaded: the producer publishes no percentiles for this board yet.' : view === 'percentiles' ? `Each cell is the producer’s percentile among ${among}.` : `Shading is the producer’s percentile among ${among}.`} {unitNote}</p>
+        <p class="small text-muted mb-2" id="lb-caption">{sample} {scope} {capped && `The ${fmtInt(BOARD_CAP)} with the most ${board === 'poe' ? 'field-goal attempts' : 'possessions'} are read.`} {!pctAvailable ? 'Unshaded: the producer publishes no percentiles for this board yet.' : view === 'percentiles' ? `Each cell is the producer’s percentile among ${among}.` : `Shading is the producer’s percentile among ${among}.`} {unitNote}{vsCurrent && (<span id="lb-current-note"> {currentNote}</span>)}</p>
         <div class="table-responsive">
           <table class="table table-sm align-middle table-fix-first-col" id="lb-table" data-board={board} data-basis={basis} data-view={view} data-sort={sort}>
             <thead>
