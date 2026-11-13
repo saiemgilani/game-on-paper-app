@@ -17,7 +17,7 @@ import { LEAGUES, PRO_LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: LeaderboardsParams }
 const { league, season, seasons, current, controls, spec, rows, read, capped, pctAvailable, names } = Astro.props.data;
-const { board, group, unit, basis, view, qualified, sort, basisFallback, viewFallback } = controls;
+const { board, group, unit, bases, basis, view, qualified, sort, basisFallback, viewFallback } = controls;
 const pro = PRO_LEAGUES.includes(league);
 const lname = LEAGUES[league].shortName;
 const lp = (p: string) => leaguePath(league, p);
@@ -36,7 +36,8 @@ const url = (p: Record<string, string>) => withParams(path, { ...params, ...p },
 const fresh = (p: Record<string, string>) => withParams(path, { season: String(season), ...p }, { season: String(current), board: 'impact', group: 'ratings', unit: '5' });
 // stay on the uncacheable /preview surface (utils/preview.ts keepPreviewSurface), as on /nba/cup
 const NAV = "window.location.href = (location.pathname.startsWith('/preview/') ? '/preview' : '') + this.value";
-const bases = offeredBases(spec);
+// a basis the board ships but this season has no values for (not backfilled yet) is hidden, and a link to it says so
+const seasonLacks = basisFallback != null && basisFallback !== 'unknown' && offeredBases(spec).includes(basisFallback);
 
 const dash = '—';
 const fmt = (c: Col, v: number | null): string => {
@@ -152,7 +153,7 @@ const scope = board === 'impact' ? (pro ? 'Regular season.' : 'Every game.') : b
       </div>
     </div>
     {basisFallback && (
-      <p class="small text-muted" id="lb-basis-fallback">{basisFallback === 'unknown' ? 'That basis is not one of per game, per 75, per 100 or totals' : `This board has no ${BASIS_LABEL[basisFallback].toLowerCase()} columns yet`}, so it shows {BASIS_LABEL[basis].toLowerCase()}.</p>
+      <p class="small text-muted" id="lb-basis-fallback">{basisFallback === 'unknown' ? 'That basis is not one of per game, per 75, per 100 or totals' : seasonLacks ? `${BASIS_LABEL[basisFallback]} is not available for this season` : `This board has no ${BASIS_LABEL[basisFallback].toLowerCase()} columns`}, so it shows {BASIS_LABEL[basis].toLowerCase()}.</p>
     )}
     {viewFallback && (
       <p class="small text-muted" id="lb-view-fallback">{board === 'impact' ? 'The producer publishes no player percentiles yet, so this board shows values.' : `There are no percentiles for ${BASIS_LABEL[basis].toLowerCase()}, so this board shows values.`}</p>

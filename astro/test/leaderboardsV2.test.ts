@@ -19,6 +19,8 @@ afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 
 type Row = Record<string, any>;
 const FX = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/leaderboards-v2-2026.json.gz', import.meta.url))).toString()) as Record<string, Row[]>;
+// the per-game and per-75 columns (#413 Q25), captured 2026-11-13: 2026 for all four leagues, and WNBA 2024 (not backfilled)
+const BX = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/leaderboards-v2-bases-2026.json.gz', import.meta.url))).toString()) as Record<string, Row[]>;
 
 const sdv = vi.hoisted(() => ({ rows: vi.fn(), from: vi.fn() }));
 vi.mock('../src/resources/sdv', async (orig) => ({
@@ -37,7 +39,7 @@ import NbaLeadersRoute from '../src/components/routes/NbaLeadersRoute.astro';
 import type { NbaLeadersParams } from '../src/routes/nba/leaders';
 import { BASES, BOARDS, TEAM_GROUPS, boardSpec, cellOf, IMPACT_QUALIFIED_POSS, isQualified, ncaaName, offeredBases, parseControls, shown, sortRows, srcFor, type Basis, type View } from '../src/utils/leaderboards';
 import { FLAGS } from '../src/utils/features';
-import { generateColorRampValue } from '../src/utils/misc';
+import { generateColorRampValue, generateMarginalString } from '../src/utils/misc';
 import type { BasketballLeague } from '../src/utils/league';
 
 /** What the Data API answers each board's read, from the captures (the API's own filters applied where a read has one). */
@@ -153,14 +155,17 @@ describe('the reads (one strict, season-filtered, capped read per board)', () =>
         expect(ncaaName('KEYSHAWN.HALL')).toBe('Keyshawn Hall');
     });
     // the Data API answers a select naming a missing column with a 400: every column asked for is one the producer ships
+    // (the per-game and per-75 columns from the 2026-11-13 capture, leaderboards-v2-bases-2026.json.gz)
     test('every select names only columns the real tables have', () => {
         const has = (rows: Row[], select: string) => select.split(',').filter((c) => !(c in rows[0]));
-        expect(has(FX.wnbaRates, selectFor(boardSpec('teams', 'wnba', 'ratings'), ['team_id'], true))).toEqual([]);
-        expect(has(FX.wnbaRates, selectFor(boardSpec('teams', 'wnba', 'factors'), ['team_id'], true))).toEqual([]);
+        for (const rates of [BX.nbaRates, BX.wnbaRates, BX.mbbRates, BX.wbbRates, BX.wnbaRates2024]) {
+            expect(has(rates, selectFor(boardSpec('teams', 'wnba', 'ratings'), ['team_id'], true))).toEqual([]);
+            expect(has(rates, selectFor(boardSpec('teams', 'wnba', 'factors'), ['team_id'], true))).toEqual([]);
+        }
         expect(has(FX.wnbaStrength, selectFor(boardSpec('teams', 'wnba', 'strength'), ['team_id'], true))).toEqual([]);
-        expect(has(FX.wnbaFlow, selectFor(boardSpec('teams', 'wnba', 'flow'), ['team_id'], true))).toEqual([]);
-        expect(has(FX.nbaLineups, selectFor(boardSpec('lineups', 'nba', 'ratings'), ['team_id', 'lineup_id'], true))).toEqual([]);
-        expect(has(FX.mbbLineups, selectFor(boardSpec('lineups', 'mbb', 'ratings'), ['team_id', 'lineup_id'], true))).toEqual([]);
+        for (const flow of [BX.wnbaFlow, BX.wnbaFlow2024]) expect(has(flow, selectFor(boardSpec('teams', 'wnba', 'flow'), ['team_id'], true))).toEqual([]);
+        expect(has(BX.nbaLineups, selectFor(boardSpec('lineups', 'nba', 'ratings'), ['team_id', 'lineup_id'], true))).toEqual([]);
+        expect(has(BX.mbbLineups, selectFor(boardSpec('lineups', 'mbb', 'ratings'), ['team_id', 'lineup_id'], true))).toEqual([]);
         expect(has(FX.nbaImpact, selectFor(boardSpec('impact', 'nba', 'ratings'), ['player_id', 'player_name'], false))).toEqual([]);
         expect(has(FX.mbbImpact, selectFor(boardSpec('impact', 'mbb', 'ratings'), ['player_id', 'player', 'team'], false))).toEqual([]);
     });
@@ -178,11 +183,12 @@ describe('§4.3 bug 1: an unknown basis never falls through silently', () => {
         expect(html).toMatch(/<option value="[^"]*basis=totals[^"]*">Totals<\/option>/);
         expect(html).toMatch(/<option value="\/nba\/leaderboards\?season=2026&amp;board=lineups"[^>]*selected[^>]*>Per 100 possessions<\/option>/);
     });
-    test('a real basis the board ships no column for (per 75): named, never shown as all dashes', async () => {
-        const c = parseControls(sp('board=teams&basis=per75'), 'wnba', () => true);
-        expect([c.basis, c.basisFallback]).toEqual(['per100', 'per75']);
-        const { html } = await board('wnba', '?board=teams&basis=per75');
-        expect(html).toContain('This board has no per 75 possessions columns yet, so it shows per 100 possessions.');
+    test('a real basis the board ships no column for (lineups per game): named, never shown as all dashes', async () => {
+        const c = parseControls(sp('board=lineups&basis=pergame'), 'nba', () => true);
+        expect([c.basis, c.basisFallback]).toEqual(['per100', 'pergame']);
+        const { html } = await board('nba', '?season=2026&board=lineups&basis=pergame');
+        expect(html).toContain('This board has no per game columns, so it shows per 100 possessions.');
+        expect(html).not.toMatch(/<option[^>]*>Per game<\/option>/);
     });
     test('no basis asked: no note', () => expect(parseControls(sp('board=teams'), 'wnba', () => true).basisFallback).toBeNull());
     // every offered basis has a producer column on the board: a select option never leads to a table of dashes
@@ -297,7 +303,9 @@ describe('the boards', () => {
         expect(st.data.spec.cols.map((c) => c.key)).toEqual(['games', 'wins', 'adj_off', 'adj_def', 'adj_net', 'sos', 'sov']);
         const fl = await board('wnba', '?board=teams&group=flow');
         expect(fl.data.spec.cols.map((c) => c.key)).toContain('kills');
-        expect(offeredBases(fl.data.spec)).toEqual(['pergame', 'per100', 'totals']);
+        expect(offeredBases(fl.data.spec)).toEqual(['pergame', 'per75', 'per100', 'totals']);
+        // the 2026-11-05 capture predates kills_per75: the select offers what the rows carry
+        expect(fl.data.controls.bases).toEqual(['pergame', 'per100', 'totals']);
         expect(fl.html).toContain('id="lb-basis"');
     });
     test('a failed read: the unavailable line, never cached', async () => {
@@ -324,5 +332,83 @@ describe('the boards', () => {
         expect(v).toContain(c.view);
         const b: Basis = c.basis;
         expect(BASES).toContain(b);
+    });
+});
+
+describe('per game and per 75 (#413 Q25): producer columns only, hidden where a season has none', () => {
+    /** Serve the 2026-11-13 capture: `<league>:<table>` -> rows. */
+    const serveBases = (map: Record<string, Row[]>) => sdv.rows.mockImplementation(async (lg: string, table: string) => {
+        const rows = map[`${lg}:${table}`];
+        if (!rows) throw new Error(`no capture for ${lg}:${table}`);
+        return rows;
+    });
+    const RATES: [BasketballLeague, Row[]][] = [['nba', BX.nbaRates], ['wnba', BX.wnbaRates], ['mbb', BX.mbbRates], ['wbb', BX.wbbRates]];
+    test.each(RATES)('%s team ratings, 2026: every basis offered; each cell is its own producer column, rank and percentile', (lg, rows) => {
+        const spec = boardSpec('teams', lg, 'ratings');
+        expect(offeredBases(spec, rows)).toEqual(['pergame', 'per75', 'per100', 'totals']);
+        const r = rows.find((x) => x.plus_minus_per75_rank != null)!;
+        const col = (k: string) => spec.cols.find((c) => c.key === k)!;
+        for (const [k, basis, src] of [['off', 'pergame', 'pts_pg'], ['def', 'pergame', 'opp_pts_pg'], ['net', 'pergame', 'plus_minus_pg'],
+            ['off', 'per75', 'pts_per75'], ['def', 'per75', 'opp_pts_per75'], ['net', 'per75', 'plus_minus_per75']] as const)
+            expect(cellOf(r, col(k), basis)).toEqual({ src, value: r[src], rank: r[`${src}_rank`], pct: r[`${src}_pct`] });
+        // the season-total margin is a value with no rank, so it is never shaded
+        expect(cellOf(r, col('net'), 'totals')).toEqual({ src: 'plus_minus', value: r.plus_minus, rank: null, pct: null });
+        // pace makes per game and per 75 rank differently on the real rows: borrowing one basis's percentile would show
+        expect(rows.some((x) => x.pts_pg_pct !== x.pts_per75_pct)).toBe(true);
+    });
+    test("WNBA per 75: the Net cell is the producer's +/- per 75, shaded by its own percentile, best first", async () => {
+        serveBases({ 'wnba:team_season_rates': BX.wnbaRates });
+        const { data, html } = await board('wnba', '?board=teams&basis=per75&sort=net');
+        expect(data.controls.basis).toBe('per75');
+        expect(html).toMatch(/<option value="[^"]*basis=per75[^"]*"[^>]*selected[^>]*>Per 75 possessions<\/option>/);
+        const aces = BX.wnbaRates.find((r) => r.team_id === 1611661319)!; // Las Vegas 2026: +5.7 per 75, rank 4, pct 75
+        expect(cells(html).find((r) => r[0] === 'Las Vegas Aces')![colIndex(data, 'net')]).toBe('+5.7');
+        expect(html).toContain(`<td class="text-center numeral ${generateColorRampValue(aces.plus_minus_per75_pct, 100)}" title="Rank 4, percentile 75">+5.7</td>`);
+        expect(data.rows!.map((r) => r.team_id)).toEqual([...BX.wnbaRates].filter((r) => r.net_rtg_rank != null).sort((a, b) => b.plus_minus_per75 - a.plus_minus_per75).map((r) => r.team_id));
+        const pg = await board('wnba', '?board=teams&basis=pergame&sort=off');
+        expect(cells(pg.html).find((r) => r[0] === 'Las Vegas Aces')![colIndex(pg.data, 'off')]).toBe(aces.pts_pg.toFixed(1));
+    });
+    test('an older season the producer has not backfilled (WNBA 2024): per game and per 75 hidden, and a link to one says so', async () => {
+        serveBases({ 'wnba:team_season_rates': BX.wnbaRates2024, 'wnba:team_season_flow': BX.wnbaFlow2024 });
+        expect(offeredBases(boardSpec('teams', 'wnba', 'ratings'), BX.wnbaRates2024)).toEqual(['per100', 'totals']);
+        const { data, html } = await board('wnba', '?season=2024&board=teams&basis=per75');
+        expect([data.controls.basis, data.controls.basisFallback]).toEqual(['per100', 'per75']);
+        expect(html).toContain('Per 75 possessions is not available for this season, so it shows per 100 possessions.');
+        expect(html).not.toMatch(/<option[^>]*>Per (game|75 possessions)<\/option>/);
+        // game flow keeps per game (kills_pg was always there) and drops per 75
+        const fl = await board('wnba', '?season=2024&board=teams&group=flow');
+        expect(fl.data.controls.bases).toEqual(['pergame', 'per100', 'totals']);
+    });
+    test('game-flow kills per 75 read kills_per75 with its own rank and percentile; runs and double kills are a dash', async () => {
+        serveBases({ 'wnba:team_season_flow': BX.wnbaFlow });
+        const spec = boardSpec('teams', 'wnba', 'flow');
+        const r = BX.wnbaFlow[0];
+        expect(cellOf(r, spec.cols.find((c) => c.key === 'kills')!, 'per75')).toEqual({ src: 'kills_per75', value: r.kills_per75, rank: r.kills_per75_rank, pct: r.kills_per75_pct });
+        const { data, html } = await board('wnba', '?board=teams&group=flow&basis=per75&sort=kills');
+        expect(data.controls.bases).toEqual(['pergame', 'per75', 'per100', 'totals']);
+        const rows = cells(html);
+        expect(rows.length).toBeGreaterThan(5);
+        for (const k of ['runs', 'opp_runs', 'double_kills']) expect(rows.every((x) => x[colIndex(data, k)] === '—')).toBe(true);
+        const kills = rows.map((x) => num(x[colIndex(data, 'kills')])!);
+        expect(kills).toEqual([...kills].sort((a, b) => b - a));
+    });
+    test.each([['nba', BX.nbaLineups], ['mbb', BX.mbbLineups]] as const)('%s lineups: per 75 offered, never per game; a unit the producer does not rank is unshaded', async (lg, rows) => {
+        serveBases({ [`${lg}:lineup_seasons`]: rows, [`${lg}:ncaa_rapm`]: [] });
+        shots.players.mockResolvedValue([]);
+        expect(offeredBases(boardSpec('lineups', lg, 'ratings'), rows)).toEqual(['per75', 'per100', 'totals']);
+        // the real captures cover both: NBA 2026's early-season units are all below the producer's rank gate, MBB's are ranked
+        expect(rows.every((r) => (r.plus_minus_per75_rank == null) === (lg === 'nba'))).toBe(true);
+        const { data, html } = await board(lg, '?season=2026&board=lineups&basis=per75&qualified=all');
+        expect(data.controls.basis).toBe('per75');
+        const i = colIndex(data, 'net');
+        const shownRows = cells(html);
+        const tds = [...html.matchAll(/<tr[^>]*>\s*(<td[\s\S]*?)<\/tr>/g)].map((m) => [...m[1].matchAll(/<td([^>]*)>/g)][i][1]);
+        expect(shownRows.length).toBe(rows.length);
+        data.rows!.forEach((r, k) => {
+            expect(shownRows[k][i]).toBe(generateMarginalString(r.plus_minus_per75 as number, 1, 1));
+            // shaded only from the unit's own producer percentile; no rank, no percentile, no shade
+            const want = r.plus_minus_per75_rank == null ? null : generateColorRampValue(r.plus_minus_per75_pct as number, 100);
+            expect(tds[k].match(/hulk-bg-level-\d/)?.[0] ?? null).toBe(want);
+        });
     });
 });

@@ -43,7 +43,8 @@ export async function prepareLeaderboards(Astro: AstroGlobal, league: Basketball
         console.error(`ERROR while loading the ${league} ${asked.board} board for ${season}: ${e}, ${e?.stack}`);
     }
     const all = rows ?? [];
-    const controls = parseControls(sp, league, (spec, basis) => hasPercentiles(all, spec, basis));
+    // a failed read keeps every basis: the page says the board is unavailable, not that a basis is
+    const controls = parseControls(sp, league, (spec, basis) => hasPercentiles(all, spec, basis), rows ?? undefined);
     const spec = boardSpec(controls.board, league, controls.group);
     const sortCol = spec.cols.find((c) => c.key === controls.sort)!;
     const kept = controls.qualified ? all.filter((r) => isQualified(r, spec, league)) : all;
