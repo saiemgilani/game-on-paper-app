@@ -161,16 +161,18 @@ describe('NbaGamePage', () => {
         expect(off).not.toContain('data-shot-link');
     });
     for (const league of ['nba', 'wnba', 'mbb', 'wbb'] as const) {
-        test(`${league}: each team's signature and pinnable FG% bars share one linked dashboard with its shot chart`, async () => {
+        test(`${league}: each team's signature and Share / FG% bars share one linked dashboard with its shot chart`, async () => {
             const g = game(league);
             const html = await page(league, g, context(league));
             const shots = html.split('id="shots"')[1].split('id="plays"')[0];
             expect(shots.match(/<div data-shot-link>/g)).toHaveLength(2);
             for (const part of shots.split('<div data-shot-link>').slice(1)) {
                 expect(part.indexOf('GameShotChart.svelte')).toBeLessThan(part.indexOf('ShootingSignature.svelte'));
-                expect(part).toContain('DistanceBars.svelte');
-                expect(part).toContain('&quot;pinnable&quot;:[0,true]');
-                expect(part).toContain('&quot;metric&quot;:[0,&quot;fgPct&quot;]');
+                // one bar chart with a Share / FG% toggle (Q16), FG% first; the toggle passes `pinnable` to the bars
+                expect(part).toContain('DistanceBarsToggle.svelte');
+                expect(part).toMatch(/aria-pressed="false"[^>]*>Share<\/button>/);
+                expect(part).toMatch(/aria-pressed="true"[^>]*>FG%<\/button>/);
+                expect(part.match(/<svg /g)?.length).toBe(3); // court, signature, bars
             }
             expect(shots).toContain(league === 'mbb' || league === 'wbb' ? 'regular season + postseason.' : 'regular season.');
             expect(shots).not.toContain('NaN');
