@@ -840,3 +840,12 @@ names are the `names` of `lineups-{nba,mbb}-2025.json.gz` above; Minnesota's 164
 **To regenerate:** read the four parquets from sdv-db main, filter `team_id`, select the columns above, write the rows as
 JSON and gzip. Once the backfill runs, the live `player_on_off?season=2026&team_id=<id>&order=-minutes_on&limit=100` and
 `player_wowy?season=2026&team_id=<id>&limit=1225` reads replace them.
+
+## `player-bio-nba-2025.json.gz`
+The On/Off section's name read for pros with no `shot_season_players` row (BB-G4 review, `retrieveBioNames`): the `data` of
+`/v1/nba_stats/player_bio?season=2025&season_type=Regular%20Season&select=player_id,player_name&limit=1000`, captured live on
+2026-11-13 (569 players; Minnesota's 1642399 is Jesse Edwards). Nothing is edited.
+
+**Used by:** `test/onOff.test.ts`.
+
+**To regenerate:** the same read (season filter and limit as above).

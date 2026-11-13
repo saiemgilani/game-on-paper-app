@@ -21,12 +21,13 @@ const NBA: Capture = gz('on-off-nba-2025'); // Minnesota 2024-25 (stats id 16106
 const MBB: Capture = gz('on-off-mbb-2025'); // Xavier 2024-25 (ESPN 2752) over the fixture's two games
 const NBA_NAMES: any[] = gz('lineups-nba-2025').names; // Minnesota's shot_season_players rows
 const MBB_NAMES: any[] = gz('lineups-mbb-2025').names; // Xavier's ncaa_player_box rows
+const BIO: any[] = gz('player-bio-nba-2025'); // the NBA's 2024-25 regular-season player_bio names (Jesse Edwards, 1642399, among them)
 
 const sdv = vi.hoisted(() => ({ fn: vi.fn() }));
 vi.mock('../src/resources/sdv', async (orig) => ({ ...(await orig<typeof import('../src/resources/sdv')>()), retrieveRows: (...a: unknown[]) => sdv.fn(...a) }));
 const reads = vi.hoisted(() => ({ fn: vi.fn() }));
 vi.mock('../src/resources/onOff', async (orig) => ({ ...(await orig<typeof import('../src/resources/onOff')>()), retrieveOnOff: (...a: unknown[]) => reads.fn(...a) }));
-vi.mock('../src/resources/lineups', async (orig) => ({ ...(await orig<typeof import('../src/resources/lineups')>()), retrieveLineups: async () => ({ units: [], names: [] }) }));
+vi.mock('../src/resources/lineups', async (orig) => ({ ...(await orig<typeof import('../src/resources/lineups')>()), retrieveLineups: async () => ({ units: [], names: [], pairs: [] }) }));
 vi.mock('../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../src/resources/teamSeason')>()),
     retrieveTeamSeason: async () => ({ rates: [], strength: null, games: [], gameRates: [] }),
@@ -45,12 +46,12 @@ vi.mock('../src/resources/nbaShots', async (orig) => ({
 
 import OnOffTab from '../src/components/nba/OnOffTab.astro';
 import { NETS_TEAM_ID } from '../src/nba/data/teams';
-import { PAIR_LIMIT, PLAYER_LIMIT, RATINGS } from '../src/resources/onOff';
+import { BIO_LIMIT, PAIR_LIMIT, PLAYER_LIMIT, RATINGS } from '../src/resources/onOff';
 import { prepareNbaTeam } from '../src/routes/nba/team';
 import { FLAGS } from '../src/utils/features';
 import { playerNames } from '../src/utils/lineups';
 import { generateColorRampValue } from '../src/utils/misc';
-import { parseWowy, wowyLines, type OnOffTab as Tab } from '../src/utils/onOff';
+import { isShortTenure, ON_OFF_MIN_MINUTES, parseWowy, shownLines, shownPlayers, WOWY_MIN_MINUTES, wowyLines, type OnOffTab as Tab } from '../src/utils/onOff';
 
 const MIN = 1610612750;
 const XAVIER = 2752;
@@ -170,6 +171,32 @@ describe('prepareNbaTeam with the flag', () => {
         expect(r.onOff!.lines.map((l) => l.teammate)).toEqual([String(a)]);
         expect(r.onOff!.names.get(String(a))).toBe(rows[0].player_name);
     });
+    test('a pro with no season row is named by one player_bio read (only then); ?onoff=all is read', async () => {
+        const rows = apiSeasonPlayerRows().filter((p: any) => p.team_id === NETS_TEAM_ID);
+        const players = [{ ...NBA.players[0], player_id: rows[0].person_id }, NBA.players.find((p) => p.player_id === 1642399)];
+        reads.fn.mockResolvedValue({ players, pairs: [], names: [] });
+        sdv.fn.mockImplementation(async (_l: string, table: string) => (table === 'player_bio' ? BIO : []));
+        const r = ok(await prepareNbaTeam(fakeAstro({ preview: true }, '?season=2026&onoff=all').astro));
+        expect(sdv.fn.mock.calls.filter((c) => c[1] === 'player_bio')).toHaveLength(1);
+        const bio = sdv.fn.mock.calls.find((c) => c[1] === 'player_bio')!;
+        expect([bio[0], bio[2], bio[4]]).toEqual(['nba', { season: '2026', season_type: 'Regular Season', select: 'player_id,player_name', limit: String(BIO_LIMIT) }, true]);
+        expect(r.onOff!.names.get('1642399')).toBe('Jesse Edwards');
+        expect(r.onOff!.names.get(String(rows[0].person_id))).toBe(rows[0].player_name);
+        expect(r.onOff!.all).toBe(true);
+        // every id named by the season rows: no bio read
+        sdv.fn.mockClear();
+        reads.fn.mockResolvedValue({ players: players.slice(0, 1), pairs: [], names: [] });
+        const named = ok(await prepareNbaTeam(fakeAstro({ preview: true }).astro));
+        expect(sdv.fn.mock.calls.some((c) => c[1] === 'player_bio')).toBe(false);
+        expect(named.onOff!.all).toBe(false);
+    });
+    test('a failed name read keeps the section, with the #<id> stand-in', async () => {
+        reads.fn.mockResolvedValue({ players: [NBA.players.find((p) => p.player_id === 1642399)], pairs: [], names: [] });
+        sdv.fn.mockImplementation(async (_l: string, table: string) => { if (table === 'player_bio') throw new Error('503'); return []; });
+        const r = ok(await prepareNbaTeam(fakeAstro({ preview: true }).astro));
+        expect(r.onOff!.players).toHaveLength(1);
+        expect(r.onOff!.names.has('1642399')).toBe(false);
+    });
     test('on, a 404 spends no read', async () => {
         expect(await prepareNbaTeam(fakeAstro({ preview: true }, '?season=2026', '1').astro)).toEqual({ notFound: true });
         expect(reads.fn).not.toHaveBeenCalled();
@@ -186,18 +213,18 @@ describe('prepareNbaTeam with the flag', () => {
 });
 
 const BASE = `/nba/team/${MIN}`;
-const tabOf = (c: Capture, names: Map<string, string>, wowy: string | null = null): Tab => {
+const tabOf = (c: Capture, names: Map<string, string>, wowy: string | null = null, all = false): Tab => {
     const w = parseWowy(wowy, c.players);
-    return { players: c.players, names, wowy: w, lines: wowyLines(c.pairs, w) };
+    return { players: c.players, names, wowy: w, lines: wowyLines(c.pairs, w), all };
 };
 const render = (league: 'nba' | 'mbb', data: Tab) =>
     container.renderToString(OnOffTab, { props: { data, season: 2025, current: 2026, basePath: BASE, teamName: 'Team' }, locals: { league } as App.Locals });
 const rowsOf = (html: string, id: string) => html.split(`id="${id}"`)[1].split('<tbody>')[1].split('</tbody>')[0].match(/<tr/g)?.length ?? 0;
-const NBA_TAB = () => tabOf(NBA, playerNames(NBA_NAMES, []));
+const NBA_TAB = (all = false) => tabOf(NBA, playerNames(NBA_NAMES, []), null, all);
 
 describe('OnOffTab', () => {
     test("Minnesota: one row per player, the producer's ratings, shaded only where ranked, the whole-season note", async () => {
-        const html = await render('nba', NBA_TAB());
+        const html = await render('nba', NBA_TAB(true));
         expect(rowsOf(html, 'on-off-table')).toBe(20);
         expect(html).toContain('Anthony Edwards');
         expect(html).toContain(NBA.players[0].off_rtg_on.toFixed(1));
@@ -214,22 +241,54 @@ describe('OnOffTab', () => {
         expect(html).toContain('#1642399');
         for (const bad of ['undefined', 'NaN']) expect(html).not.toContain(bad);
     });
-    test("WOWY: Edwards by default, against his 19 teammates, unshaded; the select's URLs keep the season and drop the default", async () => {
+    test('the minutes minimum: players under 100 minutes on and teammates under 50 together are hidden, with a show-all link', async () => {
         const html = await render('nba', NBA_TAB());
+        const shown = NBA.players.filter((p) => p.minutes_on >= ON_OFF_MIN_MINUTES);
+        expect([shown.length, NBA.players.length]).toEqual([14, 20]);
+        expect(rowsOf(html, 'on-off-table')).toBe(14);
+        expect(html.split('id="on-off-table"')[1].split('</table>')[0]).not.toContain('#1642399'); // 3 minutes (the WOWY select still lists him)
+        expect(html).toContain('(6 hidden)');
+        expect(html.replaceAll('&amp;', '&')).toContain(`<a href="${BASE}?season=2025&onoff=all#on-off">Show all</a>`);
+        const mates = shownLines(wowyLines(NBA.pairs, EDWARDS), false);
+        expect(mates.every((l) => l.together.minutes >= WOWY_MIN_MINUTES)).toBe(true);
+        expect(rowsOf(html.split('id="wowy"')[1], 'wowy-table')).toBe(mates.length);
+        expect(html).toContain(`${19 - mates.length} teammates under 50 minutes together are hidden.`);
+        // ?onoff=all: every row, a link back, and the WOWY select keeps it
+        const all = await render('nba', NBA_TAB(true));
+        expect(all.replaceAll('&amp;', '&')).toContain(`<a href="${BASE}?season=2025#on-off">Hide players under 100 minutes`);
+        expect(all.replaceAll('&amp;', '&')).toContain(`value="${BASE}?season=2025&wowy=${NBA.players[1].player_id}&onoff=all#wowy"`);
+        expect(shownPlayers(NBA.players, true)).toBe(NBA.players);
+    });
+    test('a player well short of the team\'s games (under three quarters) is flagged; the note says what the mark means', async () => {
+        const html = await render('nba', NBA_TAB());
+        const short = NBA.players.filter((p) => p.minutes_on >= ON_OFF_MIN_MINUTES && isShortTenure(p));
+        expect(short.map((p) => p.games)).toEqual([39, 46, 31, 43, 38, 17]);
+        expect(isShortTenure({ games: 62, team_games: 82 })).toBe(false);
+        expect(isShortTenure({ games: 61, team_games: 82 })).toBe(true);
+        expect(html.match(/>†</g)).toHaveLength(short.length);
+        expect(html).toMatch(/title="Played 39 of the team('|&#39;)s 82 games, so his off side includes games he was not with the team or did not play"/);
+        expect(html).toContain('† marks a player who played under three quarters');
+    });
+    test("WOWY: Edwards by default, against his 19 teammates, unshaded; the select's URLs keep the season and drop the default", async () => {
+        const html = await render('nba', NBA_TAB(true));
         const wowy = html.split('id="wowy"')[1];
         expect(rowsOf(wowy, 'wowy-table')).toBe(19);
         expect(wowy).toContain('Anthony Edwards without');
         expect(wowy).not.toMatch(/hulk-bg-level-\d/);
         const opts = [...wowy.split('id="wowy-player"')[1].split('</select>')[0].matchAll(/<option value="([^"]+)"( selected)?/g)].map((m) => [m[1].replaceAll('&amp;', '&'), !!m[2]]);
         expect(opts).toHaveLength(20);
-        expect(opts[0]).toEqual([`${BASE}?season=2025#wowy`, true]);
-        expect(opts[1]).toEqual([`${BASE}?season=2025&wowy=${NBA.players[1].player_id}#wowy`, false]);
+        expect(opts[0]).toEqual([`${BASE}?season=2025&onoff=all#wowy`, true]);
+        expect(opts[1]).toEqual([`${BASE}?season=2025&wowy=${NBA.players[1].player_id}&onoff=all#wowy`, false]);
         // the top line is the teammate he shared the most minutes with, read from his side
         const top = wowyLines(NBA.pairs, EDWARDS)[0];
         expect(wowy.split('<tbody>')[1]).toMatch(new RegExp(`^\\s*<tr[^>]*>\\s*<th[^>]*>${NBA_NAMES.find((n) => String(n.person_id) === top.teammate).player_name}</th>\\s*<td[^>]*>${Math.round(top.together.minutes).toLocaleString('en-US')}</td>`));
     });
     test("Xavier: named from ncaa_player_box, nothing shaded, and no stats.nba.com sentence", async () => {
-        const html = await render('mbb', tabOf(MBB, playerNames([], MBB_NAMES)));
+        // two games: nobody reaches 100 minutes, so the default view says so and links to every row
+        const few = await render('mbb', tabOf(MBB, playerNames([], MBB_NAMES)));
+        expect(few).toContain('id="on-off-few"');
+        expect(few).toContain('No Team player has 100 minutes on the floor in 2024-25 yet.');
+        const html = await render('mbb', tabOf(MBB, playerNames([], MBB_NAMES), null, true));
         expect(rowsOf(html, 'on-off-table')).toBe(14);
         expect(rowsOf(html.split('id="wowy"')[1], 'wowy-table')).toBe(13);
         expect(html).not.toMatch(/hulk-bg-level-\d/);
@@ -238,11 +297,11 @@ describe('OnOffTab', () => {
         expect(html).not.toContain('stats.');
     });
     test('the table before the backfill (no rows) is the empty note; a failed read says unavailable', async () => {
-        const empty = await render('nba', { players: [], names: new Map(), wowy: null, lines: [] });
+        const empty = await render('nba', { players: [], names: new Map(), wowy: null, lines: [], all: false });
         expect(empty).toContain('id="on-off-empty"');
         expect(empty).toContain('No Team on/off numbers for 2024-25 yet.');
         expect(empty).not.toContain('id="wowy"');
-        const down = await render('nba', { players: null, names: new Map(), wowy: null, lines: [] });
+        const down = await render('nba', { players: null, names: new Map(), wowy: null, lines: [], all: false });
         expect(down).toContain('id="on-off-unavailable"');
         expect(down).not.toContain('id="on-off-table"');
     });

@@ -28,6 +28,29 @@ export interface OnOffTab {
     wowy: string | null;
     /** his teammates, most minutes together first */
     lines: WowyLine[];
+    /** ?onoff=all: every row, with no minutes minimum */
+    all: boolean;
+}
+
+/** The section hides on/off rows under this many minutes on the floor, and WOWY teammates under WOWY_MIN_MINUTES together, unless ?onoff=all. */
+export const ON_OFF_MIN_MINUTES = 100;
+export const WOWY_MIN_MINUTES = 50;
+
+/** The rows shown: those over the minimum, or every row with ?onoff=all. */
+export function shownPlayers(players: OnOffRow[], all: boolean): OnOffRow[] {
+    return all ? players : players.filter((p) => p.minutes_on >= ON_OFF_MIN_MINUTES);
+}
+export function shownLines(lines: WowyLine[], all: boolean): WowyLine[] {
+    return all ? lines : lines.filter((l) => l.together.minutes >= WOWY_MIN_MINUTES);
+}
+
+/**
+ * A player whose games for the team are well short of the team's (under three quarters): traded, signed or hurt, so his
+ * off side carries games he was not there for. ponytail: one fixed share; a tenure-limited off side is the producer's (BB-D5).
+ */
+export const SHORT_SHARE = 0.75;
+export function isShortTenure(p: Pick<OnOffRow, 'games' | 'team_games'>): boolean {
+    return p.team_games > 0 && p.games < SHORT_SHARE * p.team_games;
 }
 
 /** ?wowy=: one of the team's on/off players; anything else is the one with the most minutes on the floor. */

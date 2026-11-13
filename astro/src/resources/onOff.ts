@@ -63,6 +63,22 @@ export interface OnOffReads {
     names: NcaaNameRow[];
 }
 
+/** One pro player's name in the season's bio table (stats.nba.com / stats.wnba.com ids). */
+export interface BioNameRow {
+    player_id: number;
+    player_name: string | null;
+}
+/** A season's regular-season bio rows: one per player (569 NBA, 182 WNBA in 2024-25). */
+export const BIO_LIMIT = 1000;
+
+/**
+ * The pros' names for the ids the page's season rows lack (a player with no shot attempt has no shot_season_players
+ * row): one season read of `player_bio`, cached like the rest. Only called when an id is missing.
+ */
+export function retrieveBioNames(league: BasketballLeague, season: number): Promise<BioNameRow[]> {
+    return retrieveRows<BioNameRow>(league, 'player_bio', { season: String(season), season_type: 'Regular Season', select: 'player_id,player_name', limit: String(BIO_LIMIT) }, TTL, true);
+}
+
 /** One team-season's on/off rows and WOWY pairs; college adds its players' names. */
 export async function retrieveOnOff(league: BasketballLeague, season: number, teamId: number): Promise<OnOffReads> {
     const q = { season: String(season), team_id: String(teamId) };

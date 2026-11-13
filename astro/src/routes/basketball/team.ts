@@ -16,7 +16,7 @@ import type { SortDir } from '../../nba/table';
 import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterRows, teamsFromSeasonRows, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
 import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots, type SeasonPlayerRow } from '../../resources/nbaShots';
 import { retrieveLineups } from '../../resources/lineups';
-import { retrieveOnOff } from '../../resources/onOff';
+import { retrieveBioNames, retrieveOnOff } from '../../resources/onOff';
 import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
 import { isFeatureEnabled } from '../../utils/features';
 import { parseBasis, parseGate, parseLineupSort, parseUnit, playerNames, playerPages, sortUnits, unitLabels, type LineupsTab } from '../../utils/lineups';
@@ -179,15 +179,27 @@ async function readLineups(Astro: AstroGlobal, league: BasketballLeague, season:
     }
 }
 
-/** The On/Off and WOWY section (BB-G4): the two reads, ?wowy= and that player's pairs, the names; `players` null when a read failed. */
+/**
+ * The On/Off and WOWY section (BB-G4): the two reads, ?wowy= and that player's pairs, ?onoff=all, the names; `players`
+ * null when a read failed. A pro with no season row (no shot attempt) is named by one player_bio read, made only then.
+ */
 async function readOnOff(Astro: AstroGlobal, league: BasketballLeague, season: number, teamId: number, rows: SeasonPlayerRow[]): Promise<OnOffTab> {
+    const all = Astro.url.searchParams.get('onoff') === 'all';
     try {
-        const { players, pairs, names } = await retrieveOnOff(league, season, teamId);
-        const wowy = parseWowy(Astro.url.searchParams.get('wowy'), players);
+        const read = await retrieveOnOff(league, season, teamId);
+        const wowy = parseWowy(Astro.url.searchParams.get('wowy'), read.players);
+        const college = isNcaaDashboards(league);
         // the season rows are ESPN-keyed in college: never mix them with the stats.ncaa.org ids
-        return { players, names: playerNames(isNcaaDashboards(league) ? [] : rows, names), wowy, lines: wowyLines(pairs, wowy) };
+        const names = playerNames(college ? [] : rows, read.names);
+        const missing = read.players.map((p) => String(p.player_id)).filter((id) => !names.has(id));
+        if (!college && missing.length) {
+            // decorative: a failed name read leaves the #<id> stand-ins, never the section
+            const bio = await retrieveBioNames(league, season).catch((e) => (console.error(`ERROR while naming the ${league} ${season} on/off ids ${missing.join(',')}: ${e}`), []));
+            for (const r of bio) if (r.player_name && missing.includes(String(r.player_id))) names.set(String(r.player_id), r.player_name);
+        }
+        return { players: read.players, names, wowy, lines: wowyLines(read.pairs, wowy), all };
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} on/off for team ${teamId}: ${e}, ${e?.stack}`);
-        return { players: null, names: new Map(), wowy: null, lines: [] };
+        return { players: null, names: new Map(), wowy: null, lines: [], all };
     }
 }

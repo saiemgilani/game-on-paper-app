@@ -1,5 +1,6 @@
 // The team page's On/Off and WOWY section (BB-G4): Minnesota 2025-26, scrolled to the on/off table,
-// then the WOWY player select (a plain URL) switched to another player. Behind 'bball-on-off' inside
+// then the WOWY player select (a plain URL) switched to another player, then "Show all" (?onoff=all) to lift the
+// 100-minute / 50-minute minimums. Behind 'bball-on-off' inside
 // 'nba': pass WALKTHROUGH_COOKIE (see README.md) or run against a tree with the flags forced on.
 const TEAM = '/nba/team/1610612750?season=2026';
 
@@ -15,5 +16,9 @@ export default async (page, base) => {
   await page.waitForLoadState('networkidle', { timeout: 60_000 });
   if ((await page.locator('#wowy-table').count()) !== 1) throw new Error('expected the WOWY table for the picked player');
   await page.locator('#wowy').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(2000);
+  await Promise.all([page.waitForURL(/onoff=all/, { timeout: 60_000 }), page.locator('#on-off-minimum a').click()]);
+  await page.waitForLoadState('networkidle', { timeout: 60_000 });
+  await page.locator('#on-off').scrollIntoViewIfNeeded();
   await page.waitForTimeout(2000);
 };
