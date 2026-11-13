@@ -34,7 +34,7 @@ const title = `${player.player_name}, ${label} shooting | Game on Paper`;
 const description = `${player.player_name} (${teams.join(', ')}) ${label}: ${fmtInt(line.makes)}/${fmtInt(line.attempts)} FG, ${fmtPct(line.fgPct)} FG%, ${fmtPct(line.efgPct)} eFG%. Hex shot chart, shooting signature and distance and side splits against the league.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Players', url: `${lp('/players')}${q}`, active: false }, { title: player.player_name, active: true }];
 const subject = `${player.player_name} ${label}`;
-const sections = [...(impact !== undefined ? [['#impact', 'Impact']] : []), ...(war !== undefined ? [['#value', 'Value']] : []), ...(situations !== undefined ? [['#situations', 'Situations']] : []), ['#ranks', 'League ranks'], ...(explorer.games ? [['#nba-games-panel', 'Games']] : []), ['#charts', 'Shot charts'], ...(explorer.games ? [['#nba-rolling-panel', 'Rolling shooting'], ['#nba-versus-panel', 'Versus each opponent']] : [])];
+const sections = [...(impact !== undefined ? [['#impact', 'Impact']] : []), ...(war !== undefined && impact === undefined ? [['#value', 'Value']] : []), ...(situations !== undefined ? [['#situations', 'Situations']] : []), ['#ranks', 'League ranks'], ...(explorer.games ? [['#nba-games-panel', 'Games']] : []), ['#charts', 'Shot charts'], ...(explorer.games ? [['#nba-rolling-panel', 'Rolling shooting'], ['#nba-versus-panel', 'Versus each opponent']] : [])];
 ---
 <GenericPage title={title} subtitle={description} slug={lp(`/players/${player.person_id}`)} breadcrumbs={breadcrumbs} description={description} canonicalPath={playerHref(player.person_id, q, league)}>
   <div class="container">
@@ -55,8 +55,8 @@ const sections = [...(impact !== undefined ? [['#impact', 'Impact']] : []), ...(
       <span class="text-muted">On this page:</span>
       {sections.map(([href, text]) => (<a href={href} class="ms-2">{text}</a>))}
     </nav>
-    {impact !== undefined && <PlayerImpact rows={impact} season={season} name={player.player_name} {...(war !== undefined ? { withoutWar: true } : {})} />}
-    {war !== undefined && <PlayerValue war={war} {...(epv !== undefined ? { epv } : {})} season={season} name={player.player_name} />}
+    {impact !== undefined && (<PlayerImpact rows={impact} season={season} name={player.player_name} {...(war !== undefined ? { relabelWar: true } : {})}>{war !== undefined && <PlayerValue war={war} {...(epv !== undefined ? { epv } : {})} season={season} name={player.player_name} nested />}</PlayerImpact>)}
+    {impact === undefined && war !== undefined && <PlayerValue war={war} {...(epv !== undefined ? { epv } : {})} season={season} name={player.player_name} />}
     {situations !== undefined && <PlayerSituations data={situations} season={season} current={current} basePath={lp(`/players/${player.person_id}`)} name={player.player_name} />}
     <NbaRankLists ranks={ranks} personId={player.person_id} seasonQuery={q} min={min} {...(scope.noun === 'regular season' ? {} : { scope: scope.noun })} />
     {unlocated && <p class="small text-muted">{placeholderNote(unlocated.count, unlocated.total, 'season')}</p>}
