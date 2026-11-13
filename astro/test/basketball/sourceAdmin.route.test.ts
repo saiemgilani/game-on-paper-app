@@ -23,6 +23,8 @@ vi.mock('../../src/resources/impactBox', async (orig) => ({ ...(await orig<typeo
 vi.mock('../../src/resources/gameFlow', async (orig) => ({ ...(await orig<typeof import('../../src/resources/gameFlow')>()), retrieveGameFlow: async () => (await orig<typeof import('../../src/resources/gameFlow')>()).EMPTY_FLOW }));
 // BB-G2's garbage-time log likewise ('bball-garbage-time', preview): unmapped, never a read
 vi.mock('../../src/resources/garbageTime', async (orig) => ({ ...(await orig<typeof import('../../src/resources/garbageTime')>()), retrieveGarbageTime: async () => ({ teams: null, rows: [] }) }));
+// BB-G45's play_wp variants ('bball-wp-lenses', preview, a final): built, so the cache is the final's, never a read
+vi.mock('../../src/resources/wpLenses', async (orig) => ({ ...(await orig<typeof import('../../src/resources/wpLenses')>()), retrieveWpLenses: async () => [{ n: 1, naive: 0.5, market: null }] }));
 
 const api = () => JSON.parse(readFileSync(new URL('../fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
 const ID = '401766458';

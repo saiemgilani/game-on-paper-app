@@ -90,6 +90,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // No toggle when the log has no flag (a release from before BB-D7) or no garbage time. Off: no read, `?garbage=` is
     // ignored, and the game page is today's, byte for byte.
     'bball-garbage-time': 'preview',
+    // BB-G45's WP lenses and game-flow extras on /<league>/game/[id]: the WP chart switches between our model, a score-and-clock
+    // model (prior 0.5) and a market-anchored one (closing-line prior), both sdv-db play_wp variants (sdv-db #217) read for a
+    // final, each lens shown only when it covers every play; a margin line under the WP line (hover reads a moment, click pins
+    // it, drag reads a stretch); and under the chart the 8-0 runs, the longest drought, the last 5:00, each side's peak WP,
+    // the largest swing and the winner's lowest WP. Off: no read, and the game page is today's, byte for byte.
+    'bball-wp-lenses': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

@@ -3,6 +3,7 @@
 import type { ESPNGameHeader } from './espn';
 import type { ProcessedGame } from './python';
 import { regulationFor, type PeriodKind, type Regulation } from '../basketball/config';
+import type { WpLensRow } from '../utils/wpLenses';
 import type { BasketballLeague } from '../utils/league';
 import { wnbaEraTricode } from '../nba/data/wnbaTeams';
 
@@ -71,6 +72,8 @@ export interface NbaGame {
     hasOvertime: boolean
     /** sdv-py's game_excitement (BB-D28) on the game's WP series, from the processor only; absent otherwise (see fromDataApi) */
     excitement?: NbaExcitement
+    /** BB-G45 ('bball-wp-lenses'): a Data API final's play_wp variants (routes/basketball/game.ts); absent otherwise */
+    wpLenses?: WpLensRow[]
 }
 
 /** How exciting the game was, with no direction: python/nba_game.py passes sdv-py's `game_excitement` through as is. */
