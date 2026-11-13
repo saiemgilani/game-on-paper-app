@@ -1,7 +1,7 @@
-// BB-G28: the game page's Game flow panel and the pro standings' Game flow view, behind 'bball-game-flow'. The lead chart's
+// BB-G28: the game page's Game flow panel, behind 'bball-game-flow'. The lead chart's
 // steps against sdv-db's game_flow on real games (the marks the page draws equal the producer's row), the reads (the id
 // mapping, every query season-filtered and capped), the page-side gates and the templates, on real Data API reads
-// (fixtures/README.md: game-flow-*.json.gz, team-season-flow-*.json.gz). Every Data API read here is mocked.
+// (fixtures/README.md: game-flow-*.json.gz). Every Data API read here is mocked.
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
@@ -19,7 +19,6 @@ const CAPTURES: Record<string, Capture> = {
     idst: gz('game-flow-mbb-401823353'), // Sam Houston 84 at Idaho State 81, 2025-26 (contest 6403346): 23 lead changes
     ucd: gz('game-flow-wbb-401812873'), // UC San Diego 80 at UC Davis 88 in overtime, 2025-26 (contest 6390267)
 };
-const SEASON_FLOW = { nba: gz('team-season-flow-nba-2026'), wnba: gz('team-season-flow-wnba-2026') };
 
 // an unmocked read would go to the Data API with the vitest config's dummy SDV_AUTH_TOKEN (a 429 lockout for this IP):
 // any fetch at all fails the file instead
@@ -36,7 +35,6 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         const c = api.cap;
         if (table === 'schedule_crosswalk' || table === 'ncaa_player_box') return c.resolve;
         if (table === 'game_flow') return c.flow;
-        if (table === 'team_season_flow') return c.rows;
         throw new Error(`unexpected table ${table}`);
     },
 }));
@@ -46,12 +44,6 @@ vi.mock('../src/resources/gameFlow', async (orig) => {
     const real = await orig<typeof import('../src/resources/gameFlow')>();
     return { ...real, retrieveGameFlow: (...a: Parameters<typeof real.retrieveGameFlow>) => (flowFn.fn ? flowFn.fn(...a) : real.retrieveGameFlow(...a)) };
 });
-const snap = vi.hoisted(() => ({ latest: null as any, data: null as any }));
-vi.mock('../src/resources/playoffPicture', async (orig) => ({
-    ...(await orig<typeof import('../src/resources/playoffPicture')>()),
-    retrieveLatestProSnapshot: async () => snap.latest,
-    retrieveProSnapshot: async () => snap.data,
-}));
 const sched = vi.fn(), rows = vi.fn(), proc = vi.fn(), espn = vi.fn();
 vi.mock('../src/resources/nbaGames', async (orig) => ({ ...(await orig<typeof import('../src/resources/nbaGames')>()), retrieveNbaSchedule: (...a: unknown[]) => sched(...a), retrieveNbaGameRows: (...a: unknown[]) => rows(...a), retrieveNbaProcessedGame: (...a: unknown[]) => proc(...a) }));
 vi.mock('../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../src/resources/espn')>()), retrieveGamePageGuarded: (...a: unknown[]) => espn(...a) }));
@@ -59,11 +51,9 @@ vi.mock('../src/resources/espn', async (orig) => ({ ...(await orig<typeof import
 vi.mock('../src/resources/wpLenses', async (orig) => ({ ...(await orig<typeof import('../src/resources/wpLenses')>()), retrieveWpLenses: async () => [{ n: 1, naive: 0.5, market: null }] }));
 
 import NbaGameFlow from '../src/components/nba/game/NbaGameFlow.astro';
-import PlayoffPictureRoute from '../src/components/routes/PlayoffPictureRoute.astro';
-import { EMPTY_FLOW, retrieveGameFlow, retrieveTeamSeasonFlow, type GameFlowReads } from '../src/resources/gameFlow';
+import { EMPTY_FLOW, retrieveGameFlow, type GameFlowReads } from '../src/resources/gameFlow';
 import { fromDataApi, type NbaGame } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
-import { preparePlayoffPicture, viewsFor, type PlayoffPictureParams } from '../src/routes/basketball/playoffPicture';
 import { FLAGS } from '../src/utils/features';
 import { clockSeconds, gameSeconds, leadChanges, leadSeries, periodStart, runs } from '../src/utils/gameFlow';
 import { basketball, pickRegulation } from '../src/basketball/config';
@@ -169,12 +159,6 @@ describe('retrieveGameFlow', () => {
         api.fail = true;
         await expect(reads(CAPTURES.orl)).rejects.toThrow('down');
     });
-    test('team_season_flow: one season-filtered, capped read', async () => {
-        api.cap = SEASON_FLOW.nba;
-        const r = await retrieveTeamSeasonFlow('nba', 2026);
-        expect(api.calls).toEqual([{ schema: 'nba_stats', table: 'team_season_flow', query: { season: '2026', limit: '40' } }]);
-        expect(r).toHaveLength(30);
-    });
 });
 
 const gameApi = () => JSON.parse(readFileSync(new URL('./fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
@@ -259,64 +243,5 @@ describe('NbaGameFlow', () => {
         const awayCells = [...rowsHtml.matchAll(/<tr>.*?<td[^>]*>(.*?)<\/td>/g)].map((m) => m[1]);
         expect(awayCells).toHaveLength(11);
         expect(awayCells.every((v) => v === '—')).toBe(true);
-    });
-});
-
-describe('the standings Game flow view', () => {
-    const pp = gz('playoff-picture-nba-2026');
-    const params = (over: Partial<PlayoffPictureParams> = {}): PlayoffPictureParams => ({
-        league: 'nba', seasons: [2026, 2027], current: 2027, view: 'flow',
-        pick: { snapshot: pp.snapshot, season: 2026, fallback: false },
-        data: { sims: pp.sims, standings: pp.standings, lottery: pp.lottery }, flow: SEASON_FLOW.nba.rows, ...over,
-    });
-    const page = (p: PlayoffPictureParams, flags: Record<string, boolean> = {}) =>
-        container.renderToString(PlayoffPictureRoute, { props: { data: p }, locals: { league: p.league, preview: true, flagOverrides: flags } as App.Locals });
-    test("the view is the flag's: off, the select is today's", async () => {
-        expect(viewsFor('nba').map((v) => v.key)).not.toContain('flow');
-        expect(viewsFor('nba', true).map((v) => v.key).at(-1)).toBe('flow');
-        const off = await page(params({ view: 'standings', flow: undefined }), { 'bball-game-flow': false });
-        expect(off).not.toContain('view=flow');
-        const on = await page(params({ view: 'standings', flow: undefined }));
-        expect(on).toContain('<option value="/nba/standings?season=2026&amp;view=flow">Game flow</option>');
-    });
-    test("each conference's teams with the producer's values, ranks and percentile shading", async () => {
-        const html = await page(params());
-        expect(html.match(/aria-label="[A-Za-z]+ Conference game flow"/g)).toHaveLength(2);
-        // Atlanta (stats 1610612737): 82 games, kills_pg 6.76, rank 11, 64.5th percentile
-        const atl = SEASON_FLOW.nba.rows.find((r: any) => r.team_id === 1610612737);
-        const row = html.split('href="/nba/team/1610612737"')[1].split('</tr>')[0];
-        expect(row).toContain(`>${atl.games}<`);
-        expect(row).toContain(`title="Rank ${atl.kills_pg_rank}; ${Math.round(atl.kills_pg_pct)}th percentile; n = ${atl.kills_pg_n}"`);
-        expect(row).toContain(`>${atl.kills_pg.toFixed(1)}<span class="small ms-1" style="opacity: 0.7">${atl.kills_pg_rank}</span>`);
-        expect(html).toContain('id="flow-note"');
-        expect(html).not.toContain('How this works'); // the sims' note is the other views'
-        expect(html).not.toMatch(/NaN|undefined/);
-    });
-    test('a failed read and an empty season say so', async () => {
-        expect(await page(params({ flow: null }))).toContain('id="flow-unavailable"');
-        expect(await page(params({ flow: [] }))).toContain('id="flow-empty"');
-    });
-    test('preparePlayoffPicture: the flow read only for ?view=flow with the flag on; a failure keeps the page, uncached', async () => {
-        snap.latest = { season: 2026, as_of_date: pp.snapshot.as_of_date };
-        snap.data = { sims: pp.sims, standings: pp.standings, lottery: pp.lottery };
-        const astro = (q: string, flags: Record<string, boolean> = {}) => {
-            const cache: unknown[] = []; const headers = new Headers();
-            return { a: { url: new URL(`https://gameonpaper.com/nba/standings?season=2026${q}`), locals: { preview: true, flagOverrides: flags }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache };
-        };
-        api.cap = SEASON_FLOW.nba;
-        const off = await preparePlayoffPicture(astro('&view=flow', { 'bball-game-flow': false }).a, 'nba', new Date('2026-11-05T00:00:00Z'));
-        expect('view' in off && off.view).toBe('standings');
-        expect(api.calls).toHaveLength(0);
-        const plain = await preparePlayoffPicture(astro('').a, 'nba', new Date('2026-11-05T00:00:00Z'));
-        expect('flow' in plain).toBe(false);
-        expect(api.calls).toHaveLength(0);
-        const on = await preparePlayoffPicture(astro('&view=flow').a, 'nba', new Date('2026-11-05T00:00:00Z'));
-        expect('flow' in on && on.flow).toHaveLength(30);
-        expect(api.calls.map((c) => c.query)).toEqual([{ season: '2026', limit: '40' }]);
-        api.fail = true;
-        const x = astro('&view=flow');
-        const down = await preparePlayoffPicture(x.a, 'nba', new Date('2026-11-05T00:00:00Z'));
-        expect('flow' in down && down.flow).toBeNull();
-        expect(x.cache.at(-1)).toBe(false);
     });
 });

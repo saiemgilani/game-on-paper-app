@@ -15,10 +15,7 @@ import {
     type BracketUnit, type ProTeam,
 } from '../../utils/playoffPicture';
 import { oddsShade, pct, type BracketSlot } from '../../utils/playoff';
-import { generateColorRampValue, generateMarginalString, roundNumber } from '../../utils/misc';
-import type { SeasonFlowMetric, TeamSeasonFlowRow } from '../../resources/gameFlow';
-import { fmtClock } from '../../utils/gameFlow';
-import { fmtPct } from '../../nba/format';
+import { generateMarginalString, roundNumber } from '../../utils/misc';
 import { LEAGUES, leaguePath, teamLogoUrl } from '../../utils/league';
 import { BASKETBALL, seasonLabelFor } from '../../basketball/config';
 import { teamHrefFromEspn, withParams } from '../../nba/links';
@@ -82,28 +79,6 @@ const confTitle = (c: string) => (nba ? `${c}ern Conference` : null);
 // a column count for each table's group heading rows
 const standingsCols = nba ? 10 : 8;
 const shownIds = teams.map(key);
-
-// BB-G28's Game flow view: team_season_flow by stats team id, each metric's value with the producer's rank and percentile
-const flow = Astro.props.data.flow;
-const flowOf = new Map((flow ?? []).map((r) => [Number(r.team_id), r]));
-const dec = (d: number) => (v: number | null) => (v == null ? '—' : v.toFixed(d));
-const FLOW_COLS: { key: SeasonFlowMetric; label: string; title: string; fmt: (v: number | null) => string }[] = [
-    { key: 'avg_margin', label: 'Avg. Margin', title: 'Game control: the score margin averaged over the game clock', fmt: (v) => (v == null ? '—' : generateMarginalString(v, 1, 1)) },
-    { key: 'avg_wp', label: 'Avg. WP', title: 'Game control: the in-game win probability averaged over the game clock', fmt: (v) => (v == null ? '—' : fmtPct(v, 0)) },
-    { key: 'lead_pct', label: 'Lead %', title: 'Share of the game clock spent ahead', fmt: (v) => (v == null ? '—' : fmtPct(v, 0)) },
-    { key: 'runs_10_pg', label: '10-0 Runs', title: 'Runs of 10 or more unanswered points, per game', fmt: dec(2) },
-    { key: 'opp_runs_10_pg', label: 'Opp. 10-0', title: "Opponents' 10-0 (or better) runs, per game (fewer ranks higher)", fmt: dec(2) },
-    { key: 'avg_longest_drought_sec', label: 'Drought', title: 'The longest scoring drought, averaged over the games (shorter ranks higher)', fmt: (v) => fmtClock(v) },
-    { key: 'stop_pct', label: 'Stop %', title: 'Defensive possessions with no points allowed', fmt: (v) => (v == null ? '—' : fmtPct(v, 1)) },
-    { key: 'kills_pg', label: 'Kills', title: 'Kills (three straight stops) per game', fmt: dec(1) },
-    { key: 'double_kills_pg', label: 'Dbl. Kills', title: 'Double kills (six straight stops) per game', fmt: dec(2) },
-    { key: 'kills_per_100', label: 'Kills/100', title: 'Kills per 100 defensive possessions', fmt: dec(1) },
-];
-const fmtRank = (r: number | null) => (r == null ? '' : Number.isInteger(r) ? String(r) : r.toFixed(1));
-const flowTitle = (f: TeamSeasonFlowRow, k: SeasonFlowMetric) => {
-    const rank = f[`${k}_rank`], p = f[`${k}_pct`], n = f[`${k}_n`];
-    return [rank == null ? 'Not ranked' : `Rank ${fmtRank(rank)}`, p == null ? null : `${Math.round(p)}th percentile`, n == null ? null : `n = ${n}`].filter(Boolean).join('; ');
-};
 ---
 <GenericPage title={`${title} | Game on Paper`} subtitle={description} slug={path} breadcrumbs={breadcrumbs} description={description} canonicalPath={url({})}>
   <link href="/assets/css/sticky-table.css" rel="stylesheet">
@@ -114,7 +89,7 @@ const flowTitle = (f: TeamSeasonFlowRow, k: SeasonFlowMetric) => {
         <div class="d-flex flex-wrap gap-2">
           <label class="visually-hidden" for="standings-view">View</label>
           <select id="standings-view" class="form-select w-auto" onchange={NAV}>
-            {viewsFor(league, isFeatureEnabled('bball-game-flow', Astro.locals)).map((v) => (<option value={url({ view: v.key })} selected={v.key === view}>{v.label}</option>))}
+            {viewsFor(league).map((v) => (<option value={url({ view: v.key })} selected={v.key === view}>{v.label}</option>))}
           </select>
           <label class="visually-hidden" for="standings-season">Season</label>
           <select id="standings-season" class="form-select w-auto" onchange={NAV}>
@@ -323,47 +298,7 @@ const flowTitle = (f: TeamSeasonFlowRow, k: SeasonFlowMetric) => {
       </Fragment>
     )}
 
-    {data && view === 'flow' && (
-      flow == null ? (<p class="text-muted mt-3" id="flow-unavailable">The game flow board is temporarily unavailable.</p>)
-      : flow.length === 0 ? (<p class="text-muted mt-3" id="flow-empty">No game flow for {label} yet: it follows the nightly ingest.</p>)
-      : (<Fragment>
-        {conferences.map((c) => (
-          <Fragment>
-            {confTitle(c.name) && (<h2 class="fs-5 mt-4 mb-2">{confTitle(c.name)}</h2>)}
-            <div class="table-responsive">
-              <table class="table table-sm align-middle table-fix-first-col" aria-label={`${confTitle(c.name) ?? name} game flow`}>
-                <thead>
-                  <tr>
-                    <th>Team</th>
-                    <th class="text-center" title="Regular-season games in the flow table">GP</th>
-                    {FLOW_COLS.map((col) => (<th class="text-center" title={col.title}>{col.label}</th>))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {c.rows.map((t) => {
-                    const f = flowOf.get(Number(t.sim.team_id));
-                    return (
-                      <tr>
-                        <td class="text-left text-nowrap"><a href={href(key(t))}><img class={`team-logo-${key(t)} me-1`} width="18" height="18" src={logo(key(t))} alt="" loading="lazy" /><span class="d-md-none">{abbrs[key(t)]}</span><span class="d-none d-md-inline">{names[key(t)]}</span></a></td>
-                        <td class="text-center numeral">{f ? f.games : '—'}</td>
-                        {FLOW_COLS.map((col) => (
-                          <td class:list={['text-center', 'numeral', 'text-nowrap', f ? generateColorRampValue(f[`${col.key}_pct`], 100) : null]} title={f ? flowTitle(f, col.key) : undefined}>
-                            {f ? col.fmt(f[col.key]) : '—'}{f && f[`${col.key}_rank`] != null && (<span class="small ms-1" style="opacity: 0.7">{fmtRank(f[`${col.key}_rank`])}</span>)}
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Fragment>
-        ))}
-        <p class="small text-muted mt-3" id="flow-note">Game flow over the {label} regular season (the games played to date), from the play-by-play and the possessions. The small number is the league rank (1 is best: a low drought or few opponent runs ranks high) and the shading the percentile, among teams with at least half the most games played.</p>
-      </Fragment>)
-    )}
-
-    {data && view !== 'flow' && (
+    {data && (
       <p class="small text-muted mt-3">
         How this works: sportsdataverse-py rates every team on its possessions so far, then simulates the rest of the regular season {n.toLocaleString()} times with the league's tiebreakers{nba ? ', the play-in' : ''} and the draft lottery.
         Seeds{nba ? ', division ranks' : ''} and games back are the official standings on the day, under the league's tie-break rules. The lottery odds by slot are exact. Hover a playoff chance for its Monte Carlo error.
