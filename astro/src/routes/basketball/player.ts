@@ -17,6 +17,7 @@ import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
 import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/playerImpact';
+import { hasMatchups, hasPlayTypes, retrievePlayerHustle, retrievePlayerMatchupRollup, retrievePlayerSynergy, retrievePlayerTopMatchups, type HustleRow, type MatchupRollupRow, type MatchupRow, type SynergyRow } from '../../resources/playerPlayTypes';
 import { hasEpv, retrievePlayerEpv, retrievePlayerWar, type EpvPlayerSeasonRow, type PlayerWarRow } from '../../resources/playerWar';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { isFeatureEnabled } from '../../utils/features';
@@ -55,6 +56,17 @@ export interface BasketballPlayerParams {
     war?: PlayerWarRow[] | null;
     /** BB-G27, only with 'bball-war' on and a season from 2021-22: his epv_player_seasons row; null when the read failed */
     epv?: EpvPlayerSeasonRow[] | null;
+    /** BB-G19, only with 'bball-play-types' on and an NBA season from 2015-16: his Synergy, hustle and (from 2017-18) matchup rows */
+    playTypes?: PlayerPlayTypes;
+}
+
+/** BB-G19's rows, each null when its read failed. */
+export interface PlayerPlayTypes {
+    synergy: SynergyRow[] | null;
+    hustle: HustleRow[] | null;
+    /** absent before 2017-18, the matchup tables' first season */
+    rollup?: MatchupRollupRow[] | null;
+    matchups?: MatchupRow[] | null;
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -136,6 +148,8 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const withWar = isFeatureEnabled('bball-war', Astro.locals);
     const warP = withWar ? readDecorative('WAR', league, season, personId, retrievePlayerWar) : undefined;
     const epvP = withWar && hasEpv(league, season) ? readDecorative('EPV', league, season, personId, retrievePlayerEpv) : undefined;
+    // BB-G19: the same rule again, NBA only, its reads started with BB-G6's
+    const playTypesP = isFeatureEnabled('bball-play-types', Astro.locals) && hasPlayTypes(league, season) ? readPlayTypes(league, season, personId) : undefined;
     // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
     const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
     if (poe.poe === null) degraded = true;
@@ -144,6 +158,8 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const war = warP ? { war: await warP } : {};
     const epv = epvP ? { epv: await epvP } : {};
     if (war.war === null || epv.epv === null) degraded = true;
+    const playTypes = playTypesP ? { playTypes: await playTypesP } : {};
+    if (playTypes.playTypes && Object.values(playTypes.playTypes).includes(null)) degraded = true;
 
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
@@ -170,6 +186,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         ...impact,
         ...war,
         ...epv,
+        ...playTypes,
     };
 }
 
@@ -192,6 +209,21 @@ async function readDecorative<T>(what: string, league: BasketballLeague, season:
         console.error(`ERROR while loading the ${league} ${season} ${what} for player ${personId}: ${e}, ${e?.stack}`);
         return null;
     }
+}
+
+/** BB-G19's reads, together; each its own null on failure, so one outage keeps the other lines. */
+async function readPlayTypes(league: BasketballLeague, season: number, personId: number): Promise<PlayerPlayTypes> {
+    const one = <T>(what: string, read: (season: number, personId: number) => Promise<T[]>) =>
+        readDecorative(what, league, season, personId, (_l, s, p) => read(s, p));
+    if (!hasMatchups(league, season)) {
+        const [synergy, hustle] = await Promise.all([one('play types', retrievePlayerSynergy), one('hustle', retrievePlayerHustle)]);
+        return { synergy, hustle };
+    }
+    const [synergy, hustle, rollup, matchups] = await Promise.all([
+        one('play types', retrievePlayerSynergy), one('hustle', retrievePlayerHustle),
+        one('matchup rollup', retrievePlayerMatchupRollup), one('matchups', retrievePlayerTopMatchups),
+    ]);
+    return { synergy, hustle, rollup, matchups };
 }
 
 /** BB-G15's read (the season tables' person id: stats.nba.com's for the NBA/WNBA, ESPN's in college); null when it failed. */

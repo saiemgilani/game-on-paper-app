@@ -91,6 +91,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // interval, from sdv-db's player_war (BB-D26) and, from 2021-22, epv_player_seasons (sdv-db #223); it closes the
     // Impact panel (a section of its own with 'bball-impact' off), whose own WAR then reads "Impact WAR". Off: no read and the player page is today's, byte for byte.
     'bball-war': 'preview',
+    // The NBA player page's Play types and Defense panels (BB-G19), from 2015-16: his Synergy play types at both ends with
+    // stats.nba.com's frequency, PPP and percentile (sdv-db nba_stats.synergy), his hustle line (hustle_player) and, from
+    // 2017-18, his matchups by position and the players he guarded most (matchups_rollup, matchups). Off: no read and the
+    // player page is today's, byte for byte.
+    'bball-play-types': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
