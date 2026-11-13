@@ -19,7 +19,7 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL) => { fetched.push(String
 afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 
 const gz = (name: string) => JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/${name}.json.gz`, import.meta.url))).toString());
-const PC = gz('player-compare') as Record<'nbaImpact' | 'nbaWar' | 'nbaSeasonPlayers' | 'mbbSeasonPlayers', any[]>;
+const PC = gz('player-compare') as Record<'nbaImpact' | 'nbaWar' | 'nbaSeasonPlayers' | 'nbaMultiTeam' | 'mbbSeasonPlayers', any[]>;
 const PI = gz('player-impact') as Record<'mbbTeam', any[]>;
 const PW = gz('player-war') as Record<'mbbTeam', any[]>;
 const fx = (path: string) => JSON.parse(readFileSync(new URL(`./fixtures/${path}.json`, import.meta.url)).toString());
@@ -28,6 +28,8 @@ const MPJ = 1629008;
 const CLOWNEY = 1641730;
 const SWAIN = 4848625; // Texas 2025-26
 const MARK = 4432243;
+const HARDEN = 201935; // two NBA teams in 2025-26 (nbaMultiTeam)
+const HEIDE = 5105855; // Texas: 3P% ranked, FG% and FT% under the attempt minimums
 
 const byId = (rows: any[], id: number) => rows.filter((r) => Number(r.player_id) === id);
 const reads = vi.hoisted(() => ({ season: vi.fn(), impact: vi.fn(), war: vi.fn(), seasons: vi.fn() }));
@@ -125,12 +127,26 @@ describe('the rows (pure)', () => {
         // college: player_value's box BPM, net then offense and defense
         expect(impactRows(byId(PI.mbbTeam, SWAIN), true, true).map((r) => r.key)).toEqual(['box_bpm', 'box_obpm', 'box_dbpm']);
     });
-    test('Shooting: his season line (lineOf, as the player page), never ranked', () => {
+    test("Shooting (Q46): shot_season_players' FG%, eFG%, 3P% and FT% with the producer's rank and percentile", () => {
+        const [row] = PC.nbaSeasonPlayers.filter((r) => r.person_id === MPJ);
         const p = playerSeasonsFromRows(PC.nbaSeasonPlayers).find((x) => x.person_id === MPJ)!;
-        const rows = shootingRows(p);
+        const rows = shootingRows(p, row);
+        expect(rows.map((r) => r.key)).toEqual(['fg', 'fg_pct', 'efg_pct', 'fg3_pct', 'fg3', 'ft_pct', 'gp', 'min', 'usg_pct', 'ts_pct']);
         expect(rows.find((r) => r.key === 'fg')!.text).toBe(`${p.makes}/${p.attempts}`);
-        expect(rows.find((r) => r.key === 'fg_pct')!.text).toBe(`${((p.makes / p.attempts) * 100).toFixed(1)}%`);
-        expect(rows.every((r) => r.rank === null && r.pct === null)).toBe(true);
+        for (const m of ['fg_pct', 'efg_pct', 'fg3_pct', 'ft_pct']) {
+            // the table's own value (never makes / attempts), its rank and percentile as served
+            expect(rows.find((r) => r.key === m)).toMatchObject({ text: `${(row[m] * 100).toFixed(1)}%`, rank: row[`${m}_rank`], pct: row[`${m}_pct`] });
+        }
+        expect([row.fg_pct_rank, row.ft_pct_rank]).toEqual([138, 40]); // as served on 2026-11-13
+        expect(rows.filter((r) => ['fg', 'fg3', 'gp', 'min', 'usg_pct', 'ts_pct'].includes(r.key)).every((r) => r.rank === null && r.pct === null)).toBe(true);
+    });
+    test('Shooting: under the attempt minimum the value with no rank or shading; no row is dashes', () => {
+        const row = PC.mbbSeasonPlayers.find((r) => r.person_id === HEIDE);
+        const rows = shootingRows(playerSeasonsFromRows(PC.mbbSeasonPlayers).find((x) => x.person_id === HEIDE)!, row);
+        expect(rows.find((r) => r.key === 'fg_pct')).toMatchObject({ text: `${(row.fg_pct * 100).toFixed(1)}%`, rank: null, pct: null });
+        expect(rows.find((r) => r.key === 'ft_pct')).toMatchObject({ rank: null, pct: null });
+        expect(rows.find((r) => r.key === 'fg3_pct')!.rank).toBe(27.5); // a tie, fractional as served
+        expect(shootingRows(null, null).every((r) => r.text === '—' && r.rank === null)).toBe(true);
     });
 });
 
@@ -172,7 +188,7 @@ describe('the page-side step', () => {
         const { r } = await prep('nba', `?ids=${MPJ}&season=2026`, on({ 'bball-impact': false, 'bball-war': false }));
         expect(reads.impact).not.toHaveBeenCalled();
         expect(reads.war).not.toHaveBeenCalled();
-        expect('entries' in r && Object.keys(r.entries[0]).sort()).toEqual(['headshot', 'id', 'player', 'season', 'teams']);
+        expect('entries' in r && Object.keys(r.entries[0]).sort()).toEqual(['headshot', 'id', 'player', 'row', 'season', 'teams']);
     });
     test("no ?season=: each card is that player's latest listed season (as football's), read by that season", async () => {
         const latest: Record<number, number[]> = { [MPJ]: [2019, 2025, 2026], [CLOWNEY]: [2025], 999: [] };
@@ -206,7 +222,7 @@ describe('the page-side step', () => {
 });
 
 describe('the page', () => {
-    test('NBA: two cards from the real reads, WAR shaded by its producer percentile with its rank, Impact and shooting unshaded', async () => {
+    test('NBA: two cards from the real reads, WAR and the shooting percentages shaded by their producer percentile with their rank, Impact unshaded', async () => {
         const page = await render('nba', `?ids=${MPJ},${CLOWNEY}&season=2026`);
         const [mpjWar] = byId(PC.nbaWar, MPJ);
         const mpj = card(page, MPJ);
@@ -216,12 +232,16 @@ describe('the page', () => {
         const value = cells(mpj, 'value');
         expect(value[0]).toEqual(['WAR', expect.stringContaining(generateColorRampValue(mpjWar.war_pct, 100)!), `${mpjWar.war.toFixed(1)} #46`]);
         expect(value[1][2]).toBe(`${mpjWar.war_lo.toFixed(1)} to ${mpjWar.war_hi.toFixed(1)}`);
-        for (const section of ['impact', 'shooting']) {
-            for (const [, cls, text] of cells(mpj, section)) {
-                expect(cls).toBe('text-center numeral');
-                expect(text).not.toContain('#');
-            }
+        for (const [, cls, text] of cells(mpj, 'impact')) {
+            expect(cls).toBe('text-center numeral');
+            expect(text).not.toContain('#');
         }
+        const [mpjRow] = PC.nbaSeasonPlayers.filter((r) => r.person_id === MPJ);
+        const shooting = cells(mpj, 'shooting');
+        expect(shooting.find(([label]) => label === 'FT%')).toEqual(['FT%', expect.stringContaining(generateColorRampValue(mpjRow.ft_pct_pct, 100)!), `${(mpjRow.ft_pct * 100).toFixed(1)}% #40`]);
+        expect(shooting.find(([label]) => label === 'GP')![1]).toBe('text-center numeral');
+        // a tie is "T-": Clowney's eFG% rank is 240.5
+        expect(cells(card(page, CLOWNEY), 'shooting').find(([label]) => label === 'eFG%')![2]).toMatch(/% #T-240$/);
         // 'bball-war' on: Impact's WAR keeps its row as "Impact WAR"; plain WAR is Value's
         expect(cells(mpj, 'impact').filter(([label]) => label.includes('WAR')).map(([label]) => label)).toEqual(['Impact WAR']);
         expect(cells(card(page, CLOWNEY), 'value')[0][2]).toBe(`${byId(PC.nbaWar, CLOWNEY)[0].war.toFixed(1)} #286`);
@@ -246,6 +266,19 @@ describe('the page', () => {
         expect(cells(swain, 'value')[0][2]).toBe(`${byId(PW.mbbTeam, SWAIN)[0].war.toFixed(1)} #48`);
         expect(cells(swain, 'impact').map((c) => c[0])).toEqual(['BPM', 'BPM off', 'BPM def']);
         expect(cells(card(page, MARK), 'value')[0][2]).toContain(`#${byId(PW.mbbTeam, MARK)[0].war_rank}`);
+    });
+    test('a two-team player: his season percentages and ranks (the same on each team row), his makes over both teams', async () => {
+        feed.seasonRows = () => PC.nbaMultiTeam;
+        try {
+            const page = await render('nba', `?ids=${HARDEN}&season=2026`);
+            const [a, b] = PC.nbaMultiTeam;
+            expect([a.fg_pct_rank, a.fg_pct]).toEqual([b.fg_pct_rank, b.fg_pct]);
+            const shooting = cells(card(page, HARDEN), 'shooting');
+            expect(shooting.find(([label]) => label === 'FG')![2]).toBe(`${a.makes + b.makes}/${(a.attempts + b.attempts).toLocaleString('en-US')}`);
+            expect(shooting.find(([label]) => label === 'FG%')![2]).toBe(`${(a.fg_pct * 100).toFixed(1)}% #${a.fg_pct_rank}`);
+        } finally {
+            feed.seasonRows = (league: string) => (league === 'mbb' ? PC.mbbSeasonPlayers : PC.nbaSeasonPlayers);
+        }
     });
     test('four cards fill the page: the add control gives way to a note', async () => {
         const page = await render('mbb', `?ids=${SWAIN},${MARK},1,2`);

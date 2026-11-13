@@ -4,12 +4,12 @@
  * (BB-G6), the Value panel's (BB-G27) and the season's shooting line (shot_season_players). Every card lists the same
  * rows in the same order, so a row lines up across cards; a player with no producer row gets dashes, not a gap.
  *
- * Nothing here ranks or aggregates (rule B6): a cell's rank and percentile are the producer's `<m>_rank` / `<m>_pct`, and
- * the shooting rows carry none, so they are never shaded. The shooting percentages are the player page's own (lineOf).
+ * Nothing here ranks or aggregates (rule B6): a cell's rank and percentile are the producer's `<m>_rank` / `<m>_pct`,
+ * shooting's included (shot_season_players' FG%, eFG%, 3P% and FT%, Q46): the site computes none of those percentages.
  */
 import type { PlayerImpactRow } from '../resources/playerImpact';
 import type { PlayerWarRow } from '../resources/playerWar';
-import { lineOf } from '../nba/data/aggregate';
+import type { SeasonPlayerRow } from '../resources/nbaShots';
 import type { PlayerSeason } from '../nba/data/players';
 import { fmtDec, fmtInt, fmtPct } from '../nba/format';
 import { impactPanel } from './playerImpact';
@@ -45,20 +45,28 @@ export function valueRows(rows: PlayerWarRow[] | null): CompareRow[] {
     ];
 }
 
-/** The shooting rows: his season line (every team he shot for) and the box numbers on the player page's header. */
-export function shootingRows(player: PlayerSeason | null): CompareRow[] {
-    const line = player ? lineOf(player) : null;
+/**
+ * The shooting rows: his season makes and attempts (every team he shot for), the season's FG%, eFG%, 3P% and FT% as
+ * shot_season_players ships them with the producer's rank and percentile (null under its attempt minimum: the value with
+ * no rank and no shading), and the box numbers on the player page's header. `row` is one of his rows that season (the
+ * percentages and ranks are the same on each).
+ */
+export function shootingRows(player: PlayerSeason | null, row: SeasonPlayerRow | null): CompareRow[] {
     const s = player?.stats ?? null;
-    const row = (key: string, label: string, text: string): CompareRow => ({ key, label, text, rank: null, pct: null });
+    const plain = (key: string, label: string, text: string): CompareRow => ({ key, label, text, rank: null, pct: null });
+    const ranked = (m: 'fg_pct' | 'efg_pct' | 'fg3_pct' | 'ft_pct', label: string): CompareRow => ({
+        key: m, label, text: orDash(row?.[m] ?? null, (v) => fmtPct(v)), rank: row?.[`${m}_rank`] ?? null, pct: row?.[`${m}_pct`] ?? null,
+    });
     return [
-        row('fg', 'FG', line ? `${fmtInt(line.makes)}/${fmtInt(line.attempts)}` : DASH),
-        row('fg_pct', 'FG%', line ? fmtPct(line.fgPct) : DASH),
-        row('efg_pct', 'eFG%', line ? fmtPct(line.efgPct) : DASH),
-        row('fg3_pct', '3P%', line ? fmtPct(line.fg3Pct) : DASH),
-        row('fg3', '3P', line ? `${fmtInt(line.fg3m)}/${fmtInt(line.fg3a)}` : DASH),
-        row('gp', 'GP', s ? fmtInt(s.gp) : DASH),
-        row('min', 'MIN', s ? fmtDec(s.min) : DASH),
-        row('usg_pct', 'USG%', s ? fmtPct(s.usg_pct) : DASH),
-        row('ts_pct', 'TS%', s ? fmtPct(s.ts_pct) : DASH),
+        plain('fg', 'FG', player ? `${fmtInt(player.makes)}/${fmtInt(player.attempts)}` : DASH),
+        ranked('fg_pct', 'FG%'),
+        ranked('efg_pct', 'eFG%'),
+        ranked('fg3_pct', '3P%'),
+        plain('fg3', '3P', player ? `${fmtInt(player.fg3m)}/${fmtInt(player.fg3a)}` : DASH),
+        ranked('ft_pct', 'FT%'),
+        plain('gp', 'GP', s ? fmtInt(s.gp) : DASH),
+        plain('min', 'MIN', s ? fmtDec(s.min) : DASH),
+        plain('usg_pct', 'USG%', s ? fmtPct(s.usg_pct) : DASH),
+        plain('ts_pct', 'TS%', s ? fmtPct(s.ts_pct) : DASH),
     ];
 }

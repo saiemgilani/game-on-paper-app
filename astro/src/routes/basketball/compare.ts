@@ -29,6 +29,8 @@ export type BasketballCompareEntry =
     | { id: string; missing: true }
     | {
         id: string; player: PlayerSeason; teams: string[]; headshot: string | null;
+        /** his primary shot_season_players row that season: the shooting rows' percentages, ranks and shading */
+        row: SeasonPlayerRow;
         /** the card's season: `?season=`, else his latest */
         season: number;
         /** present only with 'bball-impact' on; null when the read failed */
@@ -106,7 +108,7 @@ export async function prepareBasketballCompare(Astro: AstroGlobal, league: Baske
         ]);
         if (impact === null || war === null) degraded = true;
         return {
-            id, player, season: s, teams: teamsOfPlayer(sRows, player.person_id), headshot: headshotsFromRows(sRows).get(player.person_id) ?? null,
+            id, player, season: s, row: sRows.find((r) => r.person_id === player.person_id && r.is_primary) ?? sRows.find((r) => r.person_id === player.person_id)!, teams: teamsOfPlayer(sRows, player.person_id), headshot: headshotsFromRows(sRows).get(player.person_id) ?? null,
             ...(impact !== undefined ? { impact } : {}), ...(war !== undefined ? { war } : {}),
         };
     }));

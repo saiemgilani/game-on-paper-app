@@ -846,9 +846,13 @@ each response, concatenated, no edits): for Michael Porter Jr. (1629008) and Noa
 `/v1/nba_stats/shot_season_players?season=2026&person_id=…&limit=5`; and `/v1/mbb/shot_season_players?season=2026&team_id=251&limit=40`
 (Texas 2025-26, the team of `player-impact.json.gz`'s and `player-war.json.gz`'s college rows).
 
+`nbaSeasonPlayers` and `mbbSeasonPlayers` were captured again on 2026-11-13 with the same three reads, once sdv-db#225 added
+`fg3_pct`, `ft_pct`, `<m>_n`, `<m>_rank` and `<m>_pct` (Q46), and `nbaMultiTeam` added from
+`/v1/nba_stats/shot_season_players?season=2026&person_id=201935&limit=5` (two team rows, the same percentages and ranks on each).
+
 **Used by:** `test/basketballCompare.test.ts`.
 
-**To regenerate:** rerun the seven reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+**To regenerate:** rerun the eight reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
 
 ## `player-impact-xwalk.json.gz`
 College's Impact panel through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of

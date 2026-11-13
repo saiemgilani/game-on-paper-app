@@ -44,7 +44,7 @@ const cards = entries.map((e) => {
         sections: [
             ...(e.impact !== undefined ? [{ id: 'impact', title: 'Impact', rows: impactRows(e.impact, college, relabelWar), failed: e.impact === null }] : []),
             ...(e.war !== undefined ? [{ id: 'value', title: 'Value', rows: valueRows(e.war), failed: e.war === null }] : []),
-            { id: 'shooting', title: 'Shooting', rows: shootingRows(e.player), failed: false },
+            { id: 'shooting', title: 'Shooting', rows: shootingRows(e.player, e.row), failed: false },
         ],
     };
 });
@@ -145,7 +145,7 @@ const breadcrumbs: PageBreadcrumb[] = [
         </div>
 
         <p class="text-muted text-small" id="player-compare-provenance">
-            Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>, {label ?? 'each player’s latest season'}.{ranked && ' Ranks and shading (percentile) are the producer’s own; the shooting rows carry none.'}
+            Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>, {label ?? 'each player’s latest season'}.{ranked && ' Ranks and shading (percentile) are the producer’s own; a shooting percentage under its attempt minimum shows no rank.'}
         </p>
     </div>
 </GenericPage>
