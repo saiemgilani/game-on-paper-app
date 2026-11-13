@@ -1,20 +1,29 @@
 ---
 // src/components/nba/PlayStyleChips.astro
 // BB-G17, behind 'bball-play-styles': play-style archetype chips in the player and team page headers (sdv-db
-// player_play_styles / team_play_styles, BB-D20). A player's chip names its runner-up and margin on hover. The team chip
-// shows them inline: the team defense model is the least stable one that shipped, so the runner-up is part of the read.
+// player_play_styles / team_play_styles, BB-D20). The producer's labels show in sentence case (first letter capitalised,
+// nothing else changed). A player's chip names its runner-up and margin on hover, and inline too when the margin is
+// under RUNNER_UP_INLINE (close to a tie; hover does not exist on mobile). The team chip always shows them inline, with
+// the caveat that team styles change often: the team defense model is the least stable one that shipped.
 // No rows (a player below the minutes gate, a season before the archetypes, the table not yet filled) is no chips.
-import type { PlayStyleChip, PlayStyleSide } from '../../utils/playStyles';
+import { RUNNER_UP_INLINE, type PlayStyleChip, type PlayStyleSide } from '../../utils/playStyles';
 import { fmtDec } from '../../nba/format';
 
 interface Props { chips: PlayStyleChip[] | null; detail?: boolean }
 const { chips, detail = false } = Astro.props;
 const SIDE: Record<PlayStyleSide, string> = { off: 'Offense', def: 'Defense', style: 'Style' };
-const runnerUp = (c: PlayStyleChip) => (c.second ? `runner-up ${c.second}${c.margin == null ? '' : `, margin ${fmtDec(c.margin, 2)}`}` : null);
+const sentence = (label: string) => label.charAt(0).toUpperCase() + label.slice(1);
+const runnerUp = (c: PlayStyleChip) => (c.second ? `runner-up ${sentence(c.second)}${c.margin == null ? '' : `, margin ${fmtDec(c.margin, 2)}`}` : null);
+// the team chip always; a player's when the margin is under the cut-off (a missing margin is never "close")
+const inline = (c: PlayStyleChip) => Boolean(runnerUp(c)) && (detail || (c.margin != null && c.margin < RUNNER_UP_INLINE));
 const tip = (c: PlayStyleChip) => {
     const r = runnerUp(c);
     return r ? `Nearest play style; ${r} (how much nearer the first is, in the season's standard deviations)` : 'Nearest play style';
 };
+const note = [
+    chips?.some(inline) && "The runner-up is the next-nearest style; the margin is how much nearer the first is, in the season's standard deviations. A small margin is close to a tie.",
+    detail && 'Team styles change often from season to season.',
+].filter(Boolean).join(' ');
 // ponytail: inline styles, not a scoped <style>: a component's CSS ships with every page that imports it, flag off or on
 const chip = 'color: var(--fg); border: 1px solid var(--line); font-size: inherit;';
 ---
@@ -22,8 +31,8 @@ const chip = 'color: var(--fg); border: 1px solid var(--line); font-size: inheri
   <div class="small mb-2" id="play-styles">
     <div class="d-flex flex-wrap align-items-center gap-2">
       <span class="text-muted">Play style</span>
-      {chips.map((c) => (<span class="badge rounded-pill fw-normal text-wrap text-start" style={chip} title={tip(c)} data-side={c.side}>{SIDE[c.side]}: <span class="fw-bold">{c.archetype}</span>{detail && runnerUp(c) && (<span class="text-muted"> &middot; {runnerUp(c)}</span>)}</span>))}
+      {chips.map((c) => (<span class="badge rounded-pill fw-normal text-wrap text-start" style={chip} title={tip(c)} data-side={c.side}>{SIDE[c.side]}: <span class="fw-bold">{sentence(c.archetype)}</span>{inline(c) && (<span class="text-muted"> &middot; {runnerUp(c)}</span>)}</span>))}
     </div>
-    {detail && chips.some((c) => c.second) && (<p class="text-muted mb-0 mt-1" id="play-styles-note">The runner-up is the next-nearest style; the margin is how much nearer the first is, in the season's standard deviations. A small margin is close to a tie.</p>)}
+    {note && (<p class="text-muted mb-0 mt-1" id="play-styles-note">{note}</p>)}
   </div>
 )}

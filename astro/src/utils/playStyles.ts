@@ -17,6 +17,13 @@ export interface PlayStyleChip {
     margin: number | null;
 }
 
+/**
+ * A player chip shows its runner-up inline (not only on hover) when the producer's margin is under this. The margin is
+ * in the season's standard deviations, so the review's "under 10 points" reads as under 0.10 of one: close to a tie
+ * (about 1 NBA defensive row in 10, fewer offensive ones, in the 2024-25 output).
+ */
+export const RUNNER_UP_INLINE = 0.1;
+
 const PREFIX: Record<PlayStyleSide, string> = { off: 'off_', def: 'def_', style: '' };
 const text = (v: unknown) => (typeof v === 'string' && v !== '' ? v : null);
 

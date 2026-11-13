@@ -73,7 +73,7 @@ import { prepareBasketballTeam } from '../src/routes/basketball/team';
 import { prepareNbaTeam } from '../src/routes/nba/team';
 import { FLAGS } from '../src/utils/features';
 import { leagueSource } from '../src/utils/league';
-import { playerPlayStyles, teamPlayStyles } from '../src/utils/playStyles';
+import { playerPlayStyles, RUNNER_UP_INLINE, teamPlayStyles } from '../src/utils/playStyles';
 
 const PID = Number(Object.keys(byPlayer)[0]); // 1629008, Michael Porter Jr., a Net in seasonPlayerRows()
 const NETS = 1610612751;
@@ -231,25 +231,45 @@ describe('the team page step', () => {
 
 describe('the chips component', () => {
     const render = (props: Record<string, unknown>) => container.renderToString(PlayStyleChips, { props, locals: { league: 'nba' } as any });
-    test('a player: Offense and Defense chips, the runner-up and margin on hover only', async () => {
+    test('a player: Offense and Defense chips in sentence case; margins of 0.10 or more keep the runner-up on hover only', async () => {
+        // Porter's margins are 0.16 and 0.94: both over the cut-off
+        expect([PORTER.off_margin, PORTER.def_margin].every((m) => (m as number) >= RUNNER_UP_INLINE)).toBe(true);
         const html = await render({ chips: playerPlayStyles([PORTER], false) });
-        expect(html).toContain('Offense: <span class="fw-bold">spot-up shooter</span>');
-        expect(html).toContain('Defense: <span class="fw-bold">wing defender / screen chaser</span>');
-        expect(html).toContain(`runner-up off-ball shooter, margin ${PORTER.off_margin.toFixed(2)}`);
+        expect(html).toContain('Offense: <span class="fw-bold">Spot-up shooter</span>');
+        expect(html).toContain('Defense: <span class="fw-bold">Wing defender / screen chaser</span>');
+        expect(html).toContain(`runner-up Off-ball shooter, margin ${PORTER.off_margin.toFixed(2)}`);
         expect(html).not.toContain('id="play-styles-note"');
         expect(html).not.toContain('&middot;');
         expect(html).not.toMatch(/undefined|NaN|null/);
     });
-    test('a team (detail): the defensive chip with its runner-up and margin inline, and the note on reading them', async () => {
-        const html = await render({ chips: teamPlayStyles([BKN]), detail: true });
-        expect(html).toContain('Defense: <span class="fw-bold">forces turnovers</span>');
-        expect(html).toContain(`&middot; runner-up allows transition, margin ${BKN.def_margin.toFixed(2)}`);
+    test('a player with a margin under 0.10: that chip shows its runner-up inline, the other stays hover only, and the note shows', async () => {
+        // Eric Gordon 2024-25: defense guard defender by 0.08 over wing defender / screen chaser; offense by 2.05
+        const GORDON = PS.nbaPlayers.find((r) => r.player_id === 201569)!;
+        expect([GORDON.def_margin as number < RUNNER_UP_INLINE, GORDON.off_margin as number >= RUNNER_UP_INLINE]).toEqual([true, true]);
+        const html = await render({ chips: playerPlayStyles([GORDON], false) });
+        expect(html).toContain(`Defense: <span class="fw-bold">Guard defender</span><span class="text-muted"> &middot; runner-up Wing defender / screen chaser, margin ${(GORDON.def_margin as number).toFixed(2)}</span>`);
+        expect(html.match(/&middot;/g)).toHaveLength(1);
         expect(html).toContain('id="play-styles-note"');
+        expect(html).not.toContain('Team styles change often');
+        // every player row: inline exactly when the producer's margin is under the cut-off
+        for (const r of PS.nbaPlayers) {
+            const h = await render({ chips: playerPlayStyles([r], false) });
+            const want = (['off', 'def'] as const).filter((p) => r[`${p}_archetype`] && r[`${p}_second_archetype`] && r[`${p}_margin`] != null && (r[`${p}_margin`] as number) < RUNNER_UP_INLINE).length;
+            expect(h.match(/&middot;/g)?.length ?? 0).toBe(want);
+        }
+    });
+    test('a team (detail): the defensive chip with its runner-up and margin inline, the note on reading them and the caveat', async () => {
+        const html = await render({ chips: teamPlayStyles([BKN]), detail: true });
+        expect(html).toContain('Defense: <span class="fw-bold">Forces turnovers</span>');
+        expect(html).toContain(`&middot; runner-up Allows transition, margin ${BKN.def_margin.toFixed(2)}`);
+        expect(html).toContain('id="play-styles-note"');
+        expect(html).toContain('A small margin is close to a tie. Team styles change often from season to season.</p>');
         expect(html).not.toContain('Offense');
     });
     test('college: one Style chip', async () => {
         const html = await render({ chips: playerPlayStyles([PS.mbbPlayers[0]], true) });
-        expect(html).toContain(`Style: <span class="fw-bold">${PS.mbbPlayers[0].archetype}</span>`);
+        const a = PS.mbbPlayers[0].archetype as string;
+        expect(html).toContain(`Style: <span class="fw-bold">${a.charAt(0).toUpperCase()}${a.slice(1)}</span>`);
         expect(html.match(/data-side=/g)).toHaveLength(1);
     });
     test('a failed read says so; no chip renders nothing', async () => {
@@ -278,7 +298,7 @@ describe('the pages', () => {
         test(`${kind}, on: the chips in the header, and nothing else changes`, async () => {
             const [off, on] = [await page(kind, false), await page(kind, true)];
             const block = chipsBlock(on);
-            expect(block).toContain(kind === 'player' ? 'Offense: <span class="fw-bold">spot-up shooter</span>' : 'Defense: <span class="fw-bold">forces turnovers</span>');
+            expect(block).toContain(kind === 'player' ? 'Offense: <span class="fw-bold">Spot-up shooter</span>' : 'Defense: <span class="fw-bold">Forces turnovers</span>');
             expect(on.indexOf(block)).toBeLessThan(on.indexOf('id="nba-season"'));
             expect(on.replace(block, '')).toBe(off);
         });
