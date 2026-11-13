@@ -5,7 +5,7 @@
  * zoom are client state in ScatterExplorer.svelte.
  */
 import type { AstroGlobal } from 'astro';
-import { BASKETBALL, rankMins } from '../../basketball/config';
+import { BASKETBALL, impactPossMin, rankMins } from '../../basketball/config';
 import { defaultScatterConference, filterByConference, isNcaaDashboards, scatterConferenceOptions, type ConferenceOption } from '../../basketball/dashboards';
 import { headshotsFromRows, playerSeasonsFromRows } from '../../nba/adapters';
 import type { RankMins } from '../../nba/data/ranks';
@@ -33,9 +33,9 @@ export interface BasketballScatterParams {
     /**
      * BB-G10, only with 'bball-impact-scatter' on (NBA/WNBA): the view (`?view=teams`, else players) and whether its read
      * failed. Players: `points` carry the impact values too (a failed read leaves the shooting points). Teams: `points` are the
-     * season's teams (none when the read failed).
+     * season's teams (none when the read failed). `minOffPoss` (players, read): the impact axes' possessions bar.
      */
-    view?: { kind: ScatterView; failed: boolean };
+    view?: { kind: ScatterView; failed: boolean; minOffPoss?: number };
 }
 
 export type ScatterView = 'players' | 'teams';
@@ -75,12 +75,14 @@ export async function prepareBasketballScatter(Astro: AstroGlobal, league: Baske
     }
     let points = scatterPoints(playerSeasonsFromRows(shown), headshotsFromRows(shown), ft?.statsTeamId ?? null, { colorOf: (id) => cfg.teams.inSeason(id, resolved.season)?.color, min });
     let view: BasketballScatterParams['view'];
+    // Q30: the impact axes' own bar, offensive possessions (the shooting axes keep the FGA bar)
+    const minOffPoss = impactPossMin(league, resolved.season) ?? 0;
     if (kind && viewP) {
         try {
             const viewRows = await viewP;
-            points = kind === 'players' ? withImpact(points, viewRows)
+            points = kind === 'players' ? withImpact(points, viewRows, minOffPoss)
                 : teamPoints(viewRows, (id) => cfg.teams.inSeason(id, resolved.season), ft?.statsTeamId ?? null, (t) => teamLogoUrl(league, t.espn_id, false, resolved.season));
-            view = { kind, failed: false };
+            view = kind === 'players' ? { kind, failed: false, minOffPoss } : { kind, failed: false };
         } catch (e: any) {
             console.error(`ERROR while loading the ${league} ${resolved.season} scatter's ${kind} view: ${e}, ${e?.stack}`);
             uncacheable(Astro); // players keep the shooting axes; teams say the numbers are unavailable

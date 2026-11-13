@@ -2,12 +2,12 @@
 <script lang="ts">
     // blazing-the-nets' ScatterExplorer.tsx on runes: axis pickers, Random, dots/faces, a name
     // filter and a zoom reset around the league scatter.
-    import { randomPair, SCATTER_DEFAULT, SCATTER_INFO, SCATTER_METRICS, type AxisMetric, type ScatterPoint } from '../../nba/scatterMetrics';
+    import { IMPACT_METRICS, randomPair, SCATTER_DEFAULT, SCATTER_INFO, SCATTER_METRICS, type AxisMetric, type ScatterPoint } from '../../nba/scatterMetrics';
     import ScatterChart from './charts/ScatterChart.svelte';
     // BB-G10 ('bball-impact-scatter') passes the axes, their defaults, the noun and the footnote's two sentences; left out, they are the shooting view's
-    let { points, subject, highlight = 'Nets', minFga = 100, metrics = SCATTER_METRICS, initial = SCATTER_DEFAULT, noun = 'player', population, lead, tail, logos = false }: {
+    let { points, subject, highlight = 'Nets', minFga = 100, metrics = SCATTER_METRICS, initial = SCATTER_DEFAULT, noun = 'player', population, impactPopulation, lead, tail, logos = false }: {
         points: ScatterPoint[]; subject: string; highlight?: string | null; minFga?: number;
-        metrics?: readonly AxisMetric[]; initial?: { x: AxisMetric; y: AxisMetric }; noun?: string; population?: string; lead?: string; tail?: string; logos?: boolean;
+        metrics?: readonly AxisMetric[]; initial?: { x: AxisMetric; y: AxisMetric }; noun?: string; population?: string; impactPopulation?: string; lead?: string; tail?: string; logos?: boolean;
     } = $props();
     // svelte-ignore state_referenced_locally -- the defaults are the first view; the pickers own the axes after that
     let x = $state<AxisMetric>(initial.x);
@@ -19,6 +19,9 @@
     let resetKey = $state(0);
     const random = () => { const [a, b] = randomPair(Math.random, metrics); x = a; y = b; };
     const title = $derived(`${subject}: ${SCATTER_INFO[y].label} against ${SCATTER_INFO[x].label}`);
+    // Q30: a plot with an impact axis shows the players over the possessions bar, not the FGA bar
+    const isImpact = (m: AxisMetric) => (IMPACT_METRICS as readonly AxisMetric[]).includes(m);
+    const plotted = $derived(impactPopulation && (isImpact(x) || isImpact(y)) ? impactPopulation : population);
     // ponytail: with no highlight the bold span below is empty (invisible); an {#if} would add hydration markers to the NBA's HTML
 </script>
 
@@ -46,5 +49,5 @@
         {#each points as p (p.person_id)}<option value={p.name}></option>{/each}
     </datalist>
 </label>
-<ScatterChart {points} {x} {y} {faces} {filter} {resetKey} {title} {highlight} {minFga} {population} />
+<ScatterChart {points} {x} {y} {faces} {filter} {resetKey} {title} {highlight} {minFga} population={plotted} />
 <p class="small text-muted mt-2">{lead ?? `Players with ${minFga}+ FGA.`} <span class="fw-bold">{highlight ?? ''}</span>{highlight ? ' with names, others' : 'Each'} in their team colours; dashed lines are the league medians. Scroll the wheel or pinch to zoom; drag (two fingers on a touch screen) to pan. {tail ?? 'Season stats where the release has them, shots otherwise.'}</p>

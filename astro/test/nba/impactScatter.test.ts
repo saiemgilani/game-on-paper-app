@@ -21,6 +21,7 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
 import { describeScatter } from '../../src/nba/charts/scatterChart';
 import { AXIS_METRICS, IMPACT_COLUMNS, IMPACT_METRICS, pointValue, SCATTER_METRICS, TEAM_COLUMNS, TEAM_METRICS } from '../../src/nba/scatterMetrics';
 import { prepareBasketballScatter, type BasketballScatterParams } from '../../src/routes/basketball/scatter';
+import { impactPossMin } from '../../src/basketball/config';
 
 const ON = { 'bball-impact-scatter': true };
 function fakeAstro(path: string, flagOverrides: Record<string, boolean> = {}) {
@@ -54,37 +55,41 @@ describe('prepareBasketballScatter, BB-G10', () => {
         expect(r.points.every((p) => p.v.length === SCATTER_METRICS.length)).toBe(true);
     });
 
-    test('player view: one season read, each player carries his own player_impact RAPM and SPM, same players as shooting', async () => {
+    test('player view: one season read, each player over the possessions bar carries his own player_impact RAPM and SPM', async () => {
         const off = (await prep('/nba/scatter?season=2026', {})).r.points;
         const { r } = await prep('/nba/scatter?season=2026');
         expect(views.impact).toHaveBeenCalledTimes(1);
         expect(views.impact).toHaveBeenCalledWith('nba', 2026);
-        expect(r.view).toEqual({ kind: 'players', failed: false });
+        expect(r.view).toEqual({ kind: 'players', failed: false, minOffPoss: 2000 });
         expect(r.points.map((p) => p.person_id)).toEqual(off.map((p) => p.person_id));
         expect(r.points.every((p) => p.v.length === SCATTER_METRICS.length + IMPACT_METRICS.length)).toBe(true);
         // the shooting values are untouched
         expect(r.points.map((p) => p.v.slice(0, SCATTER_METRICS.length))).toEqual(off.map((p) => p.v));
-        const byId = new Map(IMPACT.map((row) => [Number(row.player_id), row]));
+        const byId = new Map(IMPACT.filter((row) => Number(row.off_poss) >= 2000).map((row) => [Number(row.player_id), row]));
         const joined = r.points.filter((p) => byId.has(p.person_id));
-        expect(joined.length).toBeGreaterThanOrEqual(10); // the Nets' qualified shooters
+        expect(joined).toHaveLength(10); // the Nets' ten players with 2,000+ offensive possessions, all over the FGA bar
         for (const p of joined) for (const m of IMPACT_METRICS) expect(pointValue(p, m)).toBe(r4(byId.get(p.person_id)![IMPACT_COLUMNS[m]]));
-        // Michael Porter Jr. (1629008), read off the capture: O-RAPM +3.9030, D-RAPM -1.1420
+        // Michael Porter Jr. (1629008), read off the capture: 3,418 offensive possessions, O-RAPM +3.0604, D-RAPM -1.1353
         const mpj = r.points.find((p) => p.person_id === 1629008)!;
-        expect([pointValue(mpj, 'oRapm'), pointValue(mpj, 'dRapm')]).toEqual([3.9031, -1.142]);
-        // a player with no impact row keeps his shooting values and drops out of an impact plot only
+        expect([pointValue(mpj, 'oRapm'), pointValue(mpj, 'dRapm')]).toEqual([3.0604, -1.1353]);
+        // Q30: a shooter over the FGA bar with an impact row under 2,000 possessions keeps his shooting values and drops out of an
+        // impact plot only, as does a player with no impact row
+        const under = r.points.filter((p) => IMPACT.some((row) => Number(row.player_id) === p.person_id && Number(row.off_poss) < 2000));
+        expect(under.length).toBeGreaterThan(0);
         const missing = r.points.filter((p) => !byId.has(p.person_id));
-        expect(missing.length).toBeGreaterThan(0);
+        expect(missing.length).toBeGreaterThan(under.length);
         expect(missing.every((p) => IMPACT_METRICS.every((m) => pointValue(p, m) === null))).toBe(true);
+        expect(missing.every((p) => p.v.slice(0, SCATTER_METRICS.length).some((v) => v !== null))).toBe(true);
     });
 
     test('the default view is O-RAPM against D-RAPM over the players who have both; medians are those players\' own', async () => {
         const { r } = await prep('/nba/scatter?season=2026');
-        const desc = describeScatter(r.points, 'oRapm', 'dRapm');
-        const both = IMPACT.filter((row) => r.points.some((p) => p.person_id === Number(row.player_id)));
+        const desc = describeScatter(r.points, 'oRapm', 'dRapm', 'Nets', 100, 'players with 2,000+ offensive possessions');
+        const both = IMPACT.filter((row) => Number(row.off_poss) >= 2000 && r.points.some((p) => p.person_id === Number(row.player_id)));
         const med = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
         const mx = med(both.map((row) => r4(row.o_rapm))).toFixed(1);
         const my = med(both.map((row) => r4(row.d_rapm))).toFixed(1);
-        expect(desc.startsWith(`${both.length} players with 100+ FGA, D-RAPM against O-RAPM; medians ${mx} and ${my}.`)).toBe(true);
+        expect(desc.startsWith(`${both.length} players with 2,000+ offensive possessions, D-RAPM against O-RAPM; medians ${mx} and ${my}.`)).toBe(true);
     });
 
     test('team view (?view=teams): every team_strength row as a team, its producer values in the team slots', async () => {
@@ -123,11 +128,22 @@ describe('prepareBasketballScatter, BB-G10', () => {
         const w = await prep('/wnba/scatter?season=2025', ON, 'wnba');
         expect(w.r.view?.kind).toBe('players');
         expect(views.impact).toHaveBeenCalledWith('wnba', 2025);
+        expect(w.r.view).toEqual({ kind: 'players', failed: false, minOffPoss: 800 });
         views.impact.mockClear();
         const { astro } = fakeAstro('/mbb/scatter?view=teams', ON);
         await prepareBasketballScatter(astro, 'mbb').catch(() => null);
         expect(views.impact).not.toHaveBeenCalled();
         expect(views.teams).not.toHaveBeenCalled();
+    });
+});
+
+describe("Q30: the impact axes' possessions bar", () => {
+    test("2,000 NBA / 800 WNBA offensive possessions over a full season, scaled by the season's games like the FGA bar", () => {
+        expect(impactPossMin('nba', 2026)).toBe(2000);
+        expect(impactPossMin('wnba', 2026)).toBe(800); // 44 games
+        expect(impactPossMin('wnba', 2024)).toBe(727); // 40 games
+        expect(impactPossMin('wnba', 2020)).toBe(400); // the 22-game season
+        expect(impactPossMin('mbb', 2026)).toBeNull();
     });
 });
 
@@ -148,6 +164,9 @@ describe('/nba/scatter render, BB-G10', () => {
         expect(html).toMatch(/<option value="oRapm" selected[^>]*>O-RAPM/);
         expect(html).toContain('D-RAPM against O-RAPM');
         expect(html).toContain('RAPM and SPM are points per 100 possessions');
+        expect(html).toContain('Players with 2,000+ offensive possessions on the impact axes and 100+ FGA on the shooting axes.');
+        expect(html).toMatch(/<desc>\d+ players with 2,000\+ offensive possessions, D-RAPM against O-RAPM/);
+        expect(html).toContain('2,000+ offensive possessions for RAPM and SPM, 100+ field-goal attempts for shooting');
         expect(html).not.toMatch(/adj_rapm|Adj\. RAPM|BPM|WAR/);
         expect(html).not.toContain('undefined');
         expect(html).not.toContain('NaN');

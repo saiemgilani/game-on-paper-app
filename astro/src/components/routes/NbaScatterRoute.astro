@@ -26,17 +26,22 @@ const conference = 'conference' in Astro.props.data ? Astro.props.data.conferenc
 const keepConference = conference && Astro.url.searchParams.get('conference') === conference.selected ? { conference: conference.selected } : undefined;
 // BB-G10 ('bball-impact-scatter', NBA/WNBA): the team view rides a season change; the player view is the default
 const keepParams = keepConference ?? (view?.kind === 'teams' ? { view: 'teams' } : undefined);
+// Q30: the impact axes' possessions bar (the shooting axes keep the FGA bar)
+const poss = (view?.minOffPoss ?? 0).toLocaleString('en-US');
 const viewProps = !view ? {}
   : view.kind === 'teams'
     ? { metrics: TEAM_METRICS, initial: TEAM_DEFAULT, noun: 'team', population: 'teams', logos: true, lead: `Every ${name} team's ${label} regular season.`,
         tail: 'Ratings are points per 100 possessions; the adjusted ratings and strength of schedule account for the opponents. A reversed axis puts the better defense up or to the right.' }
     : view.failed ? {}
-    : { metrics: [...IMPACT_METRICS, ...SCATTER_METRICS], initial: IMPACT_DEFAULT,
+    : { metrics: [...IMPACT_METRICS, ...SCATTER_METRICS], initial: IMPACT_DEFAULT, impactPopulation: `players with ${poss}+ offensive possessions`,
+        lead: `Players with ${poss}+ offensive possessions on the impact axes and ${min.fga}+ FGA on the shooting axes.`,
         tail: 'RAPM and SPM are points per 100 possessions over the regular season; shooting is season stats where the release has them, shots otherwise.' };
 const title = `${name} scatter, ${label} | Game on Paper`;
 const description = view?.kind === 'teams'
   ? `Every ${name} team in ${label}, plotted on two ratings or four factors${ft ? `, the ${ft.menuLabel} highlighted` : ''}.`
-  : `Every ${name} player with ${min.fga}+ field-goal attempts in ${label}, plotted on two ${view ? 'impact, shooting' : 'shooting'} or volume numbers${ft ? `, the ${ft.menuLabel} highlighted` : ''}.`;
+  : view && !view.failed
+    ? `${name} players in ${label} on two impact, shooting or volume numbers: ${poss}+ offensive possessions for RAPM and SPM, ${min.fga}+ field-goal attempts for shooting${ft ? `, the ${ft.menuLabel} highlighted` : ''}.`
+    : `Every ${name} player with ${min.fga}+ field-goal attempts in ${label}, plotted on two ${view ? 'impact, shooting' : 'shooting'} or volume numbers${ft ? `, the ${ft.menuLabel} highlighted` : ''}.`;
 // the team view is its own page: its canonical keeps ?view=teams
 const canonicalQ = view?.kind === 'teams' ? `${q}${q ? '&' : '?'}view=teams` : q;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Scatter', active: true }];

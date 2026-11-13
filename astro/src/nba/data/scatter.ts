@@ -56,12 +56,14 @@ function cell(v: unknown): number | null {
 }
 
 /**
- * BB-G10's player view: the shooting points with each player's `player_impact` values appended (AXIS_METRICS order), so
- * the impact axes plot the same players as the shooting ones. A player with no impact row has nulls there and drops out of
- * an impact plot only.
+ * BB-G10's player view: the shooting points with each player's `player_impact` values appended (AXIS_METRICS order). The
+ * impact axes have their own bar (Q30): a player under `minOffPoss` offensive possessions, or with no impact row, has nulls
+ * there and drops out of an impact plot only.
+ * ponytail: built on the FGA-bar points, so a player over the possessions bar but under the FGA bar would be missing; none
+ * is in 2025-26 (NBA 2,000 / WNBA 800: every one has 100+ / 54+ FGA). Add the shots' sub-bar players if one ever is.
  */
-export function withImpact(points: ScatterPoint[], rows: readonly Record<string, unknown>[]): ScatterPoint[] {
-  const byId = new Map(rows.map((r) => [Number(r.player_id), r]));
+export function withImpact(points: ScatterPoint[], rows: readonly Record<string, unknown>[], minOffPoss: number): ScatterPoint[] {
+  const byId = new Map(rows.filter((r) => (cell(r.off_poss) ?? 0) >= minOffPoss).map((r) => [Number(r.player_id), r]));
   return points.map((p) => {
     const r = byId.get(p.person_id);
     return { ...p, v: [...p.v, ...IMPACT_METRICS.map((m) => (r ? cell(r[IMPACT_COLUMNS[m]]) : null))] };

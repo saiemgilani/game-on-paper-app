@@ -137,8 +137,9 @@ describe('the WNBA dashboard pages', () => {
     test('/wnba/scatter: the 2026 bar, no highlight', async () => {
         const html = await page('scatter.astro', '/wnba/scatter');
         wnbaPage(html, 'WNBA scatter, 2026');
-        expect(html).toContain('Players with 54+ FGA.');
-        expect(html).toMatch(/\d+ players with 54\+ FGA, /);
+        // the impact view is on in preview (Q30): 800+ offensive possessions on its axes, the 2026 FGA bar on the shooting ones
+        expect(html).toContain('Players with 800+ offensive possessions on the impact axes and 54+ FGA on the shooting axes.');
+        expect(html).toMatch(/\d+ players with 800\+ offensive possessions, /);
     });
     test('/wnba/leaders: the boards, no featured team', async () => {
         const html = await page('leaders.astro', '/wnba/leaders');

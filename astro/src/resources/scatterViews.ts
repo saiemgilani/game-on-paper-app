@@ -21,7 +21,8 @@ const TEAM_LIMIT = '50';
 export type ScatterRow = Record<string, unknown>;
 
 export function retrieveSeasonImpact(league: BasketballLeague, season: number): Promise<ScatterRow[]> {
-    const select = ['player_id', ...Object.values(IMPACT_COLUMNS)].join(',');
+    // off_poss: the impact axes' possessions bar (impactPossMin)
+    const select = ['player_id', 'off_poss', ...Object.values(IMPACT_COLUMNS)].join(',');
     const query = { season: String(season), season_type: 'Regular Season', select, limit: PLAYER_LIMIT };
     return retrieveRowsFrom<ScatterRow>(BASKETBALL[league].gamesSource, 'player_impact', query, TTL, true, NBA_READ_TIMEOUT_MS);
 }
