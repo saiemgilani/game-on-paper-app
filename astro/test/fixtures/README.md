@@ -823,3 +823,47 @@ It pins the labels of two players who share a surname and a first initial, and t
 JSON with the name, crosswalk and page reads (season filter and limit as above, never unfiltered) and gzip; Duke's file
 is the four reads above. Live reads of `lineup_seasons?season=2026&team_id=<id>&n_players=<n>&poss__gte=<gate>&order=-poss&limit=100`
 can replace the parquet rows.
+
+## `situations-nba-2024.json.gz`, `situations-mbb-2025.json.gz`
+The Situations section's reads (BB-G25, `resources/situational.ts`) before sdv-db's situational backfill: sdv-db's committed
+producer fixtures `tests/fixtures/season_products/{nba_situational_*_2024,mbb_situational_*_2025}.parquet` (sportsdataverse-py
+#1111's `nba_situational_team/_player/_lineup(2024)` and `mbb_situational_*(2025)` over the real games of sdv-py's
+`tests/fixtures/bb_situational`), filtered to one team and projected to the module's `select` columns (plus `team_id`), as
+`{team, players, lineups, names}`. NBA: the Minnesota Timberwolves 2023-24 (`team_id` 1610612750, every regular-season
+game): its 24 split rows, 393 player rows and the 1,293 rows of its 66 five-man units that pass the product's gate (50
+possessions, offense plus defense, in the `all` split; sdv-db #199 keeps every split of each), with `names` the `data` of
+`/v1/nba_stats/shot_season_players?season=2024&team_id=1610612750&select=person_id,player_name,team_id&limit=60`. MBB:
+Michigan State 2024-25 (ESPN 127, every game): 21 split rows, 247 player rows, the 472 rows of its 27 gated units, with
+`names` the `data` of `/v1/mbb/ncaa_player_box?season=2025&team_espn_team_id=127&select=player_id,clean_name&limit=2000`.
+The name reads were captured live on 2026-11-05; nothing is edited. The tests apply the API's own filter (`family`,
+`split`, `order=-poss`, `limit`) to `players` and `lineups`.
+
+**Used by:** `test/situations.test.ts`.
+
+**To regenerate:** read the six parquets from sdv-db main, filter `team_id`, apply the lineup gate above, select the columns,
+write the rows as JSON with the two name reads (season filter and limit as above, never unfiltered) and gzip. Once the
+backfill runs, the live `situational_{team,player,lineup}?season=<s>&team_id=<id>[&family=&split=&order=-poss]` reads replace them.
+
+## `situations-player-2026.json.gz`
+The player page's Situations read (BB-G25 review, `retrievePlayerSituational`), captured live on 2026-11-13: `nba.rows` is the
+`data` of `/v1/nba_stats/situational_player?season=2026&team_id=1610612750&player_id=1630162&poss__gte=10&select=player_id,<the
+section's columns>&limit=40` (Anthony Edwards, 24 splits); `mbb.crosswalk` of
+`/v1/mbb/ncaa_player_crosswalk?season=2026&espn_athlete_id=5041935&select=ncaa_player_id&limit=5` (Cameron Boozer) and `mbb.rows` of
+`/v1/mbb/situational_player?season=2026&team_id=150&player_id=11195975&poss__gte=10&select=...&limit=40` (18 splits; none for
+overtime, under 10 possessions). Nothing is edited.
+
+**Used by:** `test/situations.test.ts`.
+
+**To regenerate:** the same reads (season filter and limit as above).
+
+
+## `situations-game-2026.json.gz`
+The game page's Situations panel reads (BB-G25 review, Q27, `resources/situational.ts` `retrieveGameSituational`), captured live on 2026-11-13, sequentially, the `data` array of each response, no edits, as `{nba: {crosswalk, rows}, mbb: {teamBox, rows}}`:
+- `/v1/nba/schedule_crosswalk?season=2026&espn_game_id=401809773&select=nba_game_id,nba_home_team_id,nba_away_team_id&limit=2` (1 row: Detroit at Brooklyn, 2025-11-07, stats game 0022500031)
+- `/v1/nba_stats/situational_team_games?season=2026&game_id=0022500031&select=team_id,family,split,games,minutes,poss,opp_poss,pts,opp_pts,plus_minus,off_rtg,def_rtg,net_rtg&limit=60` (38: 19 splits a team)
+- `/v1/mbb/ncaa_team_box?season=2026&espn_game_id=401856577&select=contest_id&limit=4` (2 rows, contest 6564880: UConn at Duke, neutral site)
+- `/v1/mbb/situational_team_games?season=2026&game_id=6564880&select=...&limit=60` (30: 15 a team)
+
+**Used by:** `test/gameSituations.test.ts`.
+
+**To regenerate:** rerun the same reads (season filter and limit as above).

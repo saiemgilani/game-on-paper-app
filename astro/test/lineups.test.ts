@@ -25,6 +25,11 @@ const sdv = vi.hoisted(() => ({ fn: vi.fn() }));
 vi.mock('../src/resources/sdv', async (orig) => ({ ...(await orig<typeof import('../src/resources/sdv')>()), retrieveRows: (...a: unknown[]) => sdv.fn(...a) }));
 const tab = vi.hoisted(() => ({ fn: vi.fn() }));
 vi.mock('../src/resources/lineups', async (orig) => ({ ...(await orig<typeof import('../src/resources/lineups')>()), retrieveLineups: (...a: unknown[]) => tab.fn(...a) }));
+// BB-G25's Situations section reads the Data API with 'bball-situational' on (preview): never from a test
+vi.mock('../src/resources/situational', async (orig) => ({
+    ...(await orig<typeof import('../src/resources/situational')>()),
+    retrieveSituational: async () => ({ team: [], players: [], units: [], names: [] }),
+}));
 vi.mock('../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../src/resources/teamSeason')>()),
     retrieveTeamSeason: async () => ({ rates: [], strength: null, games: [], gameRates: [] }),

@@ -13,6 +13,8 @@ const sched = vi.fn(), rows = vi.fn(), proc = vi.fn(), espn = vi.fn(), sources =
 vi.mock('../../src/resources/nbaGames', async (orig) => ({ ...(await orig<typeof import('../../src/resources/nbaGames')>()), retrieveNbaSchedule: (...a: unknown[]) => sched(...a), retrieveNbaGameRows: (...a: unknown[]) => rows(...a), retrieveNbaProcessedGame: (...a: unknown[]) => proc(...a) }));
 vi.mock('../../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../../src/resources/espn')>()), retrieveGamePageGuarded: (...a: unknown[]) => espn(...a) }));
 vi.mock('../../src/resources/python', async (orig) => ({ ...(await orig<typeof import('../../src/resources/python')>()), retrieveGameSources: (...a: unknown[]) => sources(...a) }));
+// BB-G25's game-page Situations panel reads under 'preview' too: no rows, no network (the panel's own tests are gameSituations.test.ts)
+vi.mock('../../src/resources/situational', async (orig) => ({ ...(await orig<typeof import('../../src/resources/situational')>()), retrieveGameSituational: async () => ({ home: [], away: [] }) }));
 
 const api = () => JSON.parse(readFileSync(new URL('../fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
 const ID = '401766458';

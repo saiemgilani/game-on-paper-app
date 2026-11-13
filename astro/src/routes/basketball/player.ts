@@ -16,7 +16,10 @@ import { placeholderSplit } from '../../nba/data/placeholder';
 import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
+import { retrievePlayerSituational } from '../../resources/situational';
+import { isFeatureEnabled } from '../../utils/features';
 import type { BasketballLeague } from '../../utils/league';
+import { parseSituation, situationsFor, type PlayerSituationsTab } from '../../utils/situations';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
 
@@ -42,6 +45,8 @@ export interface BasketballPlayerParams {
     unlocated?: { count: number; total: number };
     /** a college season's shot_coverage sentence (D24); absent for the NBA/WNBA */
     coverage?: string | null;
+    /** BB-G25, only with 'bball-situational' on: the Situations section's control and his split rows; `rows` null when the read failed */
+    situations?: PlayerSituationsTab;
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -121,8 +126,10 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const min = rankMins(league, season);
     if (degraded) uncacheable(Astro);
     else setCache(Astro, playerCache(league));
-    const coverage = await coverageP;
-    if (coverage === undefined) uncacheable(Astro);
+    // read only once the page will render (a 404 or 503 never spends it), alongside the coverage note
+    const situationsOn = isFeatureEnabled('bball-situational', Astro.locals);
+    const [coverage, situations] = await Promise.all([coverageP, situationsOn ? readPlayerSituations(Astro, league, season, personId, player.team_id) : undefined]);
+    if (coverage === undefined || situations?.rows === null) uncacheable(Astro);
     return {
         ...resolved,
         player,
@@ -137,5 +144,18 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         hisSeasons,
         ...(n > 0 ? { unlocated: { count: n, total: shots.length } } : {}),
         ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
+        ...(situationsOn ? { situations } : {}),
     };
+}
+
+/** The player page's Situations section (BB-G25): ?situation= and his split rows with his team; `rows` null when a read failed (decorative). */
+async function readPlayerSituations(Astro: AstroGlobal, league: BasketballLeague, season: number, personId: number, teamId: number): Promise<PlayerSituationsTab> {
+    const options = situationsFor(league, season);
+    const situation = parseSituation(Astro.url.searchParams.get('situation'), options);
+    try {
+        return { situation, options, rows: await retrievePlayerSituational(league, season, personId, teamId) };
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} situational splits for player ${personId}: ${e}, ${e?.stack}`);
+        return { situation, options, rows: null };
+    }
 }

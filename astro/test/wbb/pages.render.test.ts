@@ -27,6 +27,12 @@ vi.mock('../../src/resources/lineups', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/lineups')>()),
     retrieveLineups: async () => ({ units: [], names: [], pairs: [] }),
 }));
+// BB-G25's Situations section reads the Data API with 'bball-situational' on (preview): never from a test
+vi.mock('../../src/resources/situational', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/situational')>()),
+    retrieveSituational: async () => ({ team: [], players: [], units: [], names: [] }),
+    retrievePlayerSituational: async () => [],
+}));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async (s: number, lg: string) => { if (lg !== 'wbb') throw new Error(`league ${lg}`); return CAPTURED.includes(s) ? seasonPlayers(s as Season) : []; },

@@ -1,0 +1,36 @@
+---
+// src/components/nba/game/GameSituations.astro
+// BB-G25 review (Q27), behind 'bball-situational': the game page's Situations panel. The team section's control
+// (SituationSelect, a plain <select> of URLs) and columns over the producer's per-game rows (sdv-db
+// situational_team_games): each team's row in the situation, then its All row. Team rows only: the producer publishes no
+// per-game player or five-man rows, so the section's player and unit minimums have nothing to apply to here.
+import SituationSelect from '../SituationSelect.astro';
+import { SITUATION_COLS as COLS, teamRows, type GameSituationsTab } from '../../../utils/situations';
+import { gameHref, withParams } from '../../../nba/links';
+import { basketball } from '../../../basketball/config';
+import type { NbaGame } from '../../../resources/nbaGame';
+
+interface Props { game: NbaGame; data: GameSituationsTab }
+const { game, data } = Astro.props;
+const league = basketball(Astro.locals.league).league;
+const { situation, options, reads } = data;
+const href = (key: string) => `${withParams(gameHref(league, game.id), { situation: key }, { situation: 'all' })}#situations`;
+const sides = reads ? [{ name: game.away.team.displayName, rows: teamRows(reads.away, situation) }, { name: game.home.team.displayName, rows: teamRows(reads.home, situation) }] : [];
+const empty = sides.every((s) => s.rows.length === 0);
+const sit = situation.label;
+---
+<SituationSelect options={options} situation={situation} href={href} />
+<p class="small text-muted mb-2" id="game-situation-note">{situation.note}</p>
+{reads === null ? (<p class="text-muted" id="game-situations-unavailable">This game's situational splits are temporarily unavailable.</p>) : empty ? (<p class="text-muted" id="game-situations-empty">No situational splits for this game yet.</p>) : (
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0" id="game-situations">
+      <caption class="small text-muted">Each team in the situation ({sit}), then over the whole game. A team with no possession in the situation shows its whole game only.</caption>
+      <thead><tr><th scope="col">Team</th><th scope="col">Situation</th>{COLS.map((c) => (<th scope="col" class="text-end"><abbr title={c.hover}>{c.label}</abbr></th>))}</tr></thead>
+      <tbody>
+        {sides.flatMap((s) => s.rows.map((r) => (
+          <tr><th scope="row" class="fw-normal text-nowrap">{s.name}</th><td class="text-nowrap">{r.family === 'all' ? 'All' : sit}</td>{COLS.map((c) => (<td class="numeral text-end">{c.cell(r)}</td>))}</tr>
+        )))}
+      </tbody>
+    </table>
+  </div>
+)}
