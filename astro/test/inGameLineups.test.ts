@@ -39,6 +39,7 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         }
         if (table === 'game_units') return api.inGame.units;
         if (table === 'game_on_off') return api.inGame.onoff;
+        if (table === 'team_season_rates') return api.inGame.season ?? [];
         // BB-G1's player-page reads (links only): none needed here
         if (table === 'shot_season_players' || table === 'ncaa_player_crosswalk') return [];
         throw new Error(`unexpected table ${table}`);
@@ -67,7 +68,7 @@ const reads = async (lg: L, inGame = true): Promise<ImpactBoxReads> => {
     const s = c.impact.schedule[0];
     return retrieveImpactBox(c.impact.league, c.impact.season, c.impact.espnGameId, Number(s.home_id), Number(s.away_id), inGame);
 };
-const asReads = (lg: L): InGameReads => ({ units: LEAGUES[lg].inGame.units, onOff: LEAGUES[lg].inGame.onoff });
+const asReads = (lg: L): InGameReads => ({ units: LEAGUES[lg].inGame.units, onOff: LEAGUES[lg].inGame.onoff, season: LEAGUES[lg].inGame.season });
 const sideOf = (lg: L, teamId: number) => inGameSide(asReads(lg), teamId, (id) => id);
 const teamIds = (lg: L) => [...new Set<number>(LEAGUES[lg].inGame.onoff.map((r: any) => Number(r.team_id)))];
 const ids5 = (u: any) => [u.player_1, u.player_2, u.player_3, u.player_4, u.player_5].filter((p) => p != null).map(String);
@@ -149,18 +150,38 @@ describe('pickSplit', () => {
     });
     test('unitKey and bigSample', () => {
         expect(unitKey(['9', '10', '1'])).toBe('1-10-9');
-        expect(bigSample({ minutes: 5, poss: 5, opp_poss: 5 })).toBe(true);
-        expect(bigSample({ minutes: 4.9, poss: 50, opp_poss: 50 })).toBe(false);
-        expect(bigSample({ minutes: 20, poss: 4, opp_poss: 5 })).toBe(false);
+        // offensive possessions only (Q28): 5 + 5 is not 10 of them
+        expect(bigSample({ minutes: 5, poss: 10 })).toBe(true);
+        expect(bigSample({ minutes: 5, poss: 5 })).toBe(false);
+        expect(bigSample({ minutes: 4.9, poss: 50 })).toBe(false);
+        expect(bigSample({ minutes: 20, poss: 9 })).toBe(false);
+    });
+    test('the stricter gate hides more real units than offense plus defense did', () => {
+        for (const lg of Object.keys(LEAGUES) as L[]) {
+            const u = LEAGUES[lg].inGame.units;
+            const old = u.filter((x: any) => x.minutes >= 5 && x.poss + x.opp_poss >= 10).length;
+            expect(u.filter(bigSample).length, lg).toBeLessThanOrEqual(old);
+        }
+    });
+    test("each side's season net rating is the producer's team_season_rates row, in the impact tables' id space", () => {
+        const want = { nba: [1610612738, 11.36], wnba: [1611661313, 3.93], mbb: [2084, 2.25], wbb: [45, 0.67] } as const;
+        for (const [lg, [id, net]] of Object.entries(want) as [L, readonly [number, number]][]) {
+            const s = sideOf(lg, id).seasonNet;
+            expect(s?.net_rtg, lg).toBeCloseTo(net, 2);
+            expect(s?.games, lg).toBeGreaterThan(0);
+        }
+        expect(inGameSide({ ...asReads('nba'), season: [] }, 1610612738, (id) => id).seasonNet).toBeNull();
     });
 });
 
 describe('the reads', () => {
-    test('retrieveInGameLineups: two reads in the season schema, season-filtered, by the producer game id, capped', async () => {
+    test('retrieveInGameLineups: three reads in the season schema, season-filtered, the game ones by the producer game id, capped', async () => {
         api.inGame = LEAGUES.wnba.inGame;
         const r = await retrieveInGameLineups('wnba', 2026, '1022600001');
         expect(r.units.length).toBe(LEAGUES.wnba.inGame.units.length);
-        expect(api.calls.map((c) => [c.schema, c.table, c.query.season, c.query.game_id])).toEqual([['wnba_stats', 'game_units', '2026', '1022600001'], ['wnba_stats', 'game_on_off', '2026', '1022600001']]);
+        expect(api.calls.map((c) => [c.schema, c.table, c.query.season, c.query.game_id])).toEqual([['wnba_stats', 'game_units', '2026', '1022600001'], ['wnba_stats', 'game_on_off', '2026', '1022600001'], ['wnba_stats', 'team_season_rates', '2026', undefined]]);
+        expect(api.calls[2].query.split).toBe('all');
+        expect(r.season.length).toBe(15);
         expect(api.calls.every((c) => Number(c.query.limit) > 0 && c.query.select)).toBe(true);
     });
     test('a units read at its cap is a failure, never a short table', async () => {
@@ -196,7 +217,7 @@ describe('prepareBasketballGame', () => {
     test("'bball-ingame-lineups' is a preview flag", () => { expect(FLAGS['bball-ingame-lineups']).toBe('preview'); });
     test('the flag rides the Impact box read; off (or no impact box) asks for no units', async () => {
         const seen: unknown[] = [];
-        box.fn = (...a: unknown[]) => { seen.push(a[5]); return Promise.resolve({ gameId: 'x', teams: { home: 1, away: 2 }, players: [{}], lineups: { home: [], away: [] }, names: [], ...(a[5] ? { inGame: { units: [], onOff: [] } } : {}) }); };
+        box.fn = (...a: unknown[]) => { seen.push(a[5]); return Promise.resolve({ gameId: 'x', teams: { home: 1, away: 2 }, players: [{}], lineups: { home: [], away: [] }, names: [], ...(a[5] ? { inGame: { units: [], onOff: [], season: [] } } : {}) }); };
         for (const overrides of [{}, { 'bball-ingame-lineups': false }]) {
             ingested();
             const { astro } = fakeAstro({ preview: true });
@@ -220,7 +241,7 @@ describe('prepareBasketballGame', () => {
         expect(headers.get('Cache-Control')).toBe('no-store');
     });
     test('impact rows but no units yet (BB-D32 a night behind): held for the season window, not the final\'s year', async () => {
-        box.fn = () => Promise.resolve({ gameId: 'x', teams: { home: 1, away: 2 }, players: [{}], lineups: { home: [], away: [] }, names: [], inGame: { units: [], onOff: [] } });
+        box.fn = () => Promise.resolve({ gameId: 'x', teams: { home: 1, away: 2 }, players: [{}], lineups: { home: [], away: [] }, names: [], inGame: { units: [], onOff: [], season: [] } });
         ingested();
         const { astro, cache } = fakeAstro({ preview: true });
         await prepareBasketballGame(astro, 'nba');
@@ -253,6 +274,8 @@ describe('NbaImpactBox with the in-game lineups', () => {
         expect(html).not.toContain('NaN');
         expect(html).not.toContain('undefined');
         expect(html).not.toContain('id="ingame-note"');
+        expect(html).toContain("BOS's season net rating: <span class=\"fw-bold text-body\">+11.4</span> (12 games)");
+        expect(html).toContain('10+ <abbr title="Offensive possessions">off. poss</abbr>');
     });
     test('college: the stats.ncaa.org names on the units', async () => {
         api.cap = LEAGUES.wbb.impact;
@@ -263,7 +286,7 @@ describe('NbaImpactBox with the in-game lineups', () => {
     test('notes: a failed read, a season not built, the garbage-time split; nothing with the flag off', async () => {
         const r = await reads('nba');
         expect(await render({ ...r, inGame: null })).toContain('temporarily unavailable');
-        expect(await render({ ...r, inGame: { units: [], onOff: [] } })).toContain('not built for this game yet');
+        expect(await render({ ...r, inGame: { units: [], onOff: [], season: [] } })).toContain('not built for this game yet');
         const split = await render(r, true);
         expect(split).toContain('left out of the garbage-time split');
         expect(split).not.toContain('5-man units');

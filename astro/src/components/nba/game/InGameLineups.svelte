@@ -44,13 +44,16 @@
 
 <div id={id} data-ingame>
     <h4 class="h6 mt-3">In-game units</h4>
+    {#if side.seasonNet}
+        <p class="small text-muted mb-2" data-season-net>{abbr}'s season net rating: <span class="fw-bold text-body">{signed(side.seasonNet.net_rtg, 1)}</span>{side.seasonNet.games != null ? ` (${side.seasonNet.games} ${side.seasonNet.games === 1 ? 'game' : 'games'})` : ''}, the reference for the Net column.</p>
+    {/if}
     <div class="d-flex flex-wrap align-items-center gap-2 mb-2 small">
         <div class="btn-group btn-group-sm" role="group" aria-label={`${abbr} unit size`}>
             {#each UNIT_SIZES as n (n)}
                 <button type="button" class="btn btn-outline-secondary" class:active={size === n} aria-pressed={size === n} onclick={() => (size = n)}>{n}-man</button>
             {/each}
         </div>
-        <label class="form-check-label d-flex align-items-center gap-1"><input type="checkbox" class="form-check-input mt-0" bind:checked={hideSmall} /> {MIN_MINUTES}+ min and {MIN_POSS}+ poss</label>
+        <label class="form-check-label d-flex align-items-center gap-1"><input type="checkbox" class="form-check-input mt-0" bind:checked={hideSmall} /> {MIN_MINUTES}+ min and {MIN_POSS}+ <abbr title="Offensive possessions">off. poss</abbr></label>
         {#if hidden > 0}<span class="text-muted">{hidden} smaller {hidden === 1 ? 'unit' : 'units'} hidden</span>{/if}
     </div>
     {#if rows.length === 0}

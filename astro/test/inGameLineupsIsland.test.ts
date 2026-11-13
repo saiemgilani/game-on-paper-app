@@ -12,7 +12,7 @@ import { bigSample, inGameSide, pickSplit } from '../src/utils/inGameLineups';
 
 const cap = JSON.parse(gunzipSync(readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'fixtures/ingame-lineups-nba.json.gz'))).toString());
 const BOS = 1610612738;
-const side = inGameSide({ units: cap.units, onOff: cap.onoff }, BOS, (id) => `P${id}`);
+const side = inGameSide({ units: cap.units, onOff: cap.onoff, season: cap.season }, BOS, (id) => `P${id}`);
 const rowsOf = (t: HTMLElement, label: string) => t.querySelectorAll(`table[aria-label="${label}"] tbody tr`).length;
 const button = (t: HTMLElement, group: string, text: string) => [...t.querySelectorAll(`[aria-label="${group}"] button`)].find((b) => b.textContent === text) as HTMLButtonElement;
 

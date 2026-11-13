@@ -8,7 +8,7 @@
 import type { InGameReads, OnOffRow, UnitRow } from '../resources/impactBox';
 
 export const UNIT_SIZES = [1, 2, 3, 4, 5] as const;
-/** The small-sample toggle's gate: a unit shows with it on when it has both. */
+/** The small-sample toggle's gate: a unit shows with it on when it has both (offensive possessions). */
 export const MIN_MINUTES = 5;
 export const MIN_POSS = 10;
 /** The picker: at most this many players chosen (ON or OFF) at once; every on/off combination for up to COMBO_MAX of them. */
@@ -28,6 +28,8 @@ export interface InGameSide {
     onOff: NamedOnOff[];
     /** what the picker reads: the players (the on/off rows' order), each unit's totals by its sorted ids, the team's game */
     picker: { players: { id: string; name: string }[]; units: Record<string, Totals>; team: Totals } | null;
+    /** the team's season net rating (team_season_rates), printed as the units' reference line; null with no producer row */
+    seasonNet: { net_rtg: number; games: number | null } | null;
 }
 
 const ids = (u: UnitRow) => [u.player_1, u.player_2, u.player_3, u.player_4, u.player_5].filter((p) => p != null).map(String);
@@ -53,7 +55,9 @@ export function inGameSide(reads: InGameReads, teamId: number | undefined, name:
         units: Object.fromEntries(mine.map((u) => [unitKey(ids(u)), [u.seconds, u.poss, u.opp_poss, u.pts, u.opp_pts] as Totals])),
         team: [((t.minutes_on ?? 0) + (t.minutes_off ?? 0)) * 60, t.poss_on + t.poss_off, t.opp_poss_on + t.opp_poss_off, t.pts_on + t.pts_off, t.opp_pts_on + t.opp_pts_off] as Totals,
     } : null;
-    return { units, onOff, picker };
+    const r = (reads.season ?? []).find((x) => Number(x.team_id) === teamId);
+    const seasonNet = r?.net_rtg != null ? { net_rtg: Number(r.net_rtg), games: r.games == null ? null : Number(r.games) } : null;
+    return { units, onOff, picker, seasonNet };
 }
 
 export interface Split { minutes: number; poss: number; opp_poss: number; pts: number; opp_pts: number; plus_minus: number; off_rtg: number | null; def_rtg: number | null; net_rtg: number | null }
@@ -93,5 +97,5 @@ export function allCombos(picker: NonNullable<InGameSide['picker']>, players: st
     return out;
 }
 
-/** The small-sample toggle's test. */
-export const bigSample = (u: Pick<UnitRow, 'minutes' | 'poss' | 'opp_poss'>) => (u.minutes ?? 0) >= MIN_MINUTES && (u.poss ?? 0) + (u.opp_poss ?? 0) >= MIN_POSS;
+/** The small-sample toggle's test: offensive possessions only, the Impact box's 10-possession rating dash. */
+export const bigSample = (u: Pick<UnitRow, 'minutes' | 'poss'>) => (u.minutes ?? 0) >= MIN_MINUTES && (u.poss ?? 0) >= MIN_POSS;

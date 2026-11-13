@@ -131,21 +131,29 @@ export interface OnOffRow {
 const ON_OFF_SELECT = 'team_id,player_id,minutes_on,minutes_off,poss_on,opp_poss_on,poss_off,opp_poss_off,pts_on,opp_pts_on,pts_off,opp_pts_off,'
     + 'plus_minus_on,plus_minus_off,off_rtg_on,off_rtg_off,def_rtg_on,def_rtg_off,net_rtg_on,net_rtg_off,off_rtg_diff,def_rtg_diff,net_rtg_diff';
 
-export interface InGameReads { units: UnitRow[]; onOff: OnOffRow[] }
+/** A team's season net rating (sdv-db team_season_rates, split `all`, BB-D3): the in-game units' reference line. */
+export interface SeasonNetRow { team_id: number; games: number | null; net_rtg: number | null }
+/** One row a team (~365 in college); a read at the cap is truncated, so it fails */
+const SEASON_RATES_LIMIT = 1000;
+
+export interface InGameReads { units: UnitRow[]; onOff: OnOffRow[]; season: SeasonNetRow[] }
 
 /**
- * BB-G37's two reads for a mapped game (the producer's game id): every unit and every player's on/off, season-filtered
- * and capped, in the impact tables' id space (so the impact box's names apply). Empty for a season BB-D32 has not built.
- * Throws on a failed read or a units read at its cap.
+ * BB-G37's reads for a mapped game (the producer's game id): every unit and every player's on/off, season-filtered
+ * and capped, in the impact tables' id space (so the impact box's names apply), and the season's team net ratings (the
+ * same id space: the stats id for the pros, the ESPN id in college). Empty for a season BB-D32 has not built.
+ * Throws on a failed read or a read at its cap.
  */
 export async function retrieveInGameLineups(league: BasketballLeague, season: number, gameId: string): Promise<InGameReads> {
-    const read = <T>(table: string, q: Record<string, string>) => retrieveRowsFrom<T>(leagueSource(league), table, { season: String(season), game_id: gameId, ...q }, TTL, true, NBA_READ_TIMEOUT_MS);
-    const [units, onOff] = await Promise.all([
-        read<UnitRow>('game_units', { select: UNIT_SELECT, limit: String(GAME_UNIT_LIMIT) }),
-        read<OnOffRow>('game_on_off', { select: ON_OFF_SELECT, limit: PLAYER_LIMIT }),
+    const read = <T>(table: string, q: Record<string, string>) => retrieveRowsFrom<T>(leagueSource(league), table, { season: String(season), ...q }, TTL, true, NBA_READ_TIMEOUT_MS);
+    const [units, onOff, rates] = await Promise.all([
+        read<UnitRow>('game_units', { game_id: gameId, select: UNIT_SELECT, limit: String(GAME_UNIT_LIMIT) }),
+        read<OnOffRow>('game_on_off', { game_id: gameId, select: ON_OFF_SELECT, limit: PLAYER_LIMIT }),
+        read<SeasonNetRow>('team_season_rates', { split: 'all', select: 'team_id,games,net_rtg', limit: String(SEASON_RATES_LIMIT) }),
     ]);
     if (units.length >= GAME_UNIT_LIMIT) throw new Error(`game_units for ${gameId} hit the ${GAME_UNIT_LIMIT}-row cap`);
-    return { units, onOff };
+    if (rates.length >= SEASON_RATES_LIMIT) throw new Error(`team_season_rates hit the ${SEASON_RATES_LIMIT}-row cap`);
+    return { units, onOff, season: rates };
 }
 
 /** No producer rows for the game (not mapped, or not built yet). */
