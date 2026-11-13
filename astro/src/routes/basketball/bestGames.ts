@@ -1,7 +1,7 @@
 // src/routes/basketball/bestGames.ts
 /**
- * Page-side step of /<league>/best-games (BB-G29, behind 'bball-gei' inside the league's flag): the season (the current
- * one, or last season's when the current one has no completed game yet), its games joined and ordered by GEI, then the
+ * Page-side step of /<league>/best-games (BB-G29, behind 'bball-best-games' inside the league's flag): the season (the current
+ * one, or last season's while the current one has fewer than FALLBACK_BELOW ranked games), its games joined and ordered by GEI, then the
  * day-range and team filters. The template is components/routes/BestGamesRoute.astro.
  */
 import type { AstroGlobal } from 'astro';
@@ -19,13 +19,18 @@ import { seasonCache, setCache, uncacheable } from './cache';
  */
 export const GEI_FIRST_SEASON: Record<BasketballLeague, number> = { nba: 2002, wnba: 2002, mbb: 2003, wbb: 2004 };
 
+/** The default board shows last season while the current one has fewer ranked games than this (early November in college). */
+export const FALLBACK_BELOW = 50;
+
 export interface BestGamesParams {
     league: BasketballLeague;
     seasons: number[];
     current: number;
     season: number;
-    /** the current season had no ranked game, so this is last season's board */
+    /** the current season had too few ranked games (see FALLBACK_BELOW), so this is last season's board */
     fallback: boolean;
+    /** on a fallback, the current season's ranked games (0 when it has none yet) */
+    currentTotal: number;
     filter: BestGamesFilter;
     teams: { id: string; name: string }[];
     /** the board: the first BOARD_SIZE of the games that pass the filters */
@@ -53,13 +58,16 @@ export async function prepareBestGames(Astro: AstroGlobal, league: BasketballLea
     const asked = Number(sp.get('season'));
     let season = seasons.includes(asked) ? asked : current;
     let fallback = false;
+    let currentTotal = 0;
     let all: BestGame[];
     try {
         const load = async (s: number) => { const r = await retrieveBestGamesSeason(league, s); return joinBestGames(r.excitement, r.schedule); };
         all = await load(season);
-        // the current season (the default URL, or its own ?season=) falls back once, labelled; an explicit past season never
+        // the current season falls back once, labelled: the default URL while it has fewer than FALLBACK_BELOW ranked games,
+        // its own ?season= only when it has none (so its thin board stays one link away). An explicit past season never
         // does (the bracketology pages' rule)
-        if (all.length === 0 && season === current && seasons.includes(current - 1)) {
+        if (season === current && all.length < (asked === current ? 1 : FALLBACK_BELOW) && seasons.includes(current - 1)) {
+            currentTotal = all.length;
             season = current - 1;
             fallback = true;
             all = await load(season);
@@ -84,5 +92,5 @@ export async function prepareBestGames(Astro: AstroGlobal, league: BasketballLea
     const dates = all.map((g) => g.date).sort();
     const days = dates.length ? { first: dates[0], last: dates.at(-1)! } : null;
     const matches = filterBestGames(all, filter);
-    return { league, seasons, current, season, fallback, filter, teams, games: matches.slice(0, BOARD_SIZE), matched: matches.length, total: all.length, days };
+    return { league, seasons, current, season, fallback, currentTotal, filter, teams, games: matches.slice(0, BOARD_SIZE), matched: matches.length, total: all.length, days };
 }

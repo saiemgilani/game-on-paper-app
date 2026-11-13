@@ -5,7 +5,7 @@ import { prepareBestGames } from '../../routes/basketball/bestGames';
 import { unavailable } from '../../routes/basketball/cache';
 import { isFeatureEnabled } from '../../utils/features';
 
-if (!isFeatureEnabled('bball-gei', Astro.locals)) {
+if (!isFeatureEnabled('bball-best-games', Astro.locals)) {
     return Astro.rewrite('/404');
 }
 const r = await prepareBestGames(Astro, 'nba');

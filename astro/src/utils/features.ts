@@ -60,10 +60,13 @@ export const FLAGS: Record<string, FeatureState> = {
     'wbb': 'preview',
     // The game excitement index on the basketball game pages (nba/wnba/mbb/wbb, so inside each league's flag): the
     // processor's GEI (python/nba_game.py, sdv-py game_excitement) on the WP chart's line, as football prints it
-    // for a final; and the Best Games board (BB-G29: /<league>/best-games and its Header entry), sdv-db's
-    // `{lg}.game_excitement` by season, day range and team. Off: the chart island's props are today's, the board is the
-    // site's 404 and the Header is today's. A Data API-served game page still has no GEI (resources/nbaGame.ts fromDataApi).
+    // for a final. Off: the chart island's props are today's. A Data API-served game page still has no GEI
+    // (resources/nbaGame.ts fromDataApi).
     'bball-gei': 'preview',
+    // The Best Games board (BB-G29): /<league>/best-games and its Header entry, inside each league's flag. sdv-db's
+    // `{lg}.game_excitement` by season, day range and team. Its own flag, so promoting the game pages' GEI line does not
+    // ship the board. Off: the board is the site's 404 and the Header is today's.
+    'bball-best-games': 'preview',
     // College bracketology (BB-G22): /mbb/bracketology and /wbb/bracketology and their Header entry, inside each league's
     // flag. sdv-db's daily college snapshots (season_sims, bracketology, team_resume): the projected field on the CFP
     // page's bracket component, the bubble, conference standings with projections and the team sheets. Off: the pages

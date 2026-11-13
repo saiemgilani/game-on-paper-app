@@ -1,5 +1,5 @@
 // Best Games board (BB-G29): /nba/best-games (the current season, or last season's labelled board), a past season from
-// the select, a team, a day range, then a game page from the board; and /wbb/best-games. Behind 'bball-gei' inside each
+// the select, a team, a day range, then a game page from the board; and /wbb/best-games. Behind 'bball-best-games' inside each
 // league's flag: pass WALKTHROUGH_COOKIE (see README.md) or run against a tree with the flags forced on. With the cookie the
 // flow starts on the uncacheable /preview surface, since the public URL may answer an edge-cached anonymous 404 first.
 const pre = process.env.WALKTHROUGH_COOKIE ? '/preview' : '';

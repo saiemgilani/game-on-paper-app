@@ -14,7 +14,7 @@ import { seasonLabelFor } from '../../basketball/config';
 import { gameHref, withParams } from '../../nba/links';
 
 interface Props { data: BestGamesParams }
-const { league, seasons, current, season, fallback, filter, teams, games, matched, total, days } = Astro.props.data;
+const { league, seasons, current, season, fallback, currentTotal, filter, teams, games, matched, total, days } = Astro.props.data;
 const lp = (p: string) => leaguePath(league, p);
 const path = lp('/best-games');
 const label = seasonLabelFor(league, season);
@@ -58,7 +58,9 @@ const shownIds = [...new Set(games.flatMap((g) => [g.home.id, g.away.id]).filter
       </div>
     </div>
     {fallback && (
-      <p class="text-muted" id="best-games-fallback">The {seasonLabelFor(league, current)} season has no completed games yet. These are {label}'s best games.</p>
+      <p class="text-muted" id="best-games-fallback">{currentTotal === 0
+          ? (<Fragment>The {seasonLabelFor(league, current)} season has no completed games yet. These are {label}'s best games.</Fragment>)
+          : (<Fragment>The {seasonLabelFor(league, current)} season has only {currentTotal} ranked {currentTotal === 1 ? 'game' : 'games'} so far (<a href={withParams(path, { season: String(current) })} id="best-games-current">see them</a>). These are {label}'s best games.</Fragment>)}</p>
     )}
     {total === 0 && (
       <p class="text-muted" id="best-games-empty">There are no ranked games for {label}.</p>

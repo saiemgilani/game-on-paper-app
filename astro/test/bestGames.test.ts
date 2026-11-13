@@ -17,7 +17,7 @@ const reads = vi.fn();
 vi.mock('../src/resources/sdv', async (orig) => ({ ...(await orig<typeof import('../src/resources/sdv')>()), retrieveRowsFrom: (...a: unknown[]) => reads(...a) }));
 
 const { joinBestGames, filterBestGames, teamOptions, isDay, BOARD_SIZE } = await import('../src/utils/bestGames');
-const { prepareBestGames } = await import('../src/routes/basketball/bestGames');
+const { prepareBestGames, FALLBACK_BELOW } = await import('../src/routes/basketball/bestGames');
 const { default: BestGamesRoute } = await import('../src/components/routes/BestGamesRoute.astro');
 const { default: Header } = await import('../src/components/Header.astro');
 const { FLAGS } = await import('../src/utils/features');
@@ -35,6 +35,16 @@ function serve(season = 2025) {
         if (Number(q.season) !== season) return [];
         const f = fixture();
         return table === 'game_excitement' ? f.game_excitement : f.schedule;
+    });
+}
+/** Serve the 2025 fixture as 2025, and its first `n` ranked games as the 2026 season (an early-season board). */
+function serveThinCurrent(n: number) {
+    reads.mockReset();
+    reads.mockImplementation(async (_src: unknown, table: string, q: Record<string, string>) => {
+        const f = fixture();
+        if (table === 'schedule') return [2025, 2026].includes(Number(q.season)) ? f.schedule : [];
+        if (Number(q.season) === 2025) return f.game_excitement;
+        return Number(q.season) === 2026 ? f.game_excitement.filter((e) => e.gei != null).slice(0, n) : [];
     });
 }
 function fakeAstro(path: string) {
@@ -125,7 +135,17 @@ describe('the reads and the loader', () => {
         expect(cache).toEqual([{ maxAge: 21600, swr: 21600, tags: ['wnba'] }]);
     });
     test("the current season's own ?season= falls back the same way", async () => {
-        expect(await prepareBestGames(fakeAstro('/wnba/best-games?season=2026').astro, 'wnba', MARCH)).toMatchObject({ season: 2025, fallback: true });
+        expect(await prepareBestGames(fakeAstro('/wnba/best-games?season=2026').astro, 'wnba', MARCH)).toMatchObject({ season: 2025, fallback: true, currentTotal: 0 });
+    });
+    test(`the default URL falls back while the current season has fewer than ${FALLBACK_BELOW} ranked games`, async () => {
+        serveThinCurrent(FALLBACK_BELOW - 1);
+        expect(await prepareBestGames(fakeAstro('/wnba/best-games').astro, 'wnba', MARCH)).toMatchObject({ season: 2025, fallback: true, currentTotal: FALLBACK_BELOW - 1, total: 312 });
+        serveThinCurrent(FALLBACK_BELOW);
+        expect(await prepareBestGames(fakeAstro('/wnba/best-games').astro, 'wnba', MARCH)).toMatchObject({ season: 2026, fallback: false, total: FALLBACK_BELOW });
+    });
+    test("a thin current season's own ?season= shows its board (the fallback label's link)", async () => {
+        serveThinCurrent(12);
+        expect(await prepareBestGames(fakeAstro('/wnba/best-games?season=2026').astro, 'wnba', MARCH)).toMatchObject({ season: 2026, fallback: false, total: 12 });
     });
     test('an explicit past season never falls back; an empty one is uncacheable', async () => {
         const { astro, headers } = fakeAstro('/wnba/best-games?season=2024');
@@ -187,6 +207,11 @@ describe('the template', () => {
     test("the fallback label and the filters' state", async () => {
         const html = await page('/wnba/best-games');
         expect(html).toContain('id="best-games-fallback">The 2026 season has no completed games yet. These are 2025\'s best games.');
+        serveThinCurrent(12);
+        const thin = await page('/wnba/best-games');
+        expect(thin).toContain('id="best-games-fallback">The 2026 season has only 12 ranked games so far (<a href="/wnba/best-games?season=2026" id="best-games-current">see them</a>). These are 2025\'s best games.');
+        expect(thin).not.toContain('Last season:');
+        serve();
         const f = await page('/wnba/best-games?season=2025&from=2025-07-01&to=2025-07-31');
         expect(f).toContain('value="2025-07-01"');
         expect(f).toContain('id="best-games-clear"');
@@ -200,14 +225,20 @@ describe('the template', () => {
     });
 });
 
-describe("the board behind 'bball-gei'", () => {
-    test('ships as preview', () => { expect(FLAGS['bball-gei']).toBe('preview'); });
+describe("the board behind 'bball-best-games'", () => {
+    test("ships as preview, its own flag apart from the game pages' GEI line", () => {
+        expect(FLAGS['bball-best-games']).toBe('preview');
+        expect(FLAGS['bball-gei']).toBe('preview');
+    });
     test('every basketball Header lists Best Games only with the flag', async () => {
         for (const league of ['nba', 'wnba', 'mbb', 'wbb'] as const) {
             const on = await container.renderToString(Header, { locals: { league, preview: true } as App.Locals });
             expect(on).toContain(`<a href="/${league}/best-games" class="nav-link px-2 link-secondary">Best Games</a>`);
-            const off = await container.renderToString(Header, { locals: { league, preview: true, flagOverrides: { 'bball-gei': false } } as any });
+            const off = await container.renderToString(Header, { locals: { league, preview: true, flagOverrides: { 'bball-best-games': false } } as any });
             expect(off).not.toContain('/best-games"');
+            // the GEI line's flag off leaves the board's entry alone
+            const geiOff = await container.renderToString(Header, { locals: { league, preview: true, flagOverrides: { 'bball-gei': false } } as any });
+            expect(geiOff).toContain(`/${league}/best-games"`);
         }
         const cfb = await container.renderToString(Header, { locals: { league: 'cfb', preview: true } as App.Locals });
         expect(cfb).not.toContain('/best-games"');
