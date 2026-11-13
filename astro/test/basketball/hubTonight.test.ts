@@ -60,7 +60,9 @@ beforeAll(async () => {
 afterAll(() => { vi.useRealTimers(); });
 const render = async (lg: BasketballLeague, locals: Partial<App.Locals> = { preview: true }) => {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/${lg}/index.astro`);
-    return container.renderToString(Page, { request: new Request(`https://gameonpaper.com/${lg}`), locals: locals as App.Locals });
+    // BB-G49's 'bball-hub-dashboards' is off here: its reads and sections are hubDashboards.test.ts's
+    const l = { ...locals, flagOverrides: { 'bball-hub-dashboards': false, ...locals.flagOverrides } };
+    return container.renderToString(Page, { request: new Request(`https://gameonpaper.com/${lg}`), locals: l as App.Locals });
 };
 
 describe("flag off: BB-G47's hub, byte for byte, and no new read", () => {

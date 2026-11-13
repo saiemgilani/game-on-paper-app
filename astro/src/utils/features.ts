@@ -68,6 +68,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // pages, and a win-probability sparkline from `{league}.play_wp` on each final's card. Off: the hub of 'bball-hub' alone,
     // byte for byte, with no player_box or play_wp read.
     'bball-hub-tonight': 'preview',
+    // BB-G49's dashboards on that hub (again only where 'bball-hub' is on): the season's top 25 by WAR from player_war (the
+    // league's stats schema) and "follow a team", a picker whose choice the browser keeps (localStorage, no account, no new
+    // route) and whose card is the team's last and next game, record and rank from `{league}.schedule`. Off: no such section,
+    // byte for byte, and no player_war or schedule read.
+    'bball-hub-dashboards': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

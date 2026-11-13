@@ -789,3 +789,24 @@ Real Data API rows for the league hub's "Tonight" (BB-G48), captured 2026-11-10 
 **Used by:** `test/basketball/hubTonight.test.ts` (BB-G48).
 
 **To regenerate:** re-run the reads above with a read key; finals do not change.
+
+## `hub-war-leaders.json` and `hub-season-schedule.json.gz`
+Real Data API rows for the league hub's dashboards (BB-G49), captured 2026-11-10 with the hub's own reads. No edits.
+- `hub-war-leaders.json`: `{ "<league>:<season>": rows }`, each the answer to
+  `/v1/<schema>/player_war?season=<s>&select=player_id,player_name,team_id,war,min&order=-war&limit=25` for the site's current
+  season of each league (`nba_stats` 2027, `wnba_stats` 2026, `mbb` 2026, `wbb` 2026). The 2027 NBA rows will change as the
+  season goes on.
+- `hub-season-schedule.json.gz`: `{ "<league>:<season>": rows }`, each the answer to `/v1/<league>/schedule?season=<s>&select=
+  game_id,game_date,season_type,type_abbreviation,status_type_name,status_type_completed,home_id,away_id,home_abbreviation,
+  away_abbreviation,home_score,away_score&limit=50000` (college adds `home_current_rank,away_current_rank`) for the seasons of the
+  four scoreboard captures above (`nba:2025`, `wnba:2025`, `mbb:2025`, `wbb:2026`).
+
+- `hub-standings-strength.json.gz`: `{ "season_standings": { "<league>:<season>": rows }, "team_strength": { ... } }`, captured
+  2026-11-13 with the hub's own reads. `season_standings` is the answer to `/v1/<nba_stats|wnba_stats>/season_standings?season=<s>&
+  select=as_of_date,team_id,conference,wins,losses,seed&order=-as_of_date&limit=60` (one snapshot each: NBA 2025-04-14, WNBA
+  2025-09-12; `season` added to the select), and `team_strength` the answer to `/v1/<schema>/team_strength?season=<s>&select=
+  season,team_id,wins,losses,adj_net_rtg_rank&limit=500`, for the boards' seasons (`nba:2025`, `wnba:2025`, `mbb:2025`, `wbb:2026`).
+
+**Used by:** `test/basketball/hubDashboards.test.ts` (BB-G49).
+
+**To regenerate:** re-run the reads above with a read key; past seasons do not change.
