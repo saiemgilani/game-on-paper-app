@@ -236,11 +236,11 @@ describe('/<league> behind bball-hub-dashboards', () => {
 
 describe('the follow picker in a browser', () => {
     /** The rendered hub in jsdom with its follow script run; `storage` stands in for window.localStorage. */
-    const page = async (lg: BasketballLeague, storage: () => Storage) => {
+    const page = async (lg: BasketballLeague, storage: () => Storage, search = '') => {
         board(lg);
         rows.mockImplementation(dataFrom(lg));
         const html = await render(lg);
-        const dom = new JSDOM(html, { runScripts: 'outside-only', url: `https://gameonpaper.com/${lg}` });
+        const dom = new JSDOM(html, { runScripts: 'outside-only', url: `https://gameonpaper.com/${lg}${search}` });
         Object.defineProperty(dom.window, 'localStorage', { get: storage, configurable: true });
         const script = [...dom.window.document.querySelectorAll('#hub-follow script:not([type])')].map((s) => s.textContent).join('\n');
         expect(script).toContain('gop-follow-');
@@ -281,6 +281,12 @@ describe('the follow picker in a browser', () => {
         pick.value = pick.options[1].value;
         pick.dispatchEvent(new w.Event('change'));
         expect(w.document.getElementById('hub-follow-card')!.hidden).toBe(false);
+    });
+    test('?follow=<id> shows that team for the visit and leaves the saved pick alone', async () => {
+        const store = memory({ 'gop-follow-nba': '5' });
+        const w = await page('nba', () => store, '?follow=25'); // Oklahoma City
+        expect(w.document.getElementById('hub-follow-card')!.textContent).toContain('Oklahoma City Thunder 68-14, 1st in the West, 1st in our team ratings');
+        expect(store.m.get('gop-follow-nba')).toBe('5');
     });
     test('a saved id the league no longer lists is ignored', async () => {
         const w = await page('wnba', () => memory({ 'gop-follow-wnba': '999999' }));

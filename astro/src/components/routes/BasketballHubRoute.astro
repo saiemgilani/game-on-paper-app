@@ -70,7 +70,8 @@ const subtitle = `${name} games today with the market line and win probability, 
                 if (facts) head.append(' ', el('span', facts, { className: 'text-muted' }));
                 card.append(head, game('Last game', t.last), game('Next game', t.next));
               };
-              const saved = store((s) => s.getItem(key));
+              // ?follow=<id> shows a team for this visit (a shared link) without changing the saved pick
+              const saved = new URLSearchParams(location.search).get('follow') || store((s) => s.getItem(key));
               if (saved && teams.has(saved)) { pick.value = saved; show(saved); }
               pick.addEventListener('change', () => {
                 store((s) => (pick.value ? s.setItem(key, pick.value) : s.removeItem(key)));
