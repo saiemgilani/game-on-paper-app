@@ -91,6 +91,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // interval, from sdv-db's player_war (BB-D26) and, from 2021-22, epv_player_seasons (sdv-db #223); it closes the
     // Impact panel (a section of its own with 'bball-impact' off), whose own WAR then reads "Impact WAR". Off: no read and the player page is today's, byte for byte.
     'bball-war': 'preview',
+    // Basketball player compare (BB-G13) inside each league's flag: /<league>/players/compare?ids=a,b&season=N, football's
+    // compare page ('player-compare', #359) with up to four cards of the Impact, Value and shooting rows the player page
+    // reads, plus the Compare button on /<league>/players/[id]. Off: the page is the site's 404 and the player page is
+    // today's, byte for byte.
+    'bball-compare': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
@@ -192,6 +197,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404, and the
     // standings page and the Header have no link.
     'bball-nba-cup': 'preview',
+    // Player compare: /players/compare?ids=a,b&season=N and the /nfl twin, up to four player cards
+    // side by side, plus the Compare button on the player page's header card. Off: the page is
+    // the site's 404 and the player page has no button.
+    'player-compare': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

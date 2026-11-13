@@ -837,6 +837,23 @@ league's 2025-26 EPV leader). `nbaEpvSeason` is the first one's `season_row`.
 wrap them as above and gzip. Once sdv-db #202's backfill has run, `/v1/{nba_stats,wnba_stats,mbb,wbb}/player_war?season=…&player_id=…&limit=5`
 replaces the sdv-py calls.
 
+## `player-compare.json.gz`
+The Data API reads behind the basketball player compare page (BB-G13, `routes/basketball/compare.ts`), captured live on
+2026-11-08 with the player page's queries, as `{nbaImpact, nbaWar, nbaSeasonPlayers, mbbSeasonPlayers}` (the `data` array of
+each response, concatenated, no edits): for Michael Porter Jr. (1629008) and Noah Clowney (1641730), the Nets 2025-26,
+`/v1/nba/player_impact?season=2026&season_type=Regular%20Season&player_id=…&limit=5`,
+`/v1/nba_stats/player_war?season=2026&player_id=…&limit=5` (now served: sdv-db #202's backfill has run) and
+`/v1/nba_stats/shot_season_players?season=2026&person_id=…&limit=5`; and `/v1/mbb/shot_season_players?season=2026&team_id=251&limit=40`
+(Texas 2025-26, the team of `player-impact.json.gz`'s and `player-war.json.gz`'s college rows).
+
+`nbaSeasonPlayers` and `mbbSeasonPlayers` were captured again on 2026-11-13 with the same three reads, once sdv-db#225 added
+`fg3_pct`, `ft_pct`, `<m>_n`, `<m>_rank` and `<m>_pct` (Q46), and `nbaMultiTeam` added from
+`/v1/nba_stats/shot_season_players?season=2026&person_id=201935&limit=5` (two team rows, the same percentages and ranks on each).
+
+**Used by:** `test/basketballCompare.test.ts`.
+
+**To regenerate:** rerun the eight reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
 ## `player-impact-xwalk.json.gz`
 College's Impact panel through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of
 each response, no edits, all `season=2026`, as `{mbbXwalk, mbbRapm, mbbPv, wbbXwalk, wbbRapm}`:

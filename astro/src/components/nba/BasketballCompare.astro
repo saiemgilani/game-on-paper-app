@@ -1,0 +1,151 @@
+---
+/**
+ * Basketball player compare (BB-G13, behind 'bball-compare'): football's compare page (#359, player/PlayerCompare.astro)
+ * for the NBA, WNBA, MBB and WBB. The same layout: up to four cards side by side (col-6 col-lg-3), the controls row above
+ * them, each card a centred headshot, his name to his player page, his teams and season and a Remove link, then one
+ * table per section with a metric's cell shaded by its producer percentile and its producer rank faded beside it.
+ *
+ * Football's add box searches /api/search, which serves no basketball league; here it is two selects of URLs (the
+ * season's teams, then that team's players), so the page needs no script.
+ */
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import NbaHeadshot from './NbaHeadshot.astro';
+import type { BasketballCompareParams } from '../../routes/basketball/compare';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+import { isNcaaDashboards } from '../../basketball/dashboards';
+import { playerHref, seasonQuery } from '../../nba/links';
+import { compareHref, MAX_COMPARE } from '../../utils/compare';
+import { impactRows, shootingRows, valueRows, type CompareRow } from '../../utils/basketballCompare';
+import { isFeatureEnabled } from '../../utils/features';
+import { LEAGUES, leaguePath } from '../../utils/league';
+import { formatRank, generateColorRampValue, ordinal } from '../../utils/misc';
+
+interface Props { data: BasketballCompareParams }
+const { season, seasons, current, entries, teams, roster, team } = Astro.props.data;
+const league = basketball(Astro.locals.league).league;
+const college = isNcaaDashboards(league);
+// season null: each card shows the player's latest season (football's compare); a picked season is always in the URL
+const label = season === null ? null : seasonLabelFor(league, season);
+const ids = entries.map((e) => e.id);
+const href = (list: string[], s: number | null = season) => compareHref(league, list, s);
+const q = seasonQuery(season ?? current, current);
+const relabelWar = isFeatureEnabled('bball-war', Astro.locals);
+
+const cards = entries.map((e) => {
+    const remove = href(ids.filter((x) => x !== e.id));
+    if ('missing' in e) return { id: e.id, missing: true as const, remove };
+    return {
+        id: e.id, remove,
+        name: e.player.player_name,
+        headshot: e.headshot,
+        teams: e.teams.join(', ') || e.player.team_tricode,
+        season: seasonLabelFor(league, e.season),
+        href: playerHref(e.player.person_id, seasonQuery(e.season, current), league),
+        sections: [
+            ...(e.impact !== undefined ? [{ id: 'impact', title: 'Impact', rows: impactRows(e.impact, college, relabelWar), failed: e.impact === null }] : []),
+            ...(e.war !== undefined ? [{ id: 'value', title: 'Value', rows: valueRows(e.war), failed: e.war === null }] : []),
+            { id: 'shooting', title: 'Shooting', rows: shootingRows(e.player, e.row), failed: false },
+        ],
+    };
+});
+const loaded = cards.filter((c) => !('missing' in c)) as Exclude<(typeof cards)[number], { missing: true }>[];
+const ranked = loaded.some((c) => c.sections.some((s) => s.rows.some((r) => r.rank != null || r.pct != null)));
+const tip = (r: CompareRow) => (r.pct != null ? `${ordinal(Math.round(Math.min(Math.max(r.pct, 0), 100)))} percentile` : undefined);
+const addRoute = (t: number) => { const u = href(ids); return `${u}${u.includes('?') ? '&' : '?'}team=${t}`; };
+
+const name = LEAGUES[league].shortName;
+const pageUrl = href(ids);
+const names = loaded.map((c) => c.name).join(' vs. ');
+const kind = label ? `${label} player comparison` : 'player comparison';
+const title = names ? `${names}: ${kind}` : kind[0].toUpperCase() + kind.slice(1);
+const breadcrumbs: PageBreadcrumb[] = [
+    { title: name, url: leaguePath(league, '/'), active: false },
+    { title: 'Players', url: `${leaguePath(league, '/players')}${q}`, active: false },
+    { title: 'Compare', url: pageUrl, active: true },
+];
+---
+
+<GenericPage title={title} subtitle="Player comparison" description={`Compare ${name} players side by side: impact, value and shooting for ${label ? `the ${label} season` : 'each player\'s latest season'}.`} slug={pageUrl} canonicalPath={pageUrl} breadcrumbs={breadcrumbs} heading={title}>
+    <div class="container">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2 mb-3" id="player-compare-controls">
+            {ids.length < MAX_COMPARE ? (
+            <div class="d-flex flex-wrap align-items-center gap-2" id="player-compare-add">
+                <label class="form-label text-muted text-small mb-0" for="player-compare-team">Add a player</label>
+                <select id="player-compare-team" class="form-select form-select-md w-auto" onchange="window.location.href = this.value">
+                    <option value={pageUrl} selected={team === null}>Team</option>
+                    {teams.map((t) => <option value={addRoute(t.id)} selected={t.id === team}>{t.tricode}</option>)}
+                </select>
+                {roster && (
+                <select id="player-compare-player" class="form-select form-select-md w-auto" onchange="window.location.href = this.value" aria-label="Player">
+                    <option value="" selected>Player</option>
+                    {roster.map((p) => <option value={href([...ids, String(p.person_id)])}>{p.player_name}</option>)}
+                </select>
+                )}
+            </div>
+            ) : (
+            <p class="m-0 text-muted text-small">Remove a player to add another (four at most).</p>
+            )}
+            <div class="d-flex align-items-center gap-2 ms-md-auto">
+                <label class="form-label text-muted text-small mb-0" for="player-compare-season">Season</label>
+                <select id="player-compare-season" class="form-select form-select-md w-auto" onchange="window.location.href = this.value">
+                    <option value={href(ids, null)} selected={season === null}>Latest</option>
+                    {[...seasons].reverse().map((s) => <option value={href(ids, s)} selected={s === season}>{seasonLabelFor(league, s)}</option>)}
+                </select>
+            </div>
+        </div>
+
+        {cards.length === 0 && <p class="text-muted" id="player-compare-empty">Pick a team, then a player, to start a comparison.</p>}
+
+        <div class="row" id="player-compare-cards">
+            {cards.map((c) => (
+            <div class="col-6 col-lg-3 mb-3" data-compare-card={c.id}>
+                <div class="card border rounded h-100">
+                    <div class="card-body p-2 p-md-3">
+                        {'missing' in c ? (
+                            <Fragment>
+                                <p class="text-muted text-small">{label ? `No ${label} line for this player.` : 'No line for this player.'}</p>
+                                <a class="btn btn-sm btn-outline-secondary" href={c.remove} data-compare-remove>Remove</a>
+                            </Fragment>
+                        ) : (
+                        <Fragment>
+                        <div class="text-center">
+                            <NbaHeadshot src={c.headshot} name={c.name} size={96} class="mb-2" />
+                            <h2 class="h5 mb-1"><a href={c.href}>{c.name}</a></h2>
+                            <p class="mb-0 text-muted">{c.teams}</p>
+                            <p class="mb-2 text-muted text-small" data-compare-season>{c.season}</p>
+                            <a class="btn btn-sm btn-outline-secondary" href={c.remove} data-compare-remove>Remove</a>
+                        </div>
+                        {c.sections.map((s) => (
+                            <div class="table-responsive mt-3" data-compare-category={s.id}>
+                                <h3 class="h6">{s.title}</h3>
+                                <table class="table table-sm mb-0">
+                                    <tbody>
+                                        {s.rows.map((r) => (
+                                            <tr>
+                                                <td class="text-left" colspan="1">{r.hover ? <abbr title={r.hover}>{r.label}</abbr> : r.label}</td>
+                                                <td class:list={["text-center", "numeral", generateColorRampValue(r.pct, 100)]} colspan="1" title={tip(r)}>
+                                                    {r.text}
+                                                    {r.rank != null && (
+                                                        <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(r.rank)}</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {s.failed && <p class="text-muted text-small mb-0" data-compare-unavailable>Temporarily unavailable.</p>}
+                            </div>
+                        ))}
+                        </Fragment>
+                        )}
+                    </div>
+                </div>
+            </div>
+            ))}
+        </div>
+
+        <p class="text-muted text-small" id="player-compare-provenance">
+            Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>, {label ?? 'each player’s latest season'}.{ranked && ' Ranks and shading (percentile) are the producer’s own; a shooting percentage under its attempt minimum shows no rank.'}
+        </p>
+    </div>
+</GenericPage>

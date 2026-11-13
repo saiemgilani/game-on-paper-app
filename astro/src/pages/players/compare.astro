@@ -1,0 +1,11 @@
+---
+import PlayerCompare from "../../components/player/PlayerCompare.astro";
+import { prepareCompare } from "../../routes/compare";
+
+const r = await prepareCompare(Astro, 'cfb');
+if ('notFound' in r) {
+    return Astro.rewrite("/404");
+}
+---
+
+<PlayerCompare entries={r.entries} season={r.season} />

@@ -48,6 +48,7 @@ import { SPLIT_PERCENTILE_MIN_PLAYS } from '../../resources/sdv';
 import { cfbTeamIdByName } from '../../utils/teams';
 import { livePlayerGames } from '../../utils/liveQa';
 import { isFeatureEnabled } from '../../utils/features';
+import { compareHref } from '../../utils/compare';
 
 interface Props {
     player: SDVPlayer
@@ -226,6 +227,10 @@ const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
                                     /pro sends anyone without an entitlement on to /pricing. */}
                                 {league === 'cfb' && isFeatureEnabled('pro', Astro.locals) && (
                                     <a class="btn btn-sm btn-outline-secondary text-nowrap" href={`/pro/players/${player.espn_id}`} id="player-pro-cta">Pro profile</a>
+                                )}
+                                {isFeatureEnabled('player-compare', Astro.locals) && (
+                                    <a class="btn btn-sm btn-outline-secondary" id="player-compare-link"
+                                        href={compareHref(league, [String(player.espn_id)], season)}>Compare</a>
                                 )}
                             </div>
                         </div>

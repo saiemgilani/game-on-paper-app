@@ -16,6 +16,8 @@ import type { NbaPlayerParams } from '../../routes/nba/player';
 import { basketball, islandLeagueProps, seasonLabelFor } from '../../basketball/config';
 import { dashboardScope, isNcaaDashboards, NCAA_USAGE_NOTE } from '../../basketball/dashboards';
 import { LEAGUES, leaguePath } from '../../utils/league';
+import { compareHref } from '../../utils/compare';
+import { isFeatureEnabled } from '../../utils/features';
 
 interface Props { data: NbaPlayerParams }
 const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons, min, unlocated, coverage, poe, impact, war, epv } = Astro.props.data;
@@ -46,7 +48,7 @@ const sections = [...(impact !== undefined ? [['#impact', 'Impact']] : []), ...(
         {stats && (<>{cfg.hidePie ? (<p class="small text-muted numeral mb-2">{fmtInt(stats.gp)} GP &middot; {fmtDec(stats.min)} MIN &middot; {fmtPct(stats.usg_pct)} USG% &middot; {fmtPct(stats.ts_pct)} TS%</p>) : (<p class="small text-muted numeral mb-2">{fmtInt(stats.gp)} GP &middot; {fmtDec(stats.min)} MIN &middot; {fmtPct(stats.usg_pct)} USG% &middot; {fmtPct(stats.ts_pct)} TS% &middot; {fmtPct(stats.pie)} PIE</p>)}{usageNote && (<p class="small text-muted mb-2">{usageNote}</p>)}</>)}{coverage && (<p class="small text-muted mb-2" id="nba-coverage">{coverage}</p>)}
         <div class="d-flex flex-wrap align-items-center gap-3">
           <NbaSeasonSelect seasons={options} season={season} current={current} basePath={lp(`/players/${player.person_id}`)} />
-          <a href={teamHref(player.team_id, q, league)}>{player.team_tricode} team page &rarr;</a>
+          <a href={teamHref(player.team_id, q, league)}>{player.team_tricode} team page &rarr;</a>{isFeatureEnabled('bball-compare', Astro.locals) && (<a class="btn btn-sm btn-outline-secondary" id="player-compare-link" href={compareHref(league, [String(player.person_id)], season === current ? null : season)}>Compare</a>)}
         </div>
       </div>
     </div>
