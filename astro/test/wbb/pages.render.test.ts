@@ -6,8 +6,8 @@ import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/containe
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 // BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
 vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
-// BB-G6's Impact panel is hidden in college until BB-D16's crosswalk: a read here throws, which would put "unavailable" on the page
-vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => { throw new Error('a college impact read before BB-D16'); } }));
+// BB-G6's Impact panel reads the Data API with 'bball-impact' on (preview): never from a test (test/playerImpact.test.ts covers the read)
+vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => [] }));
 import { BASKETBALL, courtFor, rankMins } from '../../src/basketball/config';
 import { NCAA_USAGE_NOTE } from '../../src/basketball/dashboards';
 import { leagueContextFromRows, shotsFromRows } from '../../src/nba/adapters';
@@ -144,9 +144,9 @@ describe('the WBB dashboard pages', () => {
     test('/wbb/players/<p26>: the season bars, the scope, the women\'s court, box-score USG%, her', async () => {
         const id = p26().person_id;
         const html = size('/wbb/players/[p26]', await page('players/[id].astro', `/wbb/players/${id}`, { id: String(id) }));
-        // 'bball-impact' is on here (preview: true), but college's Impact panel waits for BB-D16's crosswalk: no section, no link
-        expect(html).not.toContain('id="impact"');
-        expect(html).not.toContain('href="#impact"');
+        // 'bball-impact' is on here (preview: true): college's Impact panel and its link (no rows mocked: the empty state)
+        expect(html).toContain('id="impact-empty"');
+        expect(html).toContain('href="#impact"');
         wbbPage(html, '2025-26 regular season + postseason');
         expect(html).toContain(`Among players with ${bar}+ field-goal attempts this regular season + postseason;`);
         expect(html).toContain('full regular season + postseason');

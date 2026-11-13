@@ -1,8 +1,9 @@
 // BB-G6: the player page's Impact panel behind 'bball-impact'. The pure step (the measures from the producer's columns, the
 // boban_* columns never their darko_* aliases, a rank only when the producer ships one), the read (the games schema's
 // player_impact for the NBA/WNBA, player_value in college), the page-side step (the flag gates the read; a failed read keeps
-// the page and is never cached), the panel and the page: flag off is byte for byte the NBA byte-identity capture. On real
-// Data API reads (fixtures/README.md: player-impact.json.gz). Every read is mocked.
+// the page and is never cached), the panel and the page: flag off is byte for byte the NBA byte-identity capture. College
+// reads ncaa_rapm by his season's stats.ncaa.org id from ncaa_player_crosswalk. On real Data API reads (fixtures/README.md:
+// player-impact.json.gz, player-impact-xwalk.json.gz). Every read is mocked.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
@@ -21,6 +22,8 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL) => { fetched.push(String
 afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 
 const PI = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/player-impact.json.gz', import.meta.url))).toString()) as Record<'nba' | 'wnba' | 'mbbTeam' | 'wbbTeam', Record<string, any>[]>;
+// college through the crosswalk: Cameron Boozer (Duke, ESPN 5041935 -> stats.ncaa.org 11195975), Joyce Edwards (South Carolina, ESPN 5239100 -> 9342023)
+const XW = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/player-impact-xwalk.json.gz', import.meta.url))).toString()) as Record<'mbbXwalk' | 'mbbRapm' | 'mbbPv' | 'wbbXwalk' | 'wbbRapm', Record<string, any>[]>;
 const fx = (path: string) => JSON.parse(readFileSync(new URL(`./fixtures/${path}.json`, import.meta.url)).toString());
 
 const impact = vi.hoisted(() => vi.fn());
@@ -127,12 +130,22 @@ describe('impactPanel', () => {
         expect(p.measures[0].net).toEqual({ col: 'rapm', value: NBA.rapm, rank: 3, pct: 98.4 });
         expect(p.measures[0].off!.rank).toBeNull();
     });
-    test("college's panel is hidden until BB-D16's ESPN↔NCAA crosswalk (Akshay on #408); the pros always show", () => {
-        expect(COLLEGE_IMPACT).toBe(false);
-        expect(impactShown(true)).toBe(false);
+    test("college shows now that ncaa_player_crosswalk exists (Akshay on #408: wait for a crosswalk); the pros always show", () => {
+        expect(COLLEGE_IMPACT).toBe(true);
+        expect(impactShown(true)).toBe(true);
         expect(impactShown(false)).toBe(true);
     });
-    test('college (kept for COLLEGE_IMPACT): box BPM and minutes from player_value; the row with the most minutes when there are two', () => {
+    test("college with his ncaa_rapm columns: RAPM (Off/Def/Net) over its possessions, then box BPM, each the producer's column", () => {
+        const edwards = PI.wbbTeam.filter((r) => r.player_id === String(XW.wbbXwalk[0].espn_athlete_id));
+        for (const [pv, [rapm]] of [[XW.mbbPv, XW.mbbRapm], [edwards, XW.wbbRapm]] as const) {
+            const [me] = pv;
+            const p = impactPanel([{ ...me, ...rapm }], true)!;
+            expect(p.measures.map((m) => [m.label, m.off!.value, m.def!.value, m.net.value])).toEqual([
+                ['RAPM', rapm.orapm, rapm.drapm, rapm.rapm_net], ['BPM', me.box_obpm, me.box_dbpm, me.box_bpm]]);
+            expect([p.offPoss, p.defPoss, p.min, p.projection]).toEqual([rapm.off_poss, rapm.def_poss, me.min, null]);
+        }
+    });
+    test('college with no crosswalk pair: box BPM and minutes from player_value; the row with the most minutes when there are two', () => {
         for (const rows of [PI.mbbTeam, PI.wbbTeam]) {
             const me = top(rows);
             const p = impactPanel([{ ...me, team_id: '1', min: 1 }, me], true)!;
@@ -158,10 +171,46 @@ describe('the read', () => {
         expect(BASKETBALL.nba.gamesSource.schema).toBe('nba');
         await retrievePlayerImpact('wnba', 2025, 1628932);
         expect(sdv.from.mock.calls[1][0].schema).toBe('wnba');
-        await retrievePlayerImpact('mbb', 2026, 4848625);
-        expect(sdv.from).toHaveBeenLastCalledWith(leagueSource('mbb'), 'player_value', { season: '2026', player_id: '4848625', limit: '5' }, 21600, true, NBA_READ_TIMEOUT_MS);
         // no select: a producer rank column reaches the page the day it ships
         for (const call of sdv.from.mock.calls) expect(call[2]).not.toHaveProperty('select');
+    });
+    // the captures served as the Data API filters them: a row only for the season and id it is keyed by, `select`'s columns only
+    const serve = (src: Record<string, Record<string, any>[]>) => sdv.from.mockImplementation(async (_s: unknown, table: string, q: Record<string, string>) => {
+        const rows = ({ ncaa_player_crosswalk: src.xwalk, ncaa_rapm: src.rapm, player_value: src.pv } as Record<string, Record<string, any>[]>)[table];
+        const key = table === 'ncaa_player_crosswalk' ? 'espn_athlete_id' : 'player_id';
+        const pick = (r: Record<string, any>) => (q.select ? Object.fromEntries(q.select.split(',').map((c) => [c, r[c]])) : r);
+        return rows.filter((r) => String(r.season) === q.season && String(r[key]) === q[key]).map(pick);
+    });
+    test("college: player_value by his ESPN id, ncaa_rapm by his season's stats.ncaa.org id from ncaa_player_crosswalk", async () => {
+        const { retrievePlayerImpact } = await vi.importActual<typeof import('../src/resources/playerImpact')>('../src/resources/playerImpact');
+        const cases = [
+            ['mbb', 5041935, { xwalk: XW.mbbXwalk, rapm: XW.mbbRapm, pv: XW.mbbPv }],
+            ['wbb', 5239100, { xwalk: XW.wbbXwalk, rapm: XW.wbbRapm, pv: PI.wbbTeam }],
+        ] as const;
+        for (const [league, id, src] of cases) {
+            sdv.from.mockReset();
+            serve(src);
+            const ncaaId = src.xwalk[0].ncaa_player_id;
+            expect(ncaaId).not.toBe(String(id)); // the two ids differ, so reading ncaa_rapm by the page's id finds nothing
+            const rows = await retrievePlayerImpact(league, 2026, id);
+            expect(rows).toHaveLength(1);
+            expect(rows[0]).toMatchObject({ player_id: String(id), box_bpm: src.pv.find((r) => r.player_id === String(id))!.box_bpm, rapm_net: src.rapm[0].rapm_net, off_poss: src.rapm[0].off_poss });
+            const from = leagueSource(league);
+            expect(sdv.from).toHaveBeenCalledWith(from, 'ncaa_player_crosswalk', { season: '2026', espn_athlete_id: String(id), select: 'ncaa_player_id', limit: '5' }, 21600, true, NBA_READ_TIMEOUT_MS);
+            expect(sdv.from).toHaveBeenCalledWith(from, 'ncaa_rapm', { season: '2026', player_id: ncaaId, select: 'orapm,drapm,rapm_net,off_poss,def_poss', limit: '1' }, 21600, true, NBA_READ_TIMEOUT_MS);
+            expect(sdv.from).toHaveBeenCalledWith(from, 'player_value', { season: '2026', player_id: String(id), limit: '5' }, 21600, true, NBA_READ_TIMEOUT_MS);
+        }
+    });
+    test('college: the crosswalk is season-filtered (a new stats.ncaa.org id every season); no pair is box BPM only, with no RAPM read', async () => {
+        const { retrievePlayerImpact } = await vi.importActual<typeof import('../src/resources/playerImpact')>('../src/resources/playerImpact');
+        const lastSeason = { ...XW.mbbPv[0], season: 2025 };
+        serve({ xwalk: XW.mbbXwalk, rapm: XW.mbbRapm, pv: [lastSeason] });
+        expect(await retrievePlayerImpact('mbb', 2025, 5041935)).toEqual([lastSeason]);
+        expect(sdv.from.mock.calls.map((c) => c[1]).sort()).toEqual(['ncaa_player_crosswalk', 'player_value']);
+        // a failed crosswalk read is the panel's "unavailable", never "no RAPM"
+        sdv.from.mockReset();
+        sdv.from.mockImplementation(async (_s: unknown, table: string) => { if (table === 'ncaa_player_crosswalk') throw new Error('down'); return XW.mbbPv; });
+        await expect(retrievePlayerImpact('mbb', 2026, 5041935)).rejects.toThrow('down');
     });
 });
 
@@ -216,14 +265,28 @@ describe('the panel', () => {
         expect(html).toContain(' Shading by percentile.');
         expect(html).not.toContain('Rank among');
     });
-    test('college (kept for COLLEGE_IMPACT): box BPM only, with minutes', async () => {
+    test('college with RAPM: RAPM then BPM, its possessions and his minutes', async () => {
+        const [me, rapm] = [XW.mbbPv[0], XW.mbbRapm[0]];
+        const html = await render([{ ...me, ...rapm }], 'mbb');
+        expect(html).toContain('id="impact-rapm_net"');
+        expect(html).toContain('id="impact-box_bpm"');
+        for (const v of [rapm.orapm, rapm.drapm, rapm.rapm_net, me.box_bpm]) expect(html).toContain(`>${signed1(v)}</td>`);
+        expect(html).toContain(`${rapm.off_poss.toLocaleString('en-US')} offensive and ${rapm.def_poss.toLocaleString('en-US')} defensive possessions`);
+        expect(html).toContain(`${me.min.toLocaleString('en-US')} MIN`);
+        expect(html).not.toMatch(/BOBAN|WAR|undefined|NaN/);
+        // a crosswalk pair and a RAPM row but no player_value row: RAPM and its possessions, no minutes and no BPM
+        const only = await render([rapm], 'mbb');
+        expect(only).toContain(`${rapm.def_poss.toLocaleString('en-US')} defensive possessions</p>`);
+        expect(only).not.toMatch(/MIN|impact-box_bpm|n\/a/);
+    });
+    test('college with no crosswalk pair: box BPM only, with minutes', async () => {
         const me = top(PI.mbbTeam);
         const html = await render([me], 'mbb');
         expect(html.match(/id="impact-/g)).toHaveLength(3); // the sample line, the table and its one row
         expect(html).toContain('id="impact-box_bpm"');
         expect(html).toContain(`${me.min.toLocaleString('en-US')} MIN`);
         expect(html).not.toContain('below the qualifying minutes');
-        expect(html).not.toMatch(/RAPM|BOBAN|undefined|NaN/);
+        expect(html).not.toMatch(/RAPM|BOBAN|defensive possessions|undefined|NaN/);
         expect(await render([PI.mbbTeam.find((r) => r.qualified === false)], 'mbb')).toContain('below the qualifying minutes');
     });
     test('a failed read says so; no row says so', async () => {

@@ -844,3 +844,16 @@ stats.ncaa.org id (ESPN 5041935 -> `11195975`) with the module's own selects: `m
 **Used by:** `test/playerOnOff.test.ts`.
 
 **To regenerate:** rerun the same five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `player-impact-xwalk.json.gz`
+College's Impact panel through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of
+each response, no edits, all `season=2026`, as `{mbbXwalk, mbbRapm, mbbPv, wbbXwalk, wbbRapm}`:
+`/v1/mbb/ncaa_player_crosswalk?espn_athlete_id=5041935&limit=5` (Cameron Boozer, Duke: ESPN 5041935 -> stats.ncaa.org
+`11195975`), `/v1/mbb/ncaa_rapm?player_id=11195975&limit=5`, `/v1/mbb/player_value?player_id=5041935&limit=5`,
+`/v1/wbb/ncaa_player_crosswalk?espn_athlete_id=5239100&limit=5` (Joyce Edwards, South Carolina: ESPN 5239100 -> `9342023`;
+her `player_value` row is in `player-impact.json.gz`'s `wbbTeam`) and `/v1/wbb/ncaa_rapm?player_id=9342023&limit=5`. The
+crosswalk and RAPM reads carry every column here; the page selects `ncaa_player_id` and `orapm,drapm,rapm_net,off_poss,def_poss`.
+
+**Used by:** `test/playerImpact.test.ts`.
+
+**To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
