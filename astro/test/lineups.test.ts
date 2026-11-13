@@ -25,6 +25,7 @@ const sdv = vi.hoisted(() => ({ fn: vi.fn() }));
 vi.mock('../src/resources/sdv', async (orig) => ({ ...(await orig<typeof import('../src/resources/sdv')>()), retrieveRows: (...a: unknown[]) => sdv.fn(...a) }));
 const tab = vi.hoisted(() => ({ fn: vi.fn() }));
 vi.mock('../src/resources/lineups', async (orig) => ({ ...(await orig<typeof import('../src/resources/lineups')>()), retrieveLineups: (...a: unknown[]) => tab.fn(...a) }));
+vi.mock('../src/resources/onOff', async (orig) => ({ ...(await orig<typeof import('../src/resources/onOff')>()), retrieveOnOff: async () => ({ players: [], pairs: [], names: [] }) }));
 vi.mock('../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../src/resources/teamSeason')>()),
     retrieveTeamSeason: async () => ({ rates: [], strength: null, games: [], gameRates: [] }),

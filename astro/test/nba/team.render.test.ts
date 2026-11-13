@@ -20,6 +20,11 @@ vi.mock('../../src/resources/lineups', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/lineups')>()),
     retrieveLineups: async () => ({ units: [], names: [], pairs: [] }),
 }));
+// BB-G4's On/Off section reads the Data API with 'bball-on-off' on (preview): never from a test
+vi.mock('../../src/resources/onOff', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/onOff')>()),
+    retrieveOnOff: async () => ({ players: [], pairs: [], names: [] }),
+}));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async () => apiSeasonPlayerRows(),

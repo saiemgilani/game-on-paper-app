@@ -1,0 +1,103 @@
+/**
+ * The Data API reads behind the team page's On/Off and WOWY section (BB-G4, behind 'bball-on-off'): sdv-db's
+ * player_on_off and player_wowy (BB-D5, sdv-db #198) in the league's season schema (`nba_stats` / `wnba_stats`, keyed by
+ * the stats.nba.com / stats.wnba.com team and player ids; `mbb` / `wbb`, keyed by the ESPN team id and the stats.ncaa.org
+ * player id). College also reads its players' names (lineups' `retrieveNcaaNames`); the pros' names are the page's own
+ * season rows. Every number and percentile is the producer's (sdv-py *_player_on_off / *_player_wowy); the section reads,
+ * picks and formats. Reads are strict, so an outage is never shown as a team with no on/off rows.
+ */
+import { retrieveRows } from './sdv';
+import { retrieveNcaaNames, type NcaaNameRow } from './lineups';
+import type { BasketballLeague } from '../utils/league';
+
+/** player_on_off and player_wowy are rebuilt with the season products (once a day): the season pages' window. */
+const TTL = 6 * 60 * 60;
+
+/** A team-season's players (one row per player per team; an NBA team uses ~20-30 in a season). */
+export const PLAYER_LIMIT = 100;
+/**
+ * Every pair of the team's players is a row (C(n, 2): 190 for 20 players, 435 for 30), read whole so the player
+ * select needs no second read. ponytail: 1,225 covers 50 players; two reads filtered by player_id_a / player_id_b if a
+ * team-season ever has more.
+ */
+export const PAIR_LIMIT = 1225;
+
+export const RATINGS = ['off_rtg', 'def_rtg', 'net_rtg'] as const;
+export type Rating = (typeof RATINGS)[number];
+export const SIDES = ['on', 'off', 'diff'] as const;
+export type Side = (typeof SIDES)[number];
+
+export type OnOffRow = {
+    /** stats.nba.com ids (numbers) for the pros, stats.ncaa.org ids (text) for college */
+    player_id: number | string;
+    /** games he played for the team, of the team's */
+    games: number;
+    team_games: number;
+    minutes_on: number;
+    minutes_off: number;
+    poss_on: number;
+    poss_off: number;
+    /**
+     * The producer's span columns: the off side over only the team's games from his first game for it to his last
+     * (team_games_span of them, span_first_date to span_last_date), unranked. Null where the producer has no span.
+     */
+    team_games_span: number | null;
+    span_first_date: string | null;
+    span_last_date: string | null;
+    minutes_off_span: number | null;
+    poss_off_span: number | null;
+} & { [K in `${Rating}_${Side}`]: number | null } & { [K in `${Rating}_${'on' | 'diff'}_pct`]: number | null }
+    & { [K in `${Rating}_${'off' | 'diff'}_span`]: number | null };
+
+export const WOWY_SPLITS = ['both', 'a_only', 'b_only', 'neither'] as const;
+export type WowySplit = (typeof WOWY_SPLITS)[number];
+
+/** One pair (player_id_a the smaller id): the team's season split four ways. */
+export type WowyRow = {
+    player_id_a: number | string;
+    player_id_b: number | string;
+} & { [K in `minutes_${WowySplit}`]: number } & { [K in `net_rtg_${WowySplit}`]: number | null };
+
+const ON_OFF_SELECT = [
+    'player_id', 'games', 'team_games', 'minutes_on', 'minutes_off', 'poss_on', 'poss_off',
+    ...SIDES.flatMap((s) => RATINGS.map((m) => `${m}_${s}`)),
+    ...(['on', 'diff'] as const).flatMap((s) => RATINGS.map((m) => `${m}_${s}_pct`)),
+    'team_games_span', 'span_first_date', 'span_last_date', 'minutes_off_span', 'poss_off_span',
+    ...(['off', 'diff'] as const).flatMap((s) => RATINGS.map((m) => `${m}_${s}_span`)),
+].join(',');
+const WOWY_SELECT = ['player_id_a', 'player_id_b', ...WOWY_SPLITS.flatMap((s) => [`minutes_${s}`, `net_rtg_${s}`])].join(',');
+
+export interface OnOffReads {
+    /** most minutes on the floor first */
+    players: OnOffRow[];
+    pairs: WowyRow[];
+    /** college only: the team's ncaa_player_box rows; [] for the NBA/WNBA */
+    names: NcaaNameRow[];
+}
+
+/** One pro player's name in the season's bio table (stats.nba.com / stats.wnba.com ids). */
+export interface BioNameRow {
+    player_id: number;
+    player_name: string | null;
+}
+/** A season's regular-season bio rows: one per player (569 NBA, 182 WNBA in 2024-25). */
+export const BIO_LIMIT = 1000;
+
+/**
+ * The pros' names for the ids the page's season rows lack (a player with no shot attempt has no shot_season_players
+ * row): one season read of `player_bio`, cached like the rest. Only called when an id is missing.
+ */
+export function retrieveBioNames(league: BasketballLeague, season: number): Promise<BioNameRow[]> {
+    return retrieveRows<BioNameRow>(league, 'player_bio', { season: String(season), season_type: 'Regular Season', select: 'player_id,player_name', limit: String(BIO_LIMIT) }, TTL, true);
+}
+
+/** One team-season's on/off rows and WOWY pairs; college adds its players' names. */
+export async function retrieveOnOff(league: BasketballLeague, season: number, teamId: number): Promise<OnOffReads> {
+    const q = { season: String(season), team_id: String(teamId) };
+    const [players, pairs, names] = await Promise.all([
+        retrieveRows<OnOffRow>(league, 'player_on_off', { ...q, order: '-minutes_on', select: ON_OFF_SELECT, limit: String(PLAYER_LIMIT) }, TTL, true),
+        retrieveRows<WowyRow>(league, 'player_wowy', { ...q, select: WOWY_SELECT, limit: String(PAIR_LIMIT) }, TTL, true),
+        retrieveNcaaNames(league, season, teamId),
+    ]);
+    return { players, pairs, names };
+}

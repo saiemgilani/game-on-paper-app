@@ -96,12 +96,17 @@ export async function retrieveLineups(league: BasketballLeague, season: number, 
     const college = isNcaaDashboards(league);
     const [units, names, pairs] = await Promise.all([
         retrieveRows<LineupRow>(league, 'lineup_seasons', { season: s, team_id: String(teamId), n_players: String(size), ...gateQuery(gate), order: '-poss', select: selectFor(league), limit: String(UNIT_LIMIT) }, TTL, true),
-        college
-            ? retrieveRows<NcaaNameRow>(league, 'ncaa_player_box', { season: s, team_espn_team_id: String(teamId), select: 'player_id,clean_name', limit: NAME_LIMIT }, TTL, true)
-            : Promise.resolve([]),
+        retrieveNcaaNames(league, season, teamId),
         college
             ? retrieveRows<NcaaPairRow>(league, 'ncaa_player_crosswalk', { season: s, espn_team_id: String(teamId), select: 'ncaa_player_id,espn_athlete_id', limit: PAIR_LIMIT }, TTL, true)
             : Promise.resolve([]),
     ]);
     return { units, names, pairs };
+}
+
+/** College's stats.ncaa.org names for one team-season (ncaa_player_box, strict); [] for the NBA/WNBA, whose names are the page's season rows. */
+export function retrieveNcaaNames(league: BasketballLeague, season: number, teamId: number): Promise<NcaaNameRow[]> {
+    return isNcaaDashboards(league)
+        ? retrieveRows<NcaaNameRow>(league, 'ncaa_player_box', { season: String(season), team_espn_team_id: String(teamId), select: 'player_id,clean_name', limit: NAME_LIMIT }, TTL, true)
+        : Promise.resolve([]);
 }

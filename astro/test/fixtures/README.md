@@ -823,3 +823,40 @@ It pins the labels of two players who share a surname and a first initial, and t
 JSON with the name, crosswalk and page reads (season filter and limit as above, never unfiltered) and gzip; Duke's file
 is the four reads above. Live reads of `lineup_seasons?season=2026&team_id=<id>&n_players=<n>&poss__gte=<gate>&order=-poss&limit=100`
 can replace the parquet rows.
+
+## `on-off-nba-2025.json.gz`, `on-off-mbb-2025.json.gz`
+The On/Off and WOWY section's reads (BB-G4, `resources/onOff.ts`) before sdv-db's `player_on_off` / `player_wowy`
+backfill: sdv-db's committed producer fixtures `tests/fixtures/season_products/{nba,mbb}_player_{on_off,wowy}_2025.parquet`
+(sdv-db #198, from sdv-py #1110's `nba_player_on_off(2025)` / `nba_player_wowy(2025)` and the `mbb_` twins over real
+games), filtered to one team and projected to the module's `select` columns, as `{players, pairs}`. NBA: the Minnesota
+Timberwolves 2024-25 (`team_id` 1610612750, its 20 players over all 82 regular-season games and their 190 pairs). The
+producer ranked the fixture's three NBA teams' players together, so a percentile here is within those 70 players, not the
+league. MBB: Xavier 2024-25 (ESPN 2752, its 14 players over the fixture's two games and their 91 pairs, none ranked). The
+names are the `names` of `lineups-{nba,mbb}-2025.json.gz` above; Minnesota's 1642399 has no shot, so no
+`shot_season_players` row, and reads as `#1642399`. Nothing is edited; `players` keeps the producer's `-minutes_on` order.
+
+**Used by:** `test/onOff.test.ts`.
+
+**To regenerate:** read the four parquets from sdv-db main, filter `team_id`, select the columns above, write the rows as
+JSON and gzip. Once the backfill runs, the live `player_on_off?season=2026&team_id=<id>&order=-minutes_on&limit=100` and
+`player_wowy?season=2026&team_id=<id>&limit=1225` reads replace them.
+
+## `on-off-phi-2025.json.gz`
+The On/Off section's span columns (BB-G4 review, Q12): the `data` of
+`/v1/nba_stats/player_on_off?season=2025&team_id=1610612755&order=-minutes_on&limit=100`, captured live on 2026-11-13 (the
+Philadelphia 76ers 2024-25, 30 players), projected to `resources/onOff.ts`'s `select` columns, as `{players}`. Quentin Grimes
+(1629656) played 28 of 82 games and the team's 34 from 2025-02-04 to 2025-04-13: 3,018 full-season off minutes, 694 over his span.
+Nothing else is edited.
+
+**Used by:** `test/onOff.test.ts`.
+
+**To regenerate:** the same read (season filter and limit as above), projected to the module's `select`.
+
+## `player-bio-nba-2025.json.gz`
+The On/Off section's name read for pros with no `shot_season_players` row (BB-G4 review, `retrieveBioNames`): the `data` of
+`/v1/nba_stats/player_bio?season=2025&season_type=Regular%20Season&select=player_id,player_name&limit=1000`, captured live on
+2026-11-13 (569 players; Minnesota's 1642399 is Jesse Edwards). Nothing is edited.
+
+**Used by:** `test/onOff.test.ts`.
+
+**To regenerate:** the same read (season filter and limit as above).
