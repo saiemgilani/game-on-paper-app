@@ -14,6 +14,9 @@ const oracle = read('league_context');
 const PID = Number(Object.keys(playerGames)[0]);
 const me = players.find((p: any) => p.person_id === PID);
 const state = { nullDates: false };
+// BB-G25's player Situations section reads the Data API with 'bball-situational' on (preview): never from a test
+const psit = vi.hoisted(() => ({ calls: [] as unknown[][] }));
+vi.mock('../../src/resources/situational', async (orig) => ({ ...(await orig<typeof import('../../src/resources/situational')>()), retrievePlayerSituational: async (...a: unknown[]) => { psit.calls.push(a); return []; } }));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveLeagueContextRows: async () => [
@@ -55,6 +58,10 @@ describe('/nba/players/[id]', () => {
         expect(html).not.toContain('undefined');
         expect(html).not.toContain('NaN');
         expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
+        // BB-G25 (preview on): the Situations section reads his rows with his team and sits in the page nav
+        expect(psit.calls.at(-1)).toEqual(['nba', expect.any(Number), PID, me.team_id]); // the season is today's current one
+        expect(html).toContain('id="situations"');
+        expect(html).toContain('href="#situations"');
     });
     test('null game dates: the six charts render and the per-game views say unavailable', async () => {
         state.nullDates = true;

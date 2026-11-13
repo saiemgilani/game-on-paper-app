@@ -19,11 +19,14 @@ interface Capture { team: any[]; players: any[]; lineups: any[]; names: any[] }
 const capture = (name: string): Capture => JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/${name}.json.gz`, import.meta.url))).toString());
 const NBA = capture('situations-nba-2024'); // Minnesota 2023-24 (stats id 1610612750); names: its shot_season_players rows
 const MBB = capture('situations-mbb-2025'); // Michigan State 2024-25 (ESPN 127); names: its ncaa_player_box rows
+/** One player's live split rows (2026-11-13): Anthony Edwards with Minnesota, and Cameron Boozer with Duke plus his crosswalk pair. */
+const PLAYER = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/situations-player-2026.json.gz', import.meta.url))).toString());
 
 const sdv = vi.hoisted(() => ({ fn: vi.fn() }));
 vi.mock('../src/resources/sdv', async (orig) => ({ ...(await orig<typeof import('../src/resources/sdv')>()), retrieveRows: (...a: unknown[]) => sdv.fn(...a) }));
 const sit = vi.hoisted(() => ({ fn: vi.fn() }));
-vi.mock('../src/resources/situational', async (orig) => ({ ...(await orig<typeof import('../src/resources/situational')>()), retrieveSituational: (...a: unknown[]) => sit.fn(...a) }));
+const psit = vi.hoisted(() => ({ fn: vi.fn() }));
+vi.mock('../src/resources/situational', async (orig) => ({ ...(await orig<typeof import('../src/resources/situational')>()), retrieveSituational: (...a: unknown[]) => sit.fn(...a), retrievePlayerSituational: (...a: unknown[]) => psit.fn(...a) }));
 vi.mock('../src/resources/lineups', async (orig) => ({ ...(await orig<typeof import('../src/resources/lineups')>()), retrieveLineups: async () => ({ units: [], names: [] }) }));
 vi.mock('../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../src/resources/teamSeason')>()),
@@ -41,20 +44,21 @@ vi.mock('../src/resources/nbaShots', async (orig) => ({
     retrieveTeamShots: async (_s: number, teamId: number) => shots.filter((s) => s.team_id === teamId).map((s) => ({ game_id: s.game_id, x_legacy: s.x_legacy, y_legacy: s.y_legacy, shot_distance: s.shot_distance, shot_value: s.shot_value, shot_result: s.shot_result })),
 }));
 
+import PlayerSituations from '../src/components/nba/PlayerSituations.astro';
 import SituationsTab from '../src/components/nba/SituationsTab.astro';
 import { NETS_TEAM_ID } from '../src/nba/data/teams';
 import { UNIT_LIMIT, type SituationalReads } from '../src/resources/situational';
 import { prepareNbaTeam } from '../src/routes/nba/team';
 import { FLAGS } from '../src/utils/features';
 import { playerNames, unitLabels } from '../src/utils/lineups';
-import { nameRows, parseSituation, situationsFor, teamRows, type Situation } from '../src/utils/situations';
+import { nameRows, parseSituation, PLAYER_MIN_POSS, situationsFor, teamRows, UNIT_MIN_POSS, type Situation } from '../src/utils/situations';
 
 const MIN = 1610612750;
 const MSU = 127;
-/** What the API answers retrieveSituational's queries: the team's split rows; the situation's players and units by -poss, capped. */
+/** What the API answers retrieveSituational's queries: the team's split rows; the situation's players (10+ poss) and units (25+) by -poss, capped. */
 const api = (c: Capture, s: Pick<Situation, 'family' | 'split'>): SituationalReads => {
-    const one = (rows: any[], cap: number) => rows.filter((r) => r.family === s.family && r.split === s.split).sort((a, b) => b.poss - a.poss).slice(0, cap);
-    return { team: c.team, players: one(c.players, 40), units: one(c.lineups, UNIT_LIMIT), names: c.names };
+    const one = (rows: any[], min: number, cap: number) => rows.filter((r) => r.family === s.family && r.split === s.split && r.poss >= min).sort((a, b) => b.poss - a.poss).slice(0, cap);
+    return { team: c.team, players: one(c.players, PLAYER_MIN_POSS, 40), units: one(c.lineups, UNIT_MIN_POSS, UNIT_LIMIT), names: c.names };
 };
 
 let container: AstroContainer;
@@ -63,6 +67,8 @@ beforeEach(() => {
     sdv.fn.mockReset();
     sit.fn.mockReset();
     sit.fn.mockResolvedValue({ team: [], players: [], units: [], names: [] });
+    psit.fn.mockReset();
+    psit.fn.mockResolvedValue([]);
 });
 
 describe('the captures (the producer tables)', () => {
@@ -95,8 +101,9 @@ describe('retrieveSituational', () => {
         expect(sdv.fn.mock.calls.every((c) => c[0] === 'nba' && c[4] === true)).toBe(true);
         expect(q.situational_team).toMatchObject({ season: '2024', team_id: String(MIN), limit: '40' });
         expect(q.situational_team.family).toBeUndefined();
-        expect(q.situational_player).toMatchObject({ season: '2024', team_id: String(MIN), family: 'clutch', split: 'clutch', order: '-poss', limit: '40' });
-        expect(q.situational_lineup).toMatchObject({ family: 'clutch', split: 'clutch', order: '-poss', limit: String(UNIT_LIMIT) });
+        expect(q.situational_player).toMatchObject({ season: '2024', team_id: String(MIN), family: 'clutch', split: 'clutch', order: '-poss', poss__gte: '10', limit: '40' });
+        expect(q.situational_lineup).toMatchObject({ family: 'clutch', split: 'clutch', order: '-poss', poss__gte: '25', limit: String(UNIT_LIMIT) });
+        expect(q.situational_team.poss__gte).toBeUndefined();
         // every column the section reads is selected, nothing else
         const cols = (rows: any[]) => Object.keys(rows[0]).filter((k) => k !== 'team_id').sort();
         expect(q.situational_team.select.split(',').sort()).toEqual(cols(NBA.team));
@@ -117,19 +124,47 @@ describe('retrieveSituational', () => {
     });
 });
 
+describe('retrievePlayerSituational (the player page)', () => {
+    const real = async () => (await vi.importActual<typeof import('../src/resources/situational')>('../src/resources/situational')).retrievePlayerSituational;
+    test("a pro: one strict read of his rows with his team, every split over 10 possessions, the team table's columns", async () => {
+        sdv.fn.mockResolvedValue(PLAYER.nba.rows);
+        const rows = await (await real())('nba', 2026, PLAYER.nba.person_id, PLAYER.nba.team_id);
+        expect(sdv.fn).toHaveBeenCalledTimes(1);
+        const [league, table, q, , strict] = sdv.fn.mock.calls[0];
+        expect([league, table, strict]).toEqual(['nba', 'situational_player', true]);
+        expect(q).toMatchObject({ season: '2026', team_id: String(MIN), player_id: '1630162', poss__gte: '10', limit: '40' });
+        expect(q.family).toBeUndefined();
+        expect(q.select.split(',').sort()).toEqual(Object.keys(PLAYER.nba.rows[0]).sort());
+        expect(rows).toBe(PLAYER.nba.rows);
+    });
+    test("college: his ESPN athlete id to the season's stats.ncaa.org id (the crosswalk), then his rows; no pair, no rows", async () => {
+        sdv.fn.mockImplementation(async (_l: string, table: string) => (table === 'ncaa_player_crosswalk' ? PLAYER.mbb.crosswalk : PLAYER.mbb.rows));
+        const rows = await (await real())('mbb', 2026, PLAYER.mbb.person_id, PLAYER.mbb.team_id);
+        const q = Object.fromEntries(sdv.fn.mock.calls.map((c) => [c[1], c[2]]));
+        expect(q.ncaa_player_crosswalk).toMatchObject({ season: '2026', espn_athlete_id: '5041935', select: 'ncaa_player_id' });
+        expect(q.situational_player).toMatchObject({ season: '2026', team_id: '150', player_id: '11195975', poss__gte: '10' });
+        expect(rows).toBe(PLAYER.mbb.rows);
+        sdv.fn.mockReset();
+        sdv.fn.mockResolvedValue([]);
+        expect(await (await real())('mbb', 2026, 1, 150)).toEqual([]);
+        expect(sdv.fn.mock.calls.map((c) => c[1])).toEqual(['ncaa_player_crosswalk']);
+    });
+});
+
 describe('the control', () => {
     const keys = (o: Situation[]) => o.map((s) => s.key);
-    test('the NBA: All, Clutch, four quarters and overtime, Leading, Trailing, Garbage time out, vs top 10', () => {
+    test('the NBA: All, Clutch, four quarters and overtime, Leading, Tied, Trailing, Home, Away, Transition, Half court, Garbage time out, vs top 10', () => {
         const o = situationsFor('nba', 2024);
-        expect(keys(o)).toEqual(['all', 'clutch', 'p1', 'p2', 'p3', 'p4', 'ot', 'leading', 'trailing', 'not_garbage_time', 'vs_top']);
-        expect(o.map((s) => s.label)).toEqual(['All', 'Clutch', '1st quarter', '2nd quarter', '3rd quarter', '4th quarter', 'Overtime', 'Leading', 'Trailing', 'Garbage time out', 'vs top 10']);
+        expect(keys(o)).toEqual(['all', 'clutch', 'p1', 'p2', 'p3', 'p4', 'ot', 'leading', 'tied', 'trailing', 'home', 'away', 'transition', 'half_court', 'not_garbage_time', 'vs_top']);
+        expect(o.map((s) => s.label)).toEqual(['All', 'Clutch', '1st quarter', '2nd quarter', '3rd quarter', '4th quarter', 'Overtime', 'Leading', 'Tied', 'Trailing', 'Home', 'Away', 'Transition', 'Half court', 'Garbage time out', 'vs top 10']);
+        expect(o.filter((s) => ['tied', 'home', 'away', 'transition', 'half_court'].includes(s.key)).map((s) => `${s.family}/${s.split}`)).toEqual(['score/tied', 'venue/home', 'venue/away', 'play_type/transition', 'play_type/half_court']);
         expect(o.find((s) => s.key === 'ot')!.note).toBe('Possessions that start in overtime.');
         // every option is a (family, split) the producer writes
         for (const s of o) expect(NBA.team.some((r) => r.family === s.family && r.split === s.split)).toBe(true);
     });
     test('college: two halves (the producer\'s p1 / p2), vs top 25; the WNBA: halves through 2005, quarters from 2006, vs top 4', () => {
         const m = situationsFor('mbb', 2025);
-        expect(keys(m)).toEqual(['all', 'clutch', 'p1', 'p2', 'ot', 'leading', 'trailing', 'not_garbage_time', 'vs_top']);
+        expect(keys(m)).toEqual(['all', 'clutch', 'p1', 'p2', 'ot', 'leading', 'tied', 'trailing', 'home', 'away', 'transition', 'half_court', 'not_garbage_time', 'vs_top']);
         expect(m.find((s) => s.key === 'p2')!.label).toBe('2nd half');
         expect(m.at(-1)!.label).toBe('vs top 25');
         for (const s of m) expect(MBB.team.some((r) => r.family === s.family && r.split === s.split)).toBe(true);
@@ -140,7 +175,7 @@ describe('the control', () => {
     });
     test('?situation= is whitelisted: anything else (a family the control does not offer, junk, none) is All', () => {
         const o = situationsFor('nba', 2024);
-        expect(['clutch', 'p3', 'vs_top', 'transition', 'h1', 'p5', 'CLUTCH', null].map((v) => parseSituation(v, o).key)).toEqual(['clutch', 'p3', 'vs_top', 'all', 'all', 'all', 'all', 'all']);
+        expect(['clutch', 'p3', 'vs_top', 'transition', 'second_chance', 'h1', 'neutral', 'p5', 'CLUTCH', null].map((v) => parseSituation(v, o).key)).toEqual(['clutch', 'p3', 'vs_top', 'transition', 'all', 'all', 'all', 'all', 'all', 'all']);
     });
     test("the team table: the situation's row then All; All alone for All, or when the team has no row in the situation", () => {
         const o = situationsFor('nba', 2024);
@@ -187,7 +222,7 @@ describe('prepareNbaTeam with the flag', () => {
         expect(r.situations!.unitLabels[0].full).toBe(`${rows[0].player_name}, ${rows[1].player_name}, #1, #2, #3`);
     });
     test('?situation= junk reads All', async () => {
-        await prepareNbaTeam(fakeAstro({ preview: true }, '?season=2026&situation=transition').astro);
+        await prepareNbaTeam(fakeAstro({ preview: true }, '?season=2026&situation=second_chance').astro);
         expect(sit.fn).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, 'all', 'all');
     });
     test('on, a 404 spends no read', async () => {
@@ -228,17 +263,22 @@ describe('SituationsTab', () => {
         const team = cells(html, 'situations-team');
         const own = NBA.team.find((r) => r.split === 'clutch')!;
         expect(team).toEqual([
-            ['Clutch', String(own.games), String(Math.round(own.minutes)), String(own.poss), own.off_rtg.toFixed(1), own.def_rtg.toFixed(1), (own.net_rtg >= 0 ? '+' : '') + own.net_rtg.toFixed(1), String(own.plus_minus)],
+            ['Clutch', String(own.games), String(Math.round(own.minutes)), String(own.poss), String(own.opp_poss), String(own.pts), String(own.opp_pts), own.off_rtg.toFixed(1), own.def_rtg.toFixed(1), (own.net_rtg >= 0 ? '+' : '') + own.net_rtg.toFixed(1), String(own.plus_minus)],
             expect.arrayContaining(['All']),
         ]);
         expect(own.plus_minus).toBe(-32);
         const players = api(NBA, { family: 'clutch', split: 'clutch' }).players;
         expect(rowsOf(html, 'situations-players')).toBe(players.length);
-        expect(cells(html, 'situations-players')[0]).toHaveLength(8);
+        expect(cells(html, 'situations-players')[0]).toHaveLength(11);
         expect(html).toContain('Rudy Gobert');
-        // 24 of Minnesota's gated fives played a clutch possession: all listed, under the cap
-        expect(rowsOf(html, 'situations-units')).toBe(24);
-        expect(html).toContain('24 units, most possessions first');
+        expect(html).toContain('Players with 10+ possessions in the situation, most first.');
+        // 24 of Minnesota's gated fives played a clutch possession, 2 of them 25 or more: those are listed
+        expect(NBA.lineups.filter((u) => u.split === 'clutch').length).toBe(24);
+        expect(rowsOf(html, 'situations-units')).toBe(2);
+        expect(html).toContain('2 units, most possessions first; units with 25+ possessions in the situation');
+        // the minimums are the API's poss__gte: 9 players reach 10 clutch possessions
+        expect(players.length).toBe(9);
+        expect(NBA.players.filter((r) => r.split === 'clutch').length).toBeGreaterThan(9);
         expect(html).not.toMatch(/hulk-bg-level-\d/);
         for (const bad of ['undefined', 'NaN', '>#', 'n/a']) expect(html).not.toContain(bad);
     });
@@ -258,10 +298,10 @@ describe('SituationsTab', () => {
         const r = api(MBB, { family: 'opponent', split: 'vs_top' });
         expect(cells(html, 'situations-team').map((t) => t[0])).toEqual(['vs top 25', 'All']);
         expect(rowsOf(html, 'situations-players')).toBe(r.players.length);
-        // more of the gated fives than the cap played the top 25: the caption says the list is the top of them
+        // more of the gated fives than the cap played the top 25, 7 of them 25 possessions or more
         expect(MBB.lineups.filter((u) => u.split === 'vs_top').length).toBeGreaterThan(UNIT_LIMIT);
-        expect(rowsOf(html, 'situations-units')).toBe(UNIT_LIMIT);
-        expect(html).toContain(`The ${UNIT_LIMIT} units with the most possessions in the situation`);
+        expect(rowsOf(html, 'situations-units')).toBe(r.units.length);
+        expect(r.units.length).toBe(7);
         expect(html).not.toContain('>#');
         expect(html).toContain('Jaden Akins');
     });
@@ -282,5 +322,45 @@ describe('SituationsTab', () => {
         const down = await render('nba', NBA, 2024, 'clutch', null);
         expect(down).toContain('id="situations-unavailable"');
         expect(down).not.toContain('id="situations-team"');
+    });
+});
+
+describe('the player page (Q28: the control there too)', () => {
+    const playerAstro = (search: string, league: 'nba' | 'mbb' = 'nba') => {
+        const cache: unknown[] = [];
+        const headers = new Headers();
+        return { astro: { params: {}, url: new URL(`https://gameonpaper.com/${league}/players/1${search}`), locals: { preview: true }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    };
+    const renderPlayer = (league: 'nba' | 'mbb', rows: any[] | null, key: string, season = 2026) => {
+        const options = situationsFor(league, season);
+        return container.renderToString(PlayerSituations, {
+            props: { data: { situation: parseSituation(key, options), options, rows }, season, current: 2026, basePath: '/nba/players/1630162', playerName: 'Anthony Edwards', teamTricode: 'MIN' },
+            locals: { league } as App.Locals,
+        });
+    };
+    test("Edwards in transition: his row then All, the team table's 10 columns, the producer's numbers", async () => {
+        const html = await renderPlayer('nba', PLAYER.nba.rows, 'transition');
+        const own = PLAYER.nba.rows.find((r: any) => r.split === 'transition');
+        expect(cells(html, 'situations-player')).toEqual([
+            ['Transition', String(own.games), Math.round(own.minutes).toLocaleString('en-US'), own.poss.toLocaleString('en-US'), own.opp_poss.toLocaleString('en-US'), own.pts.toLocaleString('en-US'), own.opp_pts.toLocaleString('en-US'), own.off_rtg.toFixed(1), own.def_rtg.toFixed(1), (own.net_rtg >= 0 ? '+' : '') + own.net_rtg.toFixed(1), (own.plus_minus > 0 ? '+' : '') + own.plus_minus.toLocaleString('en-US')],
+            expect.arrayContaining(['All']),
+        ]);
+        expect(html).toContain('Anthony Edwards with MIN, 2025-26.');
+        const sel = html.split('id="situation"')[1].split('</select>')[0].replaceAll('&amp;', '&');
+        expect(sel).toContain('value="/nba/players/1630162?situation=transition#situations" selected');
+        expect(sel).toContain('value="/nba/players/1630162#situations"');
+    });
+    test("Boozer's overtime: under 10 possessions, so the API answered no row; All stays and the caption says so", async () => {
+        expect(PLAYER.mbb.rows.some((r: any) => r.split === 'ot')).toBe(false);
+        const html = await renderPlayer('mbb', PLAYER.mbb.rows, 'ot');
+        expect(cells(html, 'situations-player').map((r) => r[0])).toEqual(['All']);
+        expect(html).toContain('under 10 possessions in the situation (Overtime)');
+    });
+    test('no rows yet is the empty note; a failed read says unavailable; the control stays', async () => {
+        const empty = await renderPlayer('nba', [], 'all');
+        expect(empty).toContain('id="situations-empty"');
+        expect(empty).toContain('id="situation"');
+        const down = await renderPlayer('nba', null, 'clutch');
+        expect(down).toContain('id="situations-unavailable"');
     });
 });

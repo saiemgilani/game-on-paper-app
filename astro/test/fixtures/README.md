@@ -843,3 +843,16 @@ The name reads were captured live on 2026-11-05; nothing is edited. The tests ap
 **To regenerate:** read the six parquets from sdv-db main, filter `team_id`, apply the lineup gate above, select the columns,
 write the rows as JSON with the two name reads (season filter and limit as above, never unfiltered) and gzip. Once the
 backfill runs, the live `situational_{team,player,lineup}?season=<s>&team_id=<id>[&family=&split=&order=-poss]` reads replace them.
+
+## `situations-player-2026.json.gz`
+The player page's Situations read (BB-G25 review, `retrievePlayerSituational`), captured live on 2026-11-13: `nba.rows` is the
+`data` of `/v1/nba_stats/situational_player?season=2026&team_id=1610612750&player_id=1630162&poss__gte=10&select=player_id,<the
+section's columns>&limit=40` (Anthony Edwards, 24 splits); `mbb.crosswalk` of
+`/v1/mbb/ncaa_player_crosswalk?season=2026&espn_athlete_id=5041935&select=ncaa_player_id&limit=5` (Cameron Boozer) and `mbb.rows` of
+`/v1/mbb/situational_player?season=2026&team_id=150&player_id=11195975&poss__gte=10&select=...&limit=40` (18 splits; none for
+overtime, under 10 possessions). Nothing is edited.
+
+**Used by:** `test/situations.test.ts`.
+
+**To regenerate:** the same reads (season filter and limit as above).
+

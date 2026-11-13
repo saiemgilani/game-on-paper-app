@@ -4,11 +4,15 @@
  * stats.wnba.com team and player ids; `mbb` / `wbb`, keyed by the ESPN team id and the stats.ncaa.org player id). One
  * situation is one (family, split) row per team, player or five-man unit; every number is the producer's (sdv-py
  * *_situational_*). There are season rows only: no game-level situational table exists, so the game page has no control.
+ * The player page reads one player's rows (every split); college first maps his ESPN athlete id to the season's
+ * stats.ncaa.org id through ncaa_player_crosswalk (BB-D37).
  * Reads are strict, so an outage is never shown as a team with no possessions.
  */
 import { retrieveRows } from './sdv';
 import { retrieveNcaaNames, type NcaaNameRow } from './lineups';
 import type { BasketballLeague } from '../utils/league';
+import { isNcaaDashboards } from '../basketball/dashboards';
+import { PLAYER_MIN_POSS, UNIT_MIN_POSS } from '../utils/situations';
 
 /** The situational tables are rebuilt with the season products (once a day): the season pages' window. */
 const TTL = 6 * 60 * 60;
@@ -62,9 +66,25 @@ export async function retrieveSituational(league: BasketballLeague, season: numb
     const one = { season: s, team_id: t, family, split, order: '-poss' };
     const [team, players, units, names] = await Promise.all([
         retrieveRows<SituationalRow>(league, 'situational_team', { season: s, team_id: t, select: COLS, limit: TEAM_LIMIT }, TTL, true),
-        retrieveRows<PlayerSituationalRow>(league, 'situational_player', { ...one, select: `player_id,${COLS}`, limit: PLAYER_LIMIT }, TTL, true),
-        retrieveRows<UnitSituationalRow>(league, 'situational_lineup', { ...one, select: `lineup_id,player_1,player_2,player_3,player_4,player_5,${COLS}`, limit: String(UNIT_LIMIT) }, TTL, true),
+        retrieveRows<PlayerSituationalRow>(league, 'situational_player', { ...one, poss__gte: String(PLAYER_MIN_POSS), select: `player_id,${COLS}`, limit: PLAYER_LIMIT }, TTL, true),
+        retrieveRows<UnitSituationalRow>(league, 'situational_lineup', { ...one, poss__gte: String(UNIT_MIN_POSS), select: `lineup_id,player_1,player_2,player_3,player_4,player_5,${COLS}`, limit: String(UNIT_LIMIT) }, TTL, true),
         retrieveNcaaNames(league, season, teamId),
     ]);
     return { team, players, units, names };
+}
+
+/**
+ * One player's split rows with one team in a season (every split over the player minimum), for the player page. The pros'
+ * page id is the stats id; college's is the ESPN athlete id, mapped to the season's stats.ncaa.org id first (no pair: no
+ * rows). Strict.
+ */
+export async function retrievePlayerSituational(league: BasketballLeague, season: number, personId: number, teamId: number): Promise<PlayerSituationalRow[]> {
+    const s = String(season);
+    let playerId = String(personId);
+    if (isNcaaDashboards(league)) {
+        const pairs = await retrieveRows<{ ncaa_player_id: string }>(league, 'ncaa_player_crosswalk', { season: s, espn_athlete_id: playerId, select: 'ncaa_player_id', limit: '5' }, TTL, true);
+        if (!pairs.length) return [];
+        playerId = String(pairs[0].ncaa_player_id);
+    }
+    return retrieveRows<PlayerSituationalRow>(league, 'situational_player', { season: s, team_id: String(teamId), player_id: playerId, poss__gte: String(PLAYER_MIN_POSS), select: `player_id,${COLS}`, limit: TEAM_LIMIT }, TTL, true);
 }

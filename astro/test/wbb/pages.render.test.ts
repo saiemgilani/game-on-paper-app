@@ -31,6 +31,7 @@ vi.mock('../../src/resources/lineups', async (orig) => ({
 vi.mock('../../src/resources/situational', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/situational')>()),
     retrieveSituational: async () => ({ team: [], players: [], units: [], names: [] }),
+    retrievePlayerSituational: async () => [],
 }));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
