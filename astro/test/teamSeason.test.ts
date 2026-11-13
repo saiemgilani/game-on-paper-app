@@ -17,7 +17,7 @@ const MBB = capture('team-season-mbb-2026'); // Duke 2025-26 (ESPN 150)
 
 const block = vi.hoisted(() => ({ fn: vi.fn() }));
 // BB-G12's nearby ranks read the Data API with 'bball-rank-neighbors' on (preview): never from a test
-vi.mock('../src/resources/bballNeighbors', async (orig) => ({ ...(await orig<typeof import('../src/resources/bballNeighbors')>()), retrieveTeamRankRows: async () => [], retrievePlayerRankRows: async () => [] }));
+vi.mock('../src/resources/bballNeighbors', async (orig) => ({ ...(await orig<typeof import('../src/resources/bballNeighbors')>()), retrieveTeamRankRows: async () => [] }));
 vi.mock('../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../src/resources/teamSeason')>()),
     retrieveTeamSeason: (...a: unknown[]) => block.fn(...a),

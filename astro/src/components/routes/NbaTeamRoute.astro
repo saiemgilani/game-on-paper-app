@@ -56,7 +56,7 @@ const defaults = { season: String(current) };
       <h2 class="h5">Nearby ranks</h2>
       {neighbors === null ? (<p class="text-muted" id="nearby-unavailable">The nearby ranks are temporarily unavailable.</p>)
         : neighbors.length === 0 ? (<p class="text-muted" id="nearby-empty">There are no {label} ranks for {team.name}.</p>)
-        : (<Fragment><p class="small text-muted">The teams ranked within five places of {team.name} on each measure, {label}; 1 is best (the lowest defensive rating).</p>
+        : (<Fragment><p class="small text-muted">The teams ranked within five places of {team.name} on each measure, {label}, in the producer's ranks; 1 is best (the lowest defensive rating and turnover rate, the hardest schedule), and for pace the fastest.</p>
       <NeighborRanks lists={neighbors} kind="team" /></Fragment>)}
     </section>)}
     {empty ? (<p class="text-muted" id="nba-empty">{emptyNote}</p>) : (<Fragment><nav aria-label="On this page" class="small mb-3">

@@ -15,7 +15,7 @@ const PID = Number(Object.keys(playerGames)[0]);
 const me = players.find((p: any) => p.person_id === PID);
 const state = { nullDates: false };
 // BB-G12's nearby ranks read the Data API with 'bball-rank-neighbors' on (preview): never from a test
-vi.mock('../../src/resources/bballNeighbors', async (orig) => ({ ...(await orig<typeof import('../../src/resources/bballNeighbors')>()), retrieveTeamRankRows: async () => [], retrievePlayerRankRows: async () => [] }));
+vi.mock('../../src/resources/bballNeighbors', async (orig) => ({ ...(await orig<typeof import('../../src/resources/bballNeighbors')>()), retrieveTeamRankRows: async () => [] }));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveLeagueContextRows: async () => [

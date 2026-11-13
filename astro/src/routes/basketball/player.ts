@@ -16,11 +16,7 @@ import { placeholderSplit } from '../../nba/data/placeholder';
 import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
-import { retrievePlayerRankRows } from '../../resources/bballNeighbors';
-import { bballPlayerNeighborLists } from '../../utils/bballNeighbors';
-import { isFeatureEnabled } from '../../utils/features';
-import { PRO_LEAGUES, type BasketballLeague } from '../../utils/league';
-import type { NeighborList } from '../../utils/neighbors';
+import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
 
@@ -46,8 +42,6 @@ export interface BasketballPlayerParams {
     unlocated?: { count: number; total: number };
     /** a college season's shot_coverage sentence (D24); absent for the NBA/WNBA */
     coverage?: string | null;
-    /** BB-G12, NBA/WNBA with 'bball-rank-neighbors' on: the nearby-rank lists; null when the read failed (the section says so) */
-    neighbors?: NeighborList[] | null;
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -122,18 +116,6 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         console.error(`player ${personId}: the seasons read failed: ${seasonsR.reason}`);
     }
 
-    // BB-G12: read once the page will render (a 404 or 503 spends nothing); college has no ranked player table the site can key
-    const nearby = PRO_LEAGUES.includes(league) && isFeatureEnabled('bball-rank-neighbors', Astro.locals);
-    let neighbors: NeighborList[] | null = null;
-    if (nearby) {
-        try {
-            neighbors = bballPlayerNeighborLists(await retrievePlayerRankRows(league, season), personId, league, season, resolved.q);
-        } catch (e: any) {
-            degraded = true;
-            console.error(`player ${personId}: the nearby-ranks read failed: ${e}`);
-        }
-    }
-
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
     const min = rankMins(league, season);
@@ -155,6 +137,5 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         hisSeasons,
         ...(n > 0 ? { unlocated: { count: n, total: shots.length } } : {}),
         ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
-        ...(nearby ? { neighbors } : {}),
     };
 }

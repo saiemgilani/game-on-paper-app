@@ -11,7 +11,7 @@ const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/nba/
 const oracle = read('league_context');
 const shots = read('shots') as any[];
 // BB-G12's nearby ranks read the Data API with 'bball-rank-neighbors' on (preview): never from a test
-vi.mock('../../src/resources/bballNeighbors', async (orig) => ({ ...(await orig<typeof import('../../src/resources/bballNeighbors')>()), retrieveTeamRankRows: async () => [], retrievePlayerRankRows: async () => [] }));
+vi.mock('../../src/resources/bballNeighbors', async (orig) => ({ ...(await orig<typeof import('../../src/resources/bballNeighbors')>()), retrieveTeamRankRows: async () => [] }));
 // BB-G5's season block reads the Data API with 'bball-team-season' on (preview): never from a test
 vi.mock('../../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/teamSeason')>()),

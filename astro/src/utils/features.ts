@@ -179,10 +179,9 @@ export const FLAGS: Record<string, FeatureState> = {
     // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404, and the
     // standings page and the Header have no link.
     'bball-nba-cup': 'preview',
-    // Nearby ranks on the basketball team and player pages (BB-G12, football's 'rank-neighbors'), inside each league's flag:
-    // for each measure, the teams or players ranked within five places, the page's own row marked. Teams (all four leagues):
-    // team_strength's ranks. Players (NBA/WNBA): player_stats_advanced's, stats.nba.com's own; college players have none the
-    // site can key. Off: no read and both pages are today's, byte for byte.
+    // Nearby ranks on the basketball team pages (BB-G12, football's 'rank-neighbors'), inside each league's flag: for each
+    // of twelve measures, the teams ranked within five places, the page's own row marked, by team_strength's ranks (all four
+    // leagues). Player lists wait for a producer-ranked player table with a minimum. Off: no read, the page is today's.
     'bball-rank-neighbors': 'preview',
 };
 

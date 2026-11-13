@@ -1,14 +1,14 @@
 /**
- * BB-G12 ('bball-rank-neighbors'): the basketball nearby-rank lists, football's S3 on the basketball team and player
- * pages. The window (`neighborWindow`, within five places of the page's own rank) and the shading (`metricShade`, the
+ * BB-G12 ('bball-rank-neighbors'): the basketball nearby-rank lists, football's S3 on the basketball team pages (player
+ * lists wait for a producer-ranked player table with a minimum). The window (`neighborWindow`, within five places of the page's own rank) and the shading (`metricShade`, the
  * leaderboards' rank ramp) are football's; this only names the metrics and formats the cells for `NeighborRanks.astro`.
  * Every rank is the producer's `<m>_rank` (resources/bballNeighbors.ts); nothing is re-ranked here.
  */
 import { BASKETBALL } from '../basketball/config';
 import { fmtDec, fmtPct } from '../nba/format';
-import { playerHref, teamHref } from '../nba/links';
-import type { PLAYER_RANKED, RankRow, TEAM_RANKED } from '../resources/bballNeighbors';
-import type { BasketballLeague } from './league';
+import { teamHref } from '../nba/links';
+import type { RankRow, TEAM_RANKED } from '../resources/bballNeighbors';
+import { PRO_LEAGUES, type BasketballLeague } from './league';
 import { formatRank, generateMarginalString } from './misc';
 import { metricShade, neighborWindow, type NeighborList } from './neighbors';
 
@@ -23,23 +23,26 @@ const TEAM: readonly Spec<(typeof TEAM_RANKED)[number]>[] = [
     ['adj_net_rtg', 'Adj. net rating', signed],
     ['efg_pct', 'eFG%', fmtPct],
     ['opp_efg_pct', 'Opp eFG%', fmtPct],
+    ['pace', 'Pace', rating],
+    ['tov_pct', 'TOV%', fmtPct],
+    ['orb_pct', 'ORB%', fmtPct],
+    ['ft_rate', 'FT rate', (v) => fmtDec(v, 3)],
+    ['sos', 'SOS', signed],
+    ['sov', 'SOV', signed],
 ];
-const PLAYER: readonly Spec<(typeof PLAYER_RANKED)[number]>[] = [
-    ['net_rating', 'Net rating', signed],
-    ['ts_pct', 'TS%', fmtPct],
-    ['usg_pct', 'USG%', fmtPct],
-    ['pie', 'PIE', fmtPct],
-];
+/** Pace is the season block's: not shaded (faster is not better), and "Tempo" in college. */
+const UNSHADED = new Set<string>(['pace']);
 
 /** The team page's lists: `teamId` keys the season tables (the stats id for the NBA/WNBA, ESPN's in college). */
 export function bballTeamNeighborLists(rows: RankRow[], teamId: number, league: BasketballLeague, season: number, q: string): NeighborList[] {
     const teams = BASKETBALL[league].teams;
     const known = rows.filter((r) => teams.inSeason(Number(r.team_id), season));
+    const college = !PRO_LEAGUES.includes(league);
     return TEAM.map(([key, title, fmt]) => {
-        const shade = metricShade(known, key);
+        const shade = UNSHADED.has(key) ? () => null : metricShade(known, key);
         return {
             metric: key,
-            title,
+            title: key === 'pace' && college ? 'Tempo' : title,
             rows: neighborWindow(known, (r) => String(r.team_id), teamId, key).map((n) => {
                 const t = teams.inSeason(Number(n.row.team_id), season)!;
                 // the key is the id the page links by; the logo goes by ESPN's id (DarkModeLogos, teamLogoUrl)
@@ -49,23 +52,3 @@ export function bballTeamNeighborLists(rows: RankRow[], teamId: number, league: 
     }).filter((l) => l.rows.length > 0);
 }
 
-/** The player page's lists (NBA/WNBA): stats.nba.com's ranks over every player with a regular-season row. */
-export function bballPlayerNeighborLists(rows: RankRow[], personId: number, league: BasketballLeague, season: number, q: string): NeighborList[] {
-    const teams = BASKETBALL[league].teams;
-    return PLAYER.map(([key, title, fmt]) => {
-        const shade = metricShade(rows, key);
-        return {
-            metric: key,
-            title,
-            rows: neighborWindow(rows, (r) => String(r.player_id), personId, key).map((n) => {
-                const t = teams.inSeason(Number(n.row.team_id), season);
-                return {
-                    key: n.key, rank: formatRank(n.rank), label: String(n.row.player_name ?? ''), href: playerHref(Number(n.row.player_id), q, league),
-                    // a row whose team the league does not know has no logo or team page to link: the cell stays empty
-                    teamId: t ? String(t.espn_id) : '', team: t ? { label: t.tricode, href: teamHref(t.team_id, q, league) } : null,
-                    value: fmt(n.value), shade: shade(n.rank), self: n.self,
-                };
-            }),
-        };
-    }).filter((l) => l.rows.length > 0);
-}
