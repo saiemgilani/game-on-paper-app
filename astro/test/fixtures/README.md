@@ -809,6 +809,10 @@ season 2027), CON at NY (1022600001, 2026), Southern Miss at Buffalo (contest 63
 6387150, 2026); 536, 393, 492 and 446 unit rows. Every stretch in them lists five players a side, so the five-man rows
 sum to the team's game and the picker's inclusion-exclusion matches them exactly.
 
+`season` (added 2026-11-13) is the season's team net ratings the section prints as a reference line, captured live
+the same day with `retrieveInGameLineups`'s third read: `/v1/<schema>/team_season_rates?season=…&split=all&select=team_id,games,net_rtg&limit=1000`
+(the `data` array, no edits; 30, 15, 365 and 358 rows).
+
 **Used by:** `test/inGameLineups.test.ts`, `test/inGameLineupsIsland.test.ts`.
 
 **To regenerate:** rerun the two reads per game (season filter and limit as above), wrap them as above and gzip.
