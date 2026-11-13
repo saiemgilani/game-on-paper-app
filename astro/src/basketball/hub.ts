@@ -15,9 +15,12 @@ export interface HubLine {
     wp: string | null;
     /** finals: who covered the closing spread ('BOS covered', 'Push') */
     cover: string | null;
-    /** finals: the market's underdog (no-vig WP under 50%) won */
+    /** finals: the winner's no-vig pregame win probability was under UPSET_WP (35%) */
     upset: boolean;
 }
+
+/** An upset is a final whose winner the market gave under this no-vig pregame win probability (Saiem, 2026-11-13). */
+export const UPSET_WP = 0.35;
 
 const num = (v: unknown): number | null => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
 
@@ -36,7 +39,7 @@ export function hubLine(row: GameLineRow | undefined, abbr: { home: string; away
         total,
         wp: homeWp === null ? null : homeWp >= 0.5 ? `${abbr.home} ${Math.round(homeWp * 100)}%` : `${abbr.away} ${Math.round((1 - homeWp) * 100)}%`,
         cover: winner === null || row.ats_result == null ? null : row.ats_result === 'push' ? 'Push' : `${abbr[row.ats_result]} covered`,
-        upset: winner !== null && homeWp !== null && (winner === 'home' ? homeWp < 0.5 : homeWp > 0.5),
+        upset: winner !== null && homeWp !== null && (winner === 'home' ? homeWp : 1 - homeWp) < UPSET_WP,
     };
     return out.spread === null && out.total === null && out.wp === null ? null : out;
 }
@@ -60,11 +63,17 @@ const BLURBS: Record<string, string> = {
 
 /**
  * The hub's page index: the league's Header pages, so a page lands here when it lands in the Header. The NBA's featured-team
- * entry ('/') is the landing the hub replaces, so it is left out. A page that is not in the Header (behind its own flag on
+ * entry ('/') is the landing the hub replaces, so it is left out, and the featured team's page is listed last instead
+ * (/nba/team/17 holds the roster and shot chart the landing had). It keys off `featuredTeam`, not the Header entry, so it
+ * stays when #438 drops that entry. A page that is not in the Header (behind its own flag on
  * the stack: standings, bracketology, the Cup, best games) is added here with its flag when it reaches main.
  */
 export function hubIndex(league: BasketballLeague): HubLink[] {
-    return BASKETBALL[league].headerMenu.filter((m) => m.path !== '/').map((m) => ({ ...m, ...(BLURBS[m.path] ? { blurb: BLURBS[m.path] } : {}) }));
+    const ft = BASKETBALL[league].featuredTeam;
+    return [
+        ...BASKETBALL[league].headerMenu.filter((m) => m.path !== '/').map((m) => ({ ...m, ...(BLURBS[m.path] ? { blurb: BLURBS[m.path] } : {}) })),
+        ...(ft ? [{ label: ft.menuLabel, path: `/team/${ft.espnTeamId}`, blurb: `The ${ft.menuLabel} roster's shooting, with the team shot chart.` }] : []),
+    ];
 }
 
 /** BB-G48: the player_box columns a standout needs. */
