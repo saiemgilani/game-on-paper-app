@@ -799,3 +799,20 @@ Every unit and the player pages (`impact-box-units-pages`, captured live on 2026
 **Used by:** `test/impactBox.test.ts`.
 
 **To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `game-flow-{nba-401909834,nba-401909088,wnba-401856902,mbb-401823353,wbb-401812873}.json.gz`
+The Data API reads behind BB-G28's Game flow panel (`resources/gameFlow.ts`),
+captured live on 2026-11-05, every read season-filtered with a small limit, as `{league, season, espnGameId, resolve,
+schedule, pbp, flow}` (the `data` array of each response, no edits). `resolve` is the id mapping: the pros'
+`/v1/<nba|wnba>/schedule_crosswalk?season=…&<league>_game_id=…&limit=1` (with `espn_game_id` added to the select),
+college's `/v1/<mbb|wbb>/ncaa_player_box?season=…&contest_id=…&select=contest_id,espn_game_id&limit=1`. `schedule` is the
+games schema's row (`schedule?season=…&id=…&limit=1`), `pbp` its play-by-play with the score columns
+(`pbp?season=…&game_id=…&order=game_play_number&limit=1500`), the page's lead-chart input, and `flow` both
+`game_flow?season=…&game_id=<producer id>&limit=2` rows, the oracle. Games: ATL 132 at ORL 125 (ESPN 401909834, 22 lead
+changes), BOS 113 at DET 121 (401909088), MIN 88 at PHX 84 (401856902), Sam Houston 84 at Idaho State 81 (401823353,
+23 lead changes), UC San Diego 80 at UC Davis 88 in overtime (401812873). The games were picked from small unsorted
+`game_flow?season=…&limit=60` windows (no sorted read).
+
+**Used by:** `test/gameFlow.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.

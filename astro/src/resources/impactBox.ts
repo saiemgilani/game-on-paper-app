@@ -85,6 +85,19 @@ interface NcaaName { contest_id: string; player_id: string | null; clean_name: s
 const titleCase = (raw: string) => raw.replace(/[._]+/g, ' ').toLowerCase().replace(/(^|[\s'-])\p{L}/gu, (m) => m.toUpperCase()).trim();
 
 /**
+ * An ESPN NBA / WNBA game's stats.nba.com / stats.wnba.com game and team ids, from the games schema's schedule_crosswalk;
+ * null when the crosswalk has no row. One capped, season-filtered read, shared (same query, same cache entry) by every
+ * game page panel that reads the stats schema (the Impact box, BB-G28's Game flow).
+ */
+export async function retrieveProGame(league: BasketballLeague, season: number, espnGameId: string): Promise<{ gameId: string; teams: { home: number; away: number } } | null> {
+    const p = league; // the crosswalk's prefix: nba_game_id / wnba_game_id
+    const [x] = await retrieveRowsFrom<ProCrosswalk>(BASKETBALL[league].gamesSource, 'schedule_crosswalk',
+        { season: String(season), espn_game_id: espnGameId, select: `${p}_game_id,${p}_home_team_id,${p}_away_team_id`, limit: '1' }, TTL, true, NBA_READ_TIMEOUT_MS);
+    if (!x?.[`${p}_game_id`]) return null;
+    return { gameId: String(x[`${p}_game_id`]), teams: { home: Number(x[`${p}_home_team_id`]), away: Number(x[`${p}_away_team_id`]) } };
+}
+
+/**
  * The reads for one ESPN game, two rounds, strict. `homeId` / `awayId` are the ESPN team ids. The pros: the crosswalk,
  * then the impact rows, the stats box's names, each side's units and the season's player pages; college: the stats.ncaa.org
  * box (contest id and names), then the impact rows, each side's units, each side's crosswalk pairs and the season's player
@@ -99,12 +112,9 @@ export async function retrieveImpactBox(league: BasketballLeague, season: number
     let namesRead: Promise<ImpactName[]>;
     let pageIdsRead: Promise<Map<string, string> | null> = Promise.resolve(null);
     if (PRO_LEAGUES.includes(league)) {
-        const p = league; // the crosswalk's prefix: nba_game_id / wnba_game_id
-        const [x] = await retrieveRowsFrom<ProCrosswalk>(BASKETBALL[league].gamesSource, 'schedule_crosswalk',
-            { season: s, espn_game_id: espnGameId, select: `${p}_game_id,${p}_home_team_id,${p}_away_team_id`, limit: '1' }, TTL, true, NBA_READ_TIMEOUT_MS);
-        if (!x?.[`${p}_game_id`]) return EMPTY_IMPACT;
-        gameId = String(x[`${p}_game_id`]);
-        teams = { home: Number(x[`${p}_home_team_id`]), away: Number(x[`${p}_away_team_id`]) };
+        const x = await retrieveProGame(league, season, espnGameId);
+        if (!x) return EMPTY_IMPACT;
+        ({ gameId, teams } = x);
         namesRead = read<ProName>('player_box', { game_id: gameId, select: 'person_id,first_name,family_name,name_i', limit: PLAYER_LIMIT })
             .then((rows) => rows.map((r) => ({ player_id: String(r.person_id), name: [r.first_name, r.family_name].filter(Boolean).join(' ') || String(r.name_i ?? r.person_id) })));
     } else {

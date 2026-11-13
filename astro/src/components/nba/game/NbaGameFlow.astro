@@ -1,0 +1,96 @@
+---
+// src/components/nba/game/NbaGameFlow.astro
+// BB-G28, behind 'bball-game-flow': the basketball game page's Game flow panel, where football's drive chart sits. The
+// lead chart (home margin over game time, the lead changes and the 10-0 runs) is drawn from the play-by-play the page
+// already has, with the producer's definitions (utils/gameFlow.ts); the totals table is sdv-db's game_flow row for each
+// side (BB-D27). Server-rendered SVG: no script, both themes from CSS.
+import type { NbaGame } from '../../../resources/nbaGame';
+import type { GameFlowReads, GameFlowRow } from '../../../resources/gameFlow';
+import { fmtClock, gameSeconds, leadChanges, leadSeries, periodStart, runs } from '../../../utils/gameFlow';
+import { basketball, pickRegulation } from '../../../basketball/config';
+import { periodShort } from '../../../basketball/periods';
+import { cleanAbbreviation, pickGameColors } from '../../../utils/misc';
+import { fmtPct } from '../../../nba/format';
+
+interface Props { game: NbaGame; flow: GameFlowReads | null }
+const { game, flow } = Astro.props;
+const cfg = basketball(Astro.locals.league);
+const periodSeconds = pickRegulation(cfg.regulation, game.season, game.regulation).periodMinutes * 60;
+const reg = game.regulation;
+const total = gameSeconds(game.periods, reg, periodSeconds);
+const series = leadSeries(game.plays, reg, periodSeconds);
+const changes = leadChanges(series);
+const bigRuns = runs(series);
+const home = cleanAbbreviation(game.home.team);
+const away = cleanAbbreviation(game.away.team);
+
+// the chart: x = game clock, y = home margin (home above the line, away below)
+const W = 800, H = 240, L = 66, R = 8, T = 12, B = 24;
+const top = Math.max(5, Math.ceil(Math.max(...series.map((p) => Math.abs(p.margin))) / 5) * 5);
+const x = (t: number) => L + (t / total) * (W - L - R);
+const y = (m: number) => T + ((top - m) / (2 * top)) * (H - T - B);
+const r1 = (v: number) => Math.round(v * 10) / 10;
+let d = `M${r1(x(0))},${r1(y(0))}`;
+for (let i = 1; i < series.length; i++) d += `H${r1(x(series[i].t))}V${r1(y(series[i].margin))}`;
+const line = `${d}H${r1(x(total))}`;
+const area = `${line}V${r1(y(0))}Z`;
+const step = top <= 10 ? 5 : top <= 30 ? 10 : 20;
+const ticks = Array.from({ length: Math.floor(top / step) * 2 + 1 }, (_, i) => top - (top % step) - i * step).filter((v) => Math.abs(v) <= top);
+const periods = Array.from({ length: Math.max(game.periods, reg) }, (_, i) => i + 1);
+const colors = pickGameColors(game.home.team, game.away.team);
+const cid = `flow-${game.id}`;
+const lc = flow?.home?.lead_changes ?? flow?.away?.lead_changes ?? null;
+const tied = flow?.home?.times_tied ?? flow?.away?.times_tied ?? null;
+const desc = `${home} margin over game time. ${changes.length} lead changes; ${bigRuns.length === 0 ? 'no 10-0 runs' : bigRuns.map((r) => `a ${r.points}-0 ${r.side === 'home' ? home : away} run`).join(', ')}.`;
+
+// the totals table: each producer column, away then home (the scoreboard's order)
+const dash = '—';
+const minus = '−';
+const n = (v: number | null | undefined) => (v == null ? dash : String(v));
+const signed = (v: number | null | undefined, digits = 1) => (v == null ? dash : v > 0 ? `+${v.toFixed(digits)}` : v < 0 ? `${minus}${Math.abs(v).toFixed(digits)}` : (0).toFixed(digits));
+const ROWS: { label: string; title: string; cell: (r: GameFlowRow) => string }[] = [
+    { label: 'Time leading', title: 'Game clock with the team ahead, and its share of the game', cell: (r) => `${fmtClock(r.lead_sec)} (${r.lead_pct == null ? dash : fmtPct(r.lead_pct, 0)})` },
+    { label: 'Largest lead', title: 'The biggest lead, in points', cell: (r) => n(r.largest_lead) },
+    { label: 'Comeback', title: 'The biggest deficit overcome in a win (0 for the loser)', cell: (r) => n(r.comeback) },
+    { label: 'Biggest run', title: 'The most points scored in a row with the opponent scoring none', cell: (r) => (r.max_run == null ? dash : `${r.max_run}-0`) },
+    { label: '10-0 runs', title: 'Runs of 10 or more unanswered points', cell: (r) => n(r.runs_10) },
+    { label: 'Longest drought', title: 'The longest stretch of game clock between two of the team\'s scores', cell: (r) => fmtClock(r.longest_drought_sec) },
+    { label: 'Avg. margin', title: 'Game control: the score margin averaged over the game clock', cell: (r) => signed(r.avg_margin) },
+    { label: 'Avg. win prob.', title: 'Game control: the in-game win probability averaged over the game clock', cell: (r) => (r.avg_wp == null ? dash : fmtPct(r.avg_wp, 0)) },
+    { label: 'Stops', title: 'Defensive possessions on which the opponent scored no points, of all defensive possessions', cell: (r) => (r.stops == null ? dash : `${r.stops} of ${r.def_poss ?? dash}`) },
+    { label: 'Kills', title: 'Three straight stops: each run of n straight stops adds n ÷ 3, rounded down', cell: (r) => n(r.kills) },
+    { label: 'Double kills', title: 'Six straight stops', cell: (r) => n(r.double_kills) },
+];
+const built = flow && (flow.home || flow.away);
+---
+<style set:html={`#${cid}{--flow-home:${colors.light.home};--flow-away:${colors.light.away}}@media (prefers-color-scheme: dark){#${cid}{--flow-home:${colors.dark.home};--flow-away:${colors.dark.away}}}`}></style>
+<figure id={cid} class="mb-3">
+  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby={`${cid}-title ${cid}-desc`} class="w-100 h-auto" style="max-height: 320px">
+    <title id={`${cid}-title`}>{`Lead chart: ${away} at ${home}`}</title>
+    <desc id={`${cid}-desc`}>{desc}</desc>
+    <defs>
+      <clipPath id={`${cid}-above`}><rect x={L} y={T} width={W - L - R} height={r1(y(0) - T)} /></clipPath>
+      <clipPath id={`${cid}-below`}><rect x={L} y={r1(y(0))} width={W - L - R} height={r1(H - B - y(0))} /></clipPath>
+    </defs>
+    {bigRuns.map((r) => (<rect x={r1(x(r.from) - 3)} y={T} width={r1(Math.max(6, x(r.to) - x(r.from) + 6))} height={H - T - B} fill={`var(--flow-${r.side})`} opacity="0.12"><title>{`${r.points}-0 ${r.side === 'home' ? home : away} run (to ${r.away}-${r.home})`}</title></rect>))}
+    {ticks.map((v) => (<g><line x1={L} x2={W - R} y1={r1(y(v))} y2={r1(y(v))} stroke="currentColor" opacity={v === 0 ? 0.6 : 0.12} /><text x={L - 4} y={r1(y(v) + 4)} text-anchor="end" font-size="13" fill="currentColor">{v === 0 ? '0' : `${v > 0 ? home : away} +${Math.abs(v)}`}</text></g>))}
+    {periods.map((p) => (<g>{p > 1 && (<line x1={r1(x(periodStart(p, reg, periodSeconds)))} x2={r1(x(periodStart(p, reg, periodSeconds)))} y1={T} y2={H - B} stroke="currentColor" opacity="0.3" stroke-dasharray="3 3" />)}<text x={r1((x(periodStart(p, reg, periodSeconds)) + x(Math.min(total, periodStart(p + 1, reg, periodSeconds)))) / 2)} y={H - 6} text-anchor="middle" font-size="13" fill="currentColor">{periodShort(p, reg, game.periodKind)}</text></g>))}
+    <path d={area} fill="var(--flow-home)" fill-opacity="0.55" clip-path={`url(#${cid}-above)`} />
+    <path d={area} fill="var(--flow-away)" fill-opacity="0.55" clip-path={`url(#${cid}-below)`} />
+    <path d={line} fill="none" stroke="currentColor" stroke-width="1.25" />
+    {changes.map((p) => (<circle cx={r1(x(p.t))} cy={r1(y(0))} r="3" fill="currentColor"><title>{`Lead change: ${p.away}-${p.home}`}</title></circle>))}
+  </svg>
+  <figcaption class="small text-muted">{home} ahead above the line, {away} below; dots mark the {changes.length} lead changes and the shaded bands the 10-0 runs. The x-axis is game time.</figcaption>
+</figure>
+{flow === null ? (<p class="text-muted" id="flow-unavailable">The game flow totals are temporarily unavailable.</p>) : !built ? (<p class="text-muted" id="flow-empty">The game flow totals are not built for this game yet; they follow the nightly ingest.</p>) : (
+<Fragment>
+<p class="mb-2" id="flow-summary"><strong>{n(lc)}</strong> lead changes &middot; <strong>{n(tied)}</strong> times tied</p>
+<div class="table-responsive"><table class="table table-sm numeral align-middle" aria-label="Game flow">
+  <thead><tr><th scope="col"></th><th scope="col" class="text-end">{away}</th><th scope="col" class="text-end">{home}</th></tr></thead>
+  <tbody>
+    {ROWS.map((row) => (<tr><th scope="row" class="fw-normal"><abbr title={row.title}>{row.label}</abbr></th><td class="text-end">{flow.away ? row.cell(flow.away) : dash}</td><td class="text-end">{flow.home ? row.cell(flow.home) : dash}</td></tr>))}
+  </tbody>
+</table></div>
+<p class="small text-muted mb-0">Totals from the play-by-play and the possessions: game control averages the margin and the win probability over the game clock; a kill is three straight stops.</p>
+</Fragment>
+)}
