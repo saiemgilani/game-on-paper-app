@@ -1,10 +1,10 @@
 // BB-G36, behind 'bball-shift-chart': the game page's shift chart. One row per player (each team's starters, then its bench
-// by minutes), a bar for every stint on the floor coloured by the stint's +/-, period dividers, and the stint's detail on
+// by minutes), a bar for every stint on the floor coloured by the stint's +/- (the site's green / purple shading), period dividers, and the stint's detail on
 // hover. Every number is the producer's (sdv-db game_stints, BB-D32); this places and labels them. The `?shift_on=` param
 // highlights a set of players and draws the stretches they shared the floor: BB-G37's lineup tables link here with
 // shiftHref(). Pure: the server renders the chart.
 import type { NbaGame } from '../resources/nbaGame';
-import type { MappedStint } from '../resources/gameStints';
+import type { MappedStint, ShiftReads } from '../resources/gameStints';
 import { orderPlayers } from '../nba/data/game';
 import { periodShort } from './periods';
 import { cleanAbbreviation } from '../utils/misc';
@@ -50,9 +50,11 @@ export function mmss(secs: number): string {
 
 /**
  * The chart for one final. `periodMinutes` is the game's regulation period length (12 NBA, 10 WNBA and women's college
- * quarters, 20 college halves); `on` the highlighted ESPN ids. A box player with no mapped stint has no row.
+ * quarters, 20 college halves); `on` the highlighted ESPN ids. A box player with no mapped stint has no row. A row's MIN
+ * is the producer's per-player game line (`reads.minutes`, game_player_impact), not a sum of its stints (#455 Q6).
  */
-export function shiftView(game: NbaGame, rows: MappedStint[], periodMinutes: number, on: readonly string[] = []): ShiftView {
+export function shiftView(game: NbaGame, reads: ShiftReads, periodMinutes: number, on: readonly string[] = []): ShiftView {
+    const rows = reads.stints;
     const n = Math.max(game.periods, ...rows.map((r) => Number(r.period)));
     const len = (p: number) => (p <= game.regulation ? periodMinutes * 60 : OT_SECONDS);
     const start: number[] = [0];
@@ -79,7 +81,7 @@ export function shiftView(game: NbaGame, rows: MappedStint[], periodMinutes: num
             const secs = st.reduce((s, r) => s + (r.seconds ?? r.clock_in - r.clock_out), 0);
             covered += secs;
             out.push({
-                id, name: p.name, starter: p.starter, minutes: mmss(secs), on: onSet.has(id),
+                id, name: p.name, starter: p.starter, minutes: minutesLabel(reads.minutes[id]), on: onSet.has(id),
                 bars: st.map((r) => {
                     const span = r.seconds ?? r.clock_in - r.clock_out;
                     const score = r.pts != null && r.opp_pts != null ? ` · ${r.pts}–${r.opp_pts}` : '';
@@ -107,6 +109,9 @@ export function shiftView(game: NbaGame, rows: MappedStint[], periodMinutes: num
     };
 }
 
+/** The producer's minutes as M:SS, to the second (its clock is whole seconds); a dash when it has no line for him. */
+const minutesLabel = (min: number | null | undefined): string => (min == null ? '—' : mmss(Math.round(min * 60)));
+
 /** Two sorted lists of [from, to) intervals: where both cover. */
 export function intersect(a: [number, number][], b: [number, number][]): [number, number][] {
     const x = [...a].sort((p, q) => p[0] - q[0]), y = [...b].sort((p, q) => p[0] - q[0]);
@@ -119,9 +124,13 @@ export function intersect(a: [number, number][], b: [number, number][]): [number
     return out;
 }
 
-/** A stint's fill: blue when the team won the stint, orange when it lost it, grey level; deeper with the margin (10 caps it). */
-export function pmFill(pm: number | null): string {
-    if (pm == null || pm === 0) return 'rgba(140,140,140,0.55)';
-    const a = (0.35 + 0.65 * Math.min(Math.abs(pm), 10) / 10).toFixed(2);
-    return pm > 0 ? `rgba(33,102,172,${a})` : `rgba(230,97,1,${a})`;
+/**
+ * A stint's fill, the site's percentile shading (hulk-bg-level-0..9, light and dark themes): green when the team won the
+ * stint, purple when it lost it, the ramp's middle when level; four steps deeper with the margin, 10 points the deepest
+ * (#455 Q5). 1-3 points: level 6 / 3; 4-6: 7 / 2; 7-9: 8 / 1; 10 or more: 9 / 0.
+ */
+export function pmClass(pm: number | null): string {
+    if (pm == null || pm === 0) return 'hulk-bg-level-5';
+    const step = 1 + Math.floor((Math.min(Math.abs(pm), 10) - 1) / 3);
+    return `hulk-bg-level-${pm > 0 ? 5 + step : 4 - step}`;
 }

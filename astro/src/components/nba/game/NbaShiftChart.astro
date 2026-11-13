@@ -1,23 +1,26 @@
 ---
 // BB-G36, behind 'bball-shift-chart': each team's players, a row each (starters, then the bench by minutes), with a bar per
-// stint on the floor coloured by its +/- and the stint's clock, score and possessions on hover. `?shift_on=<ids>` (ESPN
+// stint on the floor coloured by its +/- (green won, purple lost: the site's percentile shading) and the stint's clock, score and possessions on hover. `?shift_on=<ids>` (ESPN
 // athlete ids; shiftHref) highlights those players and adds a row for the stretches they were all on. Server-rendered:
 // plain HTML bars positioned in percent, so the chart needs no script and fits any width.
 import type { NbaGame } from '../../../resources/nbaGame';
-import type { MappedStint } from '../../../resources/gameStints';
-import { parseShiftOn, pmFill, shiftView } from '../../../basketball/shiftChart';
+import type { ShiftReads } from '../../../resources/gameStints';
+import { parseShiftOn, pmClass, shiftView } from '../../../basketball/shiftChart';
 
-/** `stints` null: the read failed; []: none built for this game (a season before the stints, or the nightly build pending) */
-interface Props { game: NbaGame; stints: MappedStint[] | null; periodMinutes: number }
-const { game, stints, periodMinutes } = Astro.props;
-const view = stints && stints.length > 0 ? shiftView(game, stints, periodMinutes, parseShiftOn(Astro.url.searchParams)) : null;
+/** `reads` null: the read failed; no stints: none built for this game (a season before the stints, or the nightly build pending) */
+interface Props { game: NbaGame; reads: ShiftReads | null; periodMinutes: number }
+const { game, reads, periodMinutes } = Astro.props;
+const view = reads && reads.stints.length > 0 ? shiftView(game, reads, periodMinutes, parseShiftOn(Astro.url.searchParams)) : null;
+// the key: lost by 10+ ... won by 10+, the margins that pick each shade (pmClass)
+const KEY = [-10, -7, -4, -1, 0, 1, 4, 7, 10];
 const recent = Date.now() - Date.parse(game.date) < 3 * 24 * 60 * 60 * 1000;
 const pos = (b: { from: number; to: number }) => `left:${b.from.toFixed(3)}%;width:${Math.max(b.to - b.from, 0.15).toFixed(3)}%`;
 ---
-{stints === null ? (<p class="text-muted m-0" id="shifts-unavailable">The shift chart is temporarily unavailable.</p>)
+{reads === null ? (<p class="text-muted m-0" id="shifts-unavailable">The shift chart is temporarily unavailable.</p>)
 : !view ? (<p class="text-muted m-0" id="shifts-empty">{recent ? 'The shift chart follows the nightly build; check back tomorrow.' : 'No stints for this game: the shift chart covers the seasons the stints are built for.'}</p>) : (
 <Fragment>
-<p class="small text-muted mb-2">Each bar is a stint on the floor: <span class="shift-key" style={`background:${pmFill(6)}`}></span> the team outscored its opponent, <span class="shift-key" style={`background:${pmFill(-6)}`}></span> was outscored, <span class="shift-key" style={`background:${pmFill(0)}`}></span> level; the deeper the colour, the larger the margin. Hover a bar for its clock, score and possessions.</p>
+<p class="small text-muted mb-2">Each bar is a stint on the floor, green when the team outscored its opponent, purple when it was outscored; the deeper the colour, the larger the margin, up to 10 points. Hover a bar for its clock, score and possessions. MIN is each player's minutes in the game.</p>
+<p class="small text-muted mb-2 d-flex align-items-center gap-1 flex-wrap" id="shifts-key">Lost by 10+ {KEY.map((pm) => <span class:list={['shift-key', pmClass(pm)]} aria-hidden="true" title={pm === 0 ? 'level' : `${pm > 0 ? 'won' : 'lost'} by ${Math.abs(pm)}${Math.abs(pm) === 10 ? '+' : ''}`}></span>)} won by 10+</p>
 <div class="row">
   {view.sides.map((s) => (
     <div class="col-12 col-xl-6 mb-3" id={`shifts-${s.key}`}>
@@ -35,7 +38,7 @@ const pos = (b: { from: number; to: number }) => `left:${b.from.toFixed(3)}%;wid
         {s.rows.map((r, i) => (
           <div class:list={['shift-row', { 'shift-dim': s.rows.some((x) => x.on) && !r.on, 'shift-bench': !r.starter && i > 0 && s.rows[i - 1].starter }]} data-player={r.id}>
             <div class:list={['shift-name text-truncate', { 'fw-bold': r.on }]} title={r.name}>{r.name}</div>
-            <div class="shift-track">{view.periods.slice(1).map((p) => <span class="shift-divider" style={`left:${p.at.toFixed(3)}%`}></span>)}{r.bars.map((b) => <span class="shift-bar" style={`${pos(b)};background:${pmFill(b.pm)}`} title={b.label} role="img" aria-label={b.label}></span>)}</div>
+            <div class="shift-track">{view.periods.slice(1).map((p) => <span class="shift-divider" style={`left:${p.at.toFixed(3)}%`}></span>)}{r.bars.map((b) => <span class:list={['shift-bar', pmClass(b.pm)]} style={pos(b)} title={b.label} role="img" aria-label={b.label}></span>)}</div>
             <div class="shift-min numeral">{r.minutes}</div>
           </div>
         ))}
@@ -58,5 +61,5 @@ const pos = (b: { from: number; to: number }) => `left:${b.from.toFixed(3)}%;wid
   .shift-bar { position: absolute; top: 1px; bottom: 1px; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
   .shift-together { background: var(--fg, #343a40); }
   .shift-min { text-align: right; }
-  .shift-key { display: inline-block; width: .9em; height: .9em; vertical-align: -.1em; border-radius: 2px; }
+  .shift-key { display: inline-block; width: .9em; height: .9em; vertical-align: -.1em; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
 </style>

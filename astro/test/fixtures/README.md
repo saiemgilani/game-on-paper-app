@@ -863,6 +863,10 @@ page's own pbp select. Games: BOS 113 at DET 121 (2026-10-20, stats 0022600001),
 goal attempt exactly five of the shooting team are on the floor under the `[clock_out, clock_in)` rule; the WNBA
 crosswalk leaves one of the game's 19 players unmapped (four on for his stretches).
 
+`impact` (BB-G36's MIN, #455 Q6) is the game's `/v1/<schema>/game_player_impact?season=…&game_id=<stats id | contest id>&select=team_id,player_id,minutes,poss,opp_poss,pts,opp_pts,plus_minus,off_rtg,def_rtg,net_rtg&limit=80`,
+the Impact box's own query: the pros' rows are the `impact-box-nba-2027` / `impact-box-wnba-2026` captures' `players` (the same
+games), the college rows were read live on 2026-11-13 (18 a game). Every player's stint seconds add up to his `minutes` × 60.
+
 **Used by:** `test/shotFilters.test.ts`, `test/shiftChart.test.ts`.
 
 **To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.

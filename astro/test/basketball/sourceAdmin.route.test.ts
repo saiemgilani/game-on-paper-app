@@ -26,7 +26,7 @@ vi.mock('../../src/resources/garbageTime', async (orig) => ({ ...(await orig<typ
 // BB-G39's league shot context likewise ('bball-game-shooting', preview): no rows, never a read
 vi.mock('../../src/resources/nbaShots', async (orig) => ({ ...(await orig<typeof import('../../src/resources/nbaShots')>()), retrieveLeagueContextRows: async () => [] }));
 // BB-G38's stints and BB-G36's shift chart likewise ('bball-shot-filters', 'bball-shift-chart', preview): none, never a read
-vi.mock('../../src/resources/gameStints', async (orig) => ({ ...(await orig<typeof import('../../src/resources/gameStints')>()), retrieveGameStints: async () => ({}), retrieveGameStintRows: async () => [] }));
+vi.mock('../../src/resources/gameStints', async (orig) => ({ ...(await orig<typeof import('../../src/resources/gameStints')>()), retrieveGameStints: async () => ({}), retrieveShiftReads: async () => ({ stints: [], minutes: {} }) }));
 
 const api = () => JSON.parse(readFileSync(new URL('../fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
 const ID = '401766458';
