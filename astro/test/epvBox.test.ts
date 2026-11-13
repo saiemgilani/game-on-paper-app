@@ -31,6 +31,7 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         // the cap applies, so a lowered limit would drop rows and fail the tests below
         if (table === 'epv_player_games') return c.players.slice(0, Number(query.limit));
         if (table === 'epv_team_games') return c.teams.slice(0, Number(query.limit));
+        if (table === 'epv_plays') return c.plays.slice(0, Number(query.limit));
         throw new Error(`unexpected table ${table}`);
     },
 }));
@@ -45,7 +46,7 @@ vi.mock('../src/resources/nbaGames', async (orig) => ({ ...(await orig<typeof im
 
 import NbaEpvBox from '../src/components/nba/game/NbaEpvBox.astro';
 import NbaGameRoute from '../src/components/routes/NbaGameRoute.astro';
-import { EMPTY_EPV, EPV_FIRST_SEASON, epvSide, hasEpv, retrieveEpvBox, type EpvBoxReads } from '../src/resources/epvBox';
+import { EMPTY_EPV, EPV_FIRST_SEASON, epvSide, hasEpv, playClock, retrieveEpvBox, type EpvBoxReads } from '../src/resources/epvBox';
 import { fromDataApi } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
@@ -75,6 +76,12 @@ describe('the capture', () => {
         expect(s.home_score - s.away_score).toBe(25);
         expect(team(HOME).net_epv).toBeCloseTo(25.05, 2);
     });
+    test("the biggest plays are the producer's: most EPV added first, and points + after - before", () => {
+        const added = CAP.plays.map((p: any) => p.epv_added);
+        expect(added).toEqual([...added].sort((a: number, b: number) => b - a));
+        for (const p of CAP.plays) expect(p.points + p.epv_after - p.epv_before).toBeCloseTo(p.epv_added, 9);
+        expect(CAP.plays[0].description).toBe("Martin 24' 3PT Jump Shot (3 PTS) (Curry 1 AST)");
+    });
     test('every EPV player is named by the stats box', () => {
         const named = new Set(CAP.names.map((n: any) => n.person_id));
         expect(CAP.players.filter((p: any) => !named.has(p.player_id))).toEqual([]);
@@ -82,16 +89,19 @@ describe('the capture', () => {
 });
 
 describe('retrieveEpvBox', () => {
-    test('the crosswalk first, then three reads in nba_stats, each season-filtered, by the stats game id, capped', async () => {
+    test('the crosswalk first, then four reads in nba_stats, each season-filtered, by the stats game id, capped', async () => {
         const r = await reads();
         expect(api.calls[0]).toEqual({ schema: 'nba', table: 'schedule_crosswalk', query: { season: '2025', espn_game_id: '401703372', select: 'nba_game_id,nba_home_team_id,nba_away_team_id', limit: '1' } });
         const rest = api.calls.slice(1);
-        expect(rest.map((c) => c.table).sort()).toEqual(['epv_player_games', 'epv_team_games', 'player_box']);
+        expect(rest.map((c) => c.table).sort()).toEqual(['epv_player_games', 'epv_plays', 'epv_team_games', 'player_box']);
         for (const c of rest) {
             expect(c.schema).toBe('nba_stats');
             expect(c.query).toMatchObject({ season: '2025', game_id: '0022400003' });
         }
-        expect(Object.fromEntries(rest.map((c) => [c.table, c.query.limit]))).toEqual({ epv_player_games: '80', epv_team_games: '2', player_box: '80' });
+        expect(Object.fromEntries(rest.map((c) => [c.table, c.query.limit]))).toEqual({ epv_player_games: '80', epv_team_games: '2', player_box: '80', epv_plays: '10' });
+        // the biggest plays: the producer orders them, the site does not sort
+        expect(rest.find((c) => c.table === 'epv_plays')!.query).toEqual({ season: '2025', game_id: '0022400003', select: 'period,seconds_remaining,team_id,player_id,description,points,epv_before,epv_after,epv_added', order: '-epv_added', limit: '10' });
+        expect(r.plays).toEqual(CAP.plays);
         expect(r.players).toHaveLength(CAP.players.length);
         expect(r.team).toHaveLength(2);
         expect(r.gameId).toBe('0022400003');
@@ -114,6 +124,15 @@ describe('retrieveEpvBox', () => {
         expect(hasEpv('nba', 2022)).toBe(true);
         expect(hasEpv('nba', 2021)).toBe(false);
         for (const l of ['wnba', 'mbb', 'wbb'] as const) expect(hasEpv(l, 2026)).toBe(false);
+    });
+});
+
+describe('playClock', () => {
+    test('the quarter and the period clock; period 5 (any overtime) is OT', () => {
+        expect(playClock({ period: 1, seconds_remaining: 144 })).toBe('Q1 2:24');
+        expect(playClock({ period: 3, seconds_remaining: 2.5 })).toBe('Q3 0:02');
+        expect(playClock({ period: 5, seconds_remaining: 61 })).toBe('OT 1:01');
+        expect(playClock({ period: 4, seconds_remaining: null })).toBe('Q4');
     });
 });
 
@@ -218,6 +237,23 @@ describe('NbaEpvBox', () => {
         expect(html).not.toContain('undefined');
         expect(html).not.toContain('NaN');
         expect(html).not.toContain('>#');
+    });
+    test("the biggest plays: the ten, in the producer's order, each with its clock, team, text and EPV added", async () => {
+        const html = await render(await reads());
+        const plays = table(html, 'Biggest plays by EPV added');
+        expect(plays.match(/<tr/g)).toHaveLength(10 + 1);
+        const first = plays.split('<tr')[2];
+        expect(first).toContain('Q1 2:24');
+        expect(first).toContain('CHA');
+        expect(first).toContain('Martin 24&#39; 3PT Jump Shot');
+        expect(first).toContain('+2.83');
+        expect(plays).toContain('ORL'); // Isaac's dunk, the event team mapped to its side
+        expect(plays.indexOf('Martin 24')).toBeLessThan(plays.indexOf('Salaün 26'));
+    });
+    test('no plays rows (the plays table not built for the game): no list, the box still renders', async () => {
+        const html = await render({ ...(await reads()), plays: [] });
+        expect(html).not.toContain('id="epv-plays"');
+        expect(html).toContain('aria-label="Team EPV"');
     });
     test('a value that rounds to zero has no sign', async () => {
         const pre = await reads();

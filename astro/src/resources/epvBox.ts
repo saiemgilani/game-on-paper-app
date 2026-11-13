@@ -47,6 +47,26 @@ export interface EpvTeamRow {
 }
 const TEAM_SELECT = 'team_id,off_epv,def_epv,net_epv,poss,opp_poss,off_epv_per_poss,def_epv_per_poss';
 
+/** One scored play (sdv-db epv_plays, GOP Q35): the producer's EPV before and after it, and the EPV it added. */
+export interface EpvPlayRow {
+    /** 1-4, and 5 for any overtime (the booster's state: 2OT reads as OT) */
+    period: number;
+    /** seconds left in the period */
+    seconds_remaining: number | null;
+    /** the event's team (stats id) */
+    team_id: number | null;
+    /** null on a team event */
+    player_id: number | string | null;
+    description: string | null;
+    points: number | null;
+    epv_before: number | null;
+    epv_after: number | null;
+    epv_added: number | null;
+}
+const PLAY_SELECT = 'period,seconds_remaining,team_id,player_id,description,points,epv_before,epv_after,epv_added';
+/** The biggest plays list's length. */
+export const PLAY_LIMIT = '10';
+
 export interface EpvBoxReads {
     /** the stats.nba.com game id; null when the crosswalk does not map the game */
     gameId: string | null;
@@ -55,23 +75,26 @@ export interface EpvBoxReads {
     players: EpvPlayerRow[];
     team: EpvTeamRow[];
     names: ImpactName[];
+    /** the game's plays by EPV added, most first (the producer's order) */
+    plays: EpvPlayRow[];
 }
 /** No producer rows for the game (not mapped, or not built yet). */
-export const EMPTY_EPV: EpvBoxReads = { gameId: null, teams: null, players: [], team: [], names: [] };
+export const EMPTY_EPV: EpvBoxReads = { gameId: null, teams: null, players: [], team: [], names: [], plays: [] };
 
-/** One ESPN game's reads, strict: the crosswalk, then the players, the two team rows and the names. Call only when hasEpv. */
+/** One ESPN game's reads, strict: the crosswalk, then the players, the two team rows, the names and the biggest plays. Call only when hasEpv. */
 export async function retrieveEpvBox(league: BasketballLeague, season: number, espnGameId: string): Promise<EpvBoxReads> {
     const x = await retrieveProGame(league, season, espnGameId);
     if (!x) return EMPTY_EPV;
     const { gameId, teams } = x;
-    const read = <T>(table: string, select: string, limit: string) =>
-        retrieveRowsFrom<T>(leagueSource(league), table, { season: String(season), game_id: gameId, select, limit }, TTL, true, NBA_READ_TIMEOUT_MS);
-    const [players, team, names] = await Promise.all([
+    const read = <T>(table: string, select: string, limit: string, extra: Record<string, string> = {}) =>
+        retrieveRowsFrom<T>(leagueSource(league), table, { season: String(season), game_id: gameId, select, ...extra, limit }, TTL, true, NBA_READ_TIMEOUT_MS);
+    const [players, team, names, plays] = await Promise.all([
         read<EpvPlayerRow>('epv_player_games', PLAYER_SELECT, PLAYER_LIMIT),
         read<EpvTeamRow>('epv_team_games', TEAM_SELECT, '2'),
         retrieveProNames(league, season, gameId),
+        read<EpvPlayRow>('epv_plays', PLAY_SELECT, PLAY_LIMIT, { order: '-epv_added' }),
     ]);
-    return { gameId, teams, players, team, names };
+    return { gameId, teams, players, team, names, plays };
 }
 
 export interface EpvSide {
@@ -88,4 +111,12 @@ export function epvSide(reads: EpvBoxReads, side: 'home' | 'away'): EpvSide {
         .sort((a, b) => (b.epv_own ?? 0) - (a.epv_own ?? 0) || String(a.player_id).localeCompare(String(b.player_id)))
         .map((p) => ({ ...p, name: nameOf.get(String(p.player_id)) ?? `#${p.player_id}` }));
     return { team: reads.team.find((t) => Number(t.team_id) === teamId) ?? null, players };
+}
+
+/** A play's moment: the quarter (OT for any overtime: the table has one OT state) and the period clock, m:ss. */
+export function playClock(p: Pick<EpvPlayRow, 'period' | 'seconds_remaining'>): string {
+    const q = Number(p.period) >= 5 ? 'OT' : `Q${p.period}`;
+    if (p.seconds_remaining == null) return q;
+    const s = Math.max(0, Math.floor(Number(p.seconds_remaining)));
+    return `${q} ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
