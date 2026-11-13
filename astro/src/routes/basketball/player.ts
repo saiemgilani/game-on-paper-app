@@ -19,7 +19,7 @@ import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeason
 import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/playerImpact';
 import { hasEpv, retrievePlayerEpv, retrievePlayerWar, type EpvPlayerSeasonRow, type PlayerWarRow } from '../../resources/playerWar';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
-import { retrievePlayerSituational, type PlayerSplitRow } from '../../resources/situational';
+import { retrievePlayerSituational, retrieveTeamSituational, type PlayerSplitRow } from '../../resources/situational';
 import { isFeatureEnabled } from '../../utils/features';
 import { impactShown } from '../../utils/playerImpact';
 import { parseSituation, situationsFor, type PlayerSituations } from '../../utils/situations';
@@ -141,7 +141,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const warP = withWar ? readDecorative('WAR', league, season, personId, retrievePlayerWar) : undefined;
     const epvP = withWar && hasEpv(league, season) ? readDecorative('EPV', league, season, personId, retrievePlayerEpv) : undefined;
     // BB-G55: the same rule again; college maps his ESPN id to the season's stats.ncaa.org id inside the read
-    const situationsP = isFeatureEnabled('bball-player-situations', Astro.locals) ? readDecorative('situational splits', league, season, personId, retrievePlayerSituational) : undefined;
+    const situationsP = isFeatureEnabled('bball-player-situations', Astro.locals) ? readSituations(league, season, personId) : undefined;
     // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
     const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
     if (poe.poe === null) degraded = true;
@@ -151,7 +151,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const epv = epvP ? { epv: await epvP } : {};
     if (war.war === null || epv.epv === null) degraded = true;
     const situations = situationsP ? { situations: situationsOf(Astro, league, season, rows, await situationsP) } : {};
-    if (situations.situations?.rows === null) degraded = true;
+    if (situations.situations && (situations.situations.rows === null || situations.situations.team === null)) degraded = true;
 
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
@@ -183,10 +183,19 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
 }
 
 /** BB-G55's section: ?situation= (whitelisted; anything else is All), his rows and his teams' tricodes (a traded player's table). */
-function situationsOf(Astro: AstroGlobal, league: BasketballLeague, season: number, players: SeasonPlayerRow[], rows: PlayerSplitRow[] | null): PlayerSituations {
+function situationsOf(Astro: AstroGlobal, league: BasketballLeague, season: number, players: SeasonPlayerRow[], read: SituationReads): PlayerSituations {
     const options = situationsFor(league, season);
     const tricodes = new Map(players.map((r) => [String(r.team_id), r.team_tricode]));
-    return { situation: parseSituation(Astro.url.searchParams.get('situation'), options), options, rows, tricodes };
+    return { situation: parseSituation(Astro.url.searchParams.get('situation'), options), options, ...read, tricodes };
+}
+
+type SituationReads = { rows: PlayerSplitRow[] | null; team: PlayerSplitRow[] | null };
+/** His split rows, then (review Q14) his teams' own rows, keyed by his rows' team ids; each null when its read failed. */
+async function readSituations(league: BasketballLeague, season: number, personId: number): Promise<SituationReads> {
+    const rows = await readDecorative('situational splits', league, season, personId, retrievePlayerSituational);
+    const ids = [...new Set((rows ?? []).map((r) => r.team_id))];
+    const team = ids.length ? await readDecorative('team situational splits', league, season, personId, (l, s) => retrieveTeamSituational(l, s, ids)) : [];
+    return { rows, team };
 }
 
 /** BB-G6's read (the same person id as readPlayerPoe's); null when it failed. */

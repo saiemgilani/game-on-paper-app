@@ -93,7 +93,8 @@ export const FLAGS: Record<string, FeatureState> = {
     'bball-war': 'preview',
     // The player page's Situations section (BB-G55) on /<league>/players/[id], inside each league's flag: the team page's
     // Situation select of URLs (All / Clutch / by period / Leading / Trailing / Garbage time out / vs top N / Transition /
-    // Second chance) over his rows in sdv-db's situational_player; college through ncaa_player_crosswalk. Off: no read and
+    // Second chance) over his rows in sdv-db's situational_player, each beside his team's situational_team row; college through
+    // ncaa_player_crosswalk. Off: no read and
     // the player page is today's, byte for byte.
     'bball-player-situations': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and

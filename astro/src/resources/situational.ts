@@ -4,7 +4,8 @@
  * stats.wnba.com player id; `mbb` / `wbb`, keyed by the ESPN team id and the stats.ncaa.org player id). One player-season
  * is one (family, split) row per team he played for; every number is the producer's (sdv-py *_situational_player).
  * College's player pages are keyed by the ESPN athlete id, so his season's stats.ncaa.org id comes from
- * `ncaa_player_crosswalk` (BB-D37) first. Strict, so an outage is never shown as a player with no possessions.
+ * `ncaa_player_crosswalk` (BB-D37) first. His team's own rows (situational_team, the same columns and keys) sit beside his
+ * (review Q14). Strict, so an outage is never shown as a player with no possessions.
  *
  * ponytail: `SituationalRow` and its columns are the team page's (GOP#416, BB-G25, the same file); when the two stacks
  * meet, keep one copy of each and both reads.
@@ -19,6 +20,8 @@ import { leagueSource, type BasketballLeague } from '../utils/league';
 const TTL = 6 * 60 * 60;
 /** A player-season is at most 25 split rows (11 families) per team; five teams fit, and a bad filter never pages silently. */
 const PLAYER_LIMIT = '125';
+/** A team-season is at most 25 split rows (11 families). */
+const TEAM_LIMIT = '40';
 
 export interface SituationalRow {
     family: string;
@@ -48,4 +51,15 @@ export async function retrievePlayerSituational(league: BasketballLeague, season
     const id = isNcaaDashboards(league) ? await retrieveNcaaPlayerId(source, season, personId, TTL, NBA_READ_TIMEOUT_MS) : String(personId);
     if (id === null) return [];
     return retrieveRowsFrom<PlayerSplitRow>(source, 'situational_player', { season: String(season), player_id: id, select: `team_id,${COLS}`, limit: PLAYER_LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS);
+}
+
+/**
+ * His teams' own split rows in the season (situational_team: every possession, with him on the floor or not), one read per
+ * team he played for (one for almost every player), bounded and strict like his. The team ids are his rows': stats.nba.com's
+ * for the pros, ESPN's in college, the table's own keys.
+ */
+export async function retrieveTeamSituational(league: BasketballLeague, season: number, teamIds: number[]): Promise<PlayerSplitRow[]> {
+    const source = leagueSource(league);
+    const reads = teamIds.map((t) => retrieveRowsFrom<PlayerSplitRow>(source, 'situational_team', { season: String(season), team_id: String(t), select: `team_id,${COLS}`, limit: TEAM_LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS));
+    return (await Promise.all(reads)).flat();
 }

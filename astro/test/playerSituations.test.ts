@@ -2,8 +2,9 @@
 // up to All within a family), the pure steps (the league's options, the whitelisted ?situation=, the rows per team), the
 // read (situational_player in the league's season schema by person id; college by his season's stats.ncaa.org id from
 // ncaa_player_crosswalk), the page-side step (the flag gates the read; a failed read keeps the page and is never cached),
-// the section and the page: flag off is byte for byte the NBA byte-identity capture. On real producer output
-// (fixtures/README.md: player-situations.json.gz). Every read is mocked.
+// the section and the page: flag off is byte for byte the NBA byte-identity capture. His team's own rows sit beside his
+// (review Q14: situational_team, one read per team). On real producer output (fixtures/README.md: player-situations.json.gz,
+// player-situations-team.json.gz). Every read is mocked.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
@@ -23,12 +24,14 @@ afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 
 type Row = any; // fixture rows: the producer frames, checked by the tests below
 const PS = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/player-situations.json.gz', import.meta.url))).toString()) as Record<'nba' | 'wnba' | 'mbb' | 'wbb' | 'mbbXwalk' | 'wbbXwalk', Row[]>;
+const PST = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/player-situations-team.json.gz', import.meta.url))).toString()) as Record<'nba' | 'wnba' | 'mbb' | 'wbb', Row[]>;
 const fx = (path: string) => JSON.parse(readFileSync(new URL(`./fixtures/${path}.json`, import.meta.url)).toString());
 
-const reads = vi.hoisted(() => ({ situational: vi.fn() }));
+const reads = vi.hoisted(() => ({ situational: vi.fn(), team: vi.fn() }));
 vi.mock('../src/resources/situational', async (orig) => ({
     ...(await orig<typeof import('../src/resources/situational')>()),
     retrievePlayerSituational: (...a: unknown[]) => reads.situational(...a),
+    retrieveTeamSituational: (...a: unknown[]) => reads.team(...a),
 }));
 const sdv = vi.hoisted(() => ({ from: vi.fn() }));
 vi.mock('../src/resources/sdv', async (orig) => ({
@@ -81,8 +84,10 @@ beforeAll(async () => {
 afterAll(() => { vi.useRealTimers(); });
 beforeEach(() => {
     reads.situational.mockReset();
+    reads.team.mockReset();
     sdv.from.mockReset();
     reads.situational.mockResolvedValue(PS.nba);
+    reads.team.mockResolvedValue(PST.nba);
 });
 function fakeAstro(on: boolean, query = '?season=2026') {
     const cache: unknown[] = [];
@@ -101,6 +106,23 @@ describe('the captures', () => {
                 for (const k of ['poss', 'opp_poss', 'pts', 'opp_pts']) expect(parts.reduce((a, r) => a + r[k], 0)).toBe(all[k]);
             }
         }
+    });
+    test("his team's rows: the same team, every split of his, the same contract; his possessions are a subset of the team's", () => {
+        for (const l of LEAGUES) {
+            const [his, team] = [PS[l], PST[l]];
+            expect(new Set(team.map((r) => r.team_id))).toEqual(new Set(his.map((r) => r.team_id)));
+            for (const r of his) {
+                const t = find(team, r.family, r.split);
+                expect(t, `${l} ${r.family}/${r.split}`).toBeTruthy();
+                expect(r.poss).toBeLessThanOrEqual(t.poss);
+            }
+            const all = find(team, 'all', 'all');
+            for (const family of new Set(team.map((r) => r.family))) {
+                const parts = team.filter((r) => r.family === family);
+                for (const k of ['poss', 'opp_poss', 'pts', 'opp_pts']) expect(parts.reduce((a, r) => a + r[k], 0)).toBe(all[k]);
+            }
+        }
+        expect(find(PST.nba, 'chance', 'second_chance') && find(PST.wnba, 'chance', 'second_chance')).toBeTruthy();
     });
     test("college has no second-chance rows (no offensive-rebound flag); the pros do", () => {
         expect([find(PS.nba, 'chance', 'second_chance'), find(PS.wnba, 'chance', 'second_chance')].every(Boolean)).toBe(true);
@@ -146,6 +168,13 @@ describe('the rows', () => {
         expect(t.map((x) => x.rows.length)).toEqual([2, 2]);
         expect(playerSituationRows([], s('clutch'))).toEqual([]);
     });
+    test("each of his rows carries his team's row in the same split, from his own team only; none without team rows", () => {
+        const [t] = playerSituationRows(PS.nba, s('clutch'), PST.nba);
+        expect(t.team).toEqual([find(PST.nba, 'clutch', 'clutch'), find(PST.nba, 'all', 'all')]);
+        expect(playerSituationRows(PS.nba, s('clutch'))[0].team).toEqual([undefined, undefined]);
+        const other = PST.nba.map((r) => ({ ...r, team_id: 1 }));
+        expect(playerSituationRows(PS.nba, s('clutch'), other)[0].team).toEqual([undefined, undefined]);
+    });
 });
 
 describe('the read', () => {
@@ -169,6 +198,23 @@ describe('the read', () => {
                 [leagueSource(l), 'situational_player', { season: '2026', player_id: xwalk[0].ncaa_player_id, select: COLS, limit: LIMIT }],
             ]);
         }
+    });
+    test("his teams' rows: situational_team in the same schema, one bounded read per team, his rows' team ids", async () => {
+        const { retrieveTeamSituational } = await actual();
+        for (const l of LEAGUES) {
+            sdv.from.mockReset();
+            sdv.from.mockResolvedValueOnce(PST[l]);
+            const id = PS[l][0].team_id;
+            expect(await retrieveTeamSituational(l, 2026, [id])).toEqual(PST[l]);
+            expect(sdv.from).toHaveBeenCalledTimes(1);
+            expect(sdv.from).toHaveBeenLastCalledWith(leagueSource(l), 'situational_team', { season: '2026', team_id: String(id), select: COLS, limit: '40' }, 21600, true, NBA_READ_TIMEOUT_MS);
+        }
+        sdv.from.mockReset();
+        sdv.from.mockResolvedValueOnce(PST.nba).mockResolvedValueOnce([]);
+        expect(await retrieveTeamSituational('nba', 2026, [PS.nba[0].team_id, 1])).toEqual(PST.nba);
+        expect(sdv.from).toHaveBeenCalledTimes(2);
+        sdv.from.mockRejectedValueOnce(new Error('503 situational_team'));
+        await expect(retrieveTeamSituational('nba', 2026, [1])).rejects.toThrow('503');
     });
     test('college: no matched pair is no rows and no second read; a failed crosswalk read rejects', async () => {
         const { retrievePlayerSituational } = await actual();
@@ -194,6 +240,9 @@ describe('the player page', () => {
         expect(reads.situational).toHaveBeenCalledWith('nba', 2026, PID);
         expect(r.situations!.situation.key).toBe('clutch');
         expect(r.situations!.rows).toEqual(PS.nba);
+        expect(reads.team).toHaveBeenCalledTimes(1);
+        expect(reads.team).toHaveBeenCalledWith('nba', 2026, [PS.nba[0].team_id]);
+        expect(r.situations!.team).toEqual(PST.nba);
         expect(a.cache).toEqual([playerCache('nba')]);
         reads.situational.mockRejectedValueOnce(new Error('404 situational_player'));
         const b = fakeAstro(true, '?season=2026&situation=bogus');
@@ -201,13 +250,22 @@ describe('the player page', () => {
         expect(rb.situations!.rows).toBeNull();
         expect(rb.situations!.situation.key).toBe('all');
         expect(b.cache.at(-1)).toBe(false);
+        expect(reads.team).toHaveBeenCalledTimes(1); // no rows of his: no team read
+    });
+    test('a failed team read keeps his rows, is null and is never cached', async () => {
+        reads.team.mockRejectedValueOnce(new Error('503 situational_team'));
+        const a = fakeAstro(true, '?season=2026&situation=clutch');
+        const r = ok(await prepareNbaPlayer(a.astro));
+        expect(r.situations!.rows).toEqual(PS.nba);
+        expect(r.situations!.team).toBeNull();
+        expect(a.cache.at(-1)).toBe(false);
     });
 });
 
 describe('the section', () => {
-    const data = (l: BasketballLeague, rows: Row[] | null, key: string, tricodes = new Map<string, string>()): Data => {
+    const data = (l: BasketballLeague, rows: Row[] | null, key: string, tricodes = new Map<string, string>(), team: Row[] | null = []): Data => {
         const options = situationsFor(l, 2026);
-        return { situation: parseSituation(key, options), options, rows, tricodes };
+        return { situation: parseSituation(key, options), options, rows, team, tricodes };
     };
     const render = (l: BasketballLeague, d: Data) => container.renderToString(PlayerSituations, { props: { data: d, season: 2026, current: 2027, basePath: `/${l}/players/9`, name: 'Him' }, locals: { league: l } as any });
     test("NBA clutch: the select of URLs, the situation's row and All, the producer's numbers", async () => {
@@ -219,6 +277,22 @@ describe('the section', () => {
         expect(html).toMatch(new RegExp(`>Clutch</th><td class="numeral text-end">${c.games}</td>[\\s\\S]*?>${c.poss}</td><td class="numeral text-end">${c.off_rtg.toFixed(1)}</td>`));
         expect(html).toContain('>+85</td>'); // his clutch +/- (2025-26)
         expect(html).not.toMatch(/<th scope="col">Team<\/th>|undefined|NaN/);
+        expect(html).not.toContain(': team</th>'); // no team rows given
+    });
+    test("each row of his is followed by his team's own row in the same split, the producer's numbers", async () => {
+        const html = await render('nba', data('nba', PS.nba, 'clutch', new Map(), PST.nba));
+        const [c, a] = [find(PST.nba, 'clutch', 'clutch'), find(PST.nba, 'all', 'all')];
+        expect(html).toMatch(new RegExp(`>Clutch</th>[\\s\\S]*?</tr>\\s*<tr class="text-muted situations-team"><th scope="row" class="fw-normal text-nowrap">Clutch: team</th><td class="numeral text-end">${c.games}</td>[\\s\\S]*?>${c.poss}</td><td class="numeral text-end">${c.off_rtg.toFixed(1)}</td>`));
+        expect(html).toMatch(new RegExp(`>All: team</th><td class="numeral text-end">${a.games}</td>[\\s\\S]*?>${a.poss.toLocaleString('en-US')}</td>`)); // 8,213
+        expect(html.match(/situations-team"/g)).toHaveLength(2);
+        expect(html).toContain('Each team row is the team');
+        const failed = await render('nba', data('nba', PS.nba, 'clutch', new Map(), null));
+        expect(failed).toContain('id="situations-team-unavailable"');
+        expect(failed).toContain('id="situations-player"');
+        expect(failed).not.toContain('situations-team"');
+        const traded = await render('wnba', data('wnba', [...PS.wnba, ...PS.wnba.map((r) => ({ ...r, team_id: 1 }))], 'transition', new Map([[String(PS.wnba[0].team_id), 'LVA']]), PST.wnba));
+        expect(traded.match(/situations-team"/g)).toHaveLength(2); // only Las Vegas has team rows here
+        expect(traded).toMatch(/<tr class="text-muted situations-team"><td class="text-nowrap">LVA<\/td><th scope="row" class="fw-normal text-nowrap">Transition: team<\/th>/);
     });
     test('college: no Second chance; a situation he never played in says so; WBB quarters', async () => {
         const html = await render('mbb', data('mbb', PS.mbb, 'ot'));

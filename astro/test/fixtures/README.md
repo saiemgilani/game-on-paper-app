@@ -852,6 +852,19 @@ the `ncaa_player_id` of `player-impact-xwalk.json.gz`'s crosswalk captures (GOP#
 **To regenerate:** rerun the four reads (season filter, select and limit as above, never unfiltered), wrap them as above with
 the two crosswalk ids and gzip.
 
+## `player-situations-team.json.gz`
+The team rows beside the player's in the Situations section (BB-G55 review Q14, `retrieveTeamSituational`), captured live on
+2026-11-13, sequentially, the `data` array of each response, no edits, all `season=2026`,
+`select=team_id,family,split,games,minutes,poss,opp_poss,pts,opp_pts,plus_minus,off_rtg,def_rtg,net_rtg&limit=40` (the
+module's own read), as `{nba, wnba, mbb, wbb}`: `/v1/nba_stats/situational_team?team_id=1610612760` (Oklahoma City, 25
+split rows), `/v1/wnba_stats/situational_team?team_id=1611661319` (Las Vegas, 24), `/v1/mbb/situational_team?team_id=150`
+(Duke, 19) and `/v1/wbb/situational_team?team_id=2579` (South Carolina, 23): the teams of `player-situations.json.gz`'s
+four players. The pros carry the `chance` family (first / second chance); college does not.
+
+**Used by:** `test/playerSituations.test.ts`.
+
+**To regenerate:** rerun the four reads (season filter, select and limit as above, never unfiltered) and gzip the wrapper.
+
 ## `player-impact-xwalk.json.gz`
 College's Impact panel through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of
 each response, no edits, all `season=2026`, as `{mbbXwalk, mbbRapm, mbbPv, wbbXwalk, wbbRapm}`:

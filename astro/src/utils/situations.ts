@@ -68,11 +68,16 @@ export function situationRows<R extends SituationalRow>(rows: R[], s: Situation)
     return own ? [own, all] : [all];
 }
 
-/** A player's rows per team he played for, most possessions (in All) first; each team's as situationRows. */
-export function playerSituationRows(rows: PlayerSplitRow[], s: Situation): { teamId: number; rows: PlayerSplitRow[] }[] {
+/**
+ * A player's rows per team he played for, most possessions (in All) first; each team's as situationRows. `team` is, row for
+ * row, that team's own producer row in the same split (review Q14: side by side, never blended); undefined with none.
+ */
+export function playerSituationRows(rows: PlayerSplitRow[], s: Situation, teamRows: PlayerSplitRow[] = []): { teamId: number; rows: PlayerSplitRow[]; team: (PlayerSplitRow | undefined)[] }[] {
     const teams = [...new Set(rows.map((r) => r.team_id))];
+    const theirs = (teamId: number, r: PlayerSplitRow) => teamRows.find((t) => t.team_id === teamId && t.family === r.family && t.split === r.split);
     return teams
-        .map((teamId) => ({ teamId, rows: situationRows(rows.filter((r) => r.team_id === teamId), s) }))
+        .map((teamId) => situationRows(rows.filter((r) => r.team_id === teamId), s))
+        .map((own, i) => ({ teamId: teams[i], rows: own, team: own.map((r) => theirs(teams[i], r)) }))
         .filter((t) => t.rows.length > 0)
         .sort((a, b) => (b.rows.at(-1)?.poss ?? 0) - (a.rows.at(-1)?.poss ?? 0));
 }
@@ -82,6 +87,8 @@ export interface PlayerSituations {
     options: Situation[];
     /** null when a read failed (the section says so) */
     rows: PlayerSplitRow[] | null;
+    /** his teams' own rows (situational_team), beside his; null when that read failed (his rows still show) */
+    team: PlayerSplitRow[] | null;
     /** team id -> tricode, for a player who played for more than one team */
     tricodes: Map<string, string>;
 }

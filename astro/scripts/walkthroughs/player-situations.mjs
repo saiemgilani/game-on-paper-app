@@ -1,4 +1,5 @@
-// The player page's Situations section (BB-G55): scroll to it, pick Clutch, then Second chance, from the Situation select.
+// The player page's Situations section (BB-G55): scroll to it, pick Clutch, then Second chance, from the Situation select
+// (each row of his followed by his team's own row).
 // Behind 'bball-player-situations' inside 'nba': pass WALKTHROUGH_COOKIE (see README.md) or run against a tree with the flags forced on.
 export default async (page, base) => {
   const path = '/nba/players/1628983?season=2026';
