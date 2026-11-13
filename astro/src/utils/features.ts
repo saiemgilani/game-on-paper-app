@@ -87,6 +87,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // Stays 'preview' until the producer ships player_impact's <m>_rank / <m>_pct (Akshay on #408); the Rank columns and
     // shading then appear with no GOP change. College's panel: RAPM (ncaa_rapm, through ncaa_player_crosswalk) and box BPM.
     'bball-impact': 'preview',
+    // Play-style archetype chips (BB-G17) inside each league's flag, from sdv-db's player_play_styles / team_play_styles
+    // (BB-D20): offense and defense on /nba/players/[id], one box-based style on the college player pages, defense with its
+    // runner-up on /nba/team/[id]. No WNBA table and no team offense archetype. Off: no read and both pages are today's, byte
+    // for byte.
+    'bball-play-styles': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

@@ -17,10 +17,12 @@ import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
 import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/playerImpact';
+import { PLAYER_PLAY_STYLE_LEAGUES, retrievePlayerPlayStyle } from '../../resources/playStyles';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { isFeatureEnabled } from '../../utils/features';
 import { impactShown } from '../../utils/playerImpact';
 import type { BasketballLeague } from '../../utils/league';
+import { playerPlayStyles, type PlayStyleChip } from '../../utils/playStyles';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
 
@@ -50,6 +52,8 @@ export interface BasketballPlayerParams {
     poe?: ShotQualityRow[] | null;
     /** BB-G6, only with 'bball-impact' on: his impact rows (player_impact, college player_value); null when the read failed */
     impact?: PlayerImpactRow[] | null;
+    /** BB-G17, only with 'bball-play-styles' on, NBA and college: his play-style chips; null when the read failed */
+    playStyles?: PlayStyleChip[] | null;
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -127,11 +131,15 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     // BB-G6: the same rule as BB-G15's below, started first so the two reads run together
     // college reads through ncaa_player_crosswalk (BB-D37); utils/playerImpact.ts COLLEGE_IMPACT is its kill switch
     const impactP = isFeatureEnabled('bball-impact', Astro.locals) && impactShown(isNcaaDashboards(league)) ? readPlayerImpact(league, season, personId) : undefined;
+    // BB-G17: the same rule; the WNBA has no play-style table
+    const stylesP = isFeatureEnabled('bball-play-styles', Astro.locals) && PLAYER_PLAY_STYLE_LEAGUES.includes(league) ? readPlayerPlayStyles(league, season, personId) : undefined;
     // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
     const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
     if (poe.poe === null) degraded = true;
     const impact = impactP ? { impact: await impactP } : {};
     if (impact.impact === null) degraded = true;
+    const playStyles = stylesP ? { playStyles: await stylesP } : {};
+    if (playStyles.playStyles === null) degraded = true;
 
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
@@ -156,7 +164,18 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
         ...poe,
         ...impact,
+        ...playStyles,
     };
+}
+
+/** BB-G17's read (the page's person id: stats.nba.com's for the NBA, ESPN's in college) as chips; null when it failed. */
+async function readPlayerPlayStyles(league: BasketballLeague, season: number, personId: number): Promise<PlayStyleChip[] | null> {
+    try {
+        return playerPlayStyles(await retrievePlayerPlayStyle(league, season, personId), league !== 'nba');
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} play styles for player ${personId}: ${e}, ${e?.stack}`);
+        return null;
+    }
 }
 
 /** BB-G6's read (the same person id as readPlayerPoe's); null when it failed. */

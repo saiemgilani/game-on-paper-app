@@ -28,6 +28,8 @@ const fx = (path: string) => JSON.parse(readFileSync(new URL(`./fixtures/${path}
 
 const impact = vi.hoisted(() => vi.fn());
 vi.mock('../src/resources/playerImpact', () => ({ retrievePlayerImpact: (...a: unknown[]) => impact(...a) }));
+// BB-G17's play-style chips read the Data API with 'bball-play-styles' on (preview): never from a test (no row: no chip)
+vi.mock('../src/resources/playStyles', async (orig) => ({ ...(await orig<typeof import('../src/resources/playStyles')>()), retrievePlayerPlayStyle: async () => [], retrieveTeamPlayStyle: async () => [] }));
 const sdv = vi.hoisted(() => ({ rows: vi.fn(), from: vi.fn() }));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
