@@ -6,6 +6,8 @@ import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/containe
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 // BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
 vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
+// BB-G6's Impact panel reads the Data API with 'bball-impact' on (preview): never from a test (test/playerImpact.test.ts covers the read)
+vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => [] }));
 import { BASKETBALL, courtFor } from '../../src/basketball/config';
 import { NCAA_USAGE_NOTE, defaultScatterConference, withSeasonMembers } from '../../src/basketball/dashboards';
 import { leagueContextFromRows, shotsFromRows } from '../../src/nba/adapters';
@@ -118,6 +120,9 @@ describe('the MBB dashboard pages', () => {
     test('/mbb/players/<p26>: the season bars, the scope, the NCAA court, box-score USG%', async () => {
         const id = p26().person_id;
         const html = size('/mbb/players/[p26]', await page('players/[id].astro', `/mbb/players/${id}`, { id: String(id) }));
+        // 'bball-impact' is on here (preview: true): college's Impact panel and its link (no rows mocked: the empty state)
+        expect(html).toContain('id="impact-empty"');
+        expect(html).toContain('href="#impact"');
         mbbPage(html, '2025-26 regular season + postseason');
         expect(html).toContain('Among players with 40+ field-goal attempts this regular season + postseason;');
         expect(html).toContain('else stats.ncaa.org shot charts.'); // review Minor 3: not the NBA's "play-by-play shots"

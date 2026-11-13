@@ -16,8 +16,10 @@ import { placeholderSplit } from '../../nba/data/placeholder';
 import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
+import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/playerImpact';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { isFeatureEnabled } from '../../utils/features';
+import { impactShown } from '../../utils/playerImpact';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
@@ -46,6 +48,8 @@ export interface BasketballPlayerParams {
     coverage?: string | null;
     /** BB-G15, only with 'bball-poe' on: his shot quality season rows (one per team); null when the read failed */
     poe?: ShotQualityRow[] | null;
+    /** BB-G6, only with 'bball-impact' on: his impact rows (player_impact, college player_value); null when the read failed */
+    impact?: PlayerImpactRow[] | null;
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -120,9 +124,14 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         console.error(`player ${personId}: the seasons read failed: ${seasonsR.reason}`);
     }
 
+    // BB-G6: the same rule as BB-G15's below, started first so the two reads run together
+    // college reads through ncaa_player_crosswalk (BB-D37); utils/playerImpact.ts COLLEGE_IMPACT is its kill switch
+    const impactP = isFeatureEnabled('bball-impact', Astro.locals) && impactShown(isNcaaDashboards(league)) ? readPlayerImpact(league, season, personId) : undefined;
     // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
     const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
     if (poe.poe === null) degraded = true;
+    const impact = impactP ? { impact: await impactP } : {};
+    if (impact.impact === null) degraded = true;
 
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
@@ -146,7 +155,18 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         ...(n > 0 ? { unlocated: { count: n, total: shots.length } } : {}),
         ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
         ...poe,
+        ...impact,
     };
+}
+
+/** BB-G6's read (the same person id as readPlayerPoe's); null when it failed. */
+async function readPlayerImpact(league: BasketballLeague, season: number, personId: number): Promise<PlayerImpactRow[] | null> {
+    try {
+        return await retrievePlayerImpact(league, season, personId);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} impact for player ${personId}: ${e}, ${e?.stack}`);
+        return null;
+    }
 }
 
 /** BB-G15's read (the season tables' person id: stats.nba.com's for the NBA/WNBA, ESPN's in college); null when it failed. */

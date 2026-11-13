@@ -82,6 +82,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // section on /<league>/team/[id] (the team and its shooters) and a line on /<league>/players/[id], from sdv-db's
     // shot_quality_game / shot_quality_season (BB-D9). Off: no read and the three pages are today's, byte for byte.
     'bball-poe': 'preview',
+    // The player page's Impact panel (BB-G6) inside each league's flag: RAPM, adjusted RAPM, SPM, BPM, BOBAN and WAR with
+    // their possessions from sdv-db's player_impact (NBA/WNBA). Off: no read and the player page is today's, byte for byte.
+    // Stays 'preview' until the producer ships player_impact's <m>_rank / <m>_pct (Akshay on #408); the Rank columns and
+    // shading then appear with no GOP change. College's panel: RAPM (ncaa_rapm, through ncaa_player_crosswalk) and box BPM.
+    'bball-impact': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
