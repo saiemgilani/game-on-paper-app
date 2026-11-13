@@ -15,6 +15,8 @@ import {
 
 const lite = ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result }: any) => ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result });
 const SEASON_ROWS: Record<number, () => any[]> = { 2003: () => seasonPlayers(2003), 2008: () => seasonPlayers(2008), 2025: () => seasonPlayers(2025), 2026: () => seasonPlayers(2026) };
+// BB-G52's lineup shot chart reads the Data API with 'bball-lineup-shotchart' on (preview): never from a test
+vi.mock('../../src/resources/lineupShots', () => ({ retrieveLineupShotRows: async () => [], retrieveLineupCrosswalk: async () => [] }));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async (s: number, lg: string) => { if (lg !== 'wnba') throw new Error(`league ${lg}`); return SEASON_ROWS[s]?.() ?? []; },

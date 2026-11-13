@@ -15,8 +15,11 @@ import type { Team } from '../../nba/data/teams';
 import type { SortDir } from '../../nba/table';
 import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterRows, teamsFromSeasonRows, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
 import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
+import type { LineupShotsView } from '../../nba/lineupShots';
+import { isFeatureEnabled } from '../../utils/features';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
+import { readLineupShots } from './lineupShots';
 import { readCoverageNote, resolveBasketballSeason } from './season';
 
 export interface BasketballTeamParams {
@@ -38,6 +41,8 @@ export interface BasketballTeamParams {
     empty?: true;
     /** college (R-S14): a member whose placed shots name no player (New Orleans 2443): the dashboard, no roster, no players link */
     noPlayers?: true;
+    /** BB-G52, only with 'bball-lineup-shotchart' on: the lineup ON/OFF shot chart */
+    lineupShots?: LineupShotsView;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -107,7 +112,11 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     if (!hasShots) {
         return { ...resolved, seasons, team: member, line: shootingLine([]), roster: [], dashboard: null, sort, dir, mode, empty: true as const, coverage: coverage ?? null };
     }
+    // BB-G52: read only with the flag on and only once the page will render; a failed read renders the rest, never cached
+    const lineupShots = isFeatureEnabled('bball-lineup-shotchart', Astro.locals) ? await readLineupShots(Astro, league, season, teamId, rows, contextR.value) : undefined;
+    if (lineupShots?.status === 'error') uncacheable(Astro);
     return {
+        ...(lineupShots ? { lineupShots } : {}),
         ...resolved,
         seasons,
         team: member,

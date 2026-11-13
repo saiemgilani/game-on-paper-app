@@ -6,6 +6,7 @@
 // (subjectLabel Team), the roster.
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import Dashboard from '../nba/Dashboard.svelte';
+import LineupShotChart from '../nba/LineupShotChart.astro';
 import NbaNameFilter from '../nba/NbaNameFilter.astro';
 import NbaRosterTable from '../nba/NbaRosterTable.astro';
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
@@ -18,7 +19,7 @@ import { dashboardScope, isNcaaDashboards, NCAA_USAGE_NOTE } from '../../basketb
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: NbaTeamParams }
-const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode, coverage, empty, noPlayers } = Astro.props.data;
+const { season, seasons, current, q, team, line, roster, dashboard, sort, dir, mode, coverage, empty, noPlayers, lineupShots } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -53,13 +54,13 @@ const defaults = { season: String(current) };
     </div>
     {empty ? (<p class="text-muted" id="nba-empty">{emptyNote}</p>) : (<Fragment><nav aria-label="On this page" class="small mb-3">
       <span class="text-muted">On this page:</span>
-      <a href="#charts" class="ms-2">Shot charts</a>
+      <a href="#charts" class="ms-2">Shot charts</a>{lineupShots && (<a href="#lineup-shots" class="ms-2">Lineup shot chart</a>)}
       <a href="#roster" class="ms-2">Roster</a>
     </nav>
     <div id="charts">
       {dashboard!.unlocated && <p class="small text-muted">{placeholderNote(dashboard!.unlocated.count, dashboard!.unlocated.total, 'season')}</p>}
       <Dashboard client:load data={dashboard!} subject={`${team.name} ${label}`} subjectLabel="Team" />
-    </div>
+    </div>{lineupShots && (<LineupShotChart view={lineupShots} teamName={team.name} seasonLabel={label} scope={scope.noun} basePath={basePath} params={Astro.url.searchParams} />)}
     <section id="roster" aria-label="Roster by attempts" class="mt-3">
       <h2 class="h5">Roster by attempts</h2>
       {noPlayers ? (<p class="text-muted" id="nba-no-players">No player is named on these shots.</p>) : (<Fragment><NbaNameFilter tableId="nba-roster" count={roster.length} />

@@ -765,3 +765,17 @@ children). 2026 season, captured 2026-10-18 with the `requestESPN` Safari UA. No
 
 **To regenerate:** re-fetch both URLs and gzip; the test pins the group ids, names and team counts, so a realignment
 change will need the assertion updated too.
+
+## `lineup-shots.json.gz`
+The lineup shot chart's reads (BB-G52, `resources/lineupShots.ts`), captured live from the Data API on 2026-11-12, nothing
+edited. `nba`: every `nba_stats/shot_lineups` row of three 2025-26 Nets games (`season=2026&game_id=` 0022500031,
+0022500040, 0022500049; both teams' shots, 504 rows: 251 Nets attempts, 253 against). `wbb`: every `wbb/shot_lineups` row of
+one 2026-27 Colorado State game (`season=2027&game_id=6607281`, 112 rows), Colorado State's (ESPN 36)
+`ncaa_player_crosswalk?season=2027&espn_team_id=36` rows and its `shot_season_players?season=2027&team_id=36` rows. Columns:
+`game_id, team_id, opp_team_id, x_legacy, y_legacy, shot_value, made, off_player_1..5, def_player_1..5` (the crosswalk:
+`ncaa_player_id, espn_athlete_id`; the season players: `person_id, player_name, team_id`).
+
+**Used by:** `test/lineupShots.test.ts`, `test/nba/team.render.test.ts`.
+
+**To regenerate:** the same reads with `select=` the columns above and `limit=1000` (never unfiltered), JSON-joined as
+`{nba: {season, team_id, rows}, wbb: {season, team_id, rows, crosswalk, season_players}}` and gzipped.
