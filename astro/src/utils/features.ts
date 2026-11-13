@@ -90,6 +90,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // No toggle when the log has no flag (a release from before BB-D7) or no garbage time. Off: no read, `?garbage=` is
     // ignored, and the game page is today's, byte for byte.
     'bball-garbage-time': 'preview',
+    // BB-G26's EPV box: on /<league>/game/[id] for a final from 2021-22 on, each side's EPV added with the ball and allowed
+    // and each player's EPV added on their own events and on-court EPV +/- (sdv-db's epv_player_games / epv_team_games,
+    // BB-D24). All four leagues (BB-G46 added the WNBA and college). Off: no read and the game page is today's, byte for byte.
+    'bball-epv': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

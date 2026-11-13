@@ -82,7 +82,7 @@ interface NcaaPair { ncaa_player_id: string | null; espn_athlete_id: number | st
 interface NcaaName { contest_id: string; player_id: string | null; clean_name: string | null; player: string | null }
 
 /** "ANGELO.BRIZZI" (the stats.ncaa.org box's raw name) as "Angelo Brizzi", for a row with no clean name. */
-const titleCase = (raw: string) => raw.replace(/[._]+/g, ' ').toLowerCase().replace(/(^|[\s'-])\p{L}/gu, (m) => m.toUpperCase()).trim();
+export const titleCase = (raw: string) => raw.replace(/[._]+/g, ' ').toLowerCase().replace(/(^|[\s'-])\p{L}/gu, (m) => m.toUpperCase()).trim();
 
 /**
  * An ESPN NBA / WNBA game's stats.nba.com / stats.wnba.com game and team ids, from the games schema's schedule_crosswalk;
@@ -95,6 +95,16 @@ export async function retrieveProGame(league: BasketballLeague, season: number, 
         { season: String(season), espn_game_id: espnGameId, select: `${p}_game_id,${p}_home_team_id,${p}_away_team_id`, limit: '1' }, TTL, true, NBA_READ_TIMEOUT_MS);
     if (!x?.[`${p}_game_id`]) return null;
     return { gameId: String(x[`${p}_game_id`]), teams: { home: Number(x[`${p}_home_team_id`]), away: Number(x[`${p}_away_team_id`]) } };
+}
+
+/**
+ * A pro game's player names from the stats box, keyed by the stats person id: one capped read, shared (same query, same
+ * cache entry) by the Impact box and BB-G26's EPV box.
+ */
+export async function retrieveProNames(league: BasketballLeague, season: number, gameId: string): Promise<ImpactName[]> {
+    const rows = await retrieveRowsFrom<ProName>(leagueSource(league), 'player_box',
+        { season: String(season), game_id: gameId, select: 'person_id,first_name,family_name,name_i', limit: PLAYER_LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS);
+    return rows.map((r) => ({ player_id: String(r.person_id), name: [r.first_name, r.family_name].filter(Boolean).join(' ') || String(r.name_i ?? r.person_id) }));
 }
 
 /**
@@ -115,8 +125,7 @@ export async function retrieveImpactBox(league: BasketballLeague, season: number
         const x = await retrieveProGame(league, season, espnGameId);
         if (!x) return EMPTY_IMPACT;
         ({ gameId, teams } = x);
-        namesRead = read<ProName>('player_box', { game_id: gameId, select: 'person_id,first_name,family_name,name_i', limit: PLAYER_LIMIT })
-            .then((rows) => rows.map((r) => ({ player_id: String(r.person_id), name: [r.first_name, r.family_name].filter(Boolean).join(' ') || String(r.name_i ?? r.person_id) })));
+        namesRead = retrieveProNames(league, season, gameId);
     } else {
         const box = await read<NcaaName>('ncaa_player_box', { espn_game_id: espnGameId, select: 'contest_id,player_id,clean_name,player', limit: PLAYER_LIMIT });
         if (!box[0]?.contest_id) return EMPTY_IMPACT;

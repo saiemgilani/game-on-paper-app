@@ -846,3 +846,46 @@ within one (the log leaves the defense's technical free throws out); rebounds hi
 
 **To regenerate:** rerun those calls in an sdv-py checkout of `origin/main` (polars, no network beyond the GitHub
 release assets), write `{...}` above with `json.dumps(..., default=str)` and gzip (`mtime=0`).
+## `epv-box-nba-2025.json.gz`
+The reads behind BB-G26's EPV box (`resources/epvBox.ts`) for CHA 89 at ORL 114, 2024-11-12 (ESPN 401703372, stats
+0022400003), as `{league, season, espnGameId, schedule, crosswalk, names, players, teams}`. `crosswalk`, `names` and
+`schedule` were captured live on 2026-11-05 with that module's queries (`/v1/nba/schedule_crosswalk?season=2025&nba_game_id=0022400003&limit=1`,
+its four id columns kept; `/v1/nba_stats/player_box?season=2025&game_id=0022400003&select=person_id,first_name,family_name,name_i&limit=80`;
+`/v1/nba/schedule?season=2025&id=401703372&limit=1` with the score columns), the `data` array of each, no edits. The
+Data API's `epv_player_games` / `epv_team_games` were not built yet (the endpoint answered 404 "unknown table" on
+2026-11-05), so `players` and `teams` are that game's rows of sdv-db's own producer fixtures
+(`tests/fixtures/season_products/nba_epv_{player,team}_games_2025.parquet` on sdv-db main: sdv-py #1113's
+`nba_epv_*` on the published releases, scored by its bundled booster), `season` and `game_id` dropped, no other edits.
+
+**Used by:** `test/epvBox.test.ts`.
+
+**To regenerate:** once the backfill has run, rerun the reads (`epv_player_games` / `epv_team_games?season=2025&game_id=0022400003`,
+limits 80 and 2), wrap them as above and gzip.
+
+## `epv-box-{wnba,mbb,wbb}-2025.json.gz`
+The rows behind BB-G46's EPV box (`resources/epvBox.ts` for the WNBA and college), one 2025 game a league. Built on
+2026-11-10 with no Data API read (it was answering 429 that day): `players` and `teams` are the game's rows of sdv-db's
+producer fixtures (`tests/fixtures/season_products/{wnba,mbb,wbb}_epv_{player,team}_games_2025.parquet` on sdv-db main
+`6f125d3`, sdv-py's `{wnba,mbb}_epv_*` on the published releases), `season` and `game_id` dropped, no other edits; the
+id and name rows are sportsdataverse-py `origin/main` loaders on the sportsdataverse-data releases, filtered to the game:
+
+- **`epv-box-wnba-2025`**, LV at NY, 2025-05-17 (ESPN 401736116, stats 1022500005), as `{league, season, espnGameId,
+  crosswalk, names, players, teams}`: `crosswalk` is `load_wnba_schedule_crosswalk(2025)`'s row (`wnba_game_id`,
+  `wnba_home_team_id`, `wnba_away_team_id`), `names` the whole season's `load_wnba_player_crosswalk(2025)`
+  (`wnba_player_id`, `wnba_player_name`), what `wnba.player_crosswalk?season=2025` serves. The stats box
+  (`wnba_stats.player_box`) starts in 2026, so the season crosswalk names the WNBA rows.
+- **`epv-box-{mbb,wbb}-2025`**, UNC Wilmington 67 at East Carolina 53, 2024-12-03 (ESPN 401722197, contest 5722015) and
+  Winthrop 39 at Georgia Tech 85, 2024-11-04 (ESPN 401711537, contest 5722020), as `{league, season, espnGameId, home,
+  away, box, players, teams, score}`: `box` is `load_ncaa_{mbb,wbb}_player_box(2025)`'s rows for the contest
+  (`contest_id`, `player_id`, `clean_name`, `player`), what `ncaa_player_box?season=2025&espn_game_id=...` serves; `home`,
+  `away` and `score` are `load_{mbb,wbb}_schedule(2025)`'s ESPN ids, names and scores.
+
+Added 2026-11-13 for Q31's player links, captured live with exactly the Impact box's queries (the `data` arrays, no
+edits), in all four `epv-box-*-2025` files: `pages` is `/v1/<nba_stats|wnba_stats|mbb|wbb>/shot_season_players?season=2025&select=person_id&limit=50000`
+(566, 179, 4852 and 4516 rows), and college's `pairs` is `{<espn team id>: ncaa_player_crosswalk?season=2025&espn_team_id=…&select=ncaa_player_id,espn_athlete_id&limit=80}`
+for each side (151 and 350; 59 and 2737). One player a college game has no crosswalk pair or page, so stays unlinked.
+
+**Used by:** `test/epvBox.test.ts`.
+
+**To regenerate:** rerun those calls in an sdv-py checkout (polars, no network beyond the GitHub release assets), filter to
+the game, write `{...}` above with `json.dumps(..., default=str)` and gzip (`mtime=0`).
