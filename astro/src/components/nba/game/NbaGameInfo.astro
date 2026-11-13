@@ -3,8 +3,9 @@
 // BB-G42, behind 'bball-game-info': the officiating crew, each official's regular season (official_seasons, BB-D34) beside
 // the league's average official, and who is unavailable: the pros' injury report and, once the game has a box, its DNPs
 // with the box's reason (college boxes carry none). Pregame, live and final (resources/gameInfo.ts has the sources).
+// `part="summary"` (Q32): the live page's one line under the header, who is out on each side's report (the pros only).
 import type { NbaPlayerRow } from '../../../resources/nbaGame';
-import { OFFICIAL_RATES, leagueAverage, profileFor, type GameInfoReads, type InjuryEntry, type OfficialRate } from '../../../utils/gameInfo';
+import { OFFICIAL_RATES, PREV_SEASON_UNDER, leagueAverage, outFor, prevProfileFor, profileFor, type GameInfoReads, type InjuryEntry, type OfficialRate } from '../../../utils/gameInfo';
 import { basketball, seasonLabelFor } from '../../../basketball/config';
 import { orderPlayers } from '../../../nba/data/game';
 import { fmtDate } from '../../../nba/format';
@@ -19,8 +20,10 @@ interface Props {
     season: number | null
     /** live or final: each side's box rows (their DNPs); absent pregame */
     players?: { home: NbaPlayerRow[]; away: NbaPlayerRow[] }
+    /** 'summary': only the one-line availability summary (nothing without an injury report) */
+    part?: 'summary'
 }
-const { info, home, away, season, players } = Astro.props;
+const { info, home, away, season, players, part } = Astro.props;
 const league = basketball(Astro.locals.league).league;
 const dash = '—';
 const minus = '−';
@@ -34,12 +37,16 @@ const COLS: { key: OfficialRate; label: string; title: string; fmt: (v: number) 
 ];
 const profiles = info?.profiles ?? [];
 const avg = leagueAverage(profiles);
-const crew = (info?.officials ?? []).map((o) => ({ o, p: profileFor(o, profiles) }));
-const withProfiles = crew.some((c) => c.p);
+// Q33: an official under PREV_SEASON_UNDER games this season also gets last season's row, beside it and never blended
+const prevAvg = leagueAverage(info?.prevProfiles ?? []);
+const crew = (info?.officials ?? []).map((o) => { const p = profileFor(o, profiles); return { o, p, prev: prevProfileFor(o, p, info?.prevProfiles ?? []) }; });
+const withProfiles = crew.some((c) => c.p || c.prev);
+const withPrev = crew.some((c) => c.prev);
 const label = season != null ? seasonLabelFor(league, season) : '';
-const cell = (p: Record<string, any> | null, k: OfficialRate, c: typeof COLS[number]) => {
+const prevLabel = season != null ? seasonLabelFor(league, season - 1) : '';
+const cell = (p: Record<string, any> | null, k: OfficialRate, c: typeof COLS[number], base = avg) => {
     const v = p?.[k];
-    return v == null ? null : { text: c.fmt(v), diff: avg[k] != null ? c.diff(v - avg[k]!) : null };
+    return v == null ? null : { text: c.fmt(v), diff: base[k] != null ? c.diff(v - base[k]!) : null };
 };
 const sides = [{ key: 'away', team: away }, { key: 'home', team: home }] as const;
 const injured = (t: Team) => (info?.injuries?.rows ?? []).filter((r) => r.teamId === Number(t.id));
@@ -47,8 +54,11 @@ const dnp = (k: 'home' | 'away') => (players ? orderPlayers(players[k]).dnp : []
 const anyDnp = players != null && sides.some((s) => dnp(s.key).length > 0);
 const ret = (d: string | null) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? `est. return ${fmtDate(d.slice(0, 10))}` : null);
 const detail = (r: InjuryEntry) => [r.status, r.injury, ret(r.returnDate)].filter(Boolean).join(', ');
+const outs = sides.map((s) => ({ abbr: cleanAbbreviation(s.team), rows: outFor(info?.injuries?.rows ?? [], Number(s.team.id)) }));
 ---
-{info === null ? (<p class="small text-muted mb-0" id="game-info-unavailable">The crew and the injury report could not be loaded right now.</p>) : (
+{part === 'summary' ? (info?.injuries && (
+<p class="small mb-2" id="availability-summary"><span class="fw-semibold">Out:</span> {outs.map((s) => `${s.abbr} ${s.rows.length ? s.rows.map((r) => r.name).join(', ') : 'no one out'}`).join(' · ')} · <a href="#info">Game info</a></p>
+)) : info === null ? (<p class="small text-muted mb-0" id="game-info-unavailable">The crew and the injury report could not be loaded right now.</p>) : (
 <Fragment>
 <h3 class="h6">Officials</h3>
 {crew.length === 0 ? (<p class="small text-muted" id="officials-none">No officials listed yet.</p>) : !withProfiles ? (
@@ -59,18 +69,27 @@ const detail = (r: InjuryEntry) => [r.status, r.injury, ret(r.returnDate)].filte
 <table class="table table-sm numeral table-fix-first-col" aria-label="Officials, season profile">
     <thead><tr><th scope="col" class="text-start">{label} regular season</th><th scope="col" class="text-end" title="Games worked">G</th>{COLS.map((c) => <th scope="col" class="text-end" title={c.title}>{c.label}</th>)}</tr></thead>
     <tbody>
-        {crew.map(({ o, p }) => (
+        {crew.map(({ o, p, prev }) => (
+            <Fragment>
             <tr>
                 <th scope="row" class="text-start fw-normal text-nowrap">{o.name}</th>
                 <td class="text-end">{p ? p.games : dash}</td>
                 {COLS.map((c) => { const v = cell(p, c.key, c); return <td class="text-end text-nowrap">{v ? v.text : dash}{v?.diff && <span class="small text-muted"> ({v.diff})</span>}</td>; })}
             </tr>
+            {prev && (
+            <tr class="text-muted small" data-prev-season>
+                <th scope="row" class="text-start fw-normal text-nowrap ps-3">{prevLabel}</th>
+                <td class="text-end">{prev.games}</td>
+                {COLS.map((c) => { const v = cell(prev, c.key, c, prevAvg); return <td class="text-end text-nowrap">{v ? v.text : dash}{v?.diff && <span> ({v.diff})</span>}</td>; })}
+            </tr>
+            )}
+            </Fragment>
         ))}
     </tbody>
     <tfoot><tr class="text-muted"><th scope="row" class="text-start fw-normal">League average</th><td class="text-end">{dash}</td>{COLS.map((c) => <td class="text-end">{avg[c.key] == null ? dash : c.fmt(avg[c.key]!)}</td>)}</tr></tfoot>
 </table>
 </div>
-<p class="small text-muted">{`Each official's completed regular-season games in ${label}; in brackets, the difference from the league average (every official's season, weighted by games). Home figures leave out neutral sites.`}</p>
+<p class="small text-muted">{`Each official's completed regular-season games in ${label}; in brackets, the difference from the league average (every official's season, weighted by games). Home figures leave out neutral sites.${withPrev ? ` An official with fewer than ${PREV_SEASON_UNDER} games in ${label} also shows the ${prevLabel} regular season below, against that season's average.` : ''}`}</p>
 </Fragment>
 )}
 <h3 class="h6">Availability</h3>

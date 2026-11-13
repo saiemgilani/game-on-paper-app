@@ -11,7 +11,7 @@ import { retrieveGameSummary, type ESPNGameSummary } from './espn';
 import type { NbaGame } from './nbaGame';
 import { BASKETBALL } from '../basketball/config';
 import { PRO_LEAGUES, leagueSource, type BasketballLeague } from '../utils/league';
-import { easternDate, injuriesFromSnapshot, latestSnapshot, shiftDate, injuriesFromSummary, officialsFromSummary, officialsFromTable, type GameInfoReads, type OfficialSeason } from '../utils/gameInfo';
+import { easternDate, injuriesFromSnapshot, latestSnapshot, shiftDate, injuriesFromSummary, officialsFromSummary, officialsFromTable, profileFor, thinSeason, type GameInfoReads, type GameOfficial, type OfficialSeason } from '../utils/gameInfo';
 
 /** The season products' window (official_seasons is rebuilt with them). */
 const TTL = 6 * 60 * 60;
@@ -41,11 +41,16 @@ async function capped<T>(rows: Promise<T[]>, limit: string, what: string): Promi
 export const retrieveOfficialSeasons = (league: BasketballLeague, season: number): Promise<OfficialSeason[]> =>
     capped(retrieveRowsFrom<OfficialSeason>(leagueSource(league), 'official_seasons', { season: String(season), select: PROFILE_SELECT, limit: PROFILE_LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS), PROFILE_LIMIT, 'official_seasons');
 
+/** Q33: the previous season's profiles, a second round only while some crew member's season is thin (else none read). */
+const previousSeasons = (league: BasketballLeague, season: number | null, crew: GameOfficial[], profiles: OfficialSeason[]): Promise<OfficialSeason[]> =>
+    season != null && crew.some((o) => thinSeason(profileFor(o, profiles))) ? retrieveOfficialSeasons(league, season - 1) : Promise.resolve([]);
+
 /** The pregame page's: the summary it already holds, and the profiles. */
 export async function pregameInfo(league: BasketballLeague, season: number | null, summary: ESPNGameSummary | null): Promise<GameInfoReads> {
     if (!summary) throw new Error('ESPN summary: no answer');
     const profiles = season != null ? await retrieveOfficialSeasons(league, season) : [];
-    return { officials: officialsFromSummary(summary), profiles, ...(PRO_LEAGUES.includes(league) ? { injuries: { snapshot: false, asOf: null, rows: injuriesFromSummary(summary) } } : {}) };
+    const officials = officialsFromSummary(summary);
+    return { officials, profiles, prevProfiles: await previousSeasons(league, season, officials, profiles), ...(PRO_LEAGUES.includes(league) ? { injuries: { snapshot: false, asOf: null, rows: injuriesFromSummary(summary) } } : {}) };
 }
 
 /** A live or final game's. */
@@ -66,9 +71,11 @@ export async function retrieveGameInfo(league: BasketballLeague, game: NbaGame):
         game.season != null ? retrieveOfficialSeasons(league, game.season) : [],
     ]);
     const teams = [Number(game.home.team.id), Number(game.away.team.id)];
+    const officials = ingested ? officialsFromTable(crewRows ?? []) : officialsFromSummary(summary);
     return {
-        officials: ingested ? officialsFromTable(crewRows ?? []) : officialsFromSummary(summary),
+        officials,
         profiles,
+        prevProfiles: await previousSeasons(league, game.season, officials, profiles),
         ...(pro ? { injuries: final ? { snapshot: true, asOf: latestSnapshot(snapshot ?? []), rows: injuriesFromSnapshot(latestRows(snapshot ?? []), teams) } : { snapshot: false, asOf: null, rows: injuriesFromSummary(summary).filter((r) => teams.includes(r.teamId)) } } : {}),
     };
 }

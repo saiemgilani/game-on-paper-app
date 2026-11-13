@@ -23,6 +23,8 @@ export interface GameInfoReads {
     officials: GameOfficial[];
     /** the game season's official_seasons rows; empty when the season has no officials release (no profiles drawn) */
     profiles: OfficialSeason[];
+    /** Q33: the previous season's rows, read only while a crew member has fewer than PREV_SEASON_UNDER games this season; else empty */
+    prevProfiles: OfficialSeason[];
     /** the pros only (college has no injury source): ESPN's current report pregame and live (`snapshot` false); for a final
      * the last espn_injuries snapshot filed by the game day, `asOf` its date (null: none on file in the window) */
     injuries?: { snapshot: boolean; asOf: string | null; rows: InjuryEntry[] };
@@ -95,6 +97,17 @@ export function profileFor(o: GameOfficial, rows: OfficialSeason[]): OfficialSea
     const key = officialKey(o.name);
     return rows.find((r) => officialKey(r.official_name) === key) ?? null;
 }
+
+/** Q33: below this many games in the game's season, an official's previous-season row shows too (labelled, never blended). */
+export const PREV_SEASON_UNDER = 10;
+/** Whether an official's season is thin enough to show last season's row beside it (no row this season counts as thin). */
+export const thinSeason = (p: OfficialSeason | null) => (p?.games ?? 0) < PREV_SEASON_UNDER;
+/** The official's previous-season row while this season is thin; null otherwise or when last season has none. */
+export const prevProfileFor = (o: GameOfficial, p: OfficialSeason | null, prev: OfficialSeason[]): OfficialSeason | null =>
+    thinSeason(p) ? profileFor(o, prev) : null;
+
+/** Q32: who is out on a side's injury report (ESPN's "Out"; doubtful and questionable players are not out yet). */
+export const outFor = (rows: InjuryEntry[], teamId: number): InjuryEntry[] => rows.filter((r) => r.teamId === teamId && /^out$/i.test(r.status ?? ''));
 
 /** The latest `as_of_date` among snapshot rows; null with none. */
 export const latestSnapshot = (rows: Record<string, any>[]): string | null =>

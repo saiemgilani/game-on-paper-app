@@ -17,14 +17,16 @@ const fetched: string[] = [];
 vi.stubGlobal('fetch', async (input: RequestInfo | URL) => { fetched.push(String(input instanceof Request ? input.url : input)); throw new Error('no network in tests'); });
 afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 
-const api = vi.hoisted(() => ({ calls: [] as { schema: string; table: string; query: Record<string, string> }[], answer: {} as Record<string, any[]>, fail: false }));
+const api = vi.hoisted(() => ({ calls: [] as { schema: string; table: string; query: Record<string, string> }[], answer: {} as Record<string, any[] | ((q: Record<string, string>) => any[])>, fail: false }));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     retrieveRowsFrom: async (source: { schema: string }, table: string, query: Record<string, string>) => {
         api.calls.push({ schema: source.schema, table, query });
         if (api.fail) throw new Error('down');
         if (!(table in api.answer)) throw new Error(`unexpected table ${table}`);
-        return api.answer[table];
+        // a function answers by the query (official_seasons by season, Q33)
+        const a = api.answer[table] as any;
+        return typeof a === 'function' ? a(query) : a;
     },
 }));
 const espn = vi.hoisted(() => ({ summary: vi.fn() }));
@@ -39,7 +41,7 @@ import { retrieveGameInfo, pregameInfo } from '../src/resources/gameInfo';
 import { fromDataApi, type NbaGame } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
-import { easternDate, injuriesFromSnapshot, injuriesFromSummary, injuryText, latestSnapshot, leagueAverage, officialsFromSummary, officialsFromTable, profileFor, shiftDate, type GameInfoReads, type OfficialSeason } from '../src/utils/gameInfo';
+import { PREV_SEASON_UNDER, outFor, prevProfileFor, easternDate, injuriesFromSnapshot, injuriesFromSummary, injuryText, latestSnapshot, leagueAverage, officialsFromSummary, officialsFromTable, profileFor, shiftDate, type GameInfoReads, type OfficialSeason } from '../src/utils/gameInfo';
 
 const gameApi = () => JSON.parse(readFileSync(new URL('./fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
 const OS = F.official_seasons as Record<string, OfficialSeason[]>;
@@ -79,7 +81,7 @@ describe('the crew and its season profiles', () => {
         expect(officialsFromSummary(null)).toEqual([]);
     });
     test('the league average: each rate over every official\'s games, weighted by its _n', () => {
-        for (const rows of Object.values(OS)) {
+        for (const rows of Object.values(OS).filter((r) => r.length > 0)) { // wbb-2025: no release
             const avg = leagueAverage(rows);
             for (const k of ['fouls_per_game', 'fta_per_game', 'pace', 'home_win_pct', 'home_minus_away_fouls'] as const) {
                 const live = rows.filter((r) => r[k] != null && (r[`${k}_n`] ?? 0) > 0);
@@ -233,7 +235,7 @@ let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 const page = (league: string, game: NbaGame, info?: GameInfoReads | null) =>
     container.renderToString(NbaGamePage, { props: { game, ...(info !== undefined ? { info } : {}) }, locals: { league } as App.Locals });
-const ORL: GameInfoReads = { officials: officialsFromTable(F.officials['nba-401766458']), profiles: OS['nba-2025'], injuries: { snapshot: true, asOf: '2025-04-15', rows: [] } };
+const ORL: GameInfoReads = { officials: officialsFromTable(F.officials['nba-401766458']), profiles: OS['nba-2025'], prevProfiles: [], injuries: { snapshot: true, asOf: '2025-04-15', rows: [] } };
 
 describe('NbaGamePage', () => {
     test('without info, the page as before; with it, a Game info panel after the plays', async () => {
@@ -260,14 +262,14 @@ describe('NbaGamePage', () => {
         expect(html).not.toContain('Officials, season profile');
     });
     test('no snapshot on file, no crew yet, a failed read', async () => {
-        const none = await page('nba', nbaFinal(), { officials: [], profiles: [], injuries: { snapshot: true, asOf: null, rows: [] } });
+        const none = await page('nba', nbaFinal(), { officials: [], profiles: [], prevProfiles: [], injuries: { snapshot: true, asOf: null, rows: [] } });
         expect(none).toContain('id="officials-none"');
         expect(none).toContain('id="injuries-none-filed"');
         expect(await page('nba', nbaFinal(), null)).toContain('id="game-info-unavailable"');
     });
     test('college: the WBB crew with profiles and the college note', async () => {
         const g = fromDataApi(gameApi(), 'wbb');
-        const html = await page('wbb', g, { officials: officialsFromSummary(F.summary['wbb-401812873']), profiles: OS['wbb-2026'] });
+        const html = await page('wbb', g, { officials: officialsFromSummary(F.summary['wbb-401812873']), profiles: OS['wbb-2026'], prevProfiles: [] });
         expect(html.split('aria-label="Officials, season profile"')[1].split('</table>')[0].match(/<tr/g)).toHaveLength(1 + 3 + 1);
         expect(html).toContain('id="injuries-none-college"');
         expect(html).toContain('Possessions per 40 minutes');
@@ -275,6 +277,76 @@ describe('NbaGamePage', () => {
 });
 
 const espnPage = (s: any) => ({ gameId: Number(s.header.id), gamepackageJSON: { header: { id: s.header.id, season: { year: 2027 }, competitions: [{ ...s.header.competitions[0], status: { type: { name: 'STATUS_SCHEDULED', description: 'Scheduled' } }, competitors: s.header.competitions[0].competitors.map((c: any) => ({ ...c, team: { ...c.team, name: c.team.abbreviation, location: c.team.abbreviation } })) }] } } });
+
+describe('Q33: the previous season beside a thin one', () => {
+    const LAL = () => officialsFromSummary(F.summary['nba-401909952']);
+    test('LAL at ATL (2026-27): Williams (7 games) and Flores (7) get their 2025-26 rows; Forte (10) does not', () => {
+        expect(PREV_SEASON_UNDER).toBe(10);
+        const rows = LAL().map((o) => { const p = profileFor(o, OS['nba-2027']); return [o.name, p?.games, prevProfileFor(o, p, OS['nba-2026'])?.games ?? null]; });
+        expect(rows).toEqual([['James Williams', 7, 64], ['Brian Forte', 10, null], ['Che Flores', 7, 47]]);
+        // a first-year official (the WNBA's Leah Lanie, 3 games) has no previous row to show
+        const lanie = officialsFromSummary(F.summary['wnba-401856902']).find((o) => o.name === 'Leah Lanie')!;
+        expect(prevProfileFor(lanie, profileFor(lanie, OS['wnba-2026']), OS['wnba-2025'])).toBeNull();
+    });
+    test('the read: a second round for the previous season only while a crew member is thin', async () => {
+        const bySeason = (q: Record<string, string>) => OS[`nba-${q.season}`] ?? [];
+        espn.summary.mockResolvedValue(F.summary['nba-401909952']);
+        api.answer = { official_seasons: bySeason };
+        const live = await retrieveGameInfo('nba', asGame(nbaFinal(), { id: '401909952', date: '2026-11-10T00:00Z', home: '1', away: '13', completed: false, season: 2027 }));
+        expect(api.calls.filter((c) => c.table === 'official_seasons').map((c) => c.query.season)).toEqual(['2027', '2026']);
+        expect(live.prevProfiles).toHaveLength(OS['nba-2026'].length);
+        // ORL-ATL 2025: every official has 59+ games, so no second read
+        api.calls.length = 0; espn.summary.mockResolvedValue(F.summary['nba-401766458']);
+        const full = await retrieveGameInfo('nba', asGame(nbaFinal(), { id: '401766458', date: '2025-04-15T23:30Z', home: '19', away: '1', completed: false, season: 2025 }));
+        expect(api.calls.filter((c) => c.table === 'official_seasons').map((c) => c.query.season)).toEqual(['2025']);
+        expect(full.prevProfiles).toEqual([]);
+        // the pregame path too
+        api.calls.length = 0;
+        await pregameInfo('nba', 2027, F.summary['nba-401909952']);
+        expect(api.calls.map((c) => c.query.season)).toEqual(['2027', '2026']);
+    });
+    test("the table: a labelled 2025-26 row under each thin official, against that season's average, never blended", async () => {
+        const g = { ...nbaFinal(), season: 2027 };
+        const html = await page('nba', g, { officials: LAL(), profiles: OS['nba-2027'], prevProfiles: OS['nba-2026'], injuries: { snapshot: false, asOf: null, rows: [] } });
+        const t = html.split('aria-label="Officials, season profile"')[1].split('</table>')[0];
+        expect(t.match(/data-prev-season/g)).toHaveLength(2);
+        expect(t.match(/<tr/g)).toHaveLength(1 + 3 + 2 + 1);
+        expect(t).toContain('>2025-26</th>');
+        expect(t).toContain('>64<');
+        expect(t.indexOf('James Williams')).toBeLessThan(t.indexOf('>64<'));
+        expect(t.indexOf('>64<')).toBeLessThan(t.indexOf('Brian Forte'));
+        expect(html).toContain('fewer than 10 games in 2026-27 also shows the 2025-26 regular season');
+        expect(html).not.toMatch(/NaN|undefined|Infinity/);
+        // before this season's release exists: the table still draws, from last season's rows
+        const early = await page('nba', g, { officials: LAL(), profiles: [], prevProfiles: OS['nba-2026'], injuries: { snapshot: false, asOf: null, rows: [] } });
+        expect(early).toContain('Officials, season profile');
+        expect(early.match(/data-prev-season/g)).toHaveLength(3);
+    });
+});
+
+describe('Q32: the live one-line availability summary under the header', () => {
+    const live = () => ({ ...nbaFinal(), status: { ...nbaFinal().status, completed: false, name: 'STATUS_IN_PROGRESS' } });
+    const report = (): GameInfoReads => ({ officials: [], profiles: [], prevProfiles: [], injuries: { snapshot: false, asOf: null, rows: injuriesFromSummary(F.summary['nba-401909952']) } });
+    test("who is out on each side's report (ESPN's Out only), away first, with a link to the panel", async () => {
+        const atl = outFor(report().injuries!.rows, 1).map((r) => r.name);
+        expect(atl.slice(0, 2)).toEqual(['Asa Newell', 'Keshon Gilbert']);
+        expect(atl).toHaveLength(4);
+        expect(outFor(report().injuries!.rows, 13)).toEqual([]); // LAL: day-to-day is not out
+        const html = await page('nba', live(), report());
+        const line = html.split('id="availability-summary"')[1].split('</p>')[0];
+        expect(line).toContain('Out:');
+        expect(line).toContain(`ATL ${atl.join(', ')}`);
+        expect(line).toContain('ORL no one out');
+        expect(line).toContain('href="#info"');
+        expect(html.indexOf('id="availability-summary"')).toBeLessThan(html.indexOf('id="wp"'));
+    });
+    test('not on a final, not for college (no report), not with the flag off or a failed read', async () => {
+        expect(await page('nba', nbaFinal(), report())).not.toContain('availability-summary');
+        expect(await page('wbb', { ...fromDataApi(gameApi(), 'wbb'), status: live().status }, { officials: [], profiles: [], prevProfiles: [] })).not.toContain('availability-summary');
+        expect(await page('nba', live())).not.toContain('availability-summary');
+        expect(await page('nba', live(), null)).not.toContain('availability-summary');
+    });
+});
 
 describe('NbaPreGamePage', () => {
     test('on: ESPN\'s injury report and "no officials yet" from the summary the page already reads', async () => {

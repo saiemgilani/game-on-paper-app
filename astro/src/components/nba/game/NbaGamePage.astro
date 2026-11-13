@@ -56,7 +56,7 @@ const split = gt?.rates ? gt : undefined;
 <GenericPage title={title} subtitle={description} slug={gameHref(league, game.id)} breadcrumbs={breadcrumbs} description={description} jsonLd={[jsonLd]}>
   <link href="/assets/css/sticky-table.css" rel="stylesheet">
   <div class="container">
-    <NbaGameHeader game={game} />{sourceTools && <NbaAdminSourceTools game={game} tools={sourceTools} />}
+    <NbaGameHeader game={game} />{sourceTools && <NbaAdminSourceTools game={game} tools={sourceTools} />}{info && !game.status.completed && <NbaGameInfo info={info} home={game.home.team} away={game.away.team} season={game.season} part="summary" />}
     <div class="game-nav-sticky py-1 mb-3 border-top border-bottom"><NavScroller items={items} /></div>
     <Panel id="wp" title="Win probability" show={true}><div slot="panel-body"><NbaWinProbability game={game} colors={colors} /></div></Panel>{flow !== undefined && (<Panel id="flow" title="Game flow" show={true}><div slot="panel-body"><NbaGameFlow game={game} flow={flow} /></div></Panel>)}
     <Panel id="factors" title="Four factors" show={true}><div slot="panel-body">{split ? <NbaGarbageTime game={game} view={split} part="factors" /> : <NbaFourFactors game={game} />}</div></Panel>
