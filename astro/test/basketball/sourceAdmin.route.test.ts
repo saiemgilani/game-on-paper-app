@@ -123,10 +123,12 @@ describe('the tool on the page', () => {
         });
     }
     test('without the tool the page is byte-for-byte today\'s, whatever the URL says', async () => {
-        const html = await render({ preview: true }, '?source=live');
+        // BB-G40's sort link ('bball-pbp-controls', preview) keeps the page's other params, so it is off for the compare
+        const off = { preview: true, flagOverrides: { 'bball-pbp-controls': false } };
+        const html = await render(off, '?source=live');
         expect(html).not.toContain('data-admin-game-tools');
         expect(html).not.toContain('source-compare');
-        expect(html).toBe(await render({ preview: true }, ''));
+        expect(html).toBe(await render(off, ''));
     });
     test('a stray tool prop without an admin session still renders nothing', async () => {
         const html = await render({ preview: true }, '?source=live', { sources: ['live', 'espn'], selected: 'live', espn: null }, mockLive());
