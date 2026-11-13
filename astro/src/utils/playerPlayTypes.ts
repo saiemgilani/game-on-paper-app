@@ -22,11 +22,11 @@ export const PLAY_TYPE_LABELS: Record<string, string> = {
 };
 
 export interface PlayTypeLine { key: string; label: string; freq: number | null; poss: number | null; ppp: number | null; pct: number | null }
-export interface PlayTypesPanel {
+/** One team's Synergy rows as two tables: a traded player gets one of these per team, each as published. */
+export interface TeamPlayTypes {
+    teamId: number;
     team: string | null;
     gp: number | null;
-    /** the other teams he has Synergy rows for this season (not shown) */
-    otherTeams: string[];
     offense: PlayTypeLine[];
     defense: PlayTypeLine[];
 }
@@ -37,11 +37,11 @@ const lines = (rows: SynergyRow[], grouping: string): PlayTypeLine[] => rows
     .sort((a, b) => (b.freq ?? -1) - (a.freq ?? -1) || a.label.localeCompare(b.label));
 
 /**
- * His panel, or null when the producer has no row for him (below every play type's volume floor, or the season not built).
- * stats.nba.com publishes a traded player's play types per team, so the panel shows the team he played the most games
- * for (most possessions on a tie) and names the others; adding teams up would mix two percentile pools.
+ * His tables, one per team, or null when the producer has no row for him (below every play type's volume floor, or the
+ * season not built). stats.nba.com publishes a traded player's play types per team, each with its own percentile pool, so
+ * each team keeps its own rows (nothing summed), the team he played the most games for first (most possessions on a tie).
  */
-export function playTypesPanel(rows: readonly SynergyRow[]): PlayTypesPanel | null {
+export function playTypesPanel(rows: readonly SynergyRow[]): TeamPlayTypes[] | null {
     const byTeam = new Map<number, SynergyRow[]>();
     for (const r of rows) byTeam.set(r.team_id, [...(byTeam.get(r.team_id) ?? []), r]);
     const weight = (t: SynergyRow[]) => [Math.max(...t.map((r) => numberOrNull(r.gp) ?? 0)), t.reduce((a, r) => a + (numberOrNull(r.poss) ?? 0), 0)];
@@ -49,15 +49,14 @@ export function playTypesPanel(rows: readonly SynergyRow[]): PlayTypesPanel | nu
         const [wa, wb] = [weight(a), weight(b)];
         return wb[0] - wa[0] || wb[1] - wa[1];
     });
-    const mine = teams[0];
-    if (!mine) return null;
-    return {
-        team: mine[0].team_abbreviation,
-        gp: weight(mine)[0] || null,
-        otherTeams: teams.slice(1).map((t) => t[0].team_abbreviation ?? '').filter(Boolean),
-        offense: lines(mine, 'Offensive'),
-        defense: lines(mine, 'Defensive'),
-    };
+    if (!teams.length) return null;
+    return teams.map((t) => ({
+        teamId: t[0].team_id,
+        team: t[0].team_abbreviation,
+        gp: weight(t)[0] || null,
+        offense: lines(t, 'Offensive'),
+        defense: lines(t, 'Defensive'),
+    }));
 }
 
 const POSITIONS = [['G', 'Guards'], ['F', 'Forwards'], ['C', 'Centers']] as const;

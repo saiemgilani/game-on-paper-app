@@ -1,6 +1,6 @@
 // BB-G19: the NBA player page's Play types and Defense panels behind 'bball-play-types'. The fixture against stats.nba.com
 // (the Data API's Synergy rows are its own, to the digit), the pure steps (offense and defense ordered by frequency, a
-// traded player's most-games team, the matchup positions in order), the reads (nba_stats, regular season, per-mode and a
+// traded player's teams, stacked and never summed, the matchup positions in order), the reads (nba_stats, regular season, per-mode and a
 // small limit; matchups only from 2017-18, nothing before 2015-16 or outside the NBA), the page-side step (the flag gates
 // every read; a failed read is its own "unavailable" line and is never cached), the panels and the page: flag off is
 // byte for byte the NBA byte-identity capture. On live Data API reads (fixtures/README.md: player-play-types.json.gz).
@@ -119,9 +119,9 @@ describe('the fixture against stats.nba.com', () => {
 
 describe('the pure steps', () => {
     test('offense and defense, each most frequent first, every row kept', () => {
-        const p = playTypesPanel(MPJ.synergy)!;
+        const [p, ...rest] = playTypesPanel(MPJ.synergy)!;
         expect(p.team).toBe('BKN');
-        expect(p.otherTeams).toEqual([]);
+        expect(rest).toEqual([]);
         expect(p.offense.map((l) => l.key)).toEqual(['Spotup', 'Handoff', 'OffScreen', 'Transition', 'Cut', 'Isolation', 'PRBallHandler', 'OffRebound', 'Misc', 'Postup', 'PRRollMan']);
         expect(p.offense[0]).toEqual({ key: 'Spotup', label: 'Spot up', freq: 0.213, poss: 238, ppp: 0.954, pct: 0.316 });
         expect(p.defense.map((l) => l.key)).toEqual(['Spotup', 'PRBallHandler', 'Isolation', 'Handoff', 'PRRollMan', 'Postup', 'OffScreen']);
@@ -129,11 +129,15 @@ describe('the pure steps', () => {
         // a tie in frequency (both 4.9%) goes by label
         expect(p.offense.slice(6, 8).map((l) => [l.label, l.freq])).toEqual([['Pick & roll ball handler', 0.049], ['Putbacks', 0.049]]);
     });
-    test("a traded player: the team he played the most games for, the other named, its rows not mixed in", () => {
-        const p = playTypesPanel(ZU.synergy)!;
-        expect([p.team, p.gp, p.otherTeams]).toEqual(['LAC', 40, ['IND']]);
-        expect(p.offense.find((l) => l.key === 'Postup')!.poss).toBe(145); // LAC's 145, not IND's 21 or the sum
-        expect(p.offense.length + p.defense.length).toBe(ZU.synergy.filter((r) => r.team_abbreviation === 'LAC').length);
+    test("a traded player: each team's rows as published, the most-games team first, nothing summed", () => {
+        const teams = playTypesPanel(ZU.synergy)!;
+        expect(teams.map((t) => [t.team, t.gp])).toEqual([['LAC', 40], ['IND', 5]]);
+        expect(teams[1].defense).toEqual([]); // IND: no defended play type above the volume floor
+        const post = teams.map((t) => t.offense.find((l) => l.key === 'Postup')!.poss);
+        expect(post).toEqual([145, 21]); // each team's own, not the sum
+        for (const t of teams) expect(t.offense.length + t.defense.length).toBe(ZU.synergy.filter((r) => r.team_abbreviation === t.team).length);
+        // every row lands in exactly one team's table
+        expect(teams.reduce((a, t) => a + t.offense.length + t.defense.length, 0)).toBe(ZU.synergy.length);
     });
     test('no row is no panel', () => { expect(playTypesPanel([])).toBeNull(); });
     test('matchups: guards, forwards, centers, then all; the most-guarded players first', () => {
@@ -211,12 +215,13 @@ describe('the panels', () => {
     test("his: offense table, hustle line, defended play types, matchups by position and his most-guarded players", async () => {
         const html = await render(MPJ);
         expect(html).toContain('With BKN &middot; 50 GP');
-        const off = html.match(/<table[^>]*id="play-types-table"[\s\S]*?<\/table>/)![0];
+        expect(html).not.toMatch(/play-types-traded|play-types-floor|play-types-defense-floor/);
+        const off = html.match(/<table[^>]*id="play-types-table-\d+"[\s\S]*?<\/table>/)![0];
         expect(off.match(/<tr data-play-type=/g)).toHaveLength(11);
         expect(off).toMatch(/<th scope="row"[^>]*>Spot up<\/th>\s*<td[^>]*>21\.3%<\/td>\s*<td[^>]*>238<\/td>\s*<td[^>]*>0\.95<\/td>\s*<td[^>]*>32nd<\/td>/);
         expect(html).toContain('<span class="fw-bold">1.9</span> deflections');
         expect(html).toContain('<span class="fw-bold">3.1</span> contested shots (1.3 threes)');
-        const def = html.match(/<table[^>]*id="play-types-defense-table"[\s\S]*?<\/table>/)![0];
+        const def = html.match(/<table[^>]*id="play-types-defense-table-\d+"[\s\S]*?<\/table>/)![0];
         expect(def.match(/<tr data-play-type=/g)).toHaveLength(7);
         expect(def).toContain('PPP allowed');
         const pos = html.match(/<table[^>]*id="matchups-position-table"[\s\S]*?<\/table>/)![0];
@@ -227,8 +232,25 @@ describe('the panels', () => {
         expect(top.match(/<tbody>[\s\S]*<\/tbody>/)![0].match(/<tr>/g)).toHaveLength(8);
         expect(html).not.toMatch(/undefined|NaN|null|n\/a/);
     });
-    test('a traded player names the team shown and the one left out', async () => {
-        expect(await render(ZU)).toContain('With LAC &middot; 40 GP &middot; his IND games are not included');
+    test("a traded player: both teams' tables, stacked and labelled, most games first", async () => {
+        const html = await render(ZU);
+        expect(html).toContain('id="play-types-traded"');
+        expect(html).toContain('He played for LAC and IND this season.');
+        expect(html).not.toContain('not included');
+        const samples = [...html.matchAll(/play-types-sample">With (\w+) &middot; (\d+) GP</g)].map((m) => m[1]);
+        expect(samples).toEqual(['LAC', 'IND']);
+        const off = [...html.matchAll(/<table[^>]*class="[^"]*play-types-table"[\s\S]*?<\/table>/g)].map((m) => m[0]);
+        const def = [...html.matchAll(/<table[^>]*class="[^"]*play-types-defense-table"[\s\S]*?<\/table>/g)].map((m) => m[0]);
+        expect(off).toHaveLength(2);
+        expect(def).toHaveLength(1); // IND has no defended play type above the floor: named, not an empty table
+        expect(html).toContain('No defended play types with IND: Synergy publishes a play type only above a volume floor.');
+        expect(html).not.toContain('id="play-types-floor"');
+        expect(off.map((t) => t.match(/<caption[^>]*>([^<]*)/)![1])).toEqual([expect.stringContaining('with LAC'), expect.stringContaining('with IND')]);
+        expect(def[0].match(/<caption[^>]*>([^<]*)/)![1]).toContain('he defended with LAC.');
+        // each table holds its team's rows as published: post-up possessions 145 then 21, never 166
+        const postPoss = off.map((t) => t.match(/data-play-type="Postup">[\s\S]*?<td[^>]*>[^<]*<\/td>\s*<td[^>]*>(\d+)<\/td>/)![1]);
+        expect(postPoss).toEqual(['145', '21']);
+        expect(html).not.toMatch(/undefined|NaN|null|n\/a/);
     });
     test('failed reads say so, each on its own; no rows say so', async () => {
         const down = await render({ ...MPJ, synergy: null, matchups: null });
@@ -273,7 +295,7 @@ describe('the page', () => {
         const links = '<a href="#play-types" class="ms-2">Play types</a><a href="#defense" class="ms-2">Defense</a>';
         expect(on).toContain(links);
         const panels = on.match(/<section id="play-types"[\s\S]*?<\/section>\s*<section id="defense"[\s\S]*?<\/section>/)![0];
-        expect(panels).toContain('id="play-types-table"');
+        expect(panels).toMatch(/id="play-types-table-\d+"/);
         expect(panels).toContain('id="matchups-top-table"');
         expect(on.indexOf(panels)).toBeLessThan(on.indexOf('id="ranks"'));
         expect(on.replace(panels, '').replace(links, '')).toBe(off.replace(/(<\/nav>)(\s*)/, '$1$2'));
