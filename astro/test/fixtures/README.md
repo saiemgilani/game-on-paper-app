@@ -777,3 +777,52 @@ and `nba_cup_overtime_2027.parquet`), which sdv-db pins equal to the live call. 
 **Used by:** `test/nbaCup.test.ts`.
 
 **To regenerate:** rerun both producers on sdv-db main's fixtures, write the rows as JSON (dates as ISO strings) and gzip.
+
+## `leaderboards-v2-2026.json.gz`
+The basketball leaderboards' reads (BB-G8, `resources/leaderboards.ts`), captured live from the Data API on 2026-11-05.
+Every read is season-filtered with a small limit; nothing is edited except that the two name reads keep only the ids
+the captured lineups use. `reads` lists each query and its row count:
+- `nbaImpact`: `/v1/nba/player_impact?season=2026&season_type=Regular Season&off_poss__gte=100&order=-off_poss&limit=40`
+  with the impact columns as `select`;
+- `mbbImpact`: `/v1/mbb/ncaa_rapm?season=2026&estimand=league&off_poss__gte=200&order=-off_poss&limit=30`;
+- `wnbaRates`, `wnbaStrength`, `wnbaFlow`: `/v1/wnba_stats/{team_season_rates?split=all,team_strength,team_season_flow}`
+  `?season=2026&limit=20` (all 15 teams, every column);
+- `mbbRates`: `/v1/mbb/team_season_rates?season=2026&split=all&limit=30` (an unsorted window of 30 teams);
+- `nbaLineups`: `/v1/nba_stats/lineup_seasons?season=2026&n_players=5&poss__gte=200&order=-poss&limit=30`, and `nbaNames`
+  the rows of `/v1/nba_stats/shot_season_players?season=2026&select=person_id,player_name&limit=800` for those units' ids;
+- `mbbLineups`: `/v1/mbb/lineup_seasons?season=2026&n_players=5&poss__gte=100&order=-poss&limit=20`, and `mbbNames` the
+  rows of `/v1/mbb/ncaa_rapm?season=2026&estimand=league&off_poss__gte=100&select=player_id,player&limit=6000` for those ids.
+
+**Used by:** `test/leaderboardsV2.test.ts`.
+
+**To regenerate:** rerun the reads above (season filter and limit as listed, never unfiltered), filter the two name reads to
+the lineups' player ids, write `{nbaImpact, mbbImpact, wnbaRates, wnbaStrength, wnbaFlow, mbbRates, nbaLineups, nbaNames,
+mbbLineups, mbbNames, reads, captured}` as JSON and gzip.
+
+## `leaderboards-v2-bases-2026.json.gz`
+The per-game and per-75 columns behind the leaderboards' basis select (#413 Q25; sdv-py#1173, sdv-db#222), captured live
+from the Data API on 2026-11-13. Every read is season-filtered with a small limit and kept as served, every column:
+- `nbaRates`, `wnbaRates`, `mbbRates`, `wbbRates`: `/v1/{nba_stats,wnba_stats,mbb,wbb}/team_season_rates?season=2026&split=all`
+  (`limit=10`; WNBA `limit=20`, all 15 teams);
+- `wnbaRates2024`: the same read for WNBA 2024, a season the producer has not backfilled (every new column null);
+- `wnbaFlow`, `wnbaFlow2024`: `/v1/wnba_stats/team_season_flow?season={2026,2024}&limit=20` (`kills_per75` null in 2024);
+- `nbaLineups`: `/v1/nba_stats/lineup_seasons?season=2026&n_players=5&poss__gte=200&order=-poss&limit=20` (early season:
+  no unit is ranked yet), `mbbLineups`: `/v1/mbb/lineup_seasons?season=2026&n_players=5&poss__gte=100&order=-poss&limit=10`.
+
+**Used by:** `test/leaderboardsV2.test.ts`.
+
+**To regenerate:** rerun the reads above (season filter and limit as listed, never unfiltered), write `{nbaRates, wnbaRates,
+mbbRates, wbbRates, wnbaRates2024, wnbaFlow, wnbaFlow2024, nbaLineups, mbbLineups, reads, captured}` as JSON and gzip.
+
+## `leaderboards-current-impact-2026.json.gz`
+The NBA Impact board's Season vs Current view (#463 Q18), the `data` arrays of the board's three live Data API reads of
+2026-11-13, no edits:
+- `seasonRows`: `/v1/nba/player_impact?season=2026&off_poss__gte=250&order=-off_poss&limit=500&season_type=Regular%20Season&select=player_id,player_name,team_id,team_abbreviation,teams,gp,off_poss,def_poss,o_reml_rapm,d_reml_rapm,reml_rapm` (496 rows);
+- `latest`: `/v1/nba/current_impact?season=2026&select=as_of&order=-as_of&limit=1` (`2026-04-07`);
+- `currentRows`: `/v1/nba/current_impact?season=2026&as_of=2026-04-07&order=-off_poss&limit=500` (500 rows, every column).
+491 season rows have a current row of the same player id; neither table ships a `_rank` / `_pct` for these columns yet.
+
+**Used by:** `test/leaderboardsV2.test.ts`.
+
+**To regenerate:** rerun the three reads (season filter and limit as above, never unfiltered), write
+`{seasonRows, latest, currentRows}` as JSON and gzip.
