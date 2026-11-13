@@ -6,9 +6,9 @@
 import type { ImpactBoxReads, ImpactRow, LineupRow } from '../resources/impactBox';
 
 export interface ImpactSide {
-    /** most minutes first; `pageId` is his player page's id (null: no page link, a college player with no crosswalk pair) */
+    /** most minutes first; `pageId` is his player page's id (null: no page link: a college player with no crosswalk pair, or no page this season) */
     players: (ImpactRow & { name: string; pageId: string | null })[];
-    /** the producer's order (most-used first), each with its five names */
+    /** the producer's order (most-used first, every unit), each with its five names */
     units: (LineupRow & { names: string[] })[];
 }
 
@@ -19,8 +19,12 @@ export function impactSide(reads: ImpactBoxReads, side: 'home' | 'away'): Impact
     const teamId = reads.teams?.[side];
     const nameOf = new Map(reads.names.map((n) => [n.player_id, n.name]));
     const name = (id: number | string) => nameOf.get(String(id)) ?? `#${id}`;
-    // the pros' stats ids are the page's; college maps stats.ncaa.org ids through the crosswalk
-    const pageId = (id: number | string) => (reads.pageIds ? reads.pageIds.get(String(id)) ?? null : String(id));
+    // the pros' stats ids are the page's; college maps stats.ncaa.org ids through the crosswalk; either way only a player
+    // the season's shot list names has a page (no shots all season: no page, no link)
+    const pageId = (id: number | string) => {
+        const page = reads.pageIds ? reads.pageIds.get(String(id)) ?? null : String(id);
+        return page !== null && reads.pages.has(page) ? page : null;
+    };
     const players = reads.players.filter((p) => Number(p.team_id) === teamId).sort(byMinutes).map((p) => ({ ...p, name: name(p.player_id), pageId: pageId(p.player_id) }));
     const units = reads.lineups[side].map((u) => ({ ...u, names: [u.player_1, u.player_2, u.player_3, u.player_4, u.player_5].map(name) }));
     return { players, units };

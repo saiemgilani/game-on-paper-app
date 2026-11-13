@@ -794,6 +794,8 @@ The player links (`impact-box-mbb-2026-xwalk`, captured live on 2026-11-10 once 
 Southern Miss 18), the `data` array of each, no edits; every one of the game's 24 impact players has a pair. The module reads
 the same with `limit=80`. The wbb captures carry no crosswalk rows, so their names stay unlinked in the tests.
 
+Every unit and the player pages (`impact-box-units-pages`, captured live on 2026-11-12 with the module's queries) = `{units, pages}`. `units[<capture>]` = `{home, away}`, each side's `/v1/<schema>/game_lineups_used?season=…&game_id=…&team_id=…&order=-seconds&limit=100` (`UNIT_LIMIT`; 14 to 24 units a side, the first five equal to the captures' top five; the non-D1 side none). `pages[<schema>-<season>]` = `/v1/<schema>/shot_season_players?season=…&select=person_id&limit=50000`, the season's shooters, whose ids are the player pages (nba_stats 2027: 452 rows, wnba_stats 2026: 260, mbb 2026: 4,861, wbb 2026: 4,501). The `data` array of each, no edits; every captured impact player with a page id is in his season's list, so the no-page case is tested by removing one id.
+
 **Used by:** `test/impactBox.test.ts`.
 
 **To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
