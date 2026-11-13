@@ -42,7 +42,12 @@ export interface NbaSide {
     team: { id: string; abbreviation: string; displayName: string; location: string; name: string; color?: string | null; alternateColor?: string | null; logo?: string | null }
     score: number | null; winner: boolean; records: string | null; linescores: (number | null)[]
     box: NbaTeamBox | null; rates: NbaTeamRates | null; players: NbaPlayerRow[]
+    /** sdv-py's BB-D31 team splits, counted from the plays: the processor only (live or un-ingested), absent otherwise and in a payload cached before them */
+    splits?: NbaTeamSplits
 }
+
+/** The BB-D31 team split columns the page reads (BB-G32's counted possessions); null before the tip. */
+export interface NbaTeamSplits { possessions: number | null }
 
 /** Which feed produced a `?source=` response: the football payload's block, emitted by the same app.py helper. */
 export type SourceProvenance = NonNullable<ProcessedGame['provenance']>
@@ -102,6 +107,8 @@ export interface NbaProcessorPayload {
     plays: Record<string, any>[]
     /** BB-G29; absent from a payload cached before it */
     excitement?: { gei: number | null; lead_changes: number; max_swing_pts: number | null; completed: boolean }
+    /** BB-D31's game splits (python/nba_game.py); absent from a payload cached before them. Only the team rows are read. */
+    splits?: Record<'home' | 'away', { team: Record<string, any> | null; players: Record<string, any>[] }>
 }
 
 /** sdv-py's prior source: a real line ('spread'), a lineless neutral site ('neutral', prior 0.5) or the league's home-court edge ('hfa'). */
@@ -240,6 +247,7 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague):
             team: { id: String(ti.id), abbreviation: eraAbbreviation(league, ti.id, season, ti.abbreviation), displayName: ti.displayName, location: ti.location, name: ti.name, color: ti.color ?? null, alternateColor: ti.alternateColor ?? null, logo: ti.logos?.[0]?.href ?? null },
             score: num(c.score), winner: c.winner === true, records: record?.summary ?? null,
             linescores: t.linescores, box: teamBox(t.box), rates: teamRates(t.rates), players: j.players[ha].map(playerRow),
+            ...(j.splits?.[ha]?.team ? { splits: { possessions: num(j.splits[ha].team!.possessions) } } : {}),
         }
     }
     const reg = regulationFor(league, season, j.regulation_periods)

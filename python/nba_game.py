@@ -93,4 +93,13 @@ def build_payload(game_id: int, final: dict, frames: dict, regulation_periods: i
         "excitement": game_excitement(
             frames["pbp"], league=frames["league"], regulation_periods=frames["regulation_periods"]
         ),
+        # sdv-py BB-D31, counted from the plays (live too): each side's team split row (null before the tip) and its
+        # players' split rows. Additive; the page reads the team rows only under 'bball-team-grid' (BB-G32).
+        "splits": {
+            ha: {
+                "team": next(iter(_rows(frames["team_game_splits"].filter(pl.col("team_id") == int(side["id"])))), None),
+                "players": _rows(frames["player_game_splits"].filter(pl.col("team_id") == int(side["id"]))),
+            }
+            for ha, side in (("home", home), ("away", away))
+        },
     }
