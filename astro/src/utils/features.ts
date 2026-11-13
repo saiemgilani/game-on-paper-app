@@ -91,6 +91,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // interval, from sdv-db's player_war (BB-D26) and, from 2021-22, epv_player_seasons (sdv-db #223); it closes the
     // Impact panel (a section of its own with 'bball-impact' off), whose own WAR then reads "Impact WAR". Off: no read and the player page is today's, byte for byte.
     'bball-war': 'preview',
+    // The player page's Situations section (BB-G55) on /<league>/players/[id], inside each league's flag: the team page's
+    // Situation select of URLs (All / Clutch / by period / Leading / Trailing / Garbage time out / vs top N / Transition /
+    // Second chance) over his rows in sdv-db's situational_player, each beside his team's situational_team row; college through
+    // ncaa_player_crosswalk. Off: no read and
+    // the player page is today's, byte for byte.
+    'bball-player-situations': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

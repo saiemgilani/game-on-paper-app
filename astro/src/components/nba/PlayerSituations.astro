@@ -1,0 +1,72 @@
+---
+// src/components/nba/PlayerSituations.astro
+// BB-G55, behind 'bball-player-situations': the player page's Situations section, the team page's control (BB-G25) on
+// one player. A plain <select> of URLs (NbaSeasonSelect's pattern: no JS island) picks the situation; one table shows his
+// row in it and the All row, per team played for, each followed by his team's own row in the same split (review Q14: two
+// producer rows side by side, never blended). One number per cell, every one the producer's (sdv-db
+// situational_player); nothing is shaded, since the producer publishes no percentile for a split.
+import type { SituationalRow } from '../../resources/situational';
+import { playerSituationRows, type PlayerSituations } from '../../utils/situations';
+import { fmtDec, fmtInt } from '../../nba/format';
+import { withParams } from '../../nba/links';
+import { generateMarginalString } from '../../utils/misc';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+
+interface Props { data: PlayerSituations; season: number; current: number; basePath: string; name: string }
+const { data, season, current, basePath, name } = Astro.props;
+const league = basketball(Astro.locals.league).league;
+const label = seasonLabelFor(league, season);
+const { situation, options, rows, team, tricodes } = data;
+
+const href = (key: string) => `${withParams(basePath, { season: String(season), situation: key }, { season: String(current), situation: 'all' })}#situations`;
+const ungrouped = options.filter((o) => !o.group);
+const periods = options.filter((o) => o.group === 'By period');
+// the select's order: All and Clutch, the periods, then the rest
+const [lead, rest] = [ungrouped.slice(0, 2), ungrouped.slice(2)];
+
+const dash = '—';
+const int = (v: number | null | undefined) => (v == null ? dash : fmtInt(v));
+const rtg = (v: number | null | undefined) => (v == null ? dash : fmtDec(v, 1));
+const net = (v: number | null | undefined) => (v == null ? dash : generateMarginalString(v, 1, 1));
+const pm = (v: number | null | undefined) => (v == null ? dash : `${v > 0 ? '+' : ''}${fmtInt(v)}`);
+const COLS: { label: string; hover: string; cell: (r: SituationalRow) => string }[] = [
+    { label: 'G', hover: 'Games with a possession in the situation', cell: (r) => int(r.games) },
+    { label: 'Min', hover: 'Minutes on the floor', cell: (r) => int(r.minutes) },
+    { label: 'Poss', hover: 'Offensive possessions', cell: (r) => int(r.poss) },
+    { label: 'ORtg', hover: 'Points scored per 100 possessions', cell: (r) => rtg(r.off_rtg) },
+    { label: 'DRtg', hover: 'Points allowed per 100 possessions', cell: (r) => rtg(r.def_rtg) },
+    { label: 'Net', hover: 'ORtg minus DRtg', cell: (r) => net(r.net_rtg) },
+    { label: '+/-', hover: 'Points scored minus points allowed', cell: (r) => pm(r.plus_minus) },
+];
+const teams = rows ? playerSituationRows(rows, situation, team ?? []) : [];
+const traded = teams.length > 1;
+const sit = situation.label;
+const none = situation.key !== 'all' && teams.every((t) => t.rows.length === 1);
+const rowLabel = (r: SituationalRow) => (r.family === 'all' ? 'All' : sit);
+---
+<section id="situations" aria-label={`${label} situations`} class="mb-4">
+  <h2 class="h5">Situations</h2>
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+    <label class="visually-hidden" for="situation">Situation</label>
+    <select id="situation" class="form-select form-select-sm w-auto" onchange="window.location.href = this.value">
+      {lead.map((o) => (<option value={href(o.key)} selected={o.key === situation.key}>{o.label}</option>))}
+      <optgroup label="By period">{periods.map((o) => (<option value={href(o.key)} selected={o.key === situation.key}>{o.label}</option>))}</optgroup>
+      {rest.map((o) => (<option value={href(o.key)} selected={o.key === situation.key}>{o.label}</option>))}
+    </select>
+  </div>
+  <p class="small text-muted mb-2" id="situation-note">{situation.note} A possession counts when {name} is on the floor as it starts: ORtg and DRtg are the team's in those possessions. Each team row is the team's own in the same situation: every possession, with {name} on the floor or not.</p>{rows && team === null && (<p class="small text-muted mb-2" id="situations-team-unavailable">The team rows are temporarily unavailable.</p>)}
+  {rows === null ? (<p class="text-muted" id="situations-unavailable">The {label} situational splits are temporarily unavailable.</p>) : teams.length === 0 ? (<p class="text-muted" id="situations-empty">No {label} possessions are split by situation for {name} yet.</p>) : (
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0" id="situations-player">
+      <caption class="small text-muted">{name}, {label}{none ? `: no possession in the situation (${sit})` : ''}.</caption>
+      <thead><tr>{traded && (<th scope="col">Team</th>)}<th scope="col">Situation</th>{COLS.map((c) => (<th scope="col" class="text-end"><abbr title={c.hover}>{c.label}</abbr></th>))}</tr></thead>
+      <tbody>
+        {teams.map((t) => t.rows.map((r, i) => (<>
+          <tr>{traded && (<td class="text-nowrap">{tricodes.get(String(t.teamId)) ?? `#${t.teamId}`}</td>)}<th scope="row" class="fw-normal text-nowrap">{rowLabel(r)}</th>{COLS.map((c) => (<td class="numeral text-end">{c.cell(r)}</td>))}</tr>
+          {t.team[i] && (<tr class="text-muted situations-team">{traded && (<td class="text-nowrap">{tricodes.get(String(t.teamId)) ?? `#${t.teamId}`}</td>)}<th scope="row" class="fw-normal text-nowrap">{rowLabel(r)}: team</th>{COLS.map((c) => (<td class="numeral text-end">{c.cell(t.team[i]!)}</td>))}</tr>)}
+        </>)))}
+      </tbody>
+    </table>
+  </div>
+  )}
+</section>
