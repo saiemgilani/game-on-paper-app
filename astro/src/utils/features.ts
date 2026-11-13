@@ -88,7 +88,7 @@ export const FLAGS: Record<string, FeatureState> = {
     // shading then appear with no GOP change. College's panel: RAPM (ncaa_rapm, through ncaa_player_crosswalk) and box BPM.
     'bball-impact': 'preview',
     // WAR, VORP and EPV added (BB-G27) inside each league's flag: the player page's Value block, WAR always with its 90%
-    // interval, from sdv-db's player_war (BB-D26) and, for the NBA from 2021-22, epv_player_games (BB-D24); it closes the
+    // interval, from sdv-db's player_war (BB-D26) and, from 2021-22, epv_player_seasons (sdv-db #223); it closes the
     // Impact panel (a section of its own with 'bball-impact' off), whose own WAR then reads "Impact WAR". Off: no read and the player page is today's, byte for byte.
     'bball-war': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
