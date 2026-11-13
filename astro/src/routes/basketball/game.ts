@@ -97,7 +97,7 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
     if (impact === null || flow === null || epv === null) uncacheable(Astro);
-    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || (epv && (epv.players.length === 0 || epv.team.length < 2)))) setCache(Astro, seasonCache(league));
+    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || (epv && (epv.players.length === 0 || epv.team.length < 2 || epv.plays.length === 0)))) setCache(Astro, seasonCache(league));
     return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}), ...(epv !== undefined ? { epv } : {}) };
 }
 

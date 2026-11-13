@@ -200,6 +200,13 @@ describe('prepareBasketballGame with the flag', () => {
         await prepareBasketballGame(astro, 'nba');
         expect((cache.at(-1) as any).maxAge).toBe(6 * 60 * 60);
     });
+    test('on, box rows but no plays rows yet: held for the season window, so the list appears once built', async () => {
+        const pre = await reads();
+        box.fn = async () => ({ ...pre, plays: [] }); ingested();
+        const { astro, cache } = fakeAstro({ preview: true });
+        await prepareBasketballGame(astro, 'nba');
+        expect((cache.at(-1) as any).maxAge).toBe(6 * 60 * 60);
+    });
     test('on, a failed read: the page renders, the epv is null, nothing is cached', async () => {
         box.fn = async () => { throw new Error('down'); }; ingested();
         const { astro, cache, headers } = fakeAstro({ preview: true });
