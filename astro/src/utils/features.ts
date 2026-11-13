@@ -85,7 +85,7 @@ export const FLAGS: Record<string, FeatureState> = {
     // The player page's Impact panel (BB-G6) inside each league's flag: RAPM, adjusted RAPM, SPM, BPM, BOBAN and WAR with
     // their possessions from sdv-db's player_impact (NBA/WNBA). Off: no read and the player page is today's, byte for byte.
     // Stays 'preview' until the producer ships player_impact's <m>_rank / <m>_pct (Akshay on #408); the Rank columns and
-    // shading then appear with no GOP change. College's panel (box BPM, player_value) waits for BB-D16's crosswalk.
+    // shading then appear with no GOP change. College's panel: RAPM (ncaa_rapm, through ncaa_player_crosswalk) and box BPM.
     'bball-impact': 'preview',
     // WAR, VORP and EPV added (BB-G27) inside each league's flag: the player page's Value panel, WAR always with its 90%
     // interval, from sdv-db's player_war (BB-D26) and, for the NBA from 2021-22, epv_player_games (BB-D24); the Impact
