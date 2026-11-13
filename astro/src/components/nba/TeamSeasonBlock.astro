@@ -70,7 +70,9 @@ const ctx = context && data ? scheduleContext(games, new Map(data.games.map((g) 
 const ctxOf = (id: string) => ctx?.get(id) ?? null;
 const showOpp = ctx !== null && games.some((g) => ctxOf(g.gameId)?.opp);
 const showLine = ctx !== null && games.some((g) => ctxOf(g.gameId)?.spread != null);
+const showProj = ctx !== null && games.some((g) => ctxOf(g.gameId)?.proj != null);
 const ats = ctx ? atsRecord(ctx.values()) : null;
+const vsProj = ctx ? atsRecord(ctx.values(), 'vsProj') : null;
 const b2b = ctx ? b2bRecord(games, ctx) : null;
 const restLabel = (r: number) => (r >= 2 ? '2+' : String(r));
 const spreadLabel = (v: number | null | undefined) => (v == null ? dash : v === 0 ? 'PK' : generateMarginalString(v, 1, 1));
@@ -164,13 +166,13 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
     <summary class="h6 mb-2">Schedule ({fmtInt(games.length)} games)</summary>
     {ctx && (
       <p class="numeral small mb-2" id="season-schedule-context">
-        {showLine && ats && (<Fragment>ATS <span class="fw-bold">{ats.w}-{ats.l}{ats.p > 0 && `-${ats.p}`}</span> &middot; </Fragment>)}Back-to-backs {fmtInt(b2b?.games ?? 0)}{b2b && b2b.w + b2b.l > 0 && (<span class="text-muted"> ({b2b.w}-{b2b.l} on the second night)</span>)}
+        {showLine && ats && (<Fragment>ATS <span class="fw-bold">{ats.w}-{ats.l}{ats.p > 0 && `-${ats.p}`}</span> &middot; </Fragment>)}{showProj && vsProj && (<Fragment>Against our projection <span class="fw-bold" id="season-schedule-vs-proj">{vsProj.w}-{vsProj.l}{vsProj.p > 0 && `-${vsProj.p}`}</span> &middot; </Fragment>)}Back-to-backs {fmtInt(b2b?.games ?? 0)}{b2b && b2b.w + b2b.l > 0 && (<span class="text-muted"> ({b2b.w}-{b2b.l} on the second night)</span>)}
       </p>
     )}
     <div class="table-responsive">
       <table class="table table-sm align-middle mb-0" id="season-schedule">
-        <caption class="small text-muted">{logged ? (<Fragment>Results and upcoming games. Each game's ratings and four factors are in the game log.</Fragment>) : (<Fragment>Each game's own rates (the game page's four factors). A game not yet rated shows dashes.</Fragment>)}{ctx && (<Fragment> Rest: days off before the game (B2B: the second night of a back-to-back; 3 in 4: the third game in four nights). Trip: the game's place in a run of games away from home.{showOpp && " Opp: the opponent's adjusted net rating rank."}{showLine && ' Line: the closing spread on the team (negative: favoured); ATS: the result against it.'}</Fragment>)}</caption>
-        <thead><tr><th scope="col">Date</th><th scope="col">Opponent</th><th scope="col">Result</th>{!logged && (<Fragment><th scope="col" class="text-end">ORtg</th><th scope="col" class="text-end">DRtg</th><th scope="col" class="text-end">Pace</th><th scope="col" class="text-end">eFG%</th><th scope="col" class="text-end">TOV%</th><th scope="col" class="text-end">ORB%</th><th scope="col" class="text-end">FT rate</th></Fragment>)}{ctx && (<Fragment><th scope="col" class="text-end">Rest</th><th scope="col" class="text-end">Trip</th>{showOpp && (<th scope="col" class="text-end">Opp</th>)}{showLine && (<Fragment><th scope="col" class="text-end">Line</th><th scope="col" class="text-center">ATS</th></Fragment>)}</Fragment>)}</tr></thead>
+        <caption class="small text-muted">{logged ? (<Fragment>Results and upcoming games. Each game's ratings and four factors are in the game log.</Fragment>) : (<Fragment>Each game's own rates (the game page's four factors). A game not yet rated shows dashes.</Fragment>)}{ctx && (<Fragment> Rest: days off before the game (B2B: the second night of a back-to-back; 3 in 4: the third game in four nights). Trip: the game's place in a run of games away from home.{showOpp && " Opp: the opponent's adjusted net rating rank."}{showLine && ' Line: the closing spread on the team (negative: favoured); ATS: the result against it.'}{showProj && ' Proj: our pregame projection of the margin (positive: projected to win by); vs Proj: the result against it.'}</Fragment>)}</caption>
+        <thead><tr><th scope="col">Date</th><th scope="col">Opponent</th><th scope="col">Result</th>{!logged && (<Fragment><th scope="col" class="text-end">ORtg</th><th scope="col" class="text-end">DRtg</th><th scope="col" class="text-end">Pace</th><th scope="col" class="text-end">eFG%</th><th scope="col" class="text-end">TOV%</th><th scope="col" class="text-end">ORB%</th><th scope="col" class="text-end">FT rate</th></Fragment>)}{ctx && (<Fragment><th scope="col" class="text-end">Rest</th><th scope="col" class="text-end">Trip</th>{showOpp && (<th scope="col" class="text-end">Opp</th>)}{showLine && (<Fragment><th scope="col" class="text-end">Line</th><th scope="col" class="text-center">ATS</th></Fragment>)}{showProj && (<Fragment><th scope="col" class="text-end">Proj</th><th scope="col" class="text-center">vs Proj</th></Fragment>)}</Fragment>)}</tr></thead>
         <tbody>
           {games.map((g) => {
             const opp = teamHrefFromEspn({ id: g.oppId }, league, season);
@@ -194,6 +196,7 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
                   <td class="numeral text-end">{c.trip ? `${c.trip.game}/${c.trip.of}` : ''}</td>
                   {showOpp && (<td class="numeral text-end" title={c.opp?.rating != null ? `Adjusted net ${generateMarginalString(c.opp.rating, 1, 1)}` : undefined}>{rank(c.opp?.rank)}</td>)}
                   {showLine && (<Fragment><td class="numeral text-end">{spreadLabel(c.spread)}</td><td class="numeral text-center">{c.ats ?? ''}</td></Fragment>)}
+                  {showProj && (<Fragment><td class="numeral text-end">{c.proj == null ? dash : generateMarginalString(c.proj, 1, 1)}</td><td class="numeral text-center">{c.vsProj ?? ''}</td></Fragment>)}
                 </Fragment>)}
               </tr>
             );

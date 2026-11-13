@@ -6,9 +6,11 @@
  * - `team_strength` (BB-D19): every team's adjusted net rating and rank, the opponent-strength column. The pros key it by
  *   the stats.nba.com / stats.wnba.com id, mapped here to ESPN's; college is ESPN-keyed.
  * - `player_box`: the team's minutes and starts per game, the rotation strip (the pros' regular season, as the block).
+ * - `rated_priors` (sdv-py's pregame projections, the game page's rated prior): each game's projected home margin, one
+ *   season-wide read like the lines. Until sdv-db serves the table its 404 is "no projections yet", not a failure.
  * A failed read is null (its columns are left out) and the page is not cached.
  */
-import { retrieveRowsFrom } from './sdv';
+import { SDVRequestError, retrieveRowsFrom } from './sdv';
 import { BASKETBALL } from '../basketball/config';
 import { PRO_LEAGUES, leagueSource, type BasketballLeague } from '../utils/league';
 
@@ -40,6 +42,8 @@ export interface ScheduleContextReads {
     strength: Map<string, OppStrength> | null;
     /** null: the read failed */
     box: RotationBoxRow[] | null;
+    /** each game's projected home margin (exp_home_margin) by ESPN game id; null: the read failed; empty before the table is served */
+    proj: Map<string, number> | null;
 }
 
 const settled = <T>(r: PromiseSettledResult<T>, what: string): T | null => {
@@ -52,13 +56,16 @@ export async function retrieveScheduleContext(league: BasketballLeague, season: 
     const s = String(season);
     const games = BASKETBALL[league].gamesSource;
     const pro = PRO_LEAGUES.includes(league);
-    const [lines, strength, box] = await Promise.allSettled([
+    const [lines, strength, box, proj] = await Promise.allSettled([
         retrieveRowsFrom<LineRow>(games, 'game_lines', { season: s, select: 'game_id,spread_home_close,ats_result', limit: LINES_LIMIT }, TTL, true),
         retrieveRowsFrom<{ team_id: number | string; adj_net_rtg: number | null; adj_net_rtg_rank: number | null }>(leagueSource(league), 'team_strength',
             { season: s, select: 'team_id,adj_net_rtg,adj_net_rtg_rank', limit: STRENGTH_LIMIT }, TTL, true),
         retrieveRowsFrom<RotationBoxRow>(games, 'player_box',
             { season: s, team_id: String(espnId), ...(pro ? { season_type: '2' } : {}), select: 'game_id,athlete_id,athlete_short_name,minutes,starter,did_not_play', limit: BOX_LIMIT }, TTL, true),
+        retrieveRowsFrom<{ game_id: number | string; exp_home_margin: number | null }>(games, 'rated_priors', { season: s, select: 'game_id,exp_home_margin', limit: LINES_LIMIT }, TTL, true)
+            .catch((e) => { if (e instanceof SDVRequestError && e.status === 404) return []; throw e; }),
     ]);
+    const projRows = settled(proj, 'projections');
     const lineRows = settled(lines, 'game lines');
     const strengthRows = settled(strength, 'team strength');
     // the pros' team_strength is keyed by the stats id: the page's games and opponents are ESPN's
@@ -70,5 +77,6 @@ export async function retrieveScheduleContext(league: BasketballLeague, season: 
             return e ? [[String(e), { rating: r.adj_net_rtg, rank: r.adj_net_rtg_rank }] as const] : [];
         })),
         box: settled(box, 'player box'),
+        proj: projRows && new Map(projRows.flatMap((r) => (r.exp_home_margin == null ? [] : [[String(r.game_id), Number(r.exp_home_margin)] as const]))),
     };
 }

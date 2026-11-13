@@ -5,7 +5,8 @@
  * capped at REST_CAP, a season opener capped; a third in four nights is a game whose second-previous game was at most three
  * days earlier. Days are the tip's day where the league keeps its scoreboard. A road trip is a run of games away from home
  * (a neutral site counts as away). The ATS result and the line are the producer's (game_lines); this only turns home/away
- * into the team's side.
+ * into the team's side. The projection is the producer's (rated_priors' exp_home_margin), turned to the team's side; the
+ * result against it (W: won by more than projected, or lost by less) and its W-L are counted here (Q21 on GOP#457).
  */
 import { DateTime } from 'luxon';
 import type { LineRow, OppStrength, RotationBoxRow, ScheduleContextReads } from '../resources/bballScheduleContext';
@@ -29,6 +30,10 @@ export interface GameContext {
     spread: number | null;
     /** null until the game is final, or with no line */
     ats: Ats | null;
+    /** the team's projected margin (positive: projected to win by); null with no projection */
+    proj: number | null;
+    /** the final margin against the projection; null until the game is final, or with no projection */
+    vsProj: Ats | null;
 }
 
 const isTrue = (v: unknown) => v === true || v === 'true' || v === 'TRUE';
@@ -45,6 +50,15 @@ export function teamAts(line: LineRow | undefined, listedHome: boolean): { sprea
     const r = line?.ats_result;
     const ats = r === 'push' ? 'P' : r === 'home' || r === 'away' ? ((r === 'home') === listedHome ? 'W' : 'L') : null;
     return { spread: spread === 0 ? 0 : spread, ats };
+}
+
+/** The team's side of the producer's projected home margin, and (final games) the result against it. */
+export function teamProj(expHome: number | undefined, listedHome: boolean, g: Pick<ScheduleRow, 'completed' | 'teamScore' | 'oppScore'>): { proj: number | null; vsProj: Ats | null } {
+    if (expHome === undefined) return { proj: null, vsProj: null };
+    const proj = listedHome ? expHome : -expHome;
+    if (!g.completed || g.teamScore === null || g.oppScore === null) return { proj, vsProj: null };
+    const d = g.teamScore - g.oppScore - proj;
+    return { proj, vsProj: d > 0 ? 'W' : d < 0 ? 'L' : 'P' };
 }
 
 /** Every schedule game's context by game id. `rows` in date order (scheduleRows); `listedHome` by game id. */
@@ -71,15 +85,16 @@ export function scheduleContext(rows: ScheduleRow[], listedHome: Map<string, boo
             trip: tripOf[i],
             opp: reads.strength?.get(String(g.oppId)) ?? null,
             ...teamAts(reads.lines?.get(g.gameId), listedHome.get(g.gameId) ?? g.venue === 'home'),
+            ...teamProj(reads.proj?.get(g.gameId), listedHome.get(g.gameId) ?? g.venue === 'home', g),
         });
     });
     return out;
 }
 
-/** W-L-P against the closing line over the final games with one. */
-export function atsRecord(ctx: Iterable<GameContext>): { w: number; l: number; p: number } {
+/** W-L-P against the closing line (`ats`) or the projection (`vsProj`) over the final games with one. */
+export function atsRecord(ctx: Iterable<GameContext>, key: 'ats' | 'vsProj' = 'ats'): { w: number; l: number; p: number } {
     const rec = { w: 0, l: 0, p: 0 };
-    for (const c of ctx) if (c.ats) rec[c.ats === 'W' ? 'w' : c.ats === 'L' ? 'l' : 'p']++;
+    for (const c of ctx) { const r = c[key]; if (r) rec[r === 'W' ? 'w' : r === 'L' ? 'l' : 'p']++; }
     return rec;
 }
 

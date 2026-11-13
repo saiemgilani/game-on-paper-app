@@ -129,11 +129,11 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     // BB-G50 rides on the block's schedule and rates, plus one game_flow read; off, nothing more is read
     const teamFlow = seasonBlock && isFeatureEnabled('bball-game-logs', Astro.locals) ? await readTeamFlow(league, season, teamId, seasonBlock) : undefined;
     if (teamFlow === null) uncacheable(Astro);
-    // BB-G53 rides on the block's schedule: three more reads, each settling on its own (a failed one leaves its columns out
+    // BB-G53 rides on the block's schedule: four more reads, each settling on its own (a failed one leaves its columns out
     // and the page uncached); no schedule, or off, and nothing more is read
     const scheduleContext = seasonBlock && seasonBlock.games.length > 0 && isFeatureEnabled('bball-schedule-context', Astro.locals)
         ? await retrieveScheduleContext(league, season, espnIdOf(league, season, teamId)) : undefined;
-    if (scheduleContext && (!scheduleContext.lines || !scheduleContext.strength || !scheduleContext.box)) uncacheable(Astro);
+    if (scheduleContext && (!scheduleContext.lines || !scheduleContext.strength || !scheduleContext.box || !scheduleContext.proj)) uncacheable(Astro);
     const block = flagged ? { seasonBlock, ...(gameSet ? { gameSet } : {}), ...(gameSetCounts !== undefined ? { gameSetCounts } : {}), ...(teamFlow !== undefined ? { teamFlow } : {}), ...(scheduleContext ? { scheduleContext } : {}) } : {};
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons

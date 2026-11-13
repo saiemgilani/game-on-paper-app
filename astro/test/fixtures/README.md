@@ -858,3 +858,14 @@ sequentially, the `data` array of each response, no edits other than the filter 
 **Used by:** `test/bballScheduleContext.test.ts`.
 
 **To regenerate:** rerun the same six reads (season filter and limit as above, never unfiltered), keep the team's games in `lines`, wrap and gzip.
+
+## `schedule-context-proj-nba-2026.json.gz`
+The Nets' rated pregame projections for the schedule's projection column (Q21 on GOP#457), as `{proj}`: `game_id, exp_home_margin`
+for the Nets' 82 games of 2025-26 (the opener has no rating yet, so its margin is null). `rated_priors` is not on the Data API yet
+(sdv-db will serve it once sportsdataverse-py#1193 merges), so this is the producer's own output: `nba_pregame_projections(2026)` from
+that PR's branch (`feat/basketball-rated-priors` at 72d522be), run on 2026-11-13, kept to games with `home_team_id` or
+`away_team_id` 17, then the module's two columns. No other edits.
+
+**Used by:** `test/bballScheduleContext.test.ts`.
+
+**To regenerate:** once sdv-db serves it, `nba/rated_priors?season=2026&select=game_id,exp_home_margin&limit=8000`, kept to the Nets' games.

@@ -19,6 +19,8 @@ const NETS_BLOCK = capture('game-set-nba-2026'); // Brooklyn Nets 2025-26 (stats
 const DUKE_BLOCK = capture('game-set-mbb-2026'); // Duke 2025-26 (ESPN 150)
 const NETS_CTX = capture('schedule-context-nba-2026');
 const DUKE_CTX = capture('schedule-context-mbb-2026');
+// Q21: the Nets' rated pregame projections, sdv-py's nba_pregame_projections(2026) (the rated_priors table sdv-db will serve)
+const NETS_PROJ = capture('schedule-context-proj-nba-2026');
 const asReads = (c: any) => ({ rates: c.rates, strength: c.strength[0] ?? null, games: [...c.home, ...c.away], gameRates: c.gameRates });
 const NETS = 1610612751, NETS_ESPN = 17, DUKE = 150;
 
@@ -34,12 +36,16 @@ vi.mock('../src/resources/sdv', async (orig) => {
             'mbb.game_lines': DUKE_CTX.lines,
             'mbb.team_strength': DUKE_CTX.strength,
             'mbb.player_box': q.team_id === String(DUKE) && q.season_type === undefined && DUKE_CTX.box,
+            'nba.rated_priors': NETS_PROJ.proj,
+            // not served yet for college in this capture: the API's 404 for an unknown table
+            'mbb.rated_priors': 'missing',
         };
         if (!(key in rows)) return (real.retrieveRowsFrom as any)(src, table, q, ...rest); // the page's own reads: fetch throws
         sdv.calls.push(key);
         if (q.season !== '2026') throw new Error(`unfiltered ${key}`);
         if (sdv.fail.has(key)) throw new Error(`503 ${key}`);
         if (!rows[key]) throw new Error(`unexpected ${key} ${JSON.stringify(q)}`);
+        if (rows[key] === 'missing') throw new real.SDVRequestError(404, key, `{"detail":"unknown table ${key}"}`);
         return rows[key];
     } };
 });
@@ -65,7 +71,7 @@ import BbTeamRotation from '../src/components/nba/BbTeamRotation.astro';
 import TeamSeasonBlock from '../src/components/nba/TeamSeasonBlock.astro';
 import { retrieveScheduleContext } from '../src/resources/bballScheduleContext';
 import { prepareNbaTeam } from '../src/routes/nba/team';
-import { REST_CAP, atsRecord, b2bRecord, rotation, scheduleContext, teamAts } from '../src/utils/bballScheduleContext';
+import { REST_CAP, atsRecord, b2bRecord, rotation, scheduleContext, teamAts, teamProj } from '../src/utils/bballScheduleContext';
 import { FLAGS } from '../src/utils/features';
 import { scheduleRows } from '../src/utils/teamSeason';
 
@@ -87,6 +93,48 @@ describe('teamAts', () => {
         expect(teamAts({ ...line, ats_result: 'push' }, false).ats).toBe('P');
         expect(teamAts({ ...line, spread_home_close: 0, ats_result: null }, false)).toEqual({ spread: 0, ats: null });
         expect(teamAts(undefined, true)).toEqual({ spread: null, ats: null });
+    });
+});
+
+describe('teamProj (Q21)', () => {
+    test("the producer's home margin becomes the team's side; a final's result against it is W / L / P", () => {
+        const final = { completed: true, teamScore: 100, oppScore: 95 };
+        expect(teamProj(3.5, true, final)).toEqual({ proj: 3.5, vsProj: 'W' });
+        expect(teamProj(3.5, false, final)).toEqual({ proj: -3.5, vsProj: 'W' });
+        expect(teamProj(-7, false, final)).toEqual({ proj: 7, vsProj: 'L' });
+        expect(teamProj(5, true, final).vsProj).toBe('P');
+        expect(teamProj(5, true, { completed: false, teamScore: null, oppScore: null })).toEqual({ proj: 5, vsProj: null });
+        expect(teamProj(undefined, true, final)).toEqual({ proj: null, vsProj: null });
+    });
+});
+
+describe('the projection, real rows (Nets 2025-26)', () => {
+    const rows = sched(NETS_BLOCK, NETS_ESPN);
+    test("every rated final gets a result against the projection, recounted from the producer's rows", async () => {
+        const r = await retrieveScheduleContext('nba', 2026, NETS_ESPN);
+        // the opener has no rating yet: its exp_home_margin is null, so no projection
+        expect(r.proj!.size).toBe(NETS_PROJ.proj.filter((p: any) => p.exp_home_margin !== null).length);
+        const ctx = scheduleContext(rows, listed(NETS_BLOCK, NETS_ESPN), r, ET);
+        const home = listed(NETS_BLOCK, NETS_ESPN);
+        const want = { w: 0, l: 0, p: 0 };
+        for (const g of rows) {
+            const raw = NETS_PROJ.proj.find((p: any) => String(p.game_id) === g.gameId);
+            const k = ctx.get(g.gameId)!;
+            if (raw?.exp_home_margin == null) { expect([k.proj, k.vsProj]).toEqual([null, null]); continue; }
+            const proj = home.get(g.gameId) ? raw.exp_home_margin : -raw.exp_home_margin;
+            expect(k.proj).toBeCloseTo(proj, 9);
+            const d = g.teamScore! - g.oppScore! - proj;
+            want[d > 0 ? 'w' : d < 0 ? 'l' : 'p']++;
+        }
+        expect(atsRecord(ctx.values(), 'vsProj')).toEqual(want);
+        expect(want.w + want.l + want.p).toBe(rows.length - 1);
+    });
+    test('the table not served yet (404) is no projection, not a failure: no column and the page stays cacheable', async () => {
+        const r = await retrieveScheduleContext('mbb', 2026, DUKE);
+        expect(r.proj!.size).toBe(0);
+        const html = await render(TeamSeasonBlock, { data: asReads(DUKE_BLOCK), season: 2026, espnId: DUKE, teamName: 'Duke', context: r }, 'mbb', `/mbb/team/${DUKE}`);
+        expect(html).not.toContain('>Proj</th>');
+        expect(html).not.toContain('Against our projection');
     });
 });
 
@@ -180,10 +228,10 @@ describe('the flag', () => {
         ok(await prepareNbaTeam(fakeAstro(TEAM, String(NETS), { preview: true, flagOverrides: LOGS_OFF }).astro));
         expect(sdv.calls).toEqual([]);
     });
-    test('on: the three reads, by the ESPN id and season; a failed one is null and the page is not cached', async () => {
+    test('on: the four reads, by the ESPN id and season; a failed one is null and the page is not cached', async () => {
         const on = fakeAstro(TEAM, String(NETS), { preview: true, flagOverrides: LOGS_OFF });
         const r = ok(await prepareNbaTeam(on.astro));
-        expect(sdv.calls.sort()).toEqual(['nba.game_lines', 'nba.player_box', 'nba_stats.team_strength']);
+        expect(sdv.calls.sort()).toEqual(['nba.game_lines', 'nba.player_box', 'nba.rated_priors', 'nba_stats.team_strength']);
         expect(r.scheduleContext!.lines!.size).toBe(NETS_CTX.lines.length);
         expect(on.cache.set.mock.calls.map((c) => c[0])).not.toContain(false);
         sdv.fail.add('nba.game_lines');
@@ -209,6 +257,19 @@ describe('rendering', () => {
         expect(html).toContain('id="season-schedule-context"');
         expect(html).toMatch(/ATS <span class="fw-bold">\d+-\d+/);
         expect(html).toContain('title="Second night of a back-to-back">B2B<');
+        // Q21: the projection and the result against it, and the W-L against it on the records line
+        for (const h of ['Proj', 'vs Proj']) expect(html).toContain(`>${h}</th>`);
+        const vp = atsRecord(scheduleContext(sched(NETS_BLOCK, NETS_ESPN), listed(NETS_BLOCK, NETS_ESPN), await retrieveScheduleContext('nba', 2026, NETS_ESPN), ET).values(), 'vsProj');
+        expect(html).toContain(`Against our projection <span class="fw-bold" id="season-schedule-vs-proj">${vp.w}-${vp.l}`);
+    });
+    test('with the game log on (Q19 on GOP#443), the context columns stay and the per-game rates go', async () => {
+        const props = { data: asReads(NETS_BLOCK), season: 2026, espnId: NETS_ESPN, teamName: 'Brooklyn Nets', context: await retrieveScheduleContext('nba', 2026, NETS_ESPN) };
+        const html = (await render(TeamSeasonBlock, { ...props, logged: true }, 'nba', `/nba/team/${NETS}`)).split('id="season-schedule"')[1];
+        for (const h of ['Rest', 'Trip', 'Opp', 'Line', 'ATS', 'Proj', 'vs Proj']) expect(html).toContain(`>${h}</th>`);
+        for (const h of ['ORtg', 'eFG%', 'FT rate']) expect(html).not.toContain(`>${h}</th>`);
+        // every body row has one cell per header
+        const head = html.split('</thead>')[0].match(/<th /g)!.length;
+        for (const tr of html.split('<tbody>')[1].split('</tbody>')[0].split('</tr>').slice(0, -1)) expect(tr.match(/<td /g)!.length).toBe(head);
     });
     test('no line for any game (a season the odds data does not map): the line columns and the ATS record are left out', async () => {
         const ctx = { ...(await retrieveScheduleContext('nba', 2026, NETS_ESPN)), lines: new Map() };
