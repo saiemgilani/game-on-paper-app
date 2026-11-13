@@ -857,3 +857,11 @@ crosswalk and RAPM reads carry every column here; the page selects `ncaa_player_
 **Used by:** `test/playerImpact.test.ts`.
 
 **To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `on-off-nba-2025-fox.json.gz` (player page, a traded player)
+Top partners split by team (BB-G7), captured live on 2026-11-13, sequentially, the `data` array of each response, no edits,
+all `nba_stats`, `season=2025`, with the module's own selects: `{players, pairsA, pairsB}` =
+`player_on_off?player_id=1628368&order=-minutes_on&limit=5` (2 rows: De'Aaron Fox's Sacramento and San Antonio seasons),
+`player_wowy?player_id_a=1628368&limit=100` (31) and `?player_id_b=1628368` (13): 24 Sacramento pairs and 20 San Antonio pairs.
+
+**Used by:** `test/playerOnOff.test.ts`.

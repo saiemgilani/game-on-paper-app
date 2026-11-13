@@ -186,7 +186,7 @@ async function readPlayerOnOff(league: BasketballLeague, season: number, personI
         const { teams, pairs, playerId, toEspn } = await retrievePlayerOnOff(league, season, personId, teamId);
         const partners = playerId === null ? [] : topPartners(pairs, playerId);
         // college: each teammate's stats.ncaa.org id as the page's ESPN id (names, links)
-        return { teams, partners: toEspn ? espnPartners(partners, toEspn) : partners, names, tricodes };
+        return { teams, partners: toEspn ? espnPartners(partners, toEspn) : partners, names, tricodes, ...(playerId === null ? { unmatched: true as const } : {}) };
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} on/off for player ${personId}: ${e}, ${e?.stack}`);
         return { teams: null, partners: [], names, tricodes };

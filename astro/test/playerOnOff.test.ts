@@ -31,6 +31,9 @@ const EDWARDS = 1630162; // Minnesota's most minutes on the floor; the smaller i
 // Duke 2025-26 (ESPN team 150): its crosswalk pairs, and its leading shooter's on/off row and WOWY pairs by his stats.ncaa.org id
 const MBB: { xwalk: any[]; players: any[]; pairsA: any[]; pairsB: any[] } = gz('on-off-mbb-2026');
 const DUKE = 150, DUKE_PID = 5041935, DUKE_NCAA = '11195975';
+// De'Aaron Fox 2024-25, traded from Sacramento (1610612758) to San Antonio (1610612759): his two on/off rows and every pair
+const FOX_CAP: { players: any[]; pairsA: any[]; pairsB: any[] } = gz('on-off-nba-2025-fox');
+const FOX = 1628368, SAC = 1610612758, SAS = 1610612759;
 
 /** The Data API's own filters over the capture: season, player_id / player_id_a / player_id_b, order=-minutes_on, limit. */
 function api(league: string, table: string, q: Record<string, string>) {
@@ -126,7 +129,9 @@ describe('college (Duke 2025-26), through ncaa_player_crosswalk', () => {
     });
     test("top partners as ESPN athlete ids, oriented from his side (together + he without = his minutes on)", async () => {
         const r = await retrievePlayerOnOff('mbb', 2026, DUKE_PID, DUKE);
-        const top = espnPartners(topPartners(r.pairs, r.playerId!), r.toEspn!);
+        const groups = espnPartners(topPartners(r.pairs, r.playerId!), r.toEspn!);
+        expect(groups.map((g) => g.teamId)).toEqual([String(DUKE)]);
+        const top = groups[0].lines;
         expect(top).toHaveLength(TOP_PARTNERS);
         const espnIds = new Set(MBB.xwalk.map((x) => String(x.espn_athlete_id)));
         expect(top.every((l) => espnIds.has(l.teammate) && l.teammate !== String(DUKE_PID))).toBe(true);
@@ -134,7 +139,7 @@ describe('college (Duke 2025-26), through ncaa_player_crosswalk', () => {
         // the most minutes with him: stats.ncaa.org 9335969, ESPN 5061585 in the crosswalk
         expect(top[0].teammate).toBe(String(MBB.xwalk.find((x) => x.ncaa_player_id === '9335969').espn_athlete_id));
         // a teammate with no pair never takes another player's name or link
-        expect(espnPartners(topPartners(r.pairs, r.playerId!), new Map())[0].teammate).toBe('ncaa:9335969');
+        expect(espnPartners(topPartners(r.pairs, r.playerId!), new Map())[0].lines[0].teammate).toBe('ncaa:9335969');
     });
     test('a player with no crosswalk pair: only the crosswalk read, no rows', async () => {
         const r = await retrievePlayerOnOff('mbb', 2026, 1, DUKE);
@@ -145,10 +150,10 @@ describe('college (Duke 2025-26), through ncaa_player_crosswalk', () => {
         const r = await retrievePlayerOnOff('mbb', 2026, DUKE_PID, DUKE);
         const partners = espnPartners(topPartners(r.pairs, r.playerId!), r.toEspn!);
         // the page's season rows supply the names; here each partner's own ESPN id stands in for one
-        const names = new Map(partners.map((l) => [l.teammate, `Player ${l.teammate}`]));
+        const names = new Map(partners[0].lines.map((l) => [l.teammate, `Player ${l.teammate}`]));
         const html = await container.renderToString(PlayerOnOff, { props: { data: { teams: r.teams, partners, names, tricodes: new Map([[String(DUKE), 'DUKE']]) }, season: 2026, q: '', name: 'Duke guard' }, locals: { league: 'mbb' } as any });
         expect(html).toContain(`>${MBB.players[0].games} of ${MBB.players[0].team_games}</td>`);
-        expect(html).toContain(`<a href="/mbb/players/${partners[0].teammate}">Player ${partners[0].teammate}</a>`);
+        expect(html).toContain(`<a href="/mbb/players/${partners[0].lines[0].teammate}">Player ${partners[0].lines[0].teammate}</a>`);
         expect(html).toMatch(/>DUKE</);
         expect(html).not.toContain('counts the off side only while');
         expect(html).not.toMatch(/undefined|NaN|ncaa:/);
@@ -166,7 +171,9 @@ describe('the captures', () => {
 describe('topPartners', () => {
     test('his five teammates with the most minutes together, read from his side whichever id is smaller', async () => {
         const { pairs } = await retrievePlayerOnOff('nba', 2025, EDWARDS, MIN);
-        const top = topPartners(pairs, String(EDWARDS));
+        const groups = topPartners(pairs, String(EDWARDS));
+        expect(groups.map((g) => g.teamId)).toEqual([String(MIN)]);
+        const top = groups[0].lines;
         expect(top).toHaveLength(TOP_PARTNERS);
         const me = byId.get(String(EDWARDS))!;
         const together = top.map((l) => l.together.minutes);
@@ -183,6 +190,24 @@ describe('topPartners', () => {
         expect(new Set(top.map((l) => Number(l.teammate) > EDWARDS))).toEqual(new Set([true, false]));
     });
     test('no pair, no partners', () => { expect(topPartners([], String(EDWARDS))).toEqual([]); });
+    test('a traded player: one list per team, five each, his minutes on the floor first, never another team in a list', () => {
+        const pairs = [...FOX_CAP.pairsA, ...FOX_CAP.pairsB];
+        const groups = topPartners(pairs, String(FOX));
+        // Sacramento first: 1,668 minutes on the floor there against 578 in San Antonio, the On/Off table's order
+        expect(groups.map((g) => g.teamId)).toEqual(FOX_CAP.players.map((p) => String(p.team_id)));
+        expect(groups.map((g) => g.teamId)).toEqual([String(SAC), String(SAS)]);
+        for (const g of groups) {
+            expect(g.lines).toHaveLength(TOP_PARTNERS);
+            const mine = pairs.filter((r) => String(r.team_id) === g.teamId);
+            const mates = new Set(mine.map((r) => String(r.player_id_a === FOX ? r.player_id_b : r.player_id_a)));
+            expect(g.lines.every((l) => mates.has(l.teammate))).toBe(true);
+            const together = g.lines.map((l) => l.together.minutes);
+            expect(together).toEqual(mine.map((r) => r.minutes_both).sort((a, b) => b - a).slice(0, TOP_PARTNERS));
+            // together + "he without" is his minutes on for that team's row
+            const row = FOX_CAP.players.find((p) => String(p.team_id) === g.teamId);
+            for (const l of g.lines) expect(l.together.minutes + l.without.minutes).toBeCloseTo(row.minutes_on, 1);
+        }
+    });
 });
 
 describe('the player page step', () => {
@@ -218,7 +243,7 @@ describe('the player page step', () => {
         const xw = sdv.fn.mock.calls.filter((c) => c[1] === 'ncaa_player_crosswalk');
         expect(xw.map((c) => c[2].espn_team_id)).toEqual([String(r.player.team_id)]);
         expect(onOffReads()).toEqual([]);
-        expect(r.onOff).toMatchObject({ teams: [], partners: [] });
+        expect(r.onOff).toMatchObject({ teams: [], partners: [], unmatched: true });
     });
 });
 
@@ -226,7 +251,7 @@ describe('the section', () => {
     async function data(): Promise<Data> {
         const { teams, pairs } = await retrievePlayerOnOff('nba', 2025, EDWARDS, MIN);
         return {
-            teams, partners: topPartners(pairs, String(EDWARDS)),
+            teams, partners: topPartners(pairs, String(EDWARDS)), // one team: Minnesota
             names: new Map(NAMES.map((n) => [String(n.person_id), n.player_name])), tricodes: new Map([[String(MIN), 'MIN']]),
         };
     }
@@ -251,11 +276,33 @@ describe('the section', () => {
         const html = await render(d);
         const table = html.match(/<table[^>]*id="wowy-table"[\s\S]*?<\/table>/)![0];
         expect(table.match(/<tr>/g)).toHaveLength(2 + TOP_PARTNERS);
-        const first = d.partners[0];
+        const first = d.partners[0].lines[0];
         expect(table).toContain(`<a href="/nba/players/${first.teammate}?season=2025">${d.names.get(first.teammate)}</a>`);
         expect(table).toContain('Anthony Edwards without');
+        // one team: no team label on the list
+        expect(table).not.toContain('on this team');
         const html2 = await render({ ...d, names: new Map() });
         expect(html2).toContain(`>#${first.teammate}</th>`);
+    });
+    test("a traded player: a list per team, each labelled with the team's tricode, in the On/Off table's order", async () => {
+        const html = await container.renderToString(PlayerOnOff, { props: { data: {
+            teams: FOX_CAP.players, partners: topPartners([...FOX_CAP.pairsA, ...FOX_CAP.pairsB], String(FOX)), names: new Map(),
+            tricodes: new Map([[String(SAC), 'SAC'], [String(SAS), 'SAS']]),
+        }, season: 2025, q: '?season=2025', name: "De'Aaron Fox" }, locals: { league: 'nba' } as any });
+        const tables = [...html.matchAll(/<table[^>]*class="[^"]*wowy-table[^"]*"[^>]*data-team="(\d+)"[\s\S]*?<\/table>/g)];
+        expect(tables.map((t) => t[1])).toEqual([String(SAC), String(SAS)]);
+        expect(tables[0][0]).toContain('<strong>SAC</strong>: The 5 teammates');
+        expect(tables[1][0]).toContain('<strong>SAS</strong>: The 5 teammates');
+        for (const t of tables) expect(t[0].match(/<tr>/g)).toHaveLength(2 + TOP_PARTNERS);
+        expect(html).toContain('id="wowy-table"');
+        expect(html).not.toMatch(/undefined|NaN/);
+    });
+    test('college, no crosswalk match: a one-line note, no table', async () => {
+        const html = await render({ teams: [], partners: [], names: new Map(), tricodes: new Map(), unmatched: true }, 'mbb', 2026);
+        expect(html).toContain('id="on-off-unmatched"');
+        expect(html).toContain('this player is not matched to the on/off records yet');
+        expect(html).not.toContain('id="on-off-empty"');
+        expect(html).not.toContain('<table');
     });
     test('WNBA names its own reference', async () => {
         expect(await render(await data(), 'wnba')).toContain('stats.wnba.com counts the off side');

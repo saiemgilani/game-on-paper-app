@@ -7,7 +7,7 @@
  */
 import type { OnOffRow, WowyRow } from '../resources/playerOnOff';
 
-/** His teammates shown: the most minutes together. */
+/** His teammates shown per team: the most minutes together. */
 export const TOP_PARTNERS = 5;
 
 /** One split of a pair: the team's minutes and net rating in it. */
@@ -25,11 +25,20 @@ export interface WowyLine {
     neither: WowySide;
 }
 
+/** One team he played for, and his top partners on it. */
+export interface PartnerGroup {
+    teamId: string;
+    /** most minutes together first */
+    lines: WowyLine[];
+}
+
 export interface PlayerOnOff {
     /** his on/off rows, one per team, most minutes on first; null when a read failed (the section says so) */
     teams: OnOffRow[] | null;
-    /** his top partners, most minutes together first */
-    partners: WowyLine[];
+    /** his top partners per team he played for, his most minutes on the floor first (the On/Off table's order) */
+    partners: PartnerGroup[];
+    /** college: his ESPN athlete id has no ncaa_player_crosswalk pair, so nothing was read (the section says so) */
+    unmatched?: true;
     /** person id -> name, from the page's season rows; an id with no name reads as `#<id>` */
     names: Map<string, string>;
     /** team id -> tricode, from the page's season rows */
@@ -54,12 +63,24 @@ export function wowyLines(pairs: WowyRow[], player: string | null): WowyLine[] {
         .sort((x, y) => y.together.minutes - x.together.minutes);
 }
 
-/** His top partners across every team he played for: the most minutes on the floor together. */
-export const topPartners = (pairs: WowyRow[], player: string, n = TOP_PARTNERS): WowyLine[] => wowyLines(pairs, player).slice(0, n);
+/**
+ * His top partners, split by the team he played for (a traded player's teams never share a list): per team the n
+ * teammates with the most minutes on the floor together. Teams come in order of his minutes on the floor for them
+ * (together + without, the On/Off row's minutes_on), the On/Off table's order.
+ */
+export function topPartners(pairs: WowyRow[], player: string, n = TOP_PARTNERS): PartnerGroup[] {
+    const byTeam = new Map<string, WowyRow[]>();
+    for (const r of pairs) byTeam.set(String(r.team_id), [...(byTeam.get(String(r.team_id)) ?? []), r]);
+    const minutesOn = (g: PartnerGroup) => g.lines[0].together.minutes + g.lines[0].without.minutes;
+    return [...byTeam]
+        .map(([teamId, rows]) => ({ teamId, lines: wowyLines(rows, player).slice(0, n) }))
+        .filter((g) => g.lines.length > 0)
+        .sort((a, b) => minutesOn(b) - minutesOn(a));
+}
 
 /**
  * College: each partner's stats.ncaa.org id as the page's ESPN athlete id (the names and links are keyed by it). A
  * teammate with no crosswalk pair becomes `ncaa:<id>`, which no name or link matches (it prints as `#ncaa:<id>`).
  */
-export const espnPartners = (lines: WowyLine[], toEspn: Map<string, string>): WowyLine[] =>
-    lines.map((l) => ({ ...l, teammate: toEspn.get(l.teammate) ?? `ncaa:${l.teammate}` }));
+export const espnPartners = (groups: PartnerGroup[], toEspn: Map<string, string>): PartnerGroup[] =>
+    groups.map((g) => ({ ...g, lines: g.lines.map((l) => ({ ...l, teammate: toEspn.get(l.teammate) ?? `ncaa:${l.teammate}` })) }));

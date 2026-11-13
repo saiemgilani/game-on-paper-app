@@ -3,8 +3,8 @@
 // BB-G7, behind 'bball-player-on-off' (all four leagues; college through ncaa_player_crosswalk, resources/playerOnOff.ts):
 // the player page's On/Off section. On/Off: his team with him on the floor
 // and off it, and the difference, per 100 possessions, one row per team he played for; a rating is shaded by the
-// producer's league percentile where he is ranked (on and on-off only). Top partners: the teammates he shared the most
-// minutes with, each split four ways (the team page's WOWY table, BB-G4). Every number is the producer's (sdv-db
+// producer's league percentile where he is ranked (on and on-off only). Top partners: per team he played for, the
+// teammates he shared the most minutes with, each split four ways (the team page's WOWY table, BB-G4). Every number is the producer's (sdv-db
 // player_on_off / player_wowy).
 import { RATINGS, type OnOffRow, type Rating } from '../../resources/playerOnOff';
 import type { PlayerOnOff } from '../../utils/playerOnOff';
@@ -22,7 +22,7 @@ const pro = PRO_LEAGUES.includes(league);
 // college rows carry ESPN team ids, whose page is a 404 for a season's non-member: the game page's member-aware link
 const teamLink = (id: number) => (pro ? teamHref(id, q, league) : teamHrefFromEspn({ id }, league, season));
 const label = seasonLabelFor(league, season);
-const { teams, partners, names, tricodes } = data;
+const { teams, partners, names, tricodes, unmatched } = data;
 
 const dash = '—';
 const shade = (pct: number | null | undefined) => generateColorRampValue(pct ?? null, 100);
@@ -39,7 +39,7 @@ const tricode = (id: number) => tricodes.get(String(id)) ?? `#${id}`;
 ---
 <section id="on-off" aria-label={`${label} on/off`} class="mb-4">
   <h2 class="h5">On/Off</h2>
-  {teams === null ? (<p class="text-muted" id="on-off-unavailable">The {label} on/off numbers are temporarily unavailable.</p>) : teams.length === 0 ? (<p class="text-muted" id="on-off-empty">No {label} on/off numbers for {name} yet.</p>) : (
+  {teams === null ? (<p class="text-muted" id="on-off-unavailable">The {label} on/off numbers are temporarily unavailable.</p>) : unmatched ? (<p class="text-muted" id="on-off-unmatched">No {label} on/off numbers for {name}: this player is not matched to the on/off records yet.</p>) : teams.length === 0 ? (<p class="text-muted" id="on-off-empty">No {label} on/off numbers for {name} yet.</p>) : (
     <Fragment>
       <p class="small text-muted mb-2" id="on-off-note">On is the team with {name} on the floor; off is the rest of the team's season: every one of its games, including any before the player joined or after the player left, and the games the player missed. So on plus off is always the team's whole season.{pro && cfg.statsSourceLabel && ` ${cfg.statsSourceLabel} counts the off side only while the player was on the roster, so for a player traded or signed mid-season its numbers differ from these.`}</p>
       <div class="table-responsive">
@@ -76,9 +76,10 @@ const tricode = (id: number) => tricodes.get(String(id)) ?? `#${id}`;
       <div id="wowy" class="mt-3">
         <h3 class="h6">Top partners</h3>
         {partners.length === 0 ? (<p class="text-muted" id="wowy-empty">No {label} teammate pairs for {name} yet.</p>) : (
-          <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0" id="wowy-table">
-              <caption class="small text-muted">The {partners.length} teammates {name} shared the most minutes with: the team's minutes and net rating per 100 possessions in each part of its season. The four parts add up to the team's season.</caption>
+          partners.map((g, i) => (
+          <div class:list={['table-responsive', { 'mt-2': i > 0 }]}>
+            <table class="table table-sm align-middle mb-0 wowy-table" id={i === 0 ? 'wowy-table' : `wowy-table-${g.teamId}`} data-team={g.teamId}>
+              <caption class="small text-muted">{partners.length > 1 && (<Fragment><strong>{tricode(Number(g.teamId))}</strong>: </Fragment>)}The {g.lines.length} teammates {name} shared the most minutes with{partners.length > 1 ? ' on this team' : ''}: the team's minutes and net rating per 100 possessions in each part of its season. The four parts add up to the team's season.</caption>
               <thead>
                 <tr>
                   <td></td>
@@ -93,7 +94,7 @@ const tricode = (id: number) => tricodes.get(String(id)) ?? `#${id}`;
                 </tr>
               </thead>
               <tbody>
-                {partners.map((l) => (
+                {g.lines.map((l) => (
                   <tr>
                     <th scope="row" class="fw-normal text-nowrap">{names.has(l.teammate) ? (<a href={playerHref(Number(l.teammate), q, league)}>{names.get(l.teammate)}</a>) : `#${l.teammate}`}</th>
                     {[l.together, l.without, l.mateOnly, l.neither].flatMap((s) => [(<td class="numeral text-end">{fmtInt(s.minutes)}</td>), (<td class="numeral text-end">{net(s.net)}</td>)])}
@@ -102,6 +103,7 @@ const tricode = (id: number) => tricodes.get(String(id)) ?? `#${id}`;
               </tbody>
             </table>
           </div>
+          ))
         )}
       </div>
     </Fragment>
