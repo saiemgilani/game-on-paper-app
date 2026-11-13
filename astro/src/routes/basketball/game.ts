@@ -15,7 +15,7 @@ import { PRO_LEAGUES, type BasketballLeague } from '../../utils/league';
 import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBox';
 import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
 import { retrieveSeasonRatings } from '../../resources/pregameProjection';
-import { projectGame, type Projection, type TeamRating } from '../../utils/pregameProjection';
+import { heldForPrior, projectGame, type Projection, type TeamRating } from '../../utils/pregameProjection';
 import { seasonCache, setCache, uncacheable } from './cache';
 
 /** BB-G18's pregame card: each side's producer rating and the producer's projection from them. */
@@ -118,7 +118,8 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
 /**
  * The pregame card's data from the ESPN header: the season, the neutral-site flag and the two ESPN team ids, mapped to the
  * ratings' keys (college: the ESPN id; the pros: the stats id from the league's team list). null when a side has no rating
- * (a non-D-I opponent, a season with no rated game yet) or the read failed; a failed read is never held.
+ * (a non-D-I opponent, a season with no rated game yet), a college side has played fewer games than the producer's prior is
+ * worth (utils/pregameProjection.ts heldForPrior), or the read failed; a failed read is never held.
  */
 async function readProjection(Astro: AstroGlobal, league: BasketballLeague, espnGame: ESPNPlayByPlayResponse): Promise<PregameProjection | null> {
     const header = espnGame.gamepackageJSON.header;
@@ -146,7 +147,8 @@ async function readProjection(Astro: AstroGlobal, league: BasketballLeague, espn
     const home = ratings.get(homeKey);
     const away = ratings.get(awayKey);
     const neutral = comp.neutralSite === true;
-    const projection = home && away ? projectGame(league, home, away, neutral) : null;
+    // college waits until both sides have played the games the producer's prior is worth (no card, not a failure)
+    const projection = home && away && !heldForPrior(league, home, away) ? projectGame(league, home, away, neutral) : null;
     return home && away && projection ? { season, neutral, home, away, projection } : null;
 }
 

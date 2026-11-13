@@ -62,9 +62,16 @@ export function projectGame(league: BasketballLeague, home: TeamRating, away: Te
     return { margin, homeWinProb: calculateNormCdf(margin, 0, PREGAME_CONSTANTS[league].margin_sd), hfa };
 }
 
-/** `a`'s chance to beat `b` at a neutral site (a tournament game); null when either has no rating. */
-export function neutralWinProb(league: BasketballLeague, ratings: Map<string, TeamRating>, a: string | number, b: string | number): number | null {
-    const ra = ratings.get(String(a));
-    const rb = ratings.get(String(b));
-    return ra && rb ? projectGame(league, ra, rb, true)?.homeWinProb ?? null : null;
+/**
+ * Q1 (until the producer publishes its prior-blended college rating): the college card waits until both teams have played
+ * as many games as the producer's preseason prior is worth, sdv-py `mbb/mbb_prediction_constants.py` PRESEASON_PRIOR
+ * weight (L167-169: men 4.0, women 3.0). Before then the raw season-to-date rating alone is too noisy to print.
+ */
+export const PRIOR_GAMES = { mbb: 4, wbb: 3 } as const;
+
+/** true when a college side has played fewer games than the prior is worth (or its games are unknown); the pros never wait. */
+export function heldForPrior(league: BasketballLeague, home: TeamRating, away: TeamRating): boolean {
+    if (league !== 'mbb' && league !== 'wbb') return false;
+    const n = PRIOR_GAMES[league];
+    return !((home.games ?? 0) >= n && (away.games ?? 0) >= n);
 }

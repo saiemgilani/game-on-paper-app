@@ -818,7 +818,7 @@ changes), BOS 113 at DET 121 (401909088), MIN 88 at PHX 84 (401856902), Sam Hous
 **To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
 
 ## `pregame-projection.json.gz`
-The Data API reads behind BB-G18's pregame projection and the bracketology bracket's game odds
+The Data API reads behind BB-G18's pregame projection
 (`resources/pregameProjection.ts`), captured live on 2026-11-08, each one season-filtered with a cap and the page's
 select, the `data` array of each response with no edits: `ratings.mbb_2027` / `wbb_2027` / `mbb_2026`
 (`/v1/<mbb|wbb>/ratings?season=…&select=season,team_id,adj_em,rank,games&limit=1000`) and `ratings.nba_2027` /
@@ -828,7 +828,7 @@ select, the `data` array of each response with no edits: `ratings.mbb_2027` / `w
 a neutral site (401916290), CONN at OSU women (401911739). `oracle` is sportsdataverse-py main 306abe15 run on those rows
 (`mbb_game_predict.predict_margin` / `win_prob_from_margin`, `nba_game_predict.predict_margin` / `win_prob_from_margin`):
 five games (the three pages, CLE at ORL from `nba/pregame_401898403.json`, and MIN at NY on the 2026 WNBA rows) and every pair of
-the 2025-26 men's final projected field at a neutral site (`bracketology-mbb-2026.json.gz`, 68 teams, 2,278 pairs).
+the 2025-26 men's final projected field at a neutral site (a check of the neutral-site closed form; the bracket itself keeps its bid chances) (`bracketology-mbb-2026.json.gz`, 68 teams, 2,278 pairs).
 
 **Used by:** `test/pregameProjection.test.ts`, `test/pregameProjectionOff.test.ts`.
 

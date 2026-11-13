@@ -1,4 +1,4 @@
-// BB-G18: the pregame projection and the bracketology bracket's game odds, behind 'bball-pregame-projection'. Every number
+// BB-G18: the pregame projection behind 'bball-pregame-projection' (the bracketology bracket keeps its bid chances). Every number
 // is checked against sportsdataverse-py (main 306abe15: mbb_game_predict / nba_game_predict predict_margin and
 // win_prob_from_margin) run on the same Data API rows (fixtures/README.md: pregame-projection.json.gz). The reads (one
 // season-filtered, capped ratings read), the route gates and the templates. Every Data API read here is mocked.
@@ -53,8 +53,7 @@ import BracketologyRoute from '../src/components/routes/BracketologyRoute.astro'
 import { prepareBasketballGame, type PregameProjection } from '../src/routes/basketball/game';
 import { prepareBracketology } from '../src/routes/basketball/bracketology';
 import { retrieveSeasonRatings } from '../src/resources/pregameProjection';
-import { neutralWinProb, projectGame, type TeamRating } from '../src/utils/pregameProjection';
-import { projectedField } from '../src/utils/bracketology';
+import { PRIOR_GAMES, heldForPrior, projectGame, type TeamRating } from '../src/utils/pregameProjection';
 import { FLAGS } from '../src/utils/features';
 
 const ROWS: Record<string, any[]> = {
@@ -68,6 +67,10 @@ const asRating = (r: any, college: boolean): TeamRating => (college
     ? { team_id: String(r.team_id), rating: r.adj_em, rank: r.rank, games: r.games, pace: null }
     : { team_id: String(r.team_id), rating: r.adj_net_rtg, rank: r.adj_net_rtg_rank, games: r.games, pace: r.pace });
 const rating = (rows: any[], id: string, college: boolean) => asRating(rows.find((r) => String(r.team_id) === id), college);
+/** the captured early-season college rows (1-4 games in) with every count raised to `n`: the same ratings once both sides
+ *  have played the games the producer's prior is worth (Q1's hold) */
+const atGames = (rows: any[], n: number) => rows.map((r) => ({ ...r, games: Math.max(r.games, n) }));
+const pastPrior = () => { api.rows['mbb.ratings.2027'] = atGames(FX.ratings.mbb_2027, PRIOR_GAMES.mbb); api.rows['wbb.ratings.2027'] = atGames(FX.ratings.wbb_2027, PRIOR_GAMES.wbb); };
 
 describe("projectGame: sdv-py's closed form on the producer's rows", () => {
     test.each([
@@ -98,11 +101,22 @@ describe("projectGame: sdv-py's closed form on the producer's rows", () => {
         expect(pairs).toHaveLength(2278); // 68 choose 2
         for (const [k, p] of pairs) {
             const [a, b] = k.split('-');
-            expect(Math.abs(neutralWinProb('mbb', ratings, a, b)! - p)).toBeLessThan(1e-6);
-            expect(neutralWinProb('mbb', ratings, b, a)! + p).toBeCloseTo(1, 6);
+            expect(Math.abs(projectGame('mbb', ratings.get(a)!, ratings.get(b)!, true)!.homeWinProb - p)).toBeLessThan(1e-6);
         }
-        expect(neutralWinProb('mbb', ratings, '130', 'no-such-team')).toBeNull();
     });
+});
+
+describe("heldForPrior: Q1's college hold until the producer's prior-blended rating is published", () => {
+    const r = (games: number | null): TeamRating => ({ team_id: 'x', rating: 1, rank: 1, games, pace: null });
+    test("college waits until both sides have played the prior's games (sdv-py PRESEASON_PRIOR weight: men 4, women 3)", () => {
+        expect(PRIOR_GAMES).toEqual({ mbb: 4, wbb: 3 });
+        expect(heldForPrior('mbb', r(4), r(3))).toBe(true);
+        expect(heldForPrior('mbb', r(4), r(4))).toBe(false);
+        expect(heldForPrior('wbb', r(2), r(3))).toBe(true);
+        expect(heldForPrior('wbb', r(3), r(3))).toBe(false);
+        expect(heldForPrior('mbb', r(null), r(9))).toBe(true);
+    });
+    test('the pros never wait', () => expect(heldForPrior('nba', r(0), r(0))).toBe(false));
 });
 
 describe('retrieveSeasonRatings', () => {
@@ -141,7 +155,18 @@ describe('prepareBasketballGame: the pregame card', () => {
         expect('projection' in r).toBe(false);
         expect(api.calls).toEqual([]);
     });
-    test('on, college home game: both ratings and the projection, with the home edge', async () => {
+    test('on, college two games in (the captured rows): the read, but the card waits for the prior; the page keeps its cache', async () => {
+        espn.page = FX.pages['401909524'];
+        const { astro, headers } = fakeAstro('mbb', '401909524', ON);
+        const r: any = await prepareBasketballGame(astro, 'mbb');
+        expect(r.projection).toBeNull();
+        expect(api.calls.map((c) => `${c.schema}.${c.table}.${c.query.season}`)).toEqual(['mbb.ratings.2027']);
+        expect(headers.get('Cache-Control') ?? '').not.toMatch(/no-store/);
+        api.rows['mbb.ratings.2027'] = atGames(FX.ratings.mbb_2027, PRIOR_GAMES.mbb - 1);
+        expect(((await prepareBasketballGame(fakeAstro('mbb', '401909524', ON).astro, 'mbb')) as any).projection).toBeNull();
+    });
+    test('on, college home game past the prior: both ratings and the projection, with the home edge', async () => {
+        pastPrior();
         espn.page = FX.pages['401909524'];
         const r: any = await prepareBasketballGame(fakeAstro('mbb', '401909524', ON).astro, 'mbb');
         const p: PregameProjection = r.projection;
@@ -153,6 +178,7 @@ describe('prepareBasketballGame: the pregame card', () => {
         expect(api.calls.map((c) => `${c.schema}.${c.table}.${c.query.season}`)).toEqual(['mbb.ratings.2027']);
     });
     test("on, ESPN's neutral site: no home edge", async () => {
+        pastPrior();
         espn.page = FX.pages['401916290'];
         const r: any = await prepareBasketballGame(fakeAstro('mbb', '401916290', ON).astro, 'mbb');
         expect(r.projection.neutral).toBe(true);
@@ -167,7 +193,7 @@ describe('prepareBasketballGame: the pregame card', () => {
     });
     test('on, a side with no rating (a season not rated yet): no card, and the page keeps its cache', async () => {
         espn.page = FX.pages['401911739'];
-        api.rows['wbb.ratings.2027'] = FX.ratings.wbb_2027.filter((r: any) => String(r.team_id) !== '41');
+        api.rows['wbb.ratings.2027'] = atGames(FX.ratings.wbb_2027, PRIOR_GAMES.wbb).filter((r: any) => String(r.team_id) !== '41');
         const { astro, headers } = fakeAstro('wbb', '401911739', ON);
         const r: any = await prepareBasketballGame(astro, 'wbb');
         expect(r.projection).toBeNull();
@@ -201,6 +227,7 @@ let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 
 describe('NbaPregameProjection', () => {
+    beforeEach(pastPrior);
     const projectionFor = async (league: 'mbb' | 'nba', id: string, page: any) => {
         espn.page = page;
         return ((await prepareBasketballGame(fakeAstro(league, id, ON).astro, league)) as any).projection as PregameProjection;
@@ -212,7 +239,7 @@ describe('NbaPregameProjection', () => {
         expect(card).toMatch(/<span>MICH by 4\.8<\/span>/);
         expect(card).toContain('66% by adjusted efficiency margin, 2026-27');
         const m = FX.ratings.mbb_2027.find((r: any) => r.team_id === '130');
-        expect(card).toContain(`MICH +${m.adj_em.toFixed(1)} (#${m.rank}), ${m.games} games`);
+        expect(card).toContain(`MICH +${m.adj_em.toFixed(1)} (#${m.rank}), ${PRIOR_GAMES.mbb} games`);
         expect(card).toContain('home court +2.9 pts');
     });
     test('a neutral site says so', async () => {
@@ -243,39 +270,16 @@ describe('NbaPregameProjection', () => {
     });
 });
 
-describe('the bracketology bracket', () => {
-    const snapFx = gz('bracketology-mbb-2026');
-    const bracketAstro = (locals: Record<string, unknown>, search = '') => fakeAstro('mbb', 'x', locals, search).astro;
-    test('off, or another view: no ratings read', async () => {
-        const off = await prepareBracketology(bracketAstro(OFF), 'mbb', new Date('2026-11-08T00:00:00Z')) as any;
-        expect('ratings' in off).toBe(false);
-        const standings = await prepareBracketology(bracketAstro(ON, '?view=standings'), 'mbb', new Date('2026-11-08T00:00:00Z')) as any;
-        expect('ratings' in standings).toBe(false);
-        expect(api.calls).toEqual([]);
-    });
-    test("on: the snapshot season's ratings, one read; a failed read keeps the bid chances", async () => {
-        const on = await prepareBracketology(bracketAstro(ON), 'mbb', new Date('2026-11-08T00:00:00Z')) as any;
-        expect(api.calls.map((c) => `${c.schema}.${c.table}.${c.query.season}`)).toEqual(['mbb.ratings.2026']);
-        expect(on.ratings.size).toBe(FX.ratings.mbb_2026.length);
-        api.fail = true;
-        expect((await prepareBracketology(bracketAstro(ON), 'mbb', new Date('2026-11-08T00:00:00Z')) as any).ratings).toBeNull();
-    });
-    test("on: each number is the team's chance to win that game, the producer's to the rounded percent", async () => {
-        const data = await prepareBracketology(bracketAstro(ON), 'mbb', new Date('2026-11-08T00:00:00Z')) as any;
-        const html = await container.renderToString(BracketologyRoute, { props: { data }, locals: { league: 'mbb', preview: true } as App.Locals });
-        expect(html).toContain('id="bracket-game-odds"');
-        expect(html).toContain('title="Chance to win this game at a neutral site"');
-        const [graphic] = html.split('bracket-table');
-        const shown = [...graphic.matchAll(/team-logo-(\d+) me-2[\s\S]*?bracket-pct"[^>]*>([^<]+)</g)].map((m) => [m[1], m[2]]);
-        const field = projectedField(snapFx.bracket)!;
-        const fmt = (p: number) => (p >= 0.995 && p < 1 ? '>99%' : p > 0 && p < 0.005 ? '<1%' : `${Math.round(p * 100)}%`);
-        const pair = (a: number, b: number) => { const k = `${a}-${b}`; const p = FX.oracle.bracket[k]; return p ?? 1 - FX.oracle.bracket[`${b}-${a}`]; };
-        const expected: string[][] = [];
-        for (const [a, b] of field.firstFour) expected.push([String(a.team_id), fmt(pair(a.team_id, b.team_id))], [String(b.team_id), fmt(pair(b.team_id, a.team_id))]);
-        for (const games of field.regions) for (const [u, v] of games) for (const [x, y] of [[u, v], [v, u]]) {
-            if (x.teams.length === 1) expected.push([String(x.teams[0].team_id), y.teams.length === 1 ? fmt(pair(x.teams[0].team_id, y.teams[0].team_id)) : '—']);
+describe('the bracketology bracket keeps its bid chances (Q2)', () => {
+    test('on or off: no ratings read, and the numbers stay the chance to make the field', async () => {
+        const at = new Date('2026-11-08T00:00:00Z');
+        for (const locals of [ON, OFF]) {
+            const data = await prepareBracketology(fakeAstro('mbb', 'x', locals).astro, 'mbb', at) as any;
+            expect('ratings' in data).toBe(false);
+            const html = await container.renderToString(BracketologyRoute, { props: { data }, locals: { league: 'mbb', preview: true } as App.Locals });
+            expect(html).toContain('title="Chance to make the field on Selection Sunday"');
+            expect(html).not.toContain('bracket-game-odds');
         }
-        expect(shown).toEqual(expected);
-        expect(expected.filter(([, s]) => s === '—')).toHaveLength(4); // the four teams drawn against a First Four pair
+        expect(api.calls).toEqual([]);
     });
 });

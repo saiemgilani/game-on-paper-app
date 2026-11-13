@@ -86,9 +86,9 @@ export const FLAGS: Record<string, FeatureState> = {
     'bball-game-flow': 'preview',
     // BB-G18's pregame projection: on /<league>/game/[id] before tip, a Projection card (the favourite, the expected margin
     // and its win chance) from the producer's ratings (college {lg}.ratings adj_em, the pros' BB-D19 team_strength) and
-    // sdv-py's closed-form pregame prediction (utils/pregameProjection.ts); inside 'bball-bracketology', the projected
-    // bracket's numbers become each team's chance to win that game at a neutral site. Off: no read, and the pregame page
-    // and the bracket are today's, byte for byte.
+    // sdv-py's closed-form pregame prediction (utils/pregameProjection.ts); a college card waits until both teams have
+    // played the games the producer's preseason prior is worth. The bracketology bracket keeps its bid chances. Off: no
+    // read, and the pregame page is today's, byte for byte.
     'bball-pregame-projection': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
