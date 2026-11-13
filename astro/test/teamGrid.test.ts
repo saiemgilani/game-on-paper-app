@@ -14,13 +14,14 @@ const fetched: string[] = [];
 vi.stubGlobal('fetch', async (input: RequestInfo | URL) => { fetched.push(String(input instanceof Request ? input.url : input)); throw new Error('no network in tests'); });
 afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 
-const api = vi.hoisted(() => ({ calls: [] as { schema: string; table: string; query: Record<string, string> }[], rows: [] as any[], fail: false }));
+const api = vi.hoisted(() => ({ calls: [] as { schema: string; table: string; query: Record<string, string> }[], rows: [] as any[], tables: {} as Record<string, any[]>, fail: false }));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     retrieveRowsFrom: async (source: { schema: string }, table: string, query: Record<string, string>) => {
         api.calls.push({ schema: source.schema, table, query });
         if (api.fail) throw new Error('down');
         if (table === 'team_season_rates') return api.rows;
+        if (table in api.tables) return api.tables[table];
         throw new Error(`unexpected table ${table}`);
     },
 }));
@@ -30,12 +31,16 @@ vi.mock('../src/resources/espn', async (orig) => ({ ...(await orig<typeof import
 
 import NbaGamePage from '../src/components/nba/game/NbaGamePage.astro';
 import { fromProcessor, type NbaGame, type NbaProcessorPayload } from '../src/resources/nbaGame';
-import { retrieveTeamGridSeason, seasonTeamId, teamGridSeason, type TeamGridSeason } from '../src/resources/teamGrid';
+import { retrieveTeamGridGame, retrieveTeamGridSeason, seasonTeamId, teamGridSeason, type TeamGridGame, type TeamGridSeason } from '../src/resources/teamGrid';
 import { accounting, edge } from '../src/utils/teamGrid';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import type { BasketballLeague } from '../src/utils/league';
 
-interface Capture { league: BasketballLeague; season: number; payload: NbaProcessorPayload; team_season_rates: Record<string, any>[] }
+interface Capture {
+    league: BasketballLeague; season: number; payload: NbaProcessorPayload; team_season_rates: Record<string, any>[]
+    /** the ESPN game's id map (the pros' schedule_crosswalk row, college's ncaa_team_box contest ids) and the final's counted rows */
+    game_map: Record<string, any>[]; team_game_possessions: Record<string, any>[]; situational_team_games: Record<string, any>[]
+}
 const gz = (name: string): Capture => JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/${name}.json.gz`, import.meta.url))).toString());
 const G: Record<BasketballLeague, Capture> = {
     nba: gz('team-grid-nba-401585607'), // TOR 96 at ORL 111, 2023-24
@@ -48,7 +53,16 @@ const SCHEMA: Record<BasketballLeague, string> = { nba: 'nba_stats', wnba: 'wnba
 const game = (lg: BasketballLeague): NbaGame => fromProcessor(structuredClone(G[lg].payload), lg);
 const seasonOf = (lg: BasketballLeague, g = game(lg)) => teamGridSeason(G[lg].team_season_rates, seasonTeamId(lg, Number(g.home.team.id)), seasonTeamId(lg, Number(g.away.team.id)));
 
-beforeEach(() => { api.calls.length = 0; api.rows = []; api.fail = false; [sched, proc, espn].forEach((f) => f.mockReset()); });
+const PRO = (lg: BasketballLeague) => lg === 'nba' || lg === 'wnba';
+/** the final's real rows behind the mocked reads: the id map, then both counted tables */
+const finalTables = (lg: BasketballLeague) => ({
+    [PRO(lg) ? 'schedule_crosswalk' : 'ncaa_team_box']: G[lg].game_map,
+    team_game_possessions: G[lg].team_game_possessions, situational_team_games: G[lg].situational_team_games,
+});
+/** each side's table team id: the crosswalk's stats id for the pros, the ESPN id in college */
+const tableTeam = (lg: BasketballLeague, side: 'home' | 'away') => (PRO(lg) ? Number(G[lg].game_map[0][`${lg}_${side}_team_id`]) : Number(game(lg)[side].team.id));
+
+beforeEach(() => { api.calls.length = 0; api.rows = []; api.tables = {}; api.fail = false; [sched, proc, espn].forEach((f) => f.mockReset()); });
 
 describe('the processor payload', () => {
     test.each(LEAGUES)('%s: each side carries its counted possessions, and a payload without splits carries none', (lg) => {
@@ -86,6 +100,39 @@ describe('the season context', () => {
         expect(api.calls).toEqual([{ schema: SCHEMA[lg], table: 'team_season_rates', query: expect.objectContaining({ season: String(G[lg].season), split: 'all', limit: '1000' }) }]);
         api.rows = Array.from({ length: 1000 }, () => G[lg].team_season_rates[0]);
         await expect(retrieveTeamGridSeason(lg, G[lg].season, g.id, 1, 2)).rejects.toThrow(/at the 1000 cap/);
+    });
+});
+
+describe('a final\'s counted rows', () => {
+    const GAME_ID: Record<BasketballLeague, string> = { nba: '0022300979', wnba: '1022500214', mbb: '6456375', wbb: '6402602' };
+    test.each(LEAGUES)('%s: the ESPN game mapped to the producer\'s id, then both tables by it, each side by the table\'s team id', async (lg) => {
+        api.tables = finalTables(lg);
+        const g = game(lg);
+        const r = await retrieveTeamGridGame(lg, G[lg].season, g.id, Number(g.home.team.id), Number(g.away.team.id));
+        const s = String(G[lg].season);
+        const map = PRO(lg)
+            ? { schema: lg, table: 'schedule_crosswalk', query: expect.objectContaining({ season: s, espn_game_id: g.id, limit: '1' }) }
+            : { schema: lg, table: 'ncaa_team_box', query: expect.objectContaining({ season: s, espn_game_id: g.id, select: 'contest_id' }) };
+        expect(api.calls).toEqual([map,
+            { schema: SCHEMA[lg], table: 'team_game_possessions', query: expect.objectContaining({ season: s, game_id: GAME_ID[lg], split: 'all' }) },
+            { schema: SCHEMA[lg], table: 'situational_team_games', query: expect.objectContaining({ season: s, game_id: GAME_ID[lg], limit: '60' }) }]);
+        for (const side of ['home', 'away'] as const) {
+            const tgp = G[lg].team_game_possessions.find((x) => x.team_id === tableTeam(lg, side))!;
+            const all = G[lg].situational_team_games.find((x) => x.team_id === tableTeam(lg, side) && x.family === 'all')!;
+            expect(r.poss[side]).toBe(tgp.poss);
+            expect(r[side].find((x) => x.family === 'all')).toMatchObject({ poss: all.poss, off_rtg: all.off_rtg, def_rtg: all.def_rtg });
+            // every family of the side's, none of the opponent's
+            expect(r[side]).toHaveLength(G[lg].situational_team_games.filter((x) => x.team_id === tableTeam(lg, side)).length);
+            // one definition: both producer tables count the same possessions
+            expect(all.poss).toBe(tgp.poss);
+        }
+    });
+    test('an unmapped game reads nothing past the map and has no rows; a read at the cap fails loud', async () => {
+        api.tables = { schedule_crosswalk: [] };
+        expect(await retrieveTeamGridGame('nba', 2024, '1', 1, 2)).toEqual({ poss: { home: null, away: null }, home: [], away: [] });
+        expect(api.calls.map((c) => c.table)).toEqual(['schedule_crosswalk']);
+        api.tables = { ...finalTables('mbb'), situational_team_games: Array.from({ length: 60 }, () => G.mbb.situational_team_games[0]) };
+        await expect(retrieveTeamGridGame('mbb', 2026, game('mbb').id, 87, 152)).rejects.toThrow(/at the 60 cap/);
     });
 });
 
@@ -165,6 +212,21 @@ describe('the page', () => {
         expect(text).not.toContain('Possessions (counted)');
         expect(text).toContain('Four-factor accounting'); // priced on the box estimate
     });
+    test.each(LEAGUES)('%s: a final shows the producer\'s counted possessions and ratings, even with no processor splits', async (lg) => {
+        api.tables = finalTables(lg);
+        const g = game(lg); delete g.home.splits; delete g.away.splits; // the Data API path
+        const fin: TeamGridGame = await retrieveTeamGridGame(lg, G[lg].season, g.id, Number(g.home.team.id), Number(g.away.team.id));
+        const html = await render(lg, { game: g, season: { ...seasonOf(lg, g), game: fin } });
+        const row = (label: string) => html.match(new RegExp(`<tr[^>]*>\\s*<th[^>]*>${label.replace(/[()]/g, '\\$&')}</th>[\\s\\S]*?</tr>`))![0];
+        const all = (side: 'home' | 'away') => fin[side].find((x) => x.family === 'all')!;
+        expect(row('Possessions (counted)')).toContain(`>${fin.poss.away}<`); expect(row('Possessions (counted)')).toContain(`>${fin.poss.home}<`);
+        expect(row('ORtg')).toContain(`>${all('away').off_rtg!.toFixed(1)}<`); expect(row('ORtg')).toContain(`>${all('home').off_rtg!.toFixed(1)}<`);
+        expect(row('DRtg')).toContain(`>${all('home').def_rtg!.toFixed(1)}<`);
+        expect(row('ORtg').match(/table-success/g)?.length).toBe(1);
+        const text = plain(html);
+        expect(text).toContain('ORtg and DRtg are per 100 counted possessions'); expect(text).toContain('TOV% is per play');
+        for (const bad of ['NaN', 'undefined', 'null']) expect(text).not.toContain(bad);
+    });
     test('flag off: the two panels of today, no grid', async () => {
         const g = game('nba');
         const html = await render('nba', { game: g, season: seasonOf('nba', g) }, false);
@@ -196,6 +258,15 @@ describe('prepareBasketballGame', () => {
         expect(r.game.status.completed).toBe(false);
         expect(api.calls.map((c) => [c.schema, c.table, c.query.season])).toEqual([[SCHEMA[lg], 'team_season_rates', String(G[lg].season)]]);
         expect(r.season).toEqual(seasonOf(lg, r.game));
+    });
+    test.each(LEAGUES)('%s: a final also reads its counted rows, mapped from the ESPN game', async (lg) => {
+        const p = structuredClone(G[lg].payload);
+        sched.mockResolvedValueOnce(null); espn.mockResolvedValueOnce({ page: { gameId: p.gameId, gamepackageJSON: { header: p.header } }, regressed: false, fetchFailed: false }); proc.mockResolvedValueOnce(p);
+        api.rows = G[lg].team_season_rates; api.tables = finalTables(lg);
+        const r: any = await prepareBasketballGame(fakeAstro(lg, String(p.gameId), { preview: true, flagOverrides: flags }).astro, lg);
+        expect(r.game.status.completed).toBe(true);
+        expect(api.calls.map((c) => c.table).sort()).toEqual([PRO(lg) ? 'schedule_crosswalk' : 'ncaa_team_box', 'situational_team_games', 'team_game_possessions', 'team_season_rates'].sort());
+        expect(r.season.game.poss).toEqual({ home: expect.any(Number), away: expect.any(Number) });
     });
     test('flag off: a live game reads nothing and carries no season', async () => {
         const p = live('nba');
