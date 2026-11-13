@@ -32,6 +32,9 @@ vi.mock('../src/resources/nbaShots', async (orig) => ({ ...(await orig<typeof im
 import { retrieveBoard, selectFor, LINEUP_FLOOR, IMPACT_FLOOR, BOARD_CAP } from '../src/resources/leaderboards';
 import { prepareLeaderboards } from '../src/routes/basketball/leaderboards';
 import BasketballLeaderboardsRoute from '../src/components/routes/BasketballLeaderboardsRoute.astro';
+import Header from '../src/components/Header.astro';
+import NbaLeadersRoute from '../src/components/routes/NbaLeadersRoute.astro';
+import type { NbaLeadersParams } from '../src/routes/nba/leaders';
 import { BASES, BOARDS, TEAM_GROUPS, boardSpec, cellOf, IMPACT_QUALIFIED_POSS, isQualified, ncaaName, offeredBases, parseControls, shown, sortRows, srcFor, type Basis, type View } from '../src/utils/leaderboards';
 import { FLAGS } from '../src/utils/features';
 import { generateColorRampValue } from '../src/utils/misc';
@@ -87,6 +90,23 @@ describe('the flag', () => {
         expect(sdv.rows).not.toHaveBeenCalled();
         expect(sdv.from).not.toHaveBeenCalled();
         expect(shots.players).not.toHaveBeenCalled();
+    });
+    // Q27: a Header entry and a link from the rolling Leaders page, both behind the flag (the flag-off byte identity
+    // of the Header and /nba/leaders is pinned by test/nba/byteIdentity.render.test.ts)
+    const withLeague = (lg: BasketballLeague, on: boolean) => ({ ...locals(on), league: lg }) as unknown as App.Locals;
+    test.each(['nba', 'wnba', 'mbb', 'wbb'] as const)('%s: the Header links the boards only with the flag on', async (lg) => {
+        const on = await container.renderToString(Header, { locals: withLeague(lg, true) });
+        const off = await container.renderToString(Header, { locals: withLeague(lg, false) });
+        expect(on).toContain(`href="/${lg}/leaderboards"`);
+        expect(off).not.toContain('/leaderboards"');
+        expect(on.replace(/<li><a href="\/[a-z]+\/leaderboards"[^>]*>Leaderboards<\/a><\/li>/, '')).toBe(off);
+    });
+    test.each(['nba', 'wbb'] as const)('%s: the rolling Leaders page links the boards, keeping its season, only with the flag on', async (lg) => {
+        const data = { season: 2025, seasons: [2026, 2025], current: 2026, q: '?season=2025', boards: null } as unknown as NbaLeadersParams;
+        const on = await container.renderToString(NbaLeadersRoute, { props: { data }, locals: withLeague(lg, true) });
+        const off = await container.renderToString(NbaLeadersRoute, { props: { data }, locals: withLeague(lg, false) });
+        expect(on).toContain(`<a href="/${lg}/leaderboards?season=2025">`);
+        expect(off).not.toContain('id="leaderboards-link"');
     });
 });
 
