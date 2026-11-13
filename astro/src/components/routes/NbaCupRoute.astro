@@ -9,7 +9,7 @@ import DarkModeLogos from '../DarkModeLogos.astro';
 import PlayoffBracket from '../PlayoffBracket.astro';
 import { CUP_VIEWS, type NbaCupParams } from '../../routes/basketball/nbaCup';
 import { snapshotDay, record } from '../../utils/bracketology';
-import { TIEBREAK_LABEL, cupBracket, groupTables, joinCup, oddsOrder, wildCardRace, type CupTeam, type CupUnit } from '../../utils/nbaCup';
+import { TIEBREAK_LABEL, cupBracket, groupTables, joinCup, oddsOrder, wildCardRace, type CupBracketRound, type CupTeam, type CupUnit } from '../../utils/nbaCup';
 import { oddsShade, pct, type BracketSlot } from '../../utils/playoff';
 import { generateMarginalString, roundNumber } from '../../utils/misc';
 import { leaguePath, teamLogoUrl } from '../../utils/league';
@@ -58,9 +58,15 @@ const conferences = [...new Set(groups.map((g) => g.name.split(' ')[0]))];
 const race = wildCardRace(teams);
 const odds = oddsOrder(teams);
 
-const slot = (u: CupUnit): BracketSlot | { label: string } => ('team' in u ? { seed: u.seed, teamId: key(u.team), pct: u.team.sim.p_champion } : u);
+// each seated team's number is its chance to reach the next round (the sim publishes no head-to-head odds)
+const NEXT_TITLE: Record<CupBracketRound['next'], string> = {
+    p_semifinal: 'Chance to reach the semifinals',
+    p_final: 'Chance to reach the championship game',
+    p_champion: 'Chance to win the Cup',
+};
+const slot = (u: CupUnit, next: CupBracketRound['next']): BracketSlot | { label: string } => ('team' in u ? { seed: u.seed, teamId: key(u.team), pct: u.team.sim[next] } : u);
 const bracket = cupBracket(teams);
-const rounds = bracket?.rounds.map((r) => ({ name: r.name, games: r.games.map(([a, b]) => [slot(a), slot(b)] as [ReturnType<typeof slot>, ReturnType<typeof slot>]) })) ?? null;
+const rounds = bracket?.rounds.map((r) => ({ name: r.name, pctTitle: NEXT_TITLE[r.next], games: r.games.map(([a, b]) => [slot(a, r.next), slot(b, r.next)] as [ReturnType<typeof slot>, ReturnType<typeof slot>]) })) ?? null;
 const champion = bracket?.champion ? { seed: bracket.champion.standing!.knockout_seed!, teamId: key(bracket.champion), pct: 1 } : null;
 const shownIds = teams.map(key);
 
@@ -200,9 +206,9 @@ const shownIds = teams.map(key);
 
     {data && view === 'bracket' && (
       <Fragment>
-        <p class="small text-muted mt-3">The knockout on the current table: in each conference the group winners are seeds 1-3 and the wild card is 4; 1 plays 4 and 2 plays 3, East's games above West's. The conference winners meet for the Cup. Each number is the team's chance to win the Cup.</p>
+        <p class="small text-muted mt-3">The knockout on the current table: in each conference the group winners are seeds 1-3 and the wild card is 4; 1 plays 4 and 2 plays 3, East's games above West's. The conference winners meet for the Cup. Each number is the team's chance to reach the next round: the semifinals in a quarterfinal, the championship game in a semifinal, and the Cup itself in the championship game.</p>
         {rounds
-          ? <PlayoffBracket rounds={rounds} champion={champion} names={names} abbrs={abbrs} league="nba" href={href} pctTitle="Chance to win the Cup" label="NBA Cup knockout bracket" />
+          ? <PlayoffBracket rounds={rounds} champion={champion} names={names} abbrs={abbrs} league="nba" href={href} label="NBA Cup knockout bracket" />
           : <p class="text-muted" id="cup-bracket-unseated">The standings on this day do not seat all eight knockout seeds.</p>}
       </Fragment>
     )}
