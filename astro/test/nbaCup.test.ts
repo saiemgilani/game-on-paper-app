@@ -18,11 +18,12 @@ vi.mock('../src/resources/sdv', async (orig) => ({
 
 import NbaCupRoute from '../src/components/routes/NbaCupRoute.astro';
 import PlayoffPictureRoute from '../src/components/routes/PlayoffPictureRoute.astro';
+import Header from '../src/components/Header.astro';
 import { prepareNbaCup, type NbaCupParams } from '../src/routes/basketball/nbaCup';
 import type { CupSnapshot } from '../src/resources/nbaCup';
 import { SDVRequestError } from '../src/resources/sdv';
 import type { Snapshot } from '../src/utils/bracketology';
-import { cupBracket, groupTables, joinCup, oddsOrder, wildCardRace, type CupTeam } from '../src/utils/nbaCup';
+import { cupBracket, groupTables, isCupWindow, joinCup, oddsOrder, wildCardRace, type CupTeam } from '../src/utils/nbaCup';
 import { FLAGS } from '../src/utils/features';
 
 const fixture = (): CupSnapshot & { snapshot: Snapshot } =>
@@ -84,6 +85,8 @@ describe('cupBracket', () => {
     test("the current table's quarterfinals, 1 v 4 and 2 v 3 per conference, later rounds still labelled", () => {
         const b = cupBracket(teams())!;
         expect(b.rounds.map((r) => r.name)).toEqual(['Quarterfinals', 'Semifinals', 'Championship']);
+        // each round's number: the chance to reach the next one
+        expect(b.rounds.map((r) => r.next)).toEqual(['p_semifinal', 'p_final', 'p_champion']);
         const seat = (u: (typeof b.rounds)[number]['games'][number][number]) => ('team' in u ? [u.seed, u.team.sim.team_id] : u.label);
         expect(b.rounds[0].games.map((g) => g.map(seat))).toEqual([
             [[1, 1610612748], [4, 1610612738]], [[2, 1610612765], [3, 1610612764]],
@@ -217,8 +220,28 @@ describe('NbaCupRoute', () => {
         expect(graphic.match(/table-bordered/g)).toHaveLength(4 + 2 + 1);
         for (const l of ['East 1-4 winner', 'West 2-3 winner', 'East winner', 'West winner']) expect(graphic).toContain(l);
         expect(graphic).not.toContain('Champion<');
-        expect(graphic).toMatch(/title="Chance to win the Cup"[^>]*>18%</); // Detroit's p_champion .1816
+        // a quarterfinal slot is the chance to reach the semifinals: Detroit's p_semifinal .52, not its 18% title chance
+        expect(graphic).toMatch(/title="Chance to reach the semifinals"[^>]*>52%</);
+        expect(graphic).not.toContain('title="Chance to win the Cup"');
+        expect(html).toContain("Each number is the team's chance to reach the next round");
         expect(html).not.toContain('NaN');
+    });
+    test('a seated later slot is its chance to reach the next round: the final from a semifinal, the Cup from the final', async () => {
+        const p = params({ view: 'bracket' });
+        const sim = (id: number) => p.data!.sims.find((s) => s.team_id === id)!;
+        Object.assign(sim(1610612738), { p_semifinal: 1, p_final: 1, p_champion: 0.6 }); // Boston: through to the final
+        Object.assign(sim(1610612743), { p_semifinal: 1, p_final: 0.45 }); // Denver: through to a semifinal
+        const html = await render(p);
+        const graphic = html.split('playoff-bracket d-none')[1].split('bracket-table')[0];
+        const [qf, sf, fin] = graphic.split('bracket-round-name').slice(1);
+        expect(qf).toMatch(/title="Chance to reach the semifinals"[^>]*>100%</);
+        expect(sf).toMatch(/title="Chance to reach the championship game"[^>]*>100%</);
+        expect(sf).toMatch(/title="Chance to reach the championship game"[^>]*>45%</);
+        expect(fin).toMatch(/title="Chance to win the Cup"[^>]*>60%</);
+        // the phone table carries the same per-round titles
+        const phone = html.split('bracket-table')[1];
+        expect(phone).toContain('title="Chance to reach the semifinals"');
+        expect(phone).toContain('title="Chance to win the Cup"');
     });
     test('the odds view: 30 rows by title chance, one number per cell', async () => {
         const html = await render(params({ view: 'odds' }));
@@ -247,7 +270,36 @@ describe('NbaCupRoute', () => {
     });
 });
 
+describe('the Cup window', () => {
+    test('November and December by the US Eastern day', () => {
+        expect(isCupWindow(new Date('2026-11-01T03:30:00Z'))).toBe(false); // Oct 31, 11:30 pm ET
+        expect(isCupWindow(new Date('2026-11-01T05:00:00Z'))).toBe(true);
+        expect(isCupWindow(new Date('2026-12-16T12:00:00Z'))).toBe(true);
+        expect(isCupWindow(new Date('2027-01-01T04:30:00Z'))).toBe(true); // Dec 31, 11:30 pm ET
+        expect(isCupWindow(new Date('2027-01-01T06:00:00Z'))).toBe(false);
+        expect(isCupWindow(new Date('2027-03-01T12:00:00Z'))).toBe(false);
+    });
+});
+
 describe("the 'bball-nba-cup' flag", () => {
+    const header = async (day: string, league: 'nba' | 'wnba', flagOverrides: Record<string, boolean> = {}) => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date(day));
+        try {
+            return await container.renderToString(Header, { locals: { league, preview: true, flagOverrides } as any });
+        } finally {
+            vi.useRealTimers();
+        }
+    };
+    test('the NBA Header lists the Cup in the Cup window only, with the flag', async () => {
+        const entry = '<a href="/nba/cup" class="nav-link px-2 link-secondary">NBA Cup</a>';
+        expect(await header('2026-11-15T12:00:00Z', 'nba')).toContain(entry);
+        expect(await header('2026-12-20T12:00:00Z', 'nba')).toContain(entry);
+        expect(await header('2027-02-01T12:00:00Z', 'nba')).not.toContain('/nba/cup"');
+        expect(await header('2026-10-20T12:00:00Z', 'nba')).not.toContain('/nba/cup"');
+        expect(await header('2026-11-15T12:00:00Z', 'nba', { 'bball-nba-cup': false })).not.toContain('/nba/cup"');
+        expect(await header('2026-11-15T12:00:00Z', 'wnba')).not.toContain('/cup"');
+    });
     test('ships as preview', () => {
         expect(FLAGS['bball-nba-cup']).toBe('preview');
     });
