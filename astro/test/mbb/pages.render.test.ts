@@ -142,7 +142,7 @@ describe('the MBB dashboard pages', () => {
         expect(await prepareBasketballPlayer(fake('/mbb/players/123', '123'), 'mbb')).toEqual({ notFound: true });
     });
     test('HTML budgets (measured on these captures x 1.2; Step 3 sets them)', () => {
-        const BUDGET: Record<string, number> = { '/mbb': 243155, '/mbb/team/251': 147119, '/mbb/players/[p26]': 260507, '/mbb/scatter': 124539, '/mbb/scatter?conference=all': 2069946, '/mbb/leaders': 101289 };
+        const BUDGET: Record<string, number> = { '/mbb': 243155, '/mbb/team/251': 147119, '/mbb/players/[p26]': 260507, '/mbb/scatter': 124539, '/mbb/scatter?conference=all': 2069946, '/mbb/leaders': 125027 }; // /mbb/leaders: BB-G11's Most declined boards (preview), 104,189 bytes x 1.2
         for (const [k, b] of Object.entries(BUDGET)) expect(sizes[k], k).toBeLessThanOrEqual(b);
     });
 });

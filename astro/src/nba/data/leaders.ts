@@ -6,13 +6,27 @@ export const LEADER_WINDOWS = [5, 10, 20] as const;
 export type LeaderWindow = (typeof LEADER_WINDOWS)[number];
 
 export const LEADER_METRICS = ["fgPct", "efgPct", "fg3Pct", "improved"] as const;
-export type LeaderMetric = (typeof LEADER_METRICS)[number];
+/**
+ * BB-G11 ('bball-rolling-movers'): the same change as "improved", the window eFG% minus his season eFG%, ranked from the largest
+ * drop. Not in LEADER_METRICS: only a leaderBoards call with `movers` builds it, so the boards are unchanged without the flag.
+ */
+export const MOVER_METRIC = "declined" as const;
+
+/**
+ * BB-G11: with the movers flag both change boards need this many season FGA (the baseline's own sample, the window's
+ * games included). At 100 attempts a season eFG% is good to about +/-5 points (one standard error, 0.5 / sqrt(100)), so the
+ * baseline's noise stays well under the changes the boards rank. The precision depends on attempts, not schedule length,
+ * so every league uses it; it is also the NBA's season bar for the rank lists and the scatter.
+ */
+export const MOVER_MIN_SEASON_FGA = 100;
+export type LeaderMetric = (typeof LEADER_METRICS)[number] | typeof MOVER_METRIC;
 
 export const LEADER_LABELS: Record<LeaderMetric, string> = {
   fgPct: "FG%",
   efgPct: "eFG%",
   fg3Pct: "3P%",
   improved: "Most improved",
+  declined: "Most declined",
 };
 
 /** Eligible in a window of n games: bars.fga attempts per game (and bars.fg3a threes per game for 3P%); the NBA's 5 / 3 by default. */
@@ -90,10 +104,10 @@ export interface LeaderRow {
   team_id: number;
   team: string;
   rank: number;
-  /** The ranked number: the window's rate, or for "improved" the window eFG% minus his season eFG%. */
+  /** The ranked number: the window's rate, or for "improved" and "declined" the window eFG% minus his season eFG%. */
   value: number;
   window: WindowLine;
-  /** His season eFG% ("improved" only). */
+  /** His season eFG% ("improved" and "declined" only). */
   seasonEfg: number | null;
 }
 
@@ -102,9 +116,11 @@ export interface LeaderRow {
  * attempt (competition ranking: ties share a rank). A full window is required (n such games) so a
  * 5-game rookie is not compared with a 20-game window; with `since` (one date, or one per team), a window that ended before
  * that date (an inactive shooter) is left out. With `seasonLines` (the game rows are a window, D26), "improved"
- * compares with his season line from them instead of with every game read.
+ * compares with his season line from them instead of with every game read. "declined" is that change ranked ascending.
+ * With `minSeasonFga` (BB-G11's movers), both change boards need that many season FGA and keep only their own sign: a rise
+ * on "improved", a drop on "declined".
  */
-export function leaderboard(players: PlayerGames[], n: number, metric: LeaderMetric, since: string | ReadonlyMap<number, string> | null = null, bars: LeaderBars = NBA_LEADER_BARS, seasonLines?: ReadonlyMap<number, FieldGoals>): LeaderRow[] {
+export function leaderboard(players: PlayerGames[], n: number, metric: LeaderMetric, since: string | ReadonlyMap<number, string> | null = null, bars: LeaderBars = NBA_LEADER_BARS, seasonLines?: ReadonlyMap<number, FieldGoals>, minSeasonFga?: number): LeaderRow[] {
   const rows: Omit<LeaderRow, "rank">[] = [];
   for (const p of players) {
     const w = windowLine(p.games, n);
@@ -115,14 +131,17 @@ export function leaderboard(players: PlayerGames[], n: number, metric: LeaderMet
     let value: number | null;
     let seasonEfg: number | null = null;
     if (metric === "fg3Pct") value = w.fg3a >= minThrees(n, bars) ? line.fg3Pct : null;
-    else if (metric === "improved") {
-      seasonEfg = lineOf(seasonLines?.get(p.person_id) ?? windowLine(p.games, p.games.length) ?? w).efgPct;
+    else if (metric === "improved" || metric === "declined") {
+      const season = seasonLines?.get(p.person_id) ?? windowLine(p.games, p.games.length) ?? w;
+      seasonEfg = lineOf(season).efgPct;
       value = line.efgPct !== null && seasonEfg !== null ? line.efgPct - seasonEfg : null;
+      if (minSeasonFga !== undefined && (season.attempts < minSeasonFga || (value !== null && (metric === "improved" ? value <= 0 : value >= 0)))) continue;
     } else value = line[metric];
     if (value === null) continue;
     rows.push({ person_id: p.person_id, name: p.name, team_id: p.team_id, team: p.team, value, window: w, seasonEfg });
   }
-  rows.sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
+  const dir = metric === "declined" ? -1 : 1;
+  rows.sort((a, b) => dir * (b.value - a.value) || a.name.localeCompare(b.name));
   let rank = 0;
   return rows.map((r, i) => {
     if (i === 0 || r.value !== rows[i - 1].value) rank = i + 1;
@@ -138,7 +157,8 @@ export interface Board {
   eligible: number;
 }
 
-export type Boards = Record<LeaderWindow, Record<LeaderMetric, Board>>;
+/** The "declined" board exists only when leaderBoards was asked for it (`movers`). */
+export type Boards = Record<LeaderWindow, Record<(typeof LEADER_METRICS)[number], Board> & Partial<Record<typeof MOVER_METRIC, Board>>>;
 
 /** A restricted leaders read (D26): the windows to build, and each player's season line when the game rows are not the season. */
 export interface LeaderOptions {
@@ -146,6 +166,8 @@ export interface LeaderOptions {
   seasonLines?: ReadonlyMap<number, FieldGoals>;
   /** "Active" measured from each team's latest game, not the season's (a college season ends on one final, D23). */
   activeByTeam?: boolean;
+  /** BB-G11: also build the "declined" board, and hold both change boards to MOVER_MIN_SEASON_FGA and their own sign. */
+  movers?: boolean;
 }
 
 /** The first `top` rows, extended to the end of a tie group that straddles the cut. */
@@ -163,9 +185,9 @@ export function leaderBoards(players: PlayerGames[], highlightTeamId: number | n
   const since = opts.activeByTeam ? activeSinceByTeam(players) : activeSince(players);
   const out = {} as Boards;
   for (const n of opts.windows ?? LEADER_WINDOWS) {
-    out[n] = {} as Record<LeaderMetric, Board>;
-    for (const metric of LEADER_METRICS) {
-      const all = leaderboard(players, n, metric, since, bars, opts.seasonLines);
+    out[n] = {} as Boards[LeaderWindow];
+    for (const metric of opts.movers ? [...LEADER_METRICS, MOVER_METRIC] : LEADER_METRICS) {
+      const all = leaderboard(players, n, metric, since, bars, opts.seasonLines, opts.movers ? MOVER_MIN_SEASON_FGA : undefined);
       const rows = topRows(all, top);
       out[n][metric] = { rows, also: all.slice(rows.length).filter((r) => r.team_id === highlightTeamId), eligible: all.length };
     }

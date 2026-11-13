@@ -174,6 +174,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404, and the
     // standings page and the Header have no link.
     'bball-nba-cup': 'preview',
+    // Rolling leaders' improvers and decliners (BB-G11): a "Most declined" board beside "Most improved" on /<league>/leaders
+    // (nba, wnba, mbb, wbb), the same change (window eFG% minus the season eFG%) ranked from the largest drop, and the
+    // change's definition on the page. Off: the boards, the island's props and the page are today's.
+    'bball-rolling-movers': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
