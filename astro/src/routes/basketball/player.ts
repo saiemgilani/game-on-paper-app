@@ -18,7 +18,7 @@ import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/r
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
 import { retrievePlayerImpactCareer, retrievePlayerWarCareer } from '../../resources/playerCareer';
 import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/playerImpact';
-import { hasEpv, retrievePlayerEpv, retrievePlayerWar, type EpvPlayerGameRow, type PlayerWarRow } from '../../resources/playerWar';
+import { hasEpv, retrievePlayerEpv, retrievePlayerWar, type EpvPlayerSeasonRow, type PlayerWarRow } from '../../resources/playerWar';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { isFeatureEnabled } from '../../utils/features';
 import { impactShown } from '../../utils/playerImpact';
@@ -54,8 +54,8 @@ export interface BasketballPlayerParams {
     impact?: PlayerImpactRow[] | null;
     /** BB-G27, only with 'bball-war' on: his player_war rows; null when the read failed */
     war?: PlayerWarRow[] | null;
-    /** BB-G27, only with 'bball-war' on and an NBA season from 2021-22: his EPV game rows; null when the read failed */
-    epv?: EpvPlayerGameRow[] | null;
+    /** BB-G27, only with 'bball-war' on and a season from 2021-22: his epv_player_seasons row; null when the read failed */
+    epv?: EpvPlayerSeasonRow[] | null;
     /** BB-G54, only with 'bball-career' on: every season of his player_war rows and (NBA/WNBA) player_impact rows; a failed read is null */
     career?: { war: PlayerWarRow[] | null; impact?: PlayerImpactRow[] | null };
 }
@@ -133,7 +133,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     }
 
     // BB-G6: the same rule as BB-G15's below, started first so the two reads run together
-    // college waits for BB-D16's crosswalk (utils/playerImpact.ts COLLEGE_IMPACT): no read, no key, no panel
+    // college reads through ncaa_player_crosswalk (BB-D37); utils/playerImpact.ts COLLEGE_IMPACT is its kill switch
     const impactP = isFeatureEnabled('bball-impact', Astro.locals) && impactShown(isNcaaDashboards(league)) ? readPlayerImpact(league, season, personId) : undefined;
     // BB-G27: the same rule again, its reads started with BB-G6's
     const withWar = isFeatureEnabled('bball-war', Astro.locals);

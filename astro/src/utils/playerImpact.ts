@@ -15,7 +15,7 @@ export interface ImpactPanel {
     measures: ImpactMeasure[];
     /** some cell has a producer rank: the panel shows the rank columns and shades by percentile */
     ranked: boolean;
-    /** NBA/WNBA: the possessions every measure is computed over */
+    /** the possessions the RAPM (and in the NBA/WNBA every measure) is computed over; null in college without RAPM */
     offPoss: number | null;
     defPoss: number | null;
     gp: number | null;
@@ -27,11 +27,11 @@ export interface ImpactPanel {
 }
 
 /**
- * College's panel waits for an ESPN↔NCAA player crosswalk (BB-D16; Akshay on #408): college RAPM is keyed by stats.ncaa.org
- * ids the ESPN-keyed page cannot reach, and box BPM alone is not the panel. Off: no read and no panel on /mbb and /wbb
- * player pages. Everything below still handles college, so re-enabling it is this one line.
+ * College's panel (Akshay on #408: wait for the crosswalk) reads through `ncaa_player_crosswalk` (BB-D37): RAPM from
+ * `ncaa_rapm` by his season's stats.ncaa.org id, box BPM from `player_value` by the page's ESPN id. A kill switch:
+ * false hides it again (no read, no key, no panel on /mbb and /wbb player pages).
  */
-export const COLLEGE_IMPACT = false;
+export const COLLEGE_IMPACT = true;
 /** Whether the player page reads and shows the panel for this league (pro always; college behind COLLEGE_IMPACT). */
 export const impactShown = (college: boolean) => !college || COLLEGE_IMPACT;
 
@@ -51,8 +51,14 @@ const PRO: readonly Spec[] = [
     ['BOBAN', 'Bayesian Online Box-Augmented Net: a Kalman-filtered estimate of current skill across his seasons, per 100 possessions', null, null, 'boban_filtered_skill'],
     ['WAR', 'Wins above replacement (replacement level −2.0 per 100 possessions), in wins', null, null, 'war'],
 ];
-/** College: `player_value`'s box BPM. */
-const COLLEGE: readonly Spec[] = [['BPM', 'Box plus-minus, per 100 possessions', 'box_obpm', 'box_dbpm', 'box_bpm']];
+/**
+ * College: `ncaa_rapm`'s league-wide RAPM (positive drapm is good defense; rapm_net = orapm + drapm) and `player_value`'s
+ * box BPM. A player with no crosswalk pair has no RAPM columns, so his panel is BPM only.
+ */
+const COLLEGE: readonly Spec[] = [
+    ['RAPM', 'Regularized adjusted plus-minus: the league-wide ridge on stats.ncaa.org lineups, per 100 possessions', 'orapm', 'drapm', 'rapm_net'],
+    ['BPM', 'Box plus-minus, per 100 possessions', 'box_obpm', 'box_dbpm', 'box_bpm'],
+];
 
 const cell = (row: PlayerImpactRow, col: string): ImpactCell => ({
     col,
@@ -62,15 +68,19 @@ const cell = (row: PlayerImpactRow, col: string): ImpactCell => ({
 });
 const isTrue = (v: unknown) => v === true || v === 'true' || v === 'True' || v === 'TRUE';
 
+/** player_impact's WAR when the Value block shows player_war's too (BB-G27): its own name, so the two read apart. */
+const IMPACT_WAR: Spec = ['Impact WAR', 'Wins above replacement from the impact ratings (replacement level −2.0 per 100 possessions), in wins, with no interval. A separate estimate from the Value WAR below, which carries its 90% interval', null, null, 'war'];
+
 /**
- * The panel for the player's rows, or null when there is none. College: the team row with the most minutes. `withoutWar`
- * (BB-G27's 'bball-war' on) drops player_impact's WAR: the Value panel shows player_war's, with its interval, and
- * player_impact's double-counts possessions (sdv-db docs/api.md).
+ * The panel for the player's rows, or null when there is none. College: the team row with the most minutes. `relabelWar`
+ * (BB-G27's 'bball-war' on) keeps player_impact's WAR under its own name, "Impact WAR": the Value block below shows
+ * player_war's, with its interval, and the two are different estimates (sdv-db docs/api.md).
  */
-export function impactPanel(rows: PlayerImpactRow[], college: boolean, withoutWar = false): ImpactPanel | null {
+export function impactPanel(rows: PlayerImpactRow[], college: boolean, relabelWar = false): ImpactPanel | null {
     const row = [...rows].sort((a, b) => (numberOrNull(b.min) ?? 0) - (numberOrNull(a.min) ?? 0))[0];
     if (!row) return null;
-    const specs = college ? COLLEGE : withoutWar ? PRO.filter((s) => s[4] !== 'war') : PRO;
+    const specs = college ? COLLEGE.filter(([, , , , net]) => row[net] !== undefined) : relabelWar ? PRO.map((s) => (s[4] === 'war' ? IMPACT_WAR : s)) : PRO;
+    if (!specs.length) return null;
     const measures = specs.map(([label, hover, off, def, net]) => ({
         label, hover, off: off ? cell(row, off) : null, def: def ? cell(row, def) : null, net: cell(row, net),
     }));

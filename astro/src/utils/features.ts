@@ -85,11 +85,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // The player page's Impact panel (BB-G6) inside each league's flag: RAPM, adjusted RAPM, SPM, BPM, BOBAN and WAR with
     // their possessions from sdv-db's player_impact (NBA/WNBA). Off: no read and the player page is today's, byte for byte.
     // Stays 'preview' until the producer ships player_impact's <m>_rank / <m>_pct (Akshay on #408); the Rank columns and
-    // shading then appear with no GOP change. College's panel (box BPM, player_value) waits for BB-D16's crosswalk.
+    // shading then appear with no GOP change. College's panel: RAPM (ncaa_rapm, through ncaa_player_crosswalk) and box BPM.
     'bball-impact': 'preview',
-    // WAR, VORP and EPV added (BB-G27) inside each league's flag: the player page's Value panel, WAR always with its 90%
-    // interval, from sdv-db's player_war (BB-D26) and, for the NBA from 2021-22, epv_player_games (BB-D24); the Impact
-    // panel then drops player_impact's WAR. Off: no read and the player page is today's, byte for byte.
+    // WAR, VORP and EPV added (BB-G27) inside each league's flag: the player page's Value block, WAR always with its 90%
+    // interval, from sdv-db's player_war (BB-D26) and, from 2021-22, epv_player_seasons (sdv-db #223); it closes the
+    // Impact panel (a section of its own with 'bball-impact' off), whose own WAR then reads "Impact WAR". Off: no read and the player page is today's, byte for byte.
     'bball-war': 'preview',
     // The player page's Career panel (BB-G54) inside each league's flag: one row per season of sdv-db's player_war (rating,
     // WAR, VORP; all four leagues) and, for the NBA/WNBA, player_impact's RAPM and BPM. A click on a ranked number opens its
@@ -190,10 +190,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // needs a live entitlement (utils/pro.ts, resources/pro.ts) except login,
     // auth, logout and methodology. Promote to 'on' at launch.
     'pro': 'preview',
-    // The NBA Cup (BB-G30): /nba/cup inside 'nba', linked from /nba/standings (no Header entry). sdv-db's daily Cup
+    // The NBA Cup (BB-G30): /nba/cup inside 'nba', linked from /nba/standings and, in the Cup window (November and
+    // December, utils/nbaCup.ts isCupWindow), from the NBA Header. sdv-db's daily Cup
     // snapshots (cup_standings, cup_sims): the six groups in the Cup's tiebreak order, the wild-card race, the knockout
-    // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404 and the
-    // standings page has no link.
+    // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404, and the
+    // standings page and the Header have no link.
     'bball-nba-cup': 'preview',
 };
 
