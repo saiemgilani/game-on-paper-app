@@ -1,0 +1,45 @@
+---
+// BB-G15, behind 'bball-poe': each team's points over expected in its own panel, laid out as the four factors (away
+// left, home right; only POE bolds the better side). Every number is sdv-db's shot_quality_game team row (BB-D9);
+// no pair, nothing.
+import type { NbaGame } from '../../../resources/nbaGame';
+import type { ShotQualityRow } from '../../../resources/shotQuality';
+import { dash } from '../../../nba/data/game';
+import { fmtDec, fmtInt, fmtPts } from '../../../nba/format';
+import { cleanAbbreviation } from '../../../utils/misc';
+import { signed1, XPTS_NOTE, type GameShotQuality } from '../../../utils/shotQuality';
+
+interface Props { game: NbaGame; poe: GameShotQuality | null }
+const { game, poe } = Astro.props;
+const h = poe?.home, a = poe?.away;
+type Row = { label: string; hover?: string; cell: (r: ShotQualityRow) => string; value?: (r: ShotQualityRow) => number | null };
+const rows: Row[] = [
+    { label: 'FGA', cell: (r) => fmtInt(r.attempts) },
+    { label: 'FG points', cell: (r) => fmtInt(r.pts) },
+    { label: 'xPTS', hover: 'Expected points from the shots taken', cell: (r) => dash(r.xpts, (n) => fmtDec(n, 1)) },
+    { label: 'Points over expected', hover: 'FG points minus xPTS; ± one standard error', cell: (r) => (r.poe == null ? '–' : `${signed1(r.poe)}${r.poe_se == null ? '' : ` ± ${fmtDec(r.poe_se, 1)}`}`), value: (r) => r.poe },
+    { label: 'xPTS per shot', hover: 'Shot quality: the expected points of the average shot', cell: (r) => dash(r.xpps, (n) => fmtDec(n, 2)) },
+    { label: 'FG% over expected', hover: 'Shot making: makes minus expected makes, per shot, in percentage points', cell: (r) => dash(r.fg_pct_oe, fmtPts) },
+];
+const wins = (r: Row, mine: ShotQualityRow, theirs: ShotQualityRow) => {
+    const [m, t] = [r.value?.(mine), r.value?.(theirs)];
+    return m != null && t != null && m > t;
+};
+---
+{poe === null ? (<p class="small text-muted mb-0" id="poe-unavailable">Points over expected are temporarily unavailable.</p>) : h && a && (
+<section id="poe-table" aria-label="Points over expected">
+<div class="table-responsive"><table class="table table-sm numeral w-auto" aria-label="Points over expected">
+    <thead><tr><th scope="col"><span class="visually-hidden">Metric</span></th><th scope="col" class="text-end">{cleanAbbreviation(game.away.team)}</th><th scope="col" class="text-end">{cleanAbbreviation(game.home.team)}</th></tr></thead>
+    <tbody>
+        {rows.map((r) => (
+            <tr>
+                <th scope="row" class="fw-normal">{r.hover ? <abbr title={r.hover}>{r.label}</abbr> : r.label}</th>
+                <td class:list={['text-end', { 'fw-bold': wins(r, a, h) }]}>{r.cell(a)}</td>
+                <td class:list={['text-end', { 'fw-bold': wins(r, h, a) }]}>{r.cell(h)}</td>
+            </tr>
+        ))}
+    </tbody>
+</table></div>
+<p class="small text-muted mb-0">{XPTS_NOTE}</p>
+</section>
+)}

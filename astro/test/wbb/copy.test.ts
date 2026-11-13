@@ -4,6 +4,8 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
+// BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
+vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
 import { BASKETBALL, seasonLabelFor } from '../../src/basketball/config';
 import { coverageNote, NCAA_USAGE_NOTE } from '../../src/basketball/dashboards';
 import NbaRosterTable from '../../src/components/nba/NbaRosterTable.astro';

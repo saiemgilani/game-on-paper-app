@@ -78,6 +78,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // team_season_rates, team_strength and game_team_rates); college adds adjusted efficiency margin and tempo. Off: no
     // read and the team page is today's, byte for byte.
     'bball-team-season': 'preview',
+    // Points over expected (BB-G15) inside each league's flag: a table in the game page's Four factors panel (each team), a
+    // section on /<league>/team/[id] (the team and its shooters) and a line on /<league>/players/[id], from sdv-db's
+    // shot_quality_game / shot_quality_season (BB-D9). Off: no read and the three pages are today's, byte for byte.
+    'bball-poe': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

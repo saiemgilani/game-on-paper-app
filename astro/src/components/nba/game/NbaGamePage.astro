@@ -10,6 +10,7 @@ import NbaPlayerBox from './NbaPlayerBox.astro';
 import NbaWinProbability from './NbaWinProbability.astro';
 import NbaGameShotCharts from './NbaGameShotCharts.astro';
 import NbaPlaysTable from './NbaPlaysTable.astro';
+import NbaShotQuality from './NbaShotQuality.astro';
 import { isFeatureEnabled } from '../../../utils/features';
 import { cleanAbbreviation, pickGameColors } from '../../../utils/misc';
 import { gameHref, scoreboardDayHref, teamHrefFromEspn } from '../../../nba/links';
@@ -18,15 +19,18 @@ import { LEAGUES, leaguePath } from '../../../utils/league';
 import { basketball } from '../../../basketball/config';
 import type { NbaGame } from '../../../resources/nbaGame';
 import type { BasketballSourceTools } from '../../../routes/basketball/game';
+import type { GameShotQuality } from '../../../utils/shotQuality';
 
-interface Props { game: NbaGame; /** admin + 'source-switch' only (routes/basketball/game.ts) */ sourceTools?: BasketballSourceTools }
-const { game, sourceTools } = Astro.props;
+interface Props { game: NbaGame; /** admin + 'source-switch' only (routes/basketball/game.ts) */ sourceTools?: BasketballSourceTools; /** BB-G15, 'bball-poe' only */ poe?: GameShotQuality | null }
+const { game, sourceTools, poe } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const title = `${game.away.team.displayName} ${game.away.score ?? ''} at ${game.home.team.displayName} ${game.home.score ?? ''} | Game on Paper`.replace(/\s+/g, ' ');
 const description = `${game.away.team.displayName} at ${game.home.team.displayName}: win probability, biggest plays, four factors, advanced box score and shot charts.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: leaguePath(league, '/'), active: false }, { title: 'Scoreboard', url: scoreboardDayHref(league, game.date), active: false }, { title: `${cleanAbbreviation(game.away.team)} @ ${cleanAbbreviation(game.home.team)}`, active: true }];
-const items: ScrollerItem[] = [{ href: '#wp', title: 'Win probability' }, { href: '#factors', title: 'Four factors' }, { href: '#teambox', title: 'Team box' }, { href: '#players', title: 'Players' }, { href: '#shots', title: 'Shots' }, { href: '#plays', title: 'Plays' }];
+// BB-G15 ('bball-poe'): its own panel after Four factors, for a game with both team rows or a failed read (it says so)
+const poeShown = poe === null || (poe != null && poe.home != null && poe.away != null);
+const items: ScrollerItem[] = [{ href: '#wp', title: 'Win probability' }, { href: '#factors', title: 'Four factors' }, ...(poeShown ? [{ href: '#poe', title: 'Points over expected' }] : []), { href: '#teambox', title: 'Team box' }, { href: '#players', title: 'Players' }, { href: '#shots', title: 'Shots' }, { href: '#plays', title: 'Plays' }];
 const side = (s: typeof game.home) => ({ name: s.team.displayName, href: teamHrefFromEspn(s.team, league, game.season), score: s.score });
 const jsonLd = basketballEventJsonLd({ league, path: gameHref(league, game.id), date: game.date, description, venue: game.venue, statusDetail: game.status.detail, home: side(game.home), away: side(game.away) });
 const colors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(game.home.team, game.away.team) : null;
@@ -37,7 +41,7 @@ const colors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(g
     <NbaGameHeader game={game} />{sourceTools && <NbaAdminSourceTools game={game} tools={sourceTools} />}
     <div class="game-nav-sticky py-1 mb-3 border-top border-bottom"><NavScroller items={items} /></div>
     <Panel id="wp" title="Win probability" show={true}><div slot="panel-body"><NbaWinProbability game={game} colors={colors} /></div></Panel>
-    <Panel id="factors" title="Four factors" show={true}><div slot="panel-body"><NbaFourFactors game={game} /></div></Panel>
+    <Panel id="factors" title="Four factors" show={true}><div slot="panel-body"><NbaFourFactors game={game} /></div></Panel>{poeShown && (<Panel id="poe" title="Points over expected" show={true}><div slot="panel-body"><NbaShotQuality game={game} poe={poe ?? null} /></div></Panel>)}
     <Panel id="teambox" title="Team box" show={true}><div slot="panel-body"><NbaTeamBox game={game} /></div></Panel>
     <Panel id="players" title="Players" show={true}><div slot="panel-body"><div class="row"><div class="col-12 col-xl-6"><NbaPlayerBox side={game.away} id="box-away" league={league} /></div><div class="col-12 col-xl-6"><NbaPlayerBox side={game.home} id="box-home" league={league} /></div></div></div></Panel>
     <Panel id="shots" title="Shot charts" show={true}><div slot="panel-body"><NbaGameShotCharts game={game} /></div></Panel>

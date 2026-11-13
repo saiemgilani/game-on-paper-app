@@ -16,6 +16,8 @@ import { placeholderSplit } from '../../nba/data/placeholder';
 import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
+import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
+import { isFeatureEnabled } from '../../utils/features';
 import type { BasketballLeague } from '../../utils/league';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
@@ -42,6 +44,8 @@ export interface BasketballPlayerParams {
     unlocated?: { count: number; total: number };
     /** a college season's shot_coverage sentence (D24); absent for the NBA/WNBA */
     coverage?: string | null;
+    /** BB-G15, only with 'bball-poe' on: his shot quality season rows (one per team); null when the read failed */
+    poe?: ShotQualityRow[] | null;
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -116,6 +120,10 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         console.error(`player ${personId}: the seasons read failed: ${seasonsR.reason}`);
     }
 
+    // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
+    const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
+    if (poe.poe === null) degraded = true;
+
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
     const min = rankMins(league, season);
@@ -137,5 +145,16 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         hisSeasons,
         ...(n > 0 ? { unlocated: { count: n, total: shots.length } } : {}),
         ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
+        ...poe,
     };
+}
+
+/** BB-G15's read (the season tables' person id: stats.nba.com's for the NBA/WNBA, ESPN's in college); null when it failed. */
+async function readPlayerPoe(league: BasketballLeague, season: number, personId: number): Promise<ShotQualityRow[] | null> {
+    try {
+        return await retrievePlayerShotQuality(league, season, personId);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} shot quality for player ${personId}: ${e}, ${e?.stack}`);
+        return null;
+    }
 }
