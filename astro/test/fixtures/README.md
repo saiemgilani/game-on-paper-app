@@ -775,3 +775,17 @@ plus `nba-open-only`, a 2026-27 game no book had closed on (`n_books` 0, every `
 **Used by:** `test/basketball/hub.test.ts` (BB-G47).
 
 **To regenerate:** re-run the reads above with a read key; finals do not change, the open-only row will (it closes).
+
+## `hub-standouts-box.json.gz` and `hub-play-wp.json.gz`
+Real Data API rows for the league hub's "Tonight" (BB-G48), captured 2026-11-10 with the hub's own reads. No edits.
+- `hub-standouts-box.json.gz`: `{ "<league>:<game_date>": rows }`, each the answer to
+  `/v1/<league>/player_box?season=<s>&game_date=<day>&select=<the standouts columns>&order=-points&limit=200` for the four
+  scoreboard captures' days above (`nba:2025-01-15`, `wnba:2025-08-01`, `mbb:2025-02-22`, `wbb:2026-02-07`) and the NBA's day
+  before (`nba:2025-01-14`, the "no final yet" fallback).
+- `hub-play-wp.json.gz`: `{ "<ESPN game id>": [home_win_prob, ...] }`, the `home_win_prob` column of
+  `/v1/<league>/play_wp?season=<s>&game_id=<id>&select=game_play_number,home_win_prob&order=game_play_number&limit=2000`, in play
+  order, for every final of those four captures (30 games).
+
+**Used by:** `test/basketball/hubTonight.test.ts` (BB-G48).
+
+**To regenerate:** re-run the reads above with a read key; finals do not change.
