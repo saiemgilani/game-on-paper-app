@@ -81,8 +81,8 @@ export const FLAGS: Record<string, FeatureState> = {
     'bball-impact-box': 'preview',
     // BB-G28's Game flow: on /<league>/game/[id] for a final, the panel in football's drive-chart slot (a lead chart from
     // the play-by-play with its lead changes and 10-0 runs, and sdv-db's game_flow totals: time leading, runs, droughts,
-    // stops, kills, game control); inside 'bball-playoff-picture', the pro standings' "Game flow" view (team_season_flow,
-    // BB-D27, with the producer's ranks and percentiles). Off: no read, the game page and the standings are today's.
+    // stops, kills, game control). The season board is the leaderboards' Teams board (BB-G8). Off: no read and the game
+    // page is today's.
     'bball-game-flow': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
