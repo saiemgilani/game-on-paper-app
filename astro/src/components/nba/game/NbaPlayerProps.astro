@@ -13,9 +13,9 @@ const { game, view } = Astro.props;
 const cols = view ? PROP_STATS.filter((d) => view.stats.includes(d.stat)) : [];
 const sides = view ? (['away', 'home'] as const).map((s) => ({ s, abbr: cleanAbbreviation(game[s].team), players: view[s] as PropPlayer[] })).filter((x) => x.players.length) : [];
 const mark: Record<PropResult, { text: string; cls: string; title: string }> = {
-    over: { text: 'O', cls: 'text-bg-success', title: 'Over' },
-    under: { text: 'U', cls: 'text-bg-danger', title: 'Under' },
-    push: { text: 'P', cls: 'text-bg-secondary', title: 'Push' },
+    over: { text: 'O', cls: 'bg-success', title: 'Over' },
+    under: { text: 'U', cls: 'bg-danger', title: 'Under' },
+    push: { text: 'P', cls: 'bg-secondary', title: 'Push' },
 };
 const pct = (line: number, actual: number) => Math.max(0, Math.min(100, Math.round((actual / line) * 100)));
 ---
