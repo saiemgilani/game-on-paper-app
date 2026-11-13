@@ -58,7 +58,7 @@ import { fromDataApi, type NbaGame } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
 import { shotsOf } from '../src/nba/data/game';
-import { clockSeconds, filterShot, isAssisted, matches, NO_FILTERS, onFloor, parseFilters, shotKind, shotLine, withFilters, type FilterOptions } from '../src/basketball/shotFilters';
+import { clockSeconds, filterShot, isAssisted, matches, movesOf, NO_FILTERS, onFloor, parseFilters, shotKind, shotLine, shotMoves, withFilters, type FilterOptions } from '../src/basketball/shotFilters';
 import { courtFor } from '../src/basketball/config';
 import { leagueContextFromRows } from '../src/nba/adapters';
 import type { BasketballLeague } from '../src/utils/league';
@@ -99,6 +99,33 @@ describe('each shot\'s filter fields on the real finals', () => {
         expect(shotKind(null, 'Jane Doe made Three Point Jumper.')).toBe('jumper');
         expect(shotKind('Shot', 'a heave')).toBe('other');
     });
+    test('shotMoves: the pros\' moves from the type text, more than one when it names them', () => {
+        expect(shotMoves('Driving Floating Jump Shot')).toEqual(['driving', 'floating']);
+        expect(shotMoves('Running Pullup Jump Shot')).toEqual(['pullup']);
+        expect(shotMoves('Turnaround Fade Away Jump Shot')).toEqual(['turnaround']);
+        expect(shotMoves('Step Back Jump Shot')).toEqual(['stepback']);
+        expect(shotMoves('Alley Oop Dunk Shot')).toEqual(['alleyoop']);
+        expect(shotMoves('Layup Shot Putback')).toEqual(['putback']);
+        expect(shotMoves('Jump Shot')).toEqual([]);
+        expect(shotMoves(null)).toEqual([]);
+    });
+    test('the real finals: the NBA one has all seven moves, the WNBA one six (no alley-oop), college none', () => {
+        const movesIn = (league: BasketballLeague) => {
+            const g = game(league); const court = courtFor(league, g.season);
+            return movesOf([g.home, g.away].flatMap((s) => shotsOf(g.plays, Number(s.team.id)).map((p) => filterShot(p, { x: p.xLegacy!, y: p.yLegacy!, made: p.scoringPlay, value: p.scoreValue || 2, label: '', period: p.period }, court, null))));
+        };
+        expect(movesIn('nba')).toEqual(['driving', 'pullup', 'floating', 'turnaround', 'stepback', 'alleyoop', 'putback']);
+        expect(movesIn('wnba')).toEqual(['driving', 'pullup', 'floating', 'turnaround', 'stepback', 'putback']);
+        expect(movesIn('mbb')).toEqual([]);
+        expect(movesIn('wbb')).toEqual([]);
+        // the move filter keeps the shots that carry it, of any type
+        const g = game('nba'); const court = courtFor('nba', g.season);
+        const xs = shotsOf(g.plays, Number(g.home.team.id)).map((p) => filterShot(p, { x: p.xLegacy!, y: p.yLegacy!, made: p.scoringPlay, value: p.scoreValue || 2, label: '', period: p.period }, court, null));
+        const driving = xs.filter((x) => matches(x, { ...NO_FILTERS, move: 'driving' }, null));
+        expect(driving.length).toBeGreaterThan(0);
+        expect(new Set(driving.map((x) => x.kind)).size).toBeGreaterThan(1);
+        expect(driving.length).toBe(shotsOf(g.plays, Number(g.home.team.id)).filter((p) => /driving/i.test(p.typeText ?? '')).length);
+    });
     test('clockSeconds: M:SS, sub-minute tenths, nothing', () => {
         expect(clockSeconds('5:23')).toBe(323);
         expect(clockSeconds('12:00')).toBe(720);
@@ -118,10 +145,11 @@ describe('each shot\'s filter fields on the real finals', () => {
 });
 
 describe('the URL state', () => {
-    const o: FilterOptions = { players: ['11', '12'], periods: ['1', '2', '3', '4'], zones: ['paint', 'mid_range'], kinds: ['layup', 'jumper'], withPlayers: ['11', '21'] };
+    const o: FilterOptions = { players: ['11', '12'], periods: ['1', '2', '3', '4'], zones: ['paint', 'mid_range'], kinds: ['layup', 'jumper'], moves: ['driving'], withPlayers: ['11', '21'] };
     test('parse keeps only what the page offers', () => {
-        const f = parseFilters(new URLSearchParams('shot_team=home&shot_player=11&shot_period=9&shot_result=made&shot_zone=paint&shot_type=dunk&shot_assist=ast&shot_off=21&order=oldest'), o);
-        expect(f).toEqual({ ...NO_FILTERS, team: 'home', player: '11', result: 'made', zone: 'paint', assist: 'ast', with: '21', withMode: 'off' });
+        const f = parseFilters(new URLSearchParams('shot_team=home&shot_player=11&shot_period=9&shot_result=made&shot_zone=paint&shot_type=dunk&shot_move=driving&shot_assist=ast&shot_off=21&order=oldest'), o);
+        expect(f).toEqual({ ...NO_FILTERS, team: 'home', player: '11', result: 'made', zone: 'paint', move: 'driving', assist: 'ast', with: '21', withMode: 'off' });
+        expect(parseFilters(new URLSearchParams('shot_move=putback'), o).move).toBe('');
         expect(parseFilters(new URLSearchParams('shot_team=both&shot_player=99&shot_on=99'), o)).toEqual(NO_FILTERS);
     });
     test('withFilters writes the non-defaults and keeps every other param; round-trips', () => {
@@ -295,6 +323,9 @@ describe('NbaGamePage', () => {
             expect(shots).toContain('aria-label="Shot filters"');
             expect(shots).toContain('points per shot');
             expect(shots).not.toContain('On or off the floor'); // no stints, no ON/OFF menu
+            // the pros' second menu, the shot move (#451 Q1); college's type text has none
+            if (league === 'nba' || league === 'wnba') expect(shots).toContain('aria-label="Shot move"');
+            else expect(shots).not.toContain('Shot move');
             expect(shots).not.toContain('NaN');
             expect(html.split('id="shots"')[0]).toBe(off.split('id="shots"')[0]);
             expect(html.split('id="plays"')[1]).toBe(off.split('id="plays"')[1]);
@@ -326,6 +357,13 @@ describe('NbaGamePage', () => {
         const one = panel(await render(`?shot_player=${p.athlete_id}`));
         expect(one.match(/<div data-shot-link[^>]*>/g)).toHaveLength(1);
         expect(one).toContain(`${p.name.replaceAll("'", '&#39;')} FG% by distance vs league`);
+        // #451 Q4: the signature and bars follow the team and shooter menus only; a period, zone, result or type cut keeps the whole game's
+        const dash = (html: string) => html.split('Shooting signature').slice(1).map((x) => x.split('League:')[0]);
+        const cut = panel(await render('?shot_period=1&shot_result=made&shot_type=jumper'));
+        expect(cut).toMatch(/FG (\d+)-\1 \(100\.0%\)/); // the chart and its line are cut: makes only
+        expect(dash(cut)).toEqual(dash(both));
+        expect(dash(panel(await render(`?shot_player=${p.athlete_id}&shot_period=2`)))).toEqual(dash(one));
+        expect(dash(one)[0]).not.toBe(dash(both)[1]);
     });
     test('the URL\'s filters are the first render; a value the page does not offer is dropped', async () => {
         const g = game('mbb');

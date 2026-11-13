@@ -95,10 +95,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // shot chart (hover or click a distance and the shots outside it fade). Off: no read and the game page is today's.
     'bball-game-shooting': 'preview',
     // BB-G38's shot filters on /<league>/game/[id], live or final: one bar over both teams' shot charts (team, player,
-    // period, made/missed, zone, shot type, assisted/unassisted makes, and for a final with sdv-db's game_stints, BB-D32,
-    // shots while a chosen player was on or off the floor), kept in the URL (`?shot_*=`), with the filtered set's FG line;
-    // with 'bball-game-shooting' the signature and distance bars follow the filters (a chosen player's own). Off: no read
-    // and the game page is today's, byte for byte.
+    // period, made/missed, zone, shot type, the pros' shot move, assisted/unassisted makes, and for a final with sdv-db's
+    // game_stints, BB-D32, shots while a chosen player was on or off the floor), kept in the URL (`?shot_*=`), with the
+    // filtered set's FG line; with 'bball-game-shooting' the signature and distance bars follow the team and shooter menus
+    // only (a chosen player's whole game). Off: no read and the game page is today's, byte for byte.
     'bball-shot-filters': 'preview',
     // BB-G36's shift chart on a final's /<league>/game/[id]: a row per player, a bar per stint on the floor coloured by its
     // +/- with its clock, score and possessions on hover (sdv-db's game_stints, BB-D32); `?shift_on=<ESPN ids>` highlights a
