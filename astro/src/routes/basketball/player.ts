@@ -16,6 +16,7 @@ import { placeholderSplit } from '../../nba/data/placeholder';
 import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
+import { retrievePlayerGameLog, type PlayerLogReads } from '../../resources/bballGameLogs';
 import { bbGameSetOf, type BbGameSet } from '../../utils/bballGameSet';
 import { isFeatureEnabled } from '../../utils/features';
 import type { BasketballLeague } from '../../utils/league';
@@ -46,6 +47,8 @@ export interface BasketballPlayerParams {
     coverage?: string | null;
     /** BB-G14, only with 'bball-game-set' on: the `?games=` set his game-set line shows (no extra read) */
     gameSet?: BbGameSet;
+    /** BB-G50, only with 'bball-game-logs' on and his per-game rows read: the log's reads; null when the box read failed */
+    gameLog?: PlayerLogReads | null;
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -120,6 +123,19 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         console.error(`player ${personId}: the seasons read failed: ${seasonsR.reason}`);
     }
 
+    // BB-G50: read only once the page will render and his games are known (the log's rows); off, nothing is read
+    let gameLog: PlayerLogReads | null | undefined;
+    if (games && isFeatureEnabled('bball-game-logs', Astro.locals)) {
+        try {
+            gameLog = await retrievePlayerGameLog(league, season, personId);
+            if (gameLog.degraded) degraded = true;
+        } catch (e) {
+            gameLog = null;
+            degraded = true;
+            console.error(`player ${personId}: the game log read failed: ${e}`);
+        }
+    }
+
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
     const min = rankMins(league, season);
@@ -143,5 +159,6 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
         // off: ?games= is never read and the params are BB-G5's
         ...(isFeatureEnabled('bball-game-set', Astro.locals) ? { gameSet: bbGameSetOf(Astro.url.searchParams.get('games')) } : {}),
+        ...(gameLog !== undefined ? { gameLog } : {}),
     };
 }

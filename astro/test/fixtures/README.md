@@ -812,4 +812,34 @@ The two `possessions,game_minutes` columns in `gameRates` come from the first ve
 
 **Used by:** `test/bballGameSet.test.ts`.
 
+**To regenerate:** rerun the same twelve reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `game-logs-player-nba-2026.json.gz`, `game-logs-player-mbb-2026.json.gz`, `game-logs-flow-2026.json.gz`, `game-logs-xwalk-mbb-2026.json.gz`
+The reads behind the advanced game logs (BB-G50, `resources/bballGameLogs.ts`), captured live on 2026-11-10, sequentially, the
+`data` array of each response, no edits; each with the module's own `select` and `limit=200` unless noted.
+- NBA player, Michael Porter Jr. (stats 1629008, ESPN 4278104; his games are `game-set-player-nba-2026`'s): `{box, impact, poe, epv, xwalk, rates, sched}` =
+  `nba_stats/player_box?person_id=1629008` (54 rows), `nba_stats/game_player_impact?player_id=1629008` (56),
+  `nba_stats/shot_quality_game?person_id=1629008&level=player` (52), `nba_stats/epv_player_games?player_id=1629008` (57),
+  `nba/player_crosswalk?nba_player_id=1629008` (1), `nba/game_player_rates?athlete_id=4278104` (54) and
+  `nba/schedule_crosswalk?select=espn_game_id,nba_game_id&limit=2500` (1,415), all `season=2026`.
+- College player, Duke's leading shooter (ESPN 5041935): `{games, box, rates, poe}` = `mbb/shot_player_games?person_id=5041935` (38),
+  `mbb/player_box?athlete_id=5041935` (38), `mbb/game_player_rates?athlete_id=5041935` (38),
+  `mbb/shot_quality_game?person_id=5041935&level=player` (38), all `season=2026`.
+- Team flow: `{nets, duke}` = `nba_stats/game_flow?season=2026&team_id=1610612751` (86) and `mbb/game_flow?season=2026&team_id=150` (38).
+- College player, his stats.ncaa.org side (`game-logs-xwalk-mbb-2026`, captured live on 2026-11-10 once `ncaa_player_crosswalk` (BB-D37) was
+  served): `{xwalk, impact, epv, contests}` = `mbb/ncaa_player_crosswalk?season=2026&espn_team_id=150&limit=40` (14, every Duke pair;
+  his row is ESPN 5041935 -> stats.ncaa.org `11195975`, `name_jersey`), `mbb/game_player_impact?player_id=11195975` (38),
+  `mbb/epv_player_games?player_id=11195975` (38) and `mbb/ncaa_player_box?player_id=11195975&select=contest_id,espn_game_id,pts` (38;
+  `pts` is not in the module's select: the test uses it as the join oracle against ESPN's box), all `season=2026`.
+- The game list (`game-logs-played-2026`, captured live on 2026-11-13): every game he played is his ESPN `player_box` rows (Q20 on
+  GOP#443). `{nba: {games, box, xwalk, espnBox}, mbb: {games, box}, mpjEspnBox, boozerBox}`: Drake Powell (Nets, stats 1642962,
+  ESPN 5037873; four games without a field-goal attempt) `nba_stats/shot_player_games?person_id=1642962&limit=50000` (59),
+  `nba_stats/player_box?person_id=1642962` (69), `nba/player_crosswalk?nba_player_id=1642962` (1),
+  `nba/player_box?athlete_id=5037873` (69, the list select); Maliq Brown (Duke, ESPN 5105337; two)
+  `mbb/shot_player_games?person_id=5105337&limit=50000` (36) and `mbb/player_box?athlete_id=5105337` (38, the college select);
+  `nba/player_box?athlete_id=4278104` (54) and `mbb/player_box?athlete_id=5041935` (38) for the two players above. All `season=2026`.
+
+**Used by:** `test/bballGameLogs.test.ts`.
+
+
 **To regenerate:** rerun the same reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
