@@ -112,8 +112,8 @@ describe('the split is the producer\'s (sdv-py situational_team / _player / _lin
 
 /** BB-G1's whole-game reads for a fixture: the WBB game's real capture; the 2023-24 NBA game (no BB-G1 capture) gets the stats box's names and the producer's whole-game player rows. */
 function impactFor(c: Capture): ImpactBoxReads {
-    if (c === G.wbb) return { gameId: c.game_id, teams: c.teams, players: wbbImpact.players, lineups: { home: wbbImpact.home, away: wbbImpact.away }, names: wbbImpact.box.filter((r: any) => r.player_id).map((r: any) => ({ player_id: String(r.player_id), name: r.clean_name })) };
-    return { gameId: c.game_id, teams: c.teams, players: c.oracle.player.filter((r) => r.split === 'all') as any, lineups: { home: [], away: [] }, names: c.names.map((r) => ({ player_id: String(r.person_id), name: `${r.first_name} ${r.family_name}` })) };
+    if (c === G.wbb) return { gameId: c.game_id, teams: c.teams, players: wbbImpact.players, lineups: { home: wbbImpact.home, away: wbbImpact.away }, names: wbbImpact.box.filter((r: any) => r.player_id).map((r: any) => ({ player_id: String(r.player_id), name: r.clean_name })), pageIds: null, pages: new Set() };
+    return { gameId: c.game_id, teams: c.teams, players: c.oracle.player.filter((r) => r.split === 'all') as any, lineups: { home: [], away: [] }, names: c.names.map((r) => ({ player_id: String(r.person_id), name: `${r.first_name} ${r.family_name}` })), pageIds: null, pages: new Set() };
 }
 
 describe('garbageView', () => {
