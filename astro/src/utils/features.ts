@@ -75,12 +75,14 @@ export const FLAGS: Record<string, FeatureState> = {
     'bball-playoff-picture': 'preview',
     // The game page's Impact box and Lineups used (BB-G1) on /<league>/game/[id] for a final, inside each league's flag:
     // each side's on-court minutes, possessions, +/- and ratings and its five most-used units (sdv-db's game_player_impact
-    // and game_lineups_used, BB-D6). Off: no read and the game page is today's, byte for byte.
+    // and game_lineups_used, BB-D6). Names link to player pages: a pro's stats id is his page's id; college maps through
+    // ncaa_player_crosswalk (BB-D37) and leaves a player with no pair unlinked. Off: no read and the game page is today's,
+    // byte for byte.
     'bball-impact-box': 'preview',
     // BB-G28's Game flow: on /<league>/game/[id] for a final, the panel in football's drive-chart slot (a lead chart from
     // the play-by-play with its lead changes and 10-0 runs, and sdv-db's game_flow totals: time leading, runs, droughts,
-    // stops, kills, game control); inside 'bball-playoff-picture', the pro standings' "Game flow" view (team_season_flow,
-    // BB-D27, with the producer's ranks and percentiles). Off: no read, the game page and the standings are today's.
+    // stops, kills, game control). The season board is the leaderboards' Teams board (BB-G8). Off: no read and the game
+    // page is today's.
     'bball-game-flow': 'preview',
     // BB-G2's garbage-time toggle on /<league>/game/[id] for a final, beside the Impact box (so only with 'bball-impact-box'
     // on too): `?garbage=out` re-shows the four factors, the pros' team box rows and the Impact box from the game's
@@ -197,10 +199,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // needs a live entitlement (utils/pro.ts, resources/pro.ts) except login,
     // auth, logout and methodology. Promote to 'on' at launch.
     'pro': 'preview',
-    // The NBA Cup (BB-G30): /nba/cup inside 'nba', linked from /nba/standings (no Header entry). sdv-db's daily Cup
+    // The NBA Cup (BB-G30): /nba/cup inside 'nba', linked from /nba/standings and, in the Cup window (November and
+    // December, utils/nbaCup.ts isCupWindow), from the NBA Header. sdv-db's daily Cup
     // snapshots (cup_standings, cup_sims): the six groups in the Cup's tiebreak order, the wild-card race, the knockout
-    // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404 and the
-    // standings page has no link.
+    // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404, and the
+    // standings page and the Header have no link.
     'bball-nba-cup': 'preview',
 };
 
