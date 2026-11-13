@@ -818,18 +818,22 @@ player, so one capture covers several players; the page reads one player (`playe
 **To regenerate:** rerun the four reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
 
 ## `player-war.json.gz`
-The rows behind the player page's Value panel (BB-G27, `resources/playerWar.ts`), as `{nba, wnba, mbbTeam, wbbTeam, nbaEpv}`
+The rows behind the player page's Value panel (BB-G27, `resources/playerWar.ts`), as `{nba, wnba, mbbTeam, wbbTeam, nbaEpvSeason, epvProof}`
 (no edits). `player_war` (sdv-db #202) is not served yet (the Data API answers 404 until its backfill runs), so its rows are
 the producer's output, the frame sdv-db loads unchanged: sportsdataverse-py `origin/main` at 39541177 (with #1114), run on
 2026-11-05 as `nba_player_war(2026)` (kept: Michael Porter Jr., 1629008, the player of `nba/player_games.json`),
 `nba_player_war(2025, league_id="10")` (A'ja Wilson, 1628932), `mbb_player_war(2026)` (Texas, team 251, 13 players) and
-`wbb_player_war(2026)` (South Carolina, team 2579, 11 players), each `write_json()`. `nbaEpv` is a live Data API read of the
-same day, `/v1/nba_stats/epv_player_games?season=2026&player_id=1629008&select=game_id,epv_own,own_actions,epv_on&limit=130`
-(57 rows: 53 regular-season games and 4 preseason).
+`wbb_player_war(2026)` (South Carolina, team 2579, 11 players), each `write_json()`. `epvProof` (GOP Q39, sdv-db #223) is
+five players' live Data API reads of 2026-11-13, each `{league, season, player_id, games, season_row}`:
+`games` = `/v1/<schema>/epv_player_games?season=<S>&player_id=<id>&select=game_id,epv_own,own_actions,off_epv_on,def_epv_on,epv_on&limit=130`
+and `season_row` = `/v1/<schema>/epv_player_seasons?season=<S>&player_id=<id>&limit=5`, the `data` arrays, no edits, for
+Michael Porter Jr. (nba_stats 2026, 1629008: 57 rows, 4 preseason), Luka Dončić (nba_stats 2025, 1629029: traded, with
+playoff rows), A'ja Wilson (wnba_stats 2025, 1628932: with playoff rows), mbb 2026 11195975 and wbb 2026 9341835 (each
+league's 2025-26 EPV leader). `nbaEpvSeason` is the first one's `season_row`.
 
 **Used by:** `test/playerWar.test.ts`.
 
-**To regenerate:** rerun the four sdv-py calls (filtered as above) and the one read (season filter and limit as above),
+**To regenerate:** rerun the four sdv-py calls (filtered as above) and the ten reads (season filter and limit as above),
 wrap them as above and gzip. Once sdv-db #202's backfill has run, `/v1/{nba_stats,wnba_stats,mbb,wbb}/player_war?season=…&player_id=…&limit=5`
 replaces the sdv-py calls.
 
@@ -852,3 +856,16 @@ each id picks the same row as the name match). The page reads one player's pair 
 **Used by:** `test/shotProfile.test.ts`.
 
 **To regenerate:** rerun the read (season filter and limit as above, never unfiltered), wrap it as above and gzip.
+
+## `player-impact-xwalk.json.gz`
+College's Impact panel through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of
+each response, no edits, all `season=2026`, as `{mbbXwalk, mbbRapm, mbbPv, wbbXwalk, wbbRapm}`:
+`/v1/mbb/ncaa_player_crosswalk?espn_athlete_id=5041935&limit=5` (Cameron Boozer, Duke: ESPN 5041935 -> stats.ncaa.org
+`11195975`), `/v1/mbb/ncaa_rapm?player_id=11195975&limit=5`, `/v1/mbb/player_value?player_id=5041935&limit=5`,
+`/v1/wbb/ncaa_player_crosswalk?espn_athlete_id=5239100&limit=5` (Joyce Edwards, South Carolina: ESPN 5239100 -> `9342023`;
+her `player_value` row is in `player-impact.json.gz`'s `wbbTeam`) and `/v1/wbb/ncaa_rapm?player_id=9342023&limit=5`. The
+crosswalk and RAPM reads carry every column here; the page selects `ncaa_player_id` and `orapm,drapm,rapm_net,off_poss,def_poss`.
+
+**Used by:** `test/playerImpact.test.ts`.
+
+**To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
