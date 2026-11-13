@@ -62,14 +62,15 @@ const BLURBS: Record<string, string> = {
 
 /**
  * The hub's page index: the league's Header pages, so a page lands here when it lands in the Header. The NBA's featured-team
- * entry ('/') is the landing the hub replaces, so it points at that team's page instead (/nba/team/17 holds the roster and
- * shot chart the landing had). A page that is not in the Header (behind its own flag on
+ * entry ('/') is the landing the hub replaces, so it is left out, and the featured team's page is listed last instead
+ * (/nba/team/17 holds the roster and shot chart the landing had). It keys off `featuredTeam`, not the Header entry, so it
+ * stays when #438 drops that entry. A page that is not in the Header (behind its own flag on
  * the stack: standings, bracketology, the Cup, best games) is added here with its flag when it reaches main.
  */
 export function hubIndex(league: BasketballLeague): HubLink[] {
     const ft = BASKETBALL[league].featuredTeam;
-    return BASKETBALL[league].headerMenu.flatMap((m): HubLink[] => {
-        if (m.path !== '/') return [{ ...m, ...(BLURBS[m.path] ? { blurb: BLURBS[m.path] } : {}) }];
-        return ft ? [{ label: m.label, path: `/team/${ft.espnTeamId}`, blurb: `The ${ft.menuLabel} roster's shooting, with the team shot chart.` }] : [];
-    });
+    return [
+        ...BASKETBALL[league].headerMenu.filter((m) => m.path !== '/').map((m) => ({ ...m, ...(BLURBS[m.path] ? { blurb: BLURBS[m.path] } : {}) })),
+        ...(ft ? [{ label: ft.menuLabel, path: `/team/${ft.espnTeamId}`, blurb: `The ${ft.menuLabel} roster's shooting, with the team shot chart.` }] : []),
+    ];
 }

@@ -98,8 +98,8 @@ describe('hubTags and hubIndex', () => {
         expect(hubTags({ neutralSite: false, broadcasts: [], broadcast: '' })).toEqual([]);
     });
     test("every league indexes its Header pages; the NBA's featured-team landing becomes a link to that team's page", () => {
-        expect(hubIndex('nba').map((p) => p.path)).toEqual(['/scoreboard', '/team/17', '/players', '/teams', '/scatter', '/leaders']);
-        expect(hubIndex('nba')[1].label).toBe('Nets');
+        expect(hubIndex('nba').map((p) => p.path)).toEqual(['/scoreboard', '/players', '/teams', '/scatter', '/leaders', '/team/17']);
+        expect(hubIndex('nba')[5].label).toBe('Nets');
         for (const lg of ['nba', 'wnba', 'mbb', 'wbb'] as const) {
             const paths = hubIndex(lg).map((p) => p.path);
             if (lg !== 'nba') expect(paths, lg).toEqual(['/scoreboard', '/players', '/teams', '/scatter', '/leaders']);
