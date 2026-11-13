@@ -23,7 +23,7 @@ beforeAll(async () => { container = await AstroContainer.create({ renderers: awa
 describe('/nba', () => {
     test('renders the Nets roster for the season, most attempts first, with the season picker', async () => {
         const { default: Page } = await import('../../src/pages/nba/index.astro');
-        const html = await container.renderToString(Page, { request: new Request('https://gameonpaper.com/nba?season=2026'), locals: { preview: true } as App.Locals });
+        const html = await container.renderToString(Page, { request: new Request('https://gameonpaper.com/nba?season=2026'), locals: { preview: true, flagOverrides: { 'bball-hub': false } } as App.Locals });
         const top = [...players].sort((a: any, b: any) => b.attempts - a.attempts)[0];
         expect(html).toContain(`/nba/players/${top.person_id}`);
         const body = text(html.split('id="nba-roster"')[1]);

@@ -44,18 +44,21 @@ export function scoreboardCaches(league: BasketballLeague) {
 }
 export const OLD_DAY_AFTER_DAYS = 7;
 
-export async function prepareBasketballScoreboard(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballScoreboardPrep> {
+/** `opts.today`: the league hub's board (BB-G47). */
+export async function prepareBasketballScoreboard(Astro: AstroGlobal, league: BasketballLeague, opts: { today?: boolean } = {}): Promise<BasketballScoreboardPrep> {
     Astro.locals.league = league;
     const cfg = BASKETBALL[league];
     const c = scoreboardCaches(league);
-    const raw = Astro.url.searchParams.get('date') || null;
+    // the hub (opts.today) is always ESPN's current day and the default group, whatever its query says
+    const param = (k: string) => (opts.today ? null : Astro.url.searchParams.get(k));
+    const raw = param('date') || null;
     // Validate before any upstream call. The ceiling uses the server's UTC date (never behind
     // ESPN's day, so at most one day looser than the contract).
     const check = parseDateParam(raw, new Date().toISOString().slice(0, 10), cfg.firstScoreboardDay);
     if (!check.ok) { uncacheable(Astro); return { badDate: check.reason }; }
     // ?group= is validated before any upstream call (a league without groups ignores the param, as today)
     const groups = cfg.scoreboardGroups;
-    const grp = groups ? scoreboardGroupOf(groups, Astro.url.searchParams.get('group')) : null;
+    const grp = groups ? scoreboardGroupOf(groups, param('group')) : null;
     if (groups && !grp) { uncacheable(Astro); return { badDate: 'group' }; }
     const g = grp?.espn ? { group: grp.espn } : null;
 

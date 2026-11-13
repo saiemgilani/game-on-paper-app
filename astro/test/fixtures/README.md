@@ -765,3 +765,13 @@ children). 2026 season, captured 2026-10-18 with the `requestESPN` Safari UA. No
 
 **To regenerate:** re-fetch both URLs and gzip; the test pins the group ids, names and team counts, so a realignment
 change will need the assertion updated too.
+
+## `hub-game-lines.json`
+Real `game_lines` rows (BB-D33, the Data API's `/v1/<league>/game_lines?season=<s>&game_id=<id>&select=...&limit=1`, the
+league hub's own read) for every game of the scoreboard captures the hub test renders: `nba` (`nba/scoreboard-20250115`),
+`wnba` (`wnba/scoreboard-20250801`), `mbb` (`mbb/scoreboard-20250222-top25`) and `wbb` (`wbb/scoreboard-20260207-top25`),
+plus `nba-open-only`, a 2026-27 game no book had closed on (`n_books` 0, every `_close` null). Captured 2026-11-10. No edits.
+
+**Used by:** `test/basketball/hub.test.ts` (BB-G47).
+
+**To regenerate:** re-run the reads above with a read key; finals do not change, the open-only row will (it closes).

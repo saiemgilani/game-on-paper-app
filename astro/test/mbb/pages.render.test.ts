@@ -34,7 +34,7 @@ let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 async function page(file: string, url: string, params: Record<string, string> = {}) {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/mbb/${file}`);
-    return container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true } as App.Locals });
+    return container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-hub': false } } as App.Locals });
 }
 const noScripts = (h: string) => h.replace(/<script[\s\S]*?<\/script>/g, '');
 const plain = (h: string) => noScripts(h).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
