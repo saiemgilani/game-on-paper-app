@@ -318,7 +318,7 @@ export function describeHex(data: HexShotChartData): string {
 export type SquareCell = [i: number, j: number, attempts: number, diff: number | null];
 
 /** The cells a small multiple draws: what the full chart draws (MIN_DRAWN_ATTEMPTS or more), coloured as it colours them. */
-export function squareCells(squares: HexVsLeague[], side: number): SquareCell[] {
+export function squareCells(squares: Pick<HexVsLeague, "x" | "y" | "attempts" | "makes" | "leagueFgPct">[], side: number): SquareCell[] {
   return squares
     .filter((c) => c.attempts >= MIN_DRAWN_ATTEMPTS)
     .map((c) => {

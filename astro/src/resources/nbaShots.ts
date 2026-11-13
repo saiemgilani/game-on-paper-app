@@ -103,6 +103,20 @@ export function retrieveLeagueContextRows(season: number, league: BasketballLeag
     return read<LeagueContextRow>(league, 'shot_league_context', { season: String(season), limit: LIMIT }, SEASON_TTL, true);
 }
 
+/** sdv-db #221 `shot_team_context`: one row per (season, team_id, kind, key1, key2), the shooting team's squares and line. */
+export interface TeamContextRow extends LeagueContextRow {
+    team_id: number;
+    /** college only: the team_group_seasons conference ('mbb:sec') */
+    conference_id: string | null;
+    /** kind='square': the ZONES index most of the square's attempts fall in */
+    zone: number | null;
+}
+
+/** Every team's squares and line for the season in one read; a college league reads one conference (a D-I season is over the cap). */
+export function retrieveTeamContextRows(season: number, league: BasketballLeague, conferenceId?: string): Promise<TeamContextRow[]> {
+    return read<TeamContextRow>(league, 'shot_team_context', { season: String(season), ...(conferenceId ? { conference_id: conferenceId } : {}), limit: LIMIT }, SEASON_TTL, true);
+}
+
 export function retrieveSeasonPlayerRows(season: number, league: BasketballLeague): Promise<SeasonPlayerRow[]> {
     return read<SeasonPlayerRow>(league, 'shot_season_players', { season: String(season), limit: LIMIT }, SEASON_TTL, true);
 }

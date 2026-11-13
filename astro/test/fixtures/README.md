@@ -788,3 +788,16 @@ Real Data API reads of 2025-26 `shot_league_context` captured 2026-11-05, after 
 **Used by:** `test/basketball/leagueShots.test.ts`.
 
 **To regenerate:** re-fetch the URLs with a read key and write the `data` arrays (zone rows first for the NBA file).
+
+## `nba/team_context_nets_2026.json` / `nba/team_shots_nets_2026.json.gz` / `mbb/dashboards/team_context_sec_2026.json.gz`
+Real Data API reads captured 2026-11-13, after sdv-db #221 published `shot_team_context` (BB-G16):
+`/v1/nba_stats/shot_team_context?season=2026&team_id=1610612751&limit=1000` (252 rows: 251 squares and the Nets' total line,
+6,933 attempts), the read it replaces, `retrieveTeamShots`'s query for the Nets
+(`/v1/nba_stats/shots?season=2026&team_id=1610612751&game_id__like=002%&select=game_id,x_legacy,y_legacy,shot_distance,shot_value,shot_result&limit=50000`,
+6,933 rows), and `/v1/mbb/shot_team_context?season=2026&conference_id=mbb:sec&limit=50000` (3,183 rows, the 16 SEC teams; Texas's
+total is 2,101, the row count of `mbb/dashboards/tex_shots_2026.json`). Each read is one page (`next: null`). The response's
+`data` arrays, no edits; the two larger files are gzipped.
+
+**Used by:** `test/basketball/leagueShots.test.ts` (the table against the team reads it replaces, cell for cell).
+
+**To regenerate:** re-fetch the URLs with a read key and write the `data` arrays (gzip the shots and the SEC rows).

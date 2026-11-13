@@ -5,36 +5,31 @@
  * conference at a time (?conference=, the scatter's slugs and computed default), so a page reads at most ~18 teams.
  *
  * Reads: the season's player rows (the team list, shared with /teams), the league context (its exact `kind='square'` rows,
- * sdv-db #191, and the zone rates; shared with every team page) and each shown team's shots (the team page's own read, same
- * cache key), six at a time and reduced to compact cells as they land so a worker never holds a league of shot rows. The
- * template is components/routes/LeagueShotsRoute.astro.
+ * sdv-db #191, and the zone rates; shared with every team page) and sdv-db #221's `shot_team_context`, every team's squares
+ * and line in ONE read (a college league: one per conference). The template is components/routes/LeagueShotsRoute.astro.
  */
 import type { AstroGlobal } from 'astro';
 import { quantile } from 'd3-array';
-import { courtFor, placeholderFor, type Court } from '../../basketball/config';
+import { courtFor, type Court } from '../../basketball/config';
 import {
-    defaultScatterConference, filterByConference, isNcaaDashboards, scatterConferenceOptions, withSeasonMembers, type ConferenceOption,
+    conferenceSlug, defaultScatterConference, filterByConference, isNcaaDashboards, scatterConferenceOptions, withSeasonMembers, type ConferenceOption,
 } from '../../basketball/dashboards';
-import { leagueContextFromRows, leagueSquaresFromRows, shotsFromRows } from '../../nba/adapters';
+import { leagueContextFromRows, leagueSquaresFromRows, teamSquaresFromRows } from '../../nba/adapters';
 import { squareCells, type SquareCell } from '../../nba/charts/hexShotChart';
 import { SQUARE_SIDE } from '../../nba/dashboard';
-import { LEAGUE_PRIOR_ATTEMPTS, shootingLine, squaresVsLeague, type ShootingLine } from '../../nba/data/aggregate';
+import { binsVsLeague, LEAGUE_PRIOR_ATTEMPTS, shootingLine, type ShootingLine } from '../../nba/data/aggregate';
 import { COURT } from '../../nba/data/court';
-import { placeholderSplit } from '../../nba/data/placeholder';
 import type { Team } from '../../nba/data/teams';
 import { teamsFromSeasonRows } from '../../nba/tables';
-import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveTeamShots } from '../../resources/nbaShots';
+import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveTeamContextRows, type TeamContextRow } from '../../resources/nbaShots';
 import { leaguePath, type BasketballLeague } from '../../utils/league';
 import { uncacheable } from './cache';
 import { readBasketballSeasonRows, readCoverageNote, resolveBasketballSeason } from './season';
 
-/** Team-shot reads in flight at once: the droplet is fragile, and a batch's rows are dropped once binned. */
-export const TEAM_READS_AT_ONCE = 6;
-
 export interface LeagueShotsTeam {
     team: Team;
     line: ShootingLine;
-    /** null: this team's read failed (the card says so; the page is not cached) */
+    /** null: the team-square read failed (the card says so; the page is not cached) */
     cells: SquareCell[] | null;
 }
 
@@ -69,6 +64,9 @@ export async function prepareLeagueShots(Astro: AstroGlobal, league: BasketballL
     contextP.catch(() => {}); // handled below; keeps an early unavailable return from leaving an unhandled rejection
     const membershipP = college ? Promise.all([retrieveConferenceRows(season, league), retrieveScheduleTeamRows(season, league)]) : null;
     membershipP?.catch(() => {}); // as above
+    // a pro league's one read starts now; a college league's waits for its conference's id
+    let teamContextP: Promise<TeamContextRow[]> | null = college ? null : retrieveTeamContextRows(season, league);
+    teamContextP?.catch(() => {}); // as above
     const rows = await readBasketballSeasonRows(Astro, league, season, leaguePath(league, '/shots'));
     if (rows === null) return { unavailable: true };
 
@@ -83,10 +81,12 @@ export async function prepareLeagueShots(Astro: AstroGlobal, league: BasketballL
             conferences = scatterConferenceOptions(c.teams, c.groups, season, league);
             const asked = Astro.url.searchParams.get('conference');
             const fallback = defaultScatterConference(rows, c.teams, season, league);
-            // never 'all': every D-I team is ~360 reads
+            // never 'all': a D-I season's team squares are over the read cap
             conference = conferences.find((o) => o.slug === asked)?.slug ?? conferences.find((o) => o.slug === fallback)?.slug ?? conferences[0]?.slug;
             const members = withSeasonMembers(teams, c.teams, games, season, league);
             teams = conference ? filterByConference(members, c.teams, conference).sort((a, b) => a.name.localeCompare(b.name)) : [];
+            const conferenceId = conference ? c.teams.find((r) => conferenceSlug(r.conference_id) === conference)?.conference_id : undefined;
+            teamContextP = conferenceId ? retrieveTeamContextRows(season, league, String(conferenceId)) : Promise.resolve([]);
         }
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} league context or conferences for the league shot page: ${e}, ${e?.stack}`);
@@ -95,7 +95,6 @@ export async function prepareLeagueShots(Astro: AstroGlobal, league: BasketballL
     }
 
     const court = courtFor(league, season);
-    const placeholder = placeholderFor(league, season);
     const hexIndex = leagueContextFromRows(context).hexIndex;
     const leagueCells = leagueSquaresFromRows(context);
     if (leagueCells.length === 0 && rows.length > 0) {
@@ -103,24 +102,20 @@ export async function prepareLeagueShots(Astro: AstroGlobal, league: BasketballL
         uncacheable(Astro);
     }
 
-    const out: LeagueShotsTeam[] = [];
-    for (let i = 0; i < teams.length; i += TEAM_READS_AT_ONCE) {
-        const batch = teams.slice(i, i + TEAM_READS_AT_ONCE);
-        const reads = await Promise.allSettled(batch.map((t) => retrieveTeamShots(season, t.team_id, league)));
-        reads.forEach((r, k) => {
-            const team = batch[k];
-            if (r.status === 'rejected') {
-                console.error(`ERROR while loading ${league} team ${team.team_id} shots for ${season}: ${r.reason}`);
-                uncacheable(Astro);
-                out.push({ team, line: shootingLine([]), cells: null });
-                return;
-            }
-            const shots = shotsFromRows(r.value);
-            const { located } = placeholderSplit(shots, placeholder);
-            const squares = squaresVsLeague(located, hexIndex, SQUARE_SIDE, LEAGUE_PRIOR_ATTEMPTS, court, leagueCells);
-            out.push({ team, line: shootingLine(shots), cells: squareCells(squares, SQUARE_SIDE) });
-        });
+    let byTeam: ReturnType<typeof teamSquaresFromRows> | null = null;
+    try {
+        byTeam = teamSquaresFromRows(await teamContextP!);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} team shot squares: ${e}, ${e?.stack}`);
+        uncacheable(Astro);
     }
+    const out: LeagueShotsTeam[] = teams.map((team) => {
+        if (!byTeam) return { team, line: shootingLine([]), cells: null };
+        // no rows: a team with no shots, as an empty team read was
+        const t = byTeam.get(team.team_id);
+        if (!t) return { team, line: shootingLine([]), cells: [] };
+        return { team, line: t.line, cells: squareCells(binsVsLeague(t.squares, hexIndex, SQUARE_SIDE, LEAGUE_PRIOR_ATTEMPTS, leagueCells), SQUARE_SIDE) };
+    });
 
     const drawn = out.flatMap((t) => t.cells ?? []);
     const cap = Math.max(2, Math.ceil(quantile(drawn, 0.95, (c) => c[2]) ?? 2));
