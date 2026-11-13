@@ -44,8 +44,11 @@ const COLS: Record<TeamKey, { label: string; title: string; fmt: (v: number | nu
 const all = teamLogRows(scheduleRows(data.games, data.gameRates, espnId), flow ?? new Map());
 const keys = filledKeys(all, TEAM_KEYS);
 const shades = shadeTable(all, TEAM_DIRS);
-const picked = pickGames(all.map((r) => r.game), set);
-const shownSet: BbGameSet = picked.length ? set : 'all';
+// Close games, Clutch and Conference games are BB-G14's team-only sets, with no per-game flag on the schedule rows: the log
+// shows every game under them, and its caption says All games
+const pickable = set === 'close' || set === 'clutch' || set === 'conference' ? 'all' : set;
+const picked = pickGames(all.map((r) => r.game), pickable);
+const shownSet: BbGameSet = picked.length ? pickable : 'all';
 const shownIds = new Set((picked.length ? picked : all.map((r) => r.game)).map((g) => g.game_id));
 const shown = all.filter((r) => shownIds.has(r.gameId));
 const sd = (k: TeamKey) => spread(shown.map((r) => r.values[k]));
