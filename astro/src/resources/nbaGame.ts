@@ -1,6 +1,7 @@
 // One game, one shape, two sources. The adapters rename and group; the numbers are Python's
 // (sportsdataverse.nba.nba_game_page), live through the processor or nightly through sdv-db.
 import type { ESPNGameHeader } from './espn';
+import type { GameSituationalRow } from './teamGrid';
 import type { ProcessedGame } from './python';
 import { regulationFor, type PeriodKind, type Regulation } from '../basketball/config';
 import type { BasketballLeague } from '../utils/league';
@@ -44,10 +45,45 @@ export interface NbaSide {
     box: NbaTeamBox | null; rates: NbaTeamRates | null; players: NbaPlayerRow[]
     /** sdv-py's BB-D31 team splits, counted from the plays: the processor only (live or un-ingested), absent otherwise and in a payload cached before them */
     splits?: NbaTeamSplits
+    /** sdv-py's BB-D40 expected points (team_game_expected): the processor's (live or un-ingested) or a Data API final's
+     *  {lg}.game_team_expected row (routes/basketball/game.ts); absent before the tip, in an older payload and for a season
+     *  not built. Its expected columns are null when the processor could not read the league's shot cells. */
+    expected?: NbaTeamExpected
+    /** a Data API final with no splits (BB-G33 review Q23): sdv-db's situational_team_games rows of the side, every family
+     *  (routes/basketball/game.ts); absent otherwise and when the producer has no row */
+    situational?: GameSituationalRow[]
 }
 
-/** The BB-D31 team split columns the page reads (BB-G32's counted possessions); null before the tip. */
-export interface NbaTeamSplits { possessions: number | null }
+/** The BB-D31 team split columns the page reads: BB-G32's counted possessions and BB-G33's possession factors. */
+export const TEAM_SPLIT_KEYS = [
+    'points', 'possessions', 'ppp', 'avg_possession_seconds',
+    'transition_poss', 'transition_pts', 'transition_ppp', 'half_court_poss', 'half_court_pts', 'half_court_ppp',
+    'second_chance_poss', 'second_chance_pts', 'second_chance_ppp', 'first_chance_poss', 'first_chance_pts', 'first_chance_ppp',
+    'tov', 'live_tov', 'dead_tov', 'tov_pct', 'pts_off_live_tov', 'pts_off_dead_tov',
+    'fga', 'fgm', 'rim_fga', 'rim_fgm', 'mid_fga', 'mid_fgm', 'fg2_unlocated_fga', 'fg2_unlocated_fgm',
+    'fg3_fga', 'fg3_fgm', 'corner3_fga', 'corner3_fgm', 'above_break3_fga', 'above_break3_fgm', 'fg3_unlocated_fga', 'fg3_unlocated_fgm',
+    'layup_dunk_fga', 'layup_dunk_fgm', 'rim_rate', 'fg3a_rate', 'avg_fg2_distance', 'assisted_fgm', 'assisted_share',
+    'bench_points', 'largest_lead', 'max_run',
+] as const;
+/** One side's BB-D31 team split row; a rate with a zero denominator (and every column before the tip) is null. */
+export type NbaTeamSplits = Record<(typeof TEAM_SPLIT_KEYS)[number], number | null>;
+
+/** BB-D40's situations and zones (sdv-py nba_game_expected SITUATIONS / ZONES). */
+export const EXPECTED_SITUATIONS = ['fast_break', 'second_chance', 'off_turnover', 'paint'] as const;
+export const EXPECTED_ZONES = ['rim', 'short_mid', 'midrange', 'corner3', 'above_break3'] as const;
+type Cols<P extends string, M extends string> = `${P}_${M}`;
+/** The BB-D40 team_game_expected columns the page reads (BB-G33's expected points). */
+export const TEAM_EXPECTED_KEYS = [
+    'possessions', 'points', 'fga', 'fgm', 'xfg_pts', 'poe', 'ts_pct', 'xts_pct', 'drtg', 'xdrtg', 'unlocated_fga', 'unlocated_fgm',
+    ...EXPECTED_SITUATIONS.flatMap((s) => (['poss', 'rate', 'pts', 'ppp', 'poe'] as const).map((m) => `${s}_${m}` as Cols<typeof s, typeof m>)),
+    ...EXPECTED_ZONES.flatMap((z) => (['fga', 'fgm', 'efg_pct', 'xppp', 'poe'] as const).map((m) => `${z}_${m}` as Cols<typeof z, typeof m>)),
+] as const;
+/** One side's BB-D40 row; every expected column (x*, *_poe, *_xppp) is null without the league's shot cells. */
+export type NbaTeamExpected = Record<(typeof TEAM_EXPECTED_KEYS)[number], number | null>;
+/** A team_game_expected row (the processor payload's or the Data API's) as the page reads it. */
+export function teamExpected(r: Record<string, any>): NbaTeamExpected {
+    return Object.fromEntries(TEAM_EXPECTED_KEYS.map((k) => [k, num(r[k])])) as NbaTeamExpected
+}
 
 /** Which feed produced a `?source=` response: the football payload's block, emitted by the same app.py helper. */
 export type SourceProvenance = NonNullable<ProcessedGame['provenance']>
@@ -109,6 +145,8 @@ export interface NbaProcessorPayload {
     excitement?: { gei: number | null; lead_changes: number; max_swing_pts: number | null; completed: boolean }
     /** BB-D31's game splits (python/nba_game.py); absent from a payload cached before them. Only the team rows are read. */
     splits?: Record<'home' | 'away', { team: Record<string, any> | null; players: Record<string, any>[] }>
+    /** BB-D40's team_game_expected rows (python/nba_game.py); absent from a payload cached before them. */
+    expected?: Record<'home' | 'away', Record<string, any> | null>
 }
 
 /** sdv-py's prior source: a real line ('spread'), a lineless neutral site ('neutral', prior 0.5) or the league's home-court edge ('hfa'). */
@@ -191,6 +229,10 @@ function teamRates(r: Record<string, any> | null | undefined): NbaTeamRates | nu
     }
 }
 
+function teamSplits(r: Record<string, any>): NbaTeamSplits {
+    return Object.fromEntries(TEAM_SPLIT_KEYS.map((k) => [k, num(r[k])])) as NbaTeamSplits
+}
+
 function playerRow(r: Record<string, any>): NbaPlayerRow {
     return {
         athlete_id: num(r.athlete_id) ?? 0, name: r.athlete_display_name ?? '', short_name: r.athlete_short_name ?? null, headshot: r.athlete_headshot_href ?? null,
@@ -247,7 +289,8 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague):
             team: { id: String(ti.id), abbreviation: eraAbbreviation(league, ti.id, season, ti.abbreviation), displayName: ti.displayName, location: ti.location, name: ti.name, color: ti.color ?? null, alternateColor: ti.alternateColor ?? null, logo: ti.logos?.[0]?.href ?? null },
             score: num(c.score), winner: c.winner === true, records: record?.summary ?? null,
             linescores: t.linescores, box: teamBox(t.box), rates: teamRates(t.rates), players: j.players[ha].map(playerRow),
-            ...(j.splits?.[ha]?.team ? { splits: { possessions: num(j.splits[ha].team!.possessions) } } : {}),
+            ...(j.splits?.[ha]?.team ? { splits: teamSplits(j.splits[ha].team!) } : {}),
+            ...(j.expected?.[ha] ? { expected: teamExpected(j.expected[ha]!) } : {}),
         }
     }
     const reg = regulationFor(league, season, j.regulation_periods)

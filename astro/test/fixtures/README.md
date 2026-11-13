@@ -855,6 +855,9 @@ team_game_possessions, situational_team_games}`:
 - `payload`: the offline body of `GET /<league>/<id>/process` (python/app.py through Flask's test client, the ESPN download
   patched to return `python/tests/fixtures/<league>_summary_<id>.json.gz`, sportsdataverse lock 0bb4db3e, the BB-D31 merge).
   It carries the new `splits` key (each side's counted team split row and its players' rows). Generated 2026-11-10.
+  Regenerated 2026-11-10 at sportsdataverse lock ccdc4baf (BB-G33) with the league's shot cells seeded
+  (`python/tests/fixtures/<league>_shot_quality_cells.json.gz`): the only key that moved is the new `expected` (each side's BB-D40
+  `team_game_expected` row, priced).
 - `team_season_rates`: the Data API's `/<schema>/team_season_rates?season=<s>&split=all&select=team_id,games,poss,pts,efg_pct,
   tov_pct,orb_pct,ft_rate,off_rtg,def_rtg,pace&limit=1000`, read 2026-11-10: `nba_stats` 2024 (30 rows), `wnba_stats` 2025
   (13), `mbb` 2026 (365), `wbb` 2026 (358).
@@ -868,7 +871,16 @@ team_game_possessions, situational_team_games}`:
 Games: TOR 96 at ORL 111 (2023-24), SEA 80 at ATL 78 (2025), NC State 90 at Notre Dame 96 in overtime (2025-26), UTEP 87 at
 Louisiana Tech 91 in overtime (2025-26).
 
-**Used by:** `test/teamGrid.test.ts`.
+**Used by:** `test/teamGrid.test.ts`, `test/situationalBox.test.ts`.
 
 **To regenerate:** in `python/`, rerun the offline route call above per game and the four reads (season filter, one capped read
 each), then write the object with `json.dumps(..., separators=(",", ":"))` and gzip (`mtime=0`).
+
+## `game-team-expected.json`
+
+BB-G33's expected points on a Data API final (`'bball-situational-box'`): `GET /v1/<league>/game_team_expected?season=<s>&game_id=<id>&limit=10`
+(sdv-db BB-D40, #215), read 2026-11-10, the `data` arrays keyed by league for three of the team-grid finals: wnba 2025 401736325, mbb 2026
+401820775, wbb 2026 401805076 (two rows each, every column as served). The NBA capture's season (2023-24) is not built yet.
+
+**Used by:** `test/situationalBox.test.ts`. **To regenerate:** rerun the three reads (season filter, one capped read each) and write
+`{league: data}` with `json.dumps(..., separators=(",", ":"))`.

@@ -96,6 +96,15 @@ export const FLAGS: Record<string, FeatureState> = {
     // the four-factor point accounting against that season's league average. Off: no read, the game page is today's,
     // byte for byte. `?garbage=out` keeps BB-G2's split tables.
     'bball-team-grid': 'preview',
+    // BB-G33's possession factors on /<league>/game/[id], live or final: one panel of sdv-py's BB-D31 team splits for both
+    // teams (situations with possessions, share and PPP; shot zones with corner vs above-the-break threes and eFG%; live vs
+    // dead-ball turnovers and the points off each, shot mix, bench, leads, runs), the better side tinted. The splits come with
+    // the processor payload, so no read; a Data API final has no splits until {lg}.game_team_splits is published. BB-D40's
+    // expected points (situation and zone points over expected, zone xPPP, expected TS% and DRtg) come with the processor
+    // payload too (priced against the league's shot cells, python/shot_cells.py); a Data API final reads one
+    // {lg}.game_team_expected row a team. A season not built, or no cells, hides the expected columns with a note. Off: no
+    // read, the game page is today's, byte for byte. Hidden beside `?garbage=out`.
+    'bball-situational-box': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

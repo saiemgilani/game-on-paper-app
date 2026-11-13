@@ -1,0 +1,256 @@
+---
+// src/components/nba/game/NbaSituationalBox.astro
+// BB-G33, behind 'bball-situational-box': the possession factors for both teams. Two producer rows a side, both sdv-py's,
+// counted from the same play-by-play: the BB-D31 team splits (`splits`, the processor only, so live games and finals not
+// yet ingested) and the BB-D40 expected points (`expected`, the processor's or a Data API final's game_team_expected).
+// Three tables: the situations (possessions, share, points, PPP, points over expected), the shot zones (made-attempted,
+// share of FGA, eFG%, expected points per shot, points over expected) and ball and flow (turnovers live vs dead, points
+// off each, shot mix, bench, leads, runs, possession length, expected TS% and the opponent's expected rating). The better
+// side is tinted and bold, as in BB-G32's grid. A row whose source is missing is left out; the expected columns show only
+// when both sides are priced (the league's shot cells read, or the season built), else a note says so. A final with neither
+// row (a season the expected points are not built for) shows sdv-db's situational_team_games rows instead (review Q23):
+// transition, half-court and first / second chance possessions, points and ORtg, with a note for what is still missing.
+import type { EXPECTED_ZONES, NbaGame, NbaTeamExpected, NbaTeamSplits } from '../../../resources/nbaGame';
+import { dash } from '../../../nba/data/game';
+import { fmtDec, fmtPct } from '../../../nba/format';
+import { cleanAbbreviation } from '../../../utils/misc';
+import { edge, type Better } from '../../../utils/teamGrid';
+import { PRO_LEAGUES, type BasketballLeague } from '../../../utils/league';
+
+interface Props { game: NbaGame; league: BasketballLeague }
+const { game, league } = Astro.props;
+const SIDES = ['away', 'home'] as const;
+type Side = (typeof SIDES)[number];
+const S = { away: game.away.splits, home: game.home.splits };
+const E = { away: game.away.expected, home: game.home.expected };
+const away = cleanAbbreviation(game.away.team), home = cleanAbbreviation(game.home.team);
+const splits = SIDES.every((x) => S[x]), expected = SIDES.every((x) => E[x]);
+// priced: both sides' expected points exist (null without the league's shot cells)
+const priced = expected && SIDES.every((x) => E[x]!.xfg_pts != null);
+type K = keyof NbaTeamSplits;
+type X = keyof NbaTeamExpected;
+const pct = (n: number) => fmtPct(n, 1), int = (n: number) => String(Math.round(n)), dec1 = (n: number) => fmtDec(n, 1), dec2 = (n: number) => fmtDec(n, 2);
+const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toFixed(1)}`;
+const ratio = (num: number | null | undefined, den: number | null | undefined) => (num == null || !den ? null : num / den);
+const less = (a: number | null | undefined, b: number | null | undefined) => (a == null || b == null ? null : a - b);
+// tint and bold: the better side is never told by colour alone
+const tint = (side: Side, e: ReturnType<typeof edge>) => ['text-end', { 'table-success fw-bold': e?.side === side }];
+
+// Situations. The splits' five rows; a Data API final (no splits) takes all, transition and second chance from the expected
+// row, the same counted possessions. Points over expected is the field-goal points less their expected: half-court and first
+// chance are the whole game's less transition's and second chance's (every attempt is in exactly one of each pair).
+// Off a turnover and paint touch are the expected row's own.
+type Sit = { poss: number | null; share: number | null; pts: number | null; ppp: number | null; poe: number | null };
+const situations: { label: string; get: (s: NbaTeamSplits | undefined, e: NbaTeamExpected | undefined) => Sit | null }[] = [
+    { label: 'All possessions', get: (s, e) => s ? { poss: s.possessions, share: null, pts: s.points, ppp: s.ppp, poe: e?.poe ?? null }
+        : e ? { poss: e.possessions, share: null, pts: e.points, ppp: ratio(e.points, e.possessions), poe: e.poe } : null },
+    { label: 'Transition', get: (s, e) => s ? { poss: s.transition_poss, share: ratio(s.transition_poss, s.possessions), pts: s.transition_pts, ppp: s.transition_ppp, poe: e?.fast_break_poe ?? null }
+        : e ? { poss: e.fast_break_poss, share: e.fast_break_rate, pts: e.fast_break_pts, ppp: e.fast_break_ppp, poe: e.fast_break_poe } : null },
+    { label: 'Half-court', get: (s, e) => s ? { poss: s.half_court_poss, share: ratio(s.half_court_poss, s.possessions), pts: s.half_court_pts, ppp: s.half_court_ppp, poe: less(e?.poe, e?.fast_break_poe) } : null },
+    { label: 'Second chance', get: (s, e) => s ? { poss: s.second_chance_poss, share: ratio(s.second_chance_poss, s.possessions), pts: s.second_chance_pts, ppp: s.second_chance_ppp, poe: e?.second_chance_poe ?? null }
+        : e ? { poss: e.second_chance_poss, share: e.second_chance_rate, pts: e.second_chance_pts, ppp: e.second_chance_ppp, poe: e.second_chance_poe } : null },
+    { label: 'First chance', get: (s, e) => s ? { poss: s.first_chance_poss, share: ratio(s.first_chance_poss, s.possessions), pts: s.first_chance_pts, ppp: s.first_chance_ppp, poe: less(e?.poe, e?.second_chance_poe) } : null },
+    ...(['off_turnover', 'paint'] as const).map((f) => ({ label: f === 'paint' ? 'Paint touch' : 'Off a turnover', get: (_s: NbaTeamSplits | undefined, e: NbaTeamExpected | undefined): Sit | null =>
+        e ? { poss: e[`${f}_poss`], share: e[`${f}_rate`], pts: e[`${f}_pts`], ppp: e[`${f}_ppp`], poe: e[`${f}_poe`] } : null })),
+];
+const sitRows = situations.map((r) => ({ label: r.label, v: { away: r.get(S.away, E.away), home: r.get(S.home, E.home) } }))
+    .filter((r) => r.v.away && r.v.home) as { label: string; v: Record<Side, Sit> }[];
+
+// Shot zones. Priced (or with no splits), the expected row's five zones, so each row's made-attempted, eFG%, expected
+// points per shot and points over expected are one set of attempts; else the splits' zones. A zone's eFG%: a three's make
+// is worth 1.5 twos. The no-location rows only when either side has one; layups and dunks (the splits') cut across.
+type Zone = { fga: number | null; fgm: number | null; share: number | null; efg: number | null; xppp: number | null; poe: number | null };
+const fromE = expected && (priced || !splits);
+const splitZone = (z: string, three: boolean) => (s: NbaTeamSplits | undefined): Zone | null => {
+    if (!s) return null;
+    const fga = s[`${z}_fga` as K], fgm = s[`${z}_fgm` as K];
+    return { fga, fgm, share: ratio(fga, s.fga), efg: ratio(fgm == null ? null : fgm * (three ? 1.5 : 1), fga), xppp: null, poe: null };
+};
+const expZone = (z: (typeof EXPECTED_ZONES)[number]) => (_s: unknown, e: NbaTeamExpected | undefined): Zone | null =>
+    e ? { fga: e[`${z}_fga`], fgm: e[`${z}_fgm`], share: ratio(e[`${z}_fga`], e.fga), efg: e[`${z}_efg_pct`], xppp: e[`${z}_xppp`], poe: e[`${z}_poe`] } : null;
+const zones: { label: string; get: (s: NbaTeamSplits | undefined, e: NbaTeamExpected | undefined) => Zone | null; optional?: boolean; across?: boolean }[] = fromE ? [
+    { label: 'Rim (under 4 ft)', get: expZone('rim') },
+    { label: 'Short mid-range', get: expZone('short_mid') },
+    { label: 'Long mid-range', get: expZone('midrange') },
+    { label: 'Corner three', get: expZone('corner3') },
+    { label: 'Above-the-break three', get: expZone('above_break3') },
+    { label: 'No location', optional: true, get: (_s, e) => e ? { fga: e.unlocated_fga, fgm: e.unlocated_fgm, share: ratio(e.unlocated_fga, e.fga), efg: null, xppp: null, poe: null } : null },
+    { label: 'Layups and dunks', across: true, get: (s) => splitZone('layup_dunk', false)(s) },
+] : [
+    { label: 'Rim (under 4 ft)', get: splitZone('rim', false) }, { label: 'Mid-range', get: splitZone('mid', false) },
+    { label: 'Two, no location', optional: true, get: splitZone('fg2_unlocated', false) },
+    { label: 'Corner three', get: splitZone('corner3', true) }, { label: 'Above-the-break three', get: splitZone('above_break3', true) },
+    { label: 'Three, no location', optional: true, get: splitZone('fg3_unlocated', true) },
+    { label: 'Layups and dunks', across: true, get: splitZone('layup_dunk', false) },
+];
+const zoneRows = zones.map((r) => ({ ...r, v: { away: r.get(S.away, E.away), home: r.get(S.home, E.home) } }))
+    .filter((r) => r.v.away && r.v.home && (!r.optional || SIDES.some((x) => (r.v[x]!.fga ?? 0) > 0))) as { label: string; across?: boolean; v: Record<Side, Zone> }[];
+
+// Ball and flow: the splits' rows, then the expected row's (priced only). A side's expected DRtg is its opponent's expected
+// points per 100 possessions: the shots it allowed, priced at the league's make rates.
+type Flow = { label: string; get: (x: Side) => number | null; fmt: (n: number) => string; better: Better };
+const k = (key: K) => (x: Side) => S[x]![key], kx = (key: X) => (x: Side) => E[x]![key];
+const flowRows: Flow[] = [
+    ...(splits ? [
+        { label: 'Turnovers per possession', get: k('tov_pct'), fmt: pct, better: 'low' },
+        { label: 'Live-ball turnovers (steals)', get: k('live_tov'), fmt: int, better: 'low' },
+        { label: 'Dead-ball turnovers', get: k('dead_tov'), fmt: int, better: 'low' },
+        { label: 'Points off live-ball turnovers', get: k('pts_off_live_tov'), fmt: int, better: 'high' },
+        { label: 'Points off dead-ball turnovers', get: k('pts_off_dead_tov'), fmt: int, better: 'high' },
+        { label: 'Assisted share of makes', get: k('assisted_share'), fmt: pct, better: 'none' },
+        { label: 'Rim rate (share of FGA)', get: k('rim_rate'), fmt: pct, better: 'none' },
+        { label: '3PA rate', get: k('fg3a_rate'), fmt: pct, better: 'none' },
+        { label: 'Average 2PT distance (ft)', get: k('avg_fg2_distance'), fmt: dec1, better: 'none' },
+        { label: 'Bench points', get: k('bench_points'), fmt: int, better: 'high' },
+        { label: 'Largest lead', get: k('largest_lead'), fmt: int, better: 'high' },
+        { label: 'Biggest run', get: k('max_run'), fmt: int, better: 'high' },
+        { label: 'Average possession (seconds)', get: k('avg_possession_seconds'), fmt: dec1, better: 'none' },
+    ] satisfies Flow[] : []),
+    ...(priced ? [
+        { label: 'True shooting %', get: kx('ts_pct'), fmt: pct, better: 'high' },
+        { label: 'Expected TS%', get: kx('xts_pct'), fmt: pct, better: 'high' },
+        { label: 'Defensive rating', get: kx('drtg'), fmt: dec1, better: 'low' },
+        { label: 'Expected DRtg (opponent shot quality)', get: kx('xdrtg'), fmt: dec1, better: 'low' },
+    ] satisfies Flow[] : []),
+];
+// sdv-py's transition windows: BB-D7's 8 s in the pros, the college possession release's 10 s
+const transitionWindow = PRO_LEAGUES.includes(league) ? 8 : 10;
+const college = !PRO_LEAGUES.includes(league);
+const sitCols = priced ? 5 : 4, zoneCols = priced ? 5 : 3;
+// Q23: neither row, so the producer's per-game situational splits (both sides need the split; college has no chance family)
+const R = { away: game.away.situational, home: game.home.situational };
+const SITUATIONAL = [['all', 'all', 'All possessions'], ['play_type', 'transition', 'Transition'], ['play_type', 'half_court', 'Half-court'],
+    ['chance', 'second_chance', 'Second chance'], ['chance', 'first_chance', 'First chance']] as const;
+const sitFallback = !splits && !expected && R.away && R.home ? SITUATIONAL.map(([family, split, label]) => {
+    const at = (x: Side) => R[x]!.find((r) => r.family === family && r.split === split) ?? null;
+    return { label, v: { away: at('away'), home: at('home') } };
+}).filter((r) => r.v.away && r.v.home) : [];
+---
+<div id="situational-box">
+  {(!splits && !expected && sitFallback.length > 0) ? (
+  <div class="row g-4">
+    <div class="col-12 col-xl-6">
+      <h3 class="h6">Situations</h3>
+      <div class="table-responsive"><table class="table table-sm numeral mb-2" aria-label="Situations">
+        <thead>
+          <tr><th scope="col" rowspan="2"><span class="visually-hidden">Situation</span></th><th scope="colgroup" colspan="3" class="text-center border-start">{away}</th><th scope="colgroup" colspan="3" class="text-center border-start">{home}</th></tr>
+          <tr>{SIDES.map(() => (<Fragment><th scope="col" class="text-end border-start">Poss</th><th scope="col" class="text-end">Pts</th><th scope="col" class="text-end"><abbr title="points per 100 possessions">ORtg</abbr></th></Fragment>))}</tr>
+        </thead>
+        <tbody>
+          {sitFallback.map((r) => {
+              const e = edge('high', r.v.away!.off_rtg, r.v.home!.off_rtg);
+              return (
+              <tr>
+                <th scope="row" class="fw-normal">{r.label}</th>
+                {SIDES.map((x) => (<Fragment>
+                  <td class="text-end border-start">{dash(r.v[x]!.poss, int)}</td>
+                  <td class="text-end">{dash(r.v[x]!.pts, int)}</td>
+                  <td class:list={tint(x, e)}>{dash(r.v[x]!.off_rtg, dec1)}</td>
+                </Fragment>))}
+              </tr>);
+          })}
+        </tbody>
+      </table></div>
+    </div>
+    <div class="col-12 col-xl-6">
+      <p class="small text-muted mb-0">
+        The producer's per-game situational splits, counted from the play-by-play: possessions, points and points per 100 possessions
+        (ORtg). Tinted and bold: the better offense. Second chance: the possession had an offensive rebound.
+      </p>
+      <p class="small text-muted mt-2 mb-0">The shot zones, the turnover types and the expected points are not available for this game yet.</p>
+    </div>
+  </div>
+  ) : (!splits && !expected) ? <p class="text-muted mb-0">The possession factors are counted from the play-by-play and are not available for this game yet.</p> : (
+  <Fragment>
+  <div class="row g-4">
+    <div class="col-12 col-xl-6">
+      <h3 class="h6">Situations</h3>
+      <div class="table-responsive"><table class="table table-sm numeral mb-2" aria-label="Situations">
+        <thead>
+          <tr><th scope="col" rowspan="2"><span class="visually-hidden">Situation</span></th><th scope="colgroup" colspan={sitCols} class="text-center border-start">{away}</th><th scope="colgroup" colspan={sitCols} class="text-center border-start">{home}</th></tr>
+          <tr>{SIDES.map(() => (<Fragment><th scope="col" class="text-end border-start">Poss</th><th scope="col" class="text-end">Share</th><th scope="col" class="text-end">Pts</th><th scope="col" class="text-end">PPP</th>{priced && <th scope="col" class="text-end"><abbr title="field-goal points over expected">POE</abbr></th>}</Fragment>))}</tr>
+        </thead>
+        <tbody>
+          {sitRows.map((r) => {
+              const e = edge('high', r.v.away.ppp, r.v.home.ppp);
+              return (
+              <tr class:list={{ 'border-top': r.label === 'Off a turnover' }}>
+                <th scope="row" class="fw-normal">{r.label}</th>
+                {SIDES.map((x) => (<Fragment>
+                  <td class="text-end border-start">{dash(r.v[x].poss, int)}</td>
+                  <td class="text-end text-muted">{r.v[x].share == null ? '' : pct(r.v[x].share!)}</td>
+                  <td class="text-end">{dash(r.v[x].pts, int)}</td>
+                  <td class:list={tint(x, e)}>{dash(r.v[x].ppp, dec2)}</td>
+                  {priced && <td class="text-end">{dash(r.v[x].poe, signed)}</td>}
+                </Fragment>))}
+              </tr>);
+          })}
+        </tbody>
+      </table></div>
+    </div>
+    <div class="col-12 col-xl-6">
+      <h3 class="h6">Shot zones</h3>
+      <div class="table-responsive"><table class="table table-sm numeral mb-2" aria-label="Shot zones">
+        <thead>
+          <tr><th scope="col" rowspan="2"><span class="visually-hidden">Zone</span></th><th scope="colgroup" colspan={zoneCols} class="text-center border-start">{away}</th><th scope="colgroup" colspan={zoneCols} class="text-center border-start">{home}</th></tr>
+          <tr>{SIDES.map(() => (<Fragment><th scope="col" class="text-end border-start">FGM-A</th><th scope="col" class="text-end">Share</th><th scope="col" class="text-end">eFG%</th>{priced && (<Fragment><th scope="col" class="text-end"><abbr title="expected points per shot">xPPP</abbr></th><th scope="col" class="text-end"><abbr title="points over expected">POE</abbr></th></Fragment>)}</Fragment>))}</tr>
+        </thead>
+        <tbody>
+          {zoneRows.map((r) => {
+              const e = edge('high', r.v.away.efg, r.v.home.efg);
+              return (
+              <tr class:list={{ 'border-top': r.across }}>
+                <th scope="row" class="fw-normal">{r.label}</th>
+                {SIDES.map((x) => (<Fragment>
+                  <td class="text-end border-start">{r.v[x].fga == null || r.v[x].fgm == null ? '–' : `${r.v[x].fgm}-${r.v[x].fga}`}</td>
+                  <td class="text-end text-muted">{dash(r.v[x].share, pct)}</td>
+                  <td class:list={tint(x, e)}>{dash(r.v[x].efg, pct)}</td>
+                  {priced && (<Fragment><td class="text-end">{r.across ? '' : dash(r.v[x].xppp, dec2)}</td><td class="text-end">{r.across ? '' : dash(r.v[x].poe, signed)}</td></Fragment>)}
+                </Fragment>))}
+              </tr>);
+          })}
+        </tbody>
+      </table></div>
+    </div>
+    {flowRows.length > 0 && (
+    <div class="col-12 col-xl-6">
+      <h3 class="h6">Ball and flow</h3>
+      <div class="table-responsive"><table class="table table-sm numeral mb-2" aria-label="Ball and flow">
+        <thead><tr><th scope="col"><span class="visually-hidden">Metric</span></th><th scope="col" class="text-end">{away}</th><th scope="col" class="text-end">{home}</th><th scope="col" class="text-end">Gap</th></tr></thead>
+        <tbody>
+          {flowRows.map((r) => {
+              const v = { away: r.get('away'), home: r.get('home') };
+              const e = edge(r.better, v.away, v.home);
+              return (
+              <tr class:list={{ 'border-top': r.label === 'True shooting %' && splits }}>
+                <th scope="row" class="fw-normal">{r.label}</th>
+                <td class:list={tint('away', e)}>{dash(v.away, r.fmt)}</td>
+                <td class:list={tint('home', e)}>{dash(v.home, r.fmt)}</td>
+                <td class="text-end text-muted">{e ? (r.fmt === pct ? fmtDec(e.gap * 100, 1) : r.fmt(e.gap)) : ''}</td>
+              </tr>);
+          })}
+        </tbody>
+      </table></div>
+    </div>)}
+    <div class="col-12 col-xl-6">
+      <p class="small text-muted mb-0">
+        Counted from the play-by-play, one team at a time. A possession is a run of one offense. Tinted and bold: the better side (PPP,
+        eFG%, fewer turnovers, more points off them); the gap is in percentage points for rates. Transition: the possession started
+        live (after a make, a defensive rebound or a steal) and its first shot came within {transitionWindow} seconds; half-court
+        is everything else. Second chance: the possession had an offensive rebound. Live-ball turnovers are the ones with a steal
+        credited; points off turnovers are the points scored on the possessions they started. Rim is a two under 4 feet; a corner
+        three is one taken from the corner strip along the baseline. Layups and dunks cut across the zones above.
+      </p>
+      {priced ? (
+      <p class="small text-muted mt-2 mb-0">
+        Expected points price every shot at the league's make rate from that spot over the year before the game. POE is the field-goal
+        points over that expectation; xPPP is the expected points per shot. Short mid-range is {college ? 'a two from 4 to 15 feet' : 'a two in the paint outside the restricted area'};
+        long mid-range is any other two. Off a turnover: the possession started on a turnover. Paint touch: the possession had a
+        shot at the rim or in the short mid-range. Expected TS% prices the field goals the same way and keeps the free throws made; expected DRtg is the opponent's expected
+        points per 100 possessions.
+      </p>) : (
+      <p class="small text-muted mt-2 mb-0">The expected points (points over expected, expected points per shot, expected TS% and DRtg) are not available for this game yet.</p>)}
+    </div>
+  </div>
+  </Fragment>)}
+</div>

@@ -168,6 +168,7 @@ jobs:
           GOP_PG_DSN: ${{ secrets.GOP_PG_DSN }}
           GOP_PG_DSN_RO: ${{ secrets.GOP_PG_DSN_RO }}
           GOP_INGEST_KEY: ${{ secrets.GOP_INGEST_KEY }}
+          SDV_AUTH_TOKEN: ${{ secrets.SDV_AUTH_TOKEN }}
           TELEMETRY_ENABLED: ${{ secrets.TELEMETRY_ENABLED }}
         run: |
           # Build the compose env file on the runner from real env vars (never
@@ -178,6 +179,7 @@ jobs:
             printf 'GOP_PG_DSN=%s\n' "$GOP_PG_DSN"
             printf 'GOP_PG_DSN_RO=%s\n' "$GOP_PG_DSN_RO"
             printf 'GOP_INGEST_KEY=%s\n' "$GOP_INGEST_KEY"
+            printf 'SDV_AUTH_TOKEN=%s\n' "$SDV_AUTH_TOKEN"
             printf 'TELEMETRY_ENABLED=%s\n' "$TELEMETRY_ENABLED"
           } > deploy.env
 
