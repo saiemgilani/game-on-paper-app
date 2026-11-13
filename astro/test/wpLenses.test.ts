@@ -30,7 +30,7 @@ vi.mock('../src/resources/nbaGames', async (orig) => ({ ...(await orig<typeof im
 vi.mock('../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../src/resources/espn')>()), retrieveGamePageGuarded: (...a: unknown[]) => espn(...a) }));
 
 import NbaWinProbability from '../src/components/nba/game/NbaWinProbability.astro';
-import { fromDataApi, type DataApiGameRows, type NbaGame } from '../src/resources/nbaGame';
+import { fromDataApi, fromProcessor, type DataApiGameRows, type NbaGame } from '../src/resources/nbaGame';
 import { retrieveWpLenses } from '../src/resources/wpLenses';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { seasonCache } from '../src/routes/basketball/cache';
@@ -90,6 +90,20 @@ describe('the extras agree with the rows', () => {
         expect(x.last5).toEqual({ home: s.home_score - before.home_score, away: s.away_score - before.away_score });
         expect(x.last5).toEqual({ home: 10, away: 9 });
     });
+    test('Q40, the clutch clock: an overtime final counts the last 5:00 of regulation plus the overtime', () => {
+        // a real 2024-25 overtime final (the byte-identity fixture): five periods
+        const raw = JSON.parse(readFileSync(new URL('./fixtures/nba/game_401705127_processor.json', import.meta.url)).toString());
+        const ot = fromProcessor(raw, 'nba');
+        expect(ot.periods).toBe(5);
+        const plays = raw.plays as { period_number: number; clock_display_value: string; home_score: number; away_score: number }[];
+        const before = plays.filter((p) => p.period_number === 4 && clockSeconds(p.clock_display_value)! > 300).at(-1)!;
+        const end = plays.at(-1)!;
+        const want = { home: end.home_score - before.home_score, away: end.away_score - before.away_score };
+        expect(flowExtras(ot, 720).last5).toEqual(want);
+        // more than the overtime alone (the old reading)
+        const otStart = plays.filter((p) => p.period_number < 5).at(-1)!;
+        expect(want.home + want.away).toBeGreaterThan((end.home_score - otStart.home_score) + (end.away_score - otStart.away_score));
+    });
     test('runs of 8-0 or better, with their clock stamps', () => {
         expect(x.runs.map((u) => `${u.side} ${u.points}-0 ${at(u.from)} to ${at(u.to)} (${u.away}-${u.home})`)).toEqual([
             'home 10-0 Q2 1:00 to Q3 10:43 (46-64)', 'away 8-0 Q3 7:26 to Q3 6:15 (58-73)', 'away 12-0 Q4 9:57 to Q4 6:56 (85-89)']);
@@ -105,11 +119,13 @@ describe('the extras agree with the rows', () => {
         expect(x.peak.home!.wp).toBe(Math.max(...live.map((w) => w.home_win_prob)));
         expect(x.peak.away!.wp).toBe(Math.max(...live.map((w) => 1 - w.home_win_prob)));
         expect(x.comeback!.wp).toBe(Math.min(...live.map((w) => w.home_win_prob))); // PHI won
+        expect(x.comeback!.side).toBe('home');
         expect(x.swing!.n).toBe(361);
         const ng = game(NOLINE), nr = fx(NOLINE);
         const nx = flowExtras(ng, 720);
         expect(nx.comeback!.wp).toBe(Math.min(...nr.play_wp.filter((w) => w.home_win_prob > 0 && w.home_win_prob < 1).map((w) => 1 - w.home_win_prob))); // BKN won away
         expect(nx.comeback!.wp).toBeLessThan(0.2);
+        expect(nx.comeback!.side).toBe('away');
     });
     test('a live game: no last 5:00 and no comeback', () => {
         const live = { ...g, status: { ...g.status, completed: false }, home: { ...g.home, winner: false } };
@@ -217,6 +233,9 @@ describe('the WP panel', () => {
         for (const k of ['model', 'naive', 'market']) expect(p).toContain(`[0,"${k}"]`);
         expect(p).toContain('"moments"');
         expect(html).toContain('id="wp-extras"');
+        // Q41: the comeback row names the winner (PHI), labelled as this page's WP line
+        expect(html).toMatch(/PHI low: \d+\.\d% \([^)]+\), on this page(&#39;|')s WP line/);
+        expect(html).not.toContain('The winner&#39;s low');
         expect(html).toContain('PHI 10-0, Q2 1:00 to Q3 10:43');
         expect(html).toContain('Lenses: our model starts from the pregame prior; score and clock only');
         expect(html).toContain('market prior starts from');

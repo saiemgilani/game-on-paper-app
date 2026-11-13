@@ -91,14 +91,15 @@ export interface FlowExtras {
     runs: Run[];
     /** the longer of the two sides' longest gaps between two of their own scores; null before either scored twice */
     drought: Drought | null;
-    /** points each side scored in the game's last 5:00 of game clock (the last overtime when there is one); finals only */
+    /** Q40, the clutch clock: points each side scored in the last 5:00 of regulation plus every overtime (the producer's
+     * clutch split's window, #416); finals only */
     last5: { home: number; away: number } | null;
     /** each side's highest WP before the game was over (the settled 1 / 0 rows are not a peak) */
     peak: { home: Peak | null; away: Peak | null };
     /** the play that moved the home WP the most (nba/data/game.ts biggestPlays' first) */
     swing: NbaPlay | null;
-    /** the eventual winner's lowest WP before the game was over; finals with a winner only */
-    comeback: Peak | null;
+    /** the eventual winner's lowest WP before the game was over, from this page's WP series; finals with a winner only */
+    comeback: (Peak & { side: 'home' | 'away' }) | null;
 }
 
 /** The longest gap of game clock between two of one side's scores, from the score-change series. */
@@ -116,6 +117,8 @@ function longestDrought(series: readonly FlowPoint[]): Drought | null {
     return best;
 }
 
+const withSide = (p: Peak | null, side: 'home' | 'away') => (p == null ? null : { ...p, side });
+
 export function flowExtras(game: NbaGame, periodSeconds: number): FlowExtras {
     const reg = game.regulation;
     const total = gameSeconds(game.periods, reg, periodSeconds);
@@ -130,7 +133,8 @@ export function flowExtras(game: NbaGame, periodSeconds: number): FlowExtras {
     const winner = !done ? null : game.home.winner ? 'home' : game.away.winner ? 'away' : null;
     let last5: FlowExtras['last5'] = null;
     if (done && series.length > 1) {
-        const cut = total - LAST_WINDOW;
+        // the last 5:00 of regulation, then every overtime to the end
+        const cut = gameSeconds(reg, reg, periodSeconds) - LAST_WINDOW;
         const before = [...series].reverse().find((p) => p.t < cut) ?? series[0];
         const end = series[series.length - 1];
         last5 = { home: end.home - before.home, away: end.away - before.away };
@@ -141,6 +145,6 @@ export function flowExtras(game: NbaGame, periodSeconds: number): FlowExtras {
         last5,
         peak: { home: extreme(homeWp, (a, b) => a > b), away: extreme(awayWp, (a, b) => a > b) },
         swing: biggestPlays(game.plays, 1)[0] ?? null,
-        comeback: winner == null ? null : extreme(winner === 'home' ? homeWp : awayWp, (a, b) => a < b),
+        comeback: winner == null ? null : withSide(extreme(winner === 'home' ? homeWp : awayWp, (a, b) => a < b), winner),
     };
 }

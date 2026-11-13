@@ -20,10 +20,10 @@ const peaks = [peak('away', x.peak.away), peak('home', x.peak.home)].filter((v) 
 const swingSide = x.swing && x.swing.wpDelta! >= 0 ? 'home' : 'away';
 const rows: { label: string; title: string; value: string }[] = [
     ...(x.drought ? [{ label: 'Longest drought', title: "The longest stretch of game clock between two of one team's scores", value: `${abbr[x.drought.side]} ${fmtClock(x.drought.seconds)} (${at(x.drought.from)} to ${at(x.drought.to)})` }] : []),
-    ...(x.last5 ? [{ label: 'Last 5:00', title: 'Points each team scored in the last five minutes of game clock (the last overtime when there was one)', value: `${abbr.away} ${x.last5.away}, ${abbr.home} ${x.last5.home}` }] : []),
+    ...(x.last5 ? [{ label: game.hasOvertime ? 'Last 5:00 and OT' : 'Last 5:00', title: 'Points each team scored in the clutch window: the last five minutes of regulation plus every overtime', value: `${abbr.away} ${x.last5.away}, ${abbr.home} ${x.last5.home}` }] : []),
     ...(peaks ? [{ label: 'Peak win prob.', title: "Each team's highest win probability before the game was decided", value: peaks }] : []),
     ...(x.swing ? [{ label: 'Largest swing', title: 'The single play that moved the win probability the most', value: `${fmtPts(Math.abs(x.swing.wpDelta!))} pts toward ${abbr[swingSide]} (${stampOf(x.swing, game.regulation, game.periodKind)}): ${x.swing.text}` }] : []),
-    ...(x.comeback ? [{ label: 'Comeback', title: "The winner's lowest win probability before the game was decided", value: `The winner's low: ${fmtPct(x.comeback.wp, 1)} (${stampOf(x.comeback.play, game.regulation, game.periodKind)})` }] : []),
+    ...(x.comeback ? [{ label: 'Comeback', title: "The winner's lowest win probability before the game was decided, read from this page's win-probability line", value: `${abbr[x.comeback.side]} low: ${fmtPct(x.comeback.wp, 1)} (${stampOf(x.comeback.play, game.regulation, game.periodKind)}), on this page's WP line` }] : []),
 ];
 const notes = lenses.map((k) => LENS_NOTES[k]);
 ---
