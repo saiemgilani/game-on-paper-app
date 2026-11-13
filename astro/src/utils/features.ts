@@ -81,8 +81,8 @@ export const FLAGS: Record<string, FeatureState> = {
     'bball-impact-box': 'preview',
     // BB-G28's Game flow: on /<league>/game/[id] for a final, the panel in football's drive-chart slot (a lead chart from
     // the play-by-play with its lead changes and 10-0 runs, and sdv-db's game_flow totals: time leading, runs, droughts,
-    // stops, kills, game control); inside 'bball-playoff-picture', the pro standings' "Game flow" view (team_season_flow,
-    // BB-D27, with the producer's ranks and percentiles). Off: no read, the game page and the standings are today's.
+    // stops, kills, game control). The season board is the leaderboards' Teams board (BB-G8). Off: no read and the game
+    // page is today's.
     'bball-game-flow': 'preview',
     // BB-G26's EPV box: on /nba/game/[id] for a final from 2021-22 on, each side's EPV added with the ball and allowed and
     // each player's EPV added on their own events and on-court EPV +/- (sdv-db's epv_player_games / epv_team_games, BB-D24).
