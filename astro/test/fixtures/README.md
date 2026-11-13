@@ -799,6 +799,17 @@ select the flag adds: `select=game_id,off_rtg,def_rtg,pace,efg_pct,tov_pct,orb_p
 `/v1/nba_stats/shot_player_games?season=2026&person_id=1629008&limit=200` (52 rows, the player page's own read) and
 `/v1/nba_stats/shot_season_players?season=2026&person_id=1629008&limit=5` (1 row, the oracle for "All games").
 
+The two `possessions,game_minutes` columns in `gameRates` come from the first version of the summed sets. They are no longer read, but the capture stays as it was taken.
+
+`game-set-possessions-2026.json.gz` holds the summed sets' reads (`resources/teamSeason.ts` `retrieveGameSetCounts`) and each team's live season row, captured live on 2026-11-13 in the same way: `{nets: {possessions, seasonAll, crosswalkHome, crosswalkAway}, duke: {possessions, seasonAll, teamBox, conferenceHome, conferenceAway}}`. `seasonAll` is the oracle: the season's `possessions` rows summed and divided once give exactly that row (the `rates` in the two team files above are from 2026-11-05 and one Nets possession behind).
+- `/v1/nba_stats/team_game_possessions?season=2026&team_id=1610612751&split=all&limit=100` (82 rows, regular season)
+- `/v1/nba_stats/team_season_rates?season=2026&team_id=1610612751&split=all&limit=5` (1)
+- `/v1/nba/schedule_crosswalk?season=2026&{home,away}_espn_team_id=17&select=espn_game_id,nba_game_id&limit=200` (43 + 43)
+- `/v1/mbb/team_game_possessions?season=2026&team_id=150&split=all&limit=100` (38; `game_id` is the stats.ncaa contest id)
+- `/v1/mbb/team_season_rates?season=2026&team_id=150&split=all&limit=5` (1)
+- `/v1/mbb/ncaa_team_box?season=2026&team_espn_team_id=150&select=contest_id,espn_game_id&limit=200` (38)
+- `/v1/mbb/schedule?season=2026&{home,away}_id=150&select=id,conference_competition&limit=200` (26 + 12)
+
 **Used by:** `test/bballGameSet.test.ts`.
 
 **To regenerate:** rerun the same twelve reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
@@ -822,5 +833,6 @@ The reads behind the advanced game logs (BB-G50, `resources/bballGameLogs.ts`), 
   `pts` is not in the module's select: the test uses it as the join oracle against ESPN's box), all `season=2026`.
 
 **Used by:** `test/bballGameLogs.test.ts`.
+
 
 **To regenerate:** rerun the same reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.

@@ -78,11 +78,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // team_season_rates, team_strength and game_team_rates); college adds adjusted efficiency margin and tempo. Off: no
     // read and the team page is today's, byte for byte.
     'bball-team-season': 'preview',
-    // BB-G14: the game-set filter (?games=all|home|away|wins|losses|last5|last10|last20) on /<league>/team/[id], inside
-    // 'bball-team-season' (it reads that block's rows, plus each game's possessions and minutes), and on
-    // /<league>/players/[id] over the page's own per-game shot rows (no extra read). All / Home / Away on the team page
-    // are the producer's split rows; the other sets sum per-game counts. Off: ?games= is never read, the pages and their
-    // requests are unchanged.
+    // BB-G14: the game-set filter (?games=all|home|away|close|clutch|conference|wins|losses|last5|last10|last20) on
+    // /<league>/team/[id], inside 'bball-team-season' (All / Home / Away / Close / Clutch are that block's producer split
+    // rows; Wins / Losses / last N / college Conference games sum the team's team_game_possessions rows, read
+    // only for those sets), and on /<league>/players/[id] over the page's own per-game shot rows (no extra read; the
+    // explorer starts from the set). Off: ?games= is never read, the pages and their requests are unchanged.
     'bball-game-set': 'preview',
     // BB-G50: advanced game logs. /<league>/players/[id]: each game's box with TS%, usage, on-court possessions, +/- and
     // ratings, points over expected and EPV added (game_player_rates, shot_quality_game, game_player_impact,
@@ -185,10 +185,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // needs a live entitlement (utils/pro.ts, resources/pro.ts) except login,
     // auth, logout and methodology. Promote to 'on' at launch.
     'pro': 'preview',
-    // The NBA Cup (BB-G30): /nba/cup inside 'nba', linked from /nba/standings (no Header entry). sdv-db's daily Cup
+    // The NBA Cup (BB-G30): /nba/cup inside 'nba', linked from /nba/standings and, in the Cup window (November and
+    // December, utils/nbaCup.ts isCupWindow), from the NBA Header. sdv-db's daily Cup
     // snapshots (cup_standings, cup_sims): the six groups in the Cup's tiebreak order, the wild-card race, the knockout
-    // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404 and the
-    // standings page has no link.
+    // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404, and the
+    // standings page and the Header have no link.
     'bball-nba-cup': 'preview',
 };
 

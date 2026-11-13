@@ -20,10 +20,21 @@ const MBB = capture('game-set-mbb-2026'); // Duke 2025-26 (ESPN 150)
 const MPJ = capture('game-set-player-nba-2026'); // Michael Porter Jr. 2025-26: shot_player_games + his shot_season_players row
 const PID = 1629008;
 
-const block = vi.hoisted(() => ({ fn: vi.fn() }));
+// the summed sets' reads (team_game_possessions + the game-id maps + college conference flags), as retrieveGameSetCounts
+// returns them, and each team's live season row (team_season_rates, split 'all') captured with them: the summing oracle
+const POS = capture('game-set-possessions-2026');
+const netsCounts = () => ({ games: POS.nets.possessions, espnOf: new Map<string, string>([...POS.nets.crosswalkHome, ...POS.nets.crosswalkAway].map((r: any) => [String(r.nba_game_id), String(r.espn_game_id)])), conference: null });
+const dukeCounts = (conference = false) => ({
+    games: POS.duke.possessions,
+    espnOf: new Map<string, string>(POS.duke.teamBox.map((r: any) => [String(r.contest_id), String(r.espn_game_id)])),
+    conference: conference ? new Set<string>([...POS.duke.conferenceHome, ...POS.duke.conferenceAway].filter((g: any) => g.conference_competition === true).map((g: any) => String(g.id))) : null,
+});
+
+const block = vi.hoisted(() => ({ fn: vi.fn(), counts: vi.fn() }));
 vi.mock('../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../src/resources/teamSeason')>()),
     retrieveTeamSeason: (...a: unknown[]) => block.fn(...a),
+    retrieveGameSetCounts: (...a: unknown[]) => block.counts(...a),
 }));
 const oracle = JSON.parse(readFileSync(new URL('./fixtures/nba/league_context.json', import.meta.url)).toString());
 const shots = JSON.parse(readFileSync(new URL('./fixtures/nba/shots.json', import.meta.url)).toString()) as any[];
@@ -49,7 +60,7 @@ import { playerGamesFromRows } from '../src/nba/adapters';
 import { NETS_TEAM_ID } from '../src/nba/data/teams';
 import { prepareNbaPlayer } from '../src/routes/nba/player';
 import { prepareNbaTeam } from '../src/routes/nba/team';
-import { BB_GAME_SETS, bbGameSetOf, gameSetHref, pickGames, playerGameSet, summedTeamLine, teamGameSet } from '../src/utils/bballGameSet';
+import { BB_GAME_SETS, bbGameSetOf, gameSetHref, isSummedSet, pickGames, playerGameSet, summedTeamLine, teamGameCounts, teamGameSet } from '../src/utils/bballGameSet';
 import { FLAGS } from '../src/utils/features';
 import { scheduleRows } from '../src/utils/teamSeason';
 
@@ -60,12 +71,18 @@ const duke = () => scheduleRows(asReads(MBB).games, MBB.gameRates, DUKE);
 const split = (c: any, s: string) => c.rates.find((r: any) => r.split === s);
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
-beforeEach(() => { block.fn.mockReset(); block.fn.mockResolvedValue(asReads(NBA)); });
+beforeEach(() => {
+    block.fn.mockReset(); block.fn.mockResolvedValue(asReads(NBA));
+    block.counts.mockReset(); block.counts.mockResolvedValue(netsCounts());
+});
 
 describe('the sets', () => {
     test('an unknown or missing ?games= is all', () => {
         expect(bbGameSetOf('last10')).toBe('last10');
         expect(bbGameSetOf('conf')).toBe('all');
+        expect(bbGameSetOf('conference')).toBe('conference');
+        expect(['all', 'home', 'away', 'close', 'clutch'].map((s) => isSummedSet(bbGameSetOf(s)))).toEqual([false, false, false, false, false]);
+        expect(['wins', 'losses', 'last5', 'last10', 'last20', 'conference'].map((s) => isSummedSet(bbGameSetOf(s)))).toEqual([true, true, true, true, true, true]);
         expect(bbGameSetOf(null)).toBe('all');
     });
     test('last N is the N latest games by date, whatever the input order', () => {
@@ -80,65 +97,91 @@ describe('the sets', () => {
     });
 });
 
-describe('team: All / Home / Away are the season numbers', () => {
+describe('team: All / Home / Away / Close games / Clutch are the season numbers', () => {
     for (const [name, c, rows] of [['Nets', NBA, nets], ['Duke', MBB, duke]] as const) {
-        test(`${name}: each is the producer's split row, unchanged`, () => {
-            for (const s of ['all', 'home', 'away'] as const) {
-                const v = teamGameSet(c.rates, rows(), s, 48)!;
+        test(`${name}: each is the producer's split row, unchanged, with no possessions read`, () => {
+            for (const s of ['all', 'home', 'away', 'close', 'clutch'] as const) {
+                const v = teamGameSet(c.rates, rows(), s, 48, c === MBB)!;
                 const r = split(c, s);
                 expect(v.producer).toBe(true);
-                expect(v.line).toEqual({ games: r.games, poss: r.poss, off_rtg: r.off_rtg, def_rtg: r.def_rtg, net_rtg: r.net_rtg, pace: r.pace, off_rtg_pct: r.off_rtg_pct, def_rtg_pct: r.def_rtg_pct, net_rtg_pct: r.net_rtg_pct });
+                expect(v.line).toEqual({ games: r.games, poss: r.poss, off_rtg: r.off_rtg, def_rtg: r.def_rtg, net_rtg: r.net_rtg, pace: r.pace, off_rtg_pct: r.off_rtg_pct, def_rtg_pct: r.def_rtg_pct, net_rtg_pct: r.net_rtg_pct, pace_rank: r.pace_rank, pace_pct: r.pace_pct });
             }
         });
     }
 });
 
-describe('team: the other sets sum per-game counts', () => {
-    test('the Nets, last 10: 100 x points / possessions over the ten latest finals, never the mean of their ratings', () => {
-        const v = teamGameSet(NBA.rates, nets(), 'last10', 48)!;
-        const ten = nets().filter((g) => g.completed).slice(-10);
-        const poss = ten.reduce((t, g) => t + g.rates!.possessions!, 0);
-        const pts = ten.reduce((t, g) => t + g.teamScore!, 0);
-        const opp = ten.reduce((t, g) => t + g.oppScore!, 0);
-        const min = ten.reduce((t, g) => t + g.rates!.game_minutes!, 0);
-        expect(v.producer).toBe(false);
-        expect(v.line.games).toBe(10);
-        expect(v.line.off_rtg).toBeCloseTo((100 * pts) / poss, 10);
-        expect(v.line.def_rtg).toBeCloseTo((100 * opp) / poss, 10);
-        expect(v.line.net_rtg).toBeCloseTo((100 * (pts - opp)) / poss, 10);
-        expect(v.line.pace).toBeCloseTo((48 * poss) / min, 10);
-        // a mean of the ten per-game ratings is a different number on this real stretch
-        const mean = ten.reduce((t, g) => t + g.rates!.off_rtg!, 0) / 10;
-        expect(Math.abs(v.line.off_rtg! - mean)).toBeGreaterThan(0.01);
-        expect(v.line.off_rtg_pct).toBeUndefined();
+describe("team: the other sets sum the producer's per-team-game possessions rows", () => {
+    // the real-data gate: every game of the season, summed and divided once, is the producer's own season row
+    const exact = (line: ReturnType<typeof summedTeamLine>, all: any) => {
+        expect(line.poss).toBe(all.poss);
+        expect(line.off_rtg).toBeCloseTo(all.off_rtg, 9);
+        expect(line.def_rtg).toBeCloseTo(all.def_rtg, 9);
+        expect(line.net_rtg).toBeCloseTo(all.net_rtg, 9);
+        expect(line.pace).toBeCloseTo(all.pace, 9);
+    };
+    test('the Nets: each regular-season final maps once, and the 82 summed reproduce the season row', () => {
+        const per = teamGameCounts(netsCounts());
+        const finals = nets().filter((g) => g.completed && per.has(g.gameId));
+        expect(finals).toHaveLength(82);
+        const all = POS.nets.seasonAll[0];
+        expect(all.games).toBe(82);
+        const summed = summedTeamLine(finals.map((g) => per.get(g.gameId)!), 48);
+        expect(summed.games).toBe(82);
+        exact(summed, all); // 7,963 possessions, 109.08 / 119.30, pace 97.09
     });
-    test('the Nets: Wins and Losses partition the rated finals, and count the producer record', () => {
-        const wins = teamGameSet(NBA.rates, nets(), 'wins', 48)!.line;
-        const losses = teamGameSet(NBA.rates, nets(), 'losses', 48)!.line;
+    test('Duke: the 38 summed reproduce the season row (40-minute pace)', () => {
+        const per = teamGameCounts(dukeCounts());
+        const finals = duke().filter((g) => g.completed && per.has(g.gameId));
+        const all = POS.duke.seasonAll[0];
+        expect(finals).toHaveLength(all.games); // 38
+        exact(summedTeamLine(finals.map((g) => per.get(g.gameId)!), 40), all);
+    });
+    test('the Nets, last 10: 100 x points / possessions over the ten latest finals, never the mean of per-game ratings', () => {
+        const counts = netsCounts();
+        const v = teamGameSet(NBA.rates, nets(), 'last10', 48, false, counts)!;
+        const per = teamGameCounts(counts);
+        const ten = nets().filter((g) => g.completed && per.has(g.gameId)).slice(-10).map((g) => per.get(g.gameId)!);
+        const poss = ten.reduce((t, g) => t + g.poss, 0), opp = ten.reduce((t, g) => t + g.opp_poss, 0);
+        const pts = ten.reduce((t, g) => t + g.pts, 0), ptsAgainst = ten.reduce((t, g) => t + g.opp_pts, 0);
+        expect(v.producer).toBe(false);
+        expect(v.line!.games).toBe(10);
+        expect(v.line!.off_rtg).toBeCloseTo((100 * pts) / poss, 10);
+        expect(v.line!.def_rtg).toBeCloseTo((100 * ptsAgainst) / opp, 10);
+        const mean = ten.reduce((t, g) => t + (100 * g.pts) / g.poss, 0) / 10;
+        expect(Math.abs(v.line!.off_rtg! - mean)).toBeGreaterThan(0.01);
+        expect(v.line!.off_rtg_pct).toBeUndefined();
+    });
+    test('the Nets: Wins and Losses partition the finals, and count the producer record', () => {
+        const wins = teamGameSet(NBA.rates, nets(), 'wins', 48, false, netsCounts())!.line!;
+        const losses = teamGameSet(NBA.rates, nets(), 'losses', 48, false, netsCounts())!.line!;
         expect(wins.games).toBe(NBA.strength[0].wins); // 20
         expect(losses.games).toBe(NBA.strength[0].losses); // 62
         expect(wins.net_rtg!).toBeGreaterThan(0);
         expect(losses.net_rtg!).toBeLessThan(0);
-        const all = summedTeamLine(nets().filter((g) => g.completed), 48);
-        expect(wins.poss + losses.poss).toBeCloseTo(all.poss, 6);
+        expect(wins.poss + losses.poss).toBe(POS.nets.seasonAll[0].poss);
     });
-    test("the summed basis is the box score's: over every game it runs above the play-by-play possessions (the caption's claim)", () => {
-        for (const [c, rows] of [[NBA, nets], [MBB, duke]] as const) {
-            const finals = rows().filter((g) => g.completed);
-            const summed = summedTeamLine(finals, 48);
-            expect(summed.games).toBe(split(c, 'all').games);
-            // points agree within 0.2% (final scores vs possession points); possessions are a different count
-            const pts = finals.reduce((t, g) => t + g.teamScore!, 0);
-            expect(Math.abs(pts - split(c, 'all').pts) / split(c, 'all').pts).toBeLessThan(0.002);
-        }
-        expect(summedTeamLine(nets().filter((g) => g.completed), 48).poss).toBeGreaterThan(split(NBA, 'all').poss);
+    test('college: Duke maps through ncaa_team_box, and Conference games is its conference_competition games', () => {
+        const per = teamGameCounts(dukeCounts());
+        const finals = duke().filter((g) => g.completed);
+        expect(finals.filter((g) => per.has(g.gameId)).length).toBe(finals.length);
+        const counts = dukeCounts(true);
+        const v = teamGameSet(MBB.rates, duke(), 'conference', 40, true, counts)!;
+        const conf = finals.filter((g) => counts.conference!.has(g.gameId));
+        expect(v.set).toBe('conference');
+        expect(v.line!.games).toBe(conf.length); // the ACC regular season and tournament
+        expect(conf.length).toBeGreaterThan(15);
+        expect(conf.length).toBeLessThan(finals.length);
+        expect(v.sets).toContain('conference');
+        expect(teamGameSet(NBA.rates, nets(), 'conference', 48, false, netsCounts())!.sets).not.toContain('conference');
+        expect(teamGameSet(NBA.rates, nets(), 'conference', 48, false, netsCounts())!.set).toBe('all');
     });
-    test('a set with no game is not offered, and a link to it renders all', () => {
-        const unrated = nets().map((g) => ({ ...g, rates: null }));
-        const v = teamGameSet(NBA.rates, unrated, 'last5', 48)!;
-        expect(v.sets).toEqual(['all', 'home', 'away']);
+    test('a failed possessions read is a line of null; a set with no game is not offered, and a link to it renders all', () => {
+        expect(teamGameSet(NBA.rates, nets(), 'wins', 48, false, null)!.line).toBeNull();
+        const unplayed = nets().map((g) => ({ ...g, completed: false, teamScore: null, oppScore: null }));
+        const v = teamGameSet(NBA.rates, unplayed, 'last5', 48, false, netsCounts())!;
+        expect(v.sets).toEqual(['all', 'home', 'away', 'close', 'clutch']);
         expect(v.set).toBe('all');
-        expect(teamGameSet([], nets(), 'all', 48)).toBeNull();
+        expect(teamGameSet([], nets(), 'all', 48, false)).toBeNull();
     });
 });
 
@@ -158,6 +201,13 @@ describe('player: every set sums his per-game shot counts', () => {
         expect(v.games).toBe(5);
         expect(v.line.fgPct).toBe(m / a);
         expect(v.line.fgPct).not.toBe(five.reduce((t, g) => t + g.fgPct!, 0) / 5);
+    });
+    test('Close games, Clutch and Conference games are team-page sets: his page offers the others, and a link to one is All', () => {
+        const v = playerGameSet(games(), 'clutch')!;
+        expect(v.set).toBe('all');
+        expect(v.sets).not.toContain('clutch');
+        expect(v.sets).not.toContain('conference');
+        expect(playerGameSet(games(), 'last5')!.gameIds).toEqual(games().slice(-5).map((g) => g.game_id));
     });
     test('home + away + neutral and wins + losses each partition his games', () => {
         const n = (s: (typeof BB_GAME_SETS)[number]['key']) => playerGameSet(games(), s)!.games;
@@ -181,16 +231,36 @@ describe('the flag', () => {
     test("team, off: the block's read exactly (four arguments), no gameSet key", async () => {
         const r = ok(await prepareNbaTeam(fakeAstro(TEAM, String(NETS_TEAM_ID), OFF)));
         expect(block.fn).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, NETS_ESPN);
+        expect(block.counts).not.toHaveBeenCalled();
         expect('gameSet' in r).toBe(false);
     });
-    test('team, on: the read adds the counts, ?games= is read', async () => {
+    test("team, on: the block's read unchanged; a summed set adds the possessions reads (keyed by the season tables' id)", async () => {
         const r = ok(await prepareNbaTeam(fakeAstro(TEAM, String(NETS_TEAM_ID), { preview: true })));
-        expect(block.fn).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, NETS_ESPN, true);
+        expect(block.fn).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, NETS_ESPN);
+        expect(block.counts).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, NETS_ESPN, false);
         expect(r.gameSet).toBe('last10');
+        expect(r.gameSetCounts).toEqual(netsCounts());
+    });
+    test('team, on, a producer set (or no ?games=): no possessions read', async () => {
+        for (const q of ['&games=clutch', '&games=home', '']) {
+            block.counts.mockClear();
+            const r = ok(await prepareNbaTeam(fakeAstro(`/nba/team/${NETS_TEAM_ID}?season=2026${q}`, String(NETS_TEAM_ID), { preview: true })));
+            expect(block.counts).not.toHaveBeenCalled();
+            expect('gameSetCounts' in r).toBe(false);
+        }
+    });
+    test('team, on: a failed possessions read keeps the page, says so in the line, and is never cached', async () => {
+        block.counts.mockRejectedValueOnce(new Error('down'));
+        const astro = fakeAstro(TEAM, String(NETS_TEAM_ID), { preview: true });
+        const r = ok(await prepareNbaTeam(astro));
+        expect(r.gameSetCounts).toBeNull();
+        expect(r.seasonBlock).not.toBeNull();
+        expect(astro.response.headers.get('Cache-Control')).toBe('no-store');
     });
     test("team, on but 'bball-team-season' off: no read, no set", async () => {
         const r = ok(await prepareNbaTeam(fakeAstro(TEAM, String(NETS_TEAM_ID), { preview: true, flagOverrides: { 'bball-team-season': false } })));
         expect(block.fn).not.toHaveBeenCalled();
+        expect(block.counts).not.toHaveBeenCalled();
         expect('gameSet' in r).toBe(false);
     });
     test('player: off, no key; on, the set', async () => {
@@ -215,17 +285,33 @@ describe('the pages', () => {
     });
     test('team, on, last 10: the filtered title, the select keeping ?season=, the summed numbers', async () => {
         const html = await page(TeamPage, TEAM, String(NETS_TEAM_ID), { preview: true });
-        const v = teamGameSet(NBA.rates, nets(), 'last10', 48)!;
+        const v = teamGameSet(NBA.rates, nets(), 'last10', 48, false, netsCounts())!;
         const panel = html.split('id="season-game-set"')[1].split('</table>')[0];
         expect(panel).toContain('Team stats (Filtered)');
         expect(panel).toContain(`value="/nba/team/${NETS_TEAM_ID}?season=2026&amp;games=last10#season-game-set" selected`);
         expect(panel).toContain(`value="/nba/team/${NETS_TEAM_ID}?season=2026#season-game-set"`);
-        expect(panel).toContain(`>${v.line.off_rtg!.toFixed(1)}<`);
-        expect(panel).toContain(`>${v.line.def_rtg!.toFixed(1)}<`);
-        expect(panel).toContain('box score (the game page');
+        expect(panel).toContain(`>${v.line!.off_rtg!.toFixed(1)}<`);
+        expect(panel).toContain(`>${v.line!.def_rtg!.toFixed(1)}<`);
+        expect(panel).toContain('each game&#39;s play-by-play points and possessions added up, divided once.');
+        for (const s of ['Close games', 'Clutch']) expect(panel).toContain(`>${s}</option>`);
+        expect(panel).not.toContain('Conference games'); // college only
         // on the /preview surface the select stays on it (the public URL is where the flag is off)
         expect(panel).toContain(`onchange="window.location.href = (location.pathname.startsWith('/preview/') ? '/preview' : '') + this.value"`);
         expect(panel).not.toMatch(/hulk-bg-level-\d/); // no producer percentile for a summed set
+    });
+    test('team, on: a failed possessions read renders the select and an unavailable line', async () => {
+        block.counts.mockRejectedValueOnce(new Error('down'));
+        const html = await page(TeamPage, TEAM, String(NETS_TEAM_ID), { preview: true });
+        expect(html).toContain('id="season-game-set-unavailable"');
+        expect(html).toContain('id="game-set-select"');
+        expect(html).not.toContain('id="season-game-set-table"');
+    });
+    test('team, on, Clutch: the producer row, with no possessions read', async () => {
+        const html = await page(TeamPage, `/nba/team/${NETS_TEAM_ID}?season=2026&games=clutch`, String(NETS_TEAM_ID), { preview: true });
+        const panel = html.split('id="season-game-set"')[1].split('</table>')[0];
+        expect(panel).toContain(`>${split(NBA, 'clutch').off_rtg.toFixed(1)}<`);
+        expect(panel).toContain('Clutch split (play-by-play possessions)');
+        expect(block.counts).not.toHaveBeenCalled();
     });
     test("team, on, all: the title unfiltered and the row the splits table's All games row", async () => {
         const html = await container.renderToString(TeamSeasonBlock, {
@@ -243,15 +329,22 @@ describe('the pages', () => {
         expect(panel).toContain('Shooting (Filtered)');
         expect(panel).toContain(`>${v.line.makes}/${v.line.attempts}<`);
         expect(panel).toContain(`value="/nba/players/${PID}?season=2026&amp;games=last5#player-game-set" selected`);
+        // the explorer island starts from the same five games; All (and the flag off) pass no start set
+        const island = html.split('<astro-island').find((s) => s.includes('PlayerExplorer'))!;
+        for (const id of v.gameIds) expect(island).toContain(id);
+        expect(island).toContain('initial');
+        const all = await page(PlayerPage, `/nba/players/${PID}?season=2026`, String(PID), { preview: true });
+        expect(all.split('<astro-island').find((s) => s.includes('PlayerExplorer'))).not.toContain('initial');
     });
     test('a college team page (Duke, last 5) renders without a stray value', async () => {
         block.fn.mockResolvedValue(asReads(MBB));
         const html = await container.renderToString(TeamSeasonBlock, {
-            props: { data: asReads(MBB), season: 2026, espnId: DUKE, teamName: 'Duke', gameSet: 'last5' },
+            props: { data: asReads(MBB), season: 2026, espnId: DUKE, teamName: 'Duke', gameSet: 'last5', gameSetCounts: dukeCounts() },
             request: new Request('https://gameonpaper.com/mbb/team/150?season=2026&games=last5'), locals: { league: 'mbb' } as App.Locals,
         });
-        const v = teamGameSet(MBB.rates, duke(), 'last5', 40)!;
-        expect(html).toContain(`>${v.line.pace!.toFixed(1)}<`);
+        const v = teamGameSet(MBB.rates, duke(), 'last5', 40, true, dukeCounts())!;
+        expect(html).toContain(`>${v.line!.pace!.toFixed(1)}<`);
+        expect(html).toContain('>Conference games</option>');
         expect(html).toContain('Pace per 40 minutes');
         expect(html).not.toContain('undefined');
         expect(html).not.toContain('NaN');
