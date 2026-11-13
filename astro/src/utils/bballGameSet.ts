@@ -69,6 +69,9 @@ export interface TeamSetLine {
     off_rtg_pct?: number | null;
     def_rtg_pct?: number | null;
     net_rtg_pct?: number | null;
+    /** the producer's pace rank and percentile, printed beside the unshaded pace: present on All / Home / Away only */
+    pace_rank?: number | null;
+    pace_pct?: number | null;
 }
 
 export interface TeamGameSetView {
@@ -104,7 +107,7 @@ export function summedTeamLine(games: ScheduleRow[], regulationMinutes: number):
 
 const producerLine = (r: TeamSeasonRateRow): TeamSetLine => ({
     games: r.games, poss: r.poss, off_rtg: r.off_rtg, def_rtg: r.def_rtg, net_rtg: r.net_rtg, pace: r.pace,
-    off_rtg_pct: r.off_rtg_pct, def_rtg_pct: r.def_rtg_pct, net_rtg_pct: r.net_rtg_pct,
+    off_rtg_pct: r.off_rtg_pct, def_rtg_pct: r.def_rtg_pct, net_rtg_pct: r.net_rtg_pct, pace_rank: r.pace_rank, pace_pct: r.pace_pct,
 });
 
 /** The team's view for `requested`. A set it has no game in falls back to `all`, so a shared link never renders empty. */

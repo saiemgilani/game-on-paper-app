@@ -87,7 +87,7 @@ describe('team: All / Home / Away are the season numbers', () => {
                 const v = teamGameSet(c.rates, rows(), s, 48)!;
                 const r = split(c, s);
                 expect(v.producer).toBe(true);
-                expect(v.line).toEqual({ games: r.games, poss: r.poss, off_rtg: r.off_rtg, def_rtg: r.def_rtg, net_rtg: r.net_rtg, pace: r.pace, off_rtg_pct: r.off_rtg_pct, def_rtg_pct: r.def_rtg_pct, net_rtg_pct: r.net_rtg_pct });
+                expect(v.line).toEqual({ games: r.games, poss: r.poss, off_rtg: r.off_rtg, def_rtg: r.def_rtg, net_rtg: r.net_rtg, pace: r.pace, off_rtg_pct: r.off_rtg_pct, def_rtg_pct: r.def_rtg_pct, net_rtg_pct: r.net_rtg_pct, pace_rank: r.pace_rank, pace_pct: r.pace_pct });
             }
         });
     }
