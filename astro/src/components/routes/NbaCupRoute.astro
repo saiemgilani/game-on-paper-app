@@ -1,0 +1,262 @@
+---
+// src/components/routes/NbaCupRoute.astro
+// /nba/cup (BB-G30): the six Cup groups in the Cup's tiebreak order, each conference's wild-card race, the knockout on
+// the CFP page's bracket component and every team's odds to advance and win, from sdv-db's daily Cup snapshots. Every
+// rank, seed and probability is the producer's; this template orders and formats them. The view / season selects, the
+// team mapping and the empty-season fallback are BB-G23's (PlayoffPictureRoute.astro).
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import DarkModeLogos from '../DarkModeLogos.astro';
+import PlayoffBracket from '../PlayoffBracket.astro';
+import { CUP_VIEWS, type NbaCupParams } from '../../routes/basketball/nbaCup';
+import { snapshotDay, record } from '../../utils/bracketology';
+import { TIEBREAK_LABEL, cupBracket, groupTables, joinCup, oddsOrder, wildCardRace, type CupBracketRound, type CupTeam, type CupUnit } from '../../utils/nbaCup';
+import { oddsShade, pct, type BracketSlot } from '../../utils/playoff';
+import { generateMarginalString, roundNumber } from '../../utils/misc';
+import { leaguePath, teamLogoUrl } from '../../utils/league';
+import { BASKETBALL, seasonLabelFor } from '../../basketball/config';
+import { teamHrefFromEspn, withParams } from '../../nba/links';
+
+interface Props { data: NbaCupParams }
+const { seasons, current, pick, data, failed, view } = Astro.props.data;
+const lp = (p: string) => leaguePath('nba', p);
+const path = lp('/cup');
+const label = seasonLabelFor('nba', pick.season);
+const title = `NBA Cup Groups, Wild Cards and Knockout, ${label}`;
+const description = 'The NBA Cup group tables in the Cup tiebreak order, the wild-card race, the knockout bracket and every team\'s chances to advance and win the Cup.';
+const breadcrumbs: PageBreadcrumb[] = [{ title: 'NBA', url: lp('/'), active: false }, { title: 'NBA Cup', active: true }];
+
+// every select keeps the other parameters; a default value leaves its parameter out (the canonical URL)
+const params = { season: String(pick.season), view };
+const defaults = { season: String(current), view: 'groups' };
+const url = (p: Record<string, string>) => withParams(path, { ...params, ...p }, defaults);
+// stay on the uncacheable /preview surface (utils/preview.ts keepPreviewSurface), as on /nba/standings
+const NAV = "window.location.href = (location.pathname.startsWith('/preview/') ? '/preview' : '') + this.value";
+
+const sims = data?.sims ?? [];
+const teams = joinCup(sims, data?.standings ?? []);
+const n = sims[0]?.n_sims ?? 0;
+const day = pick.snapshot ? snapshotDay(pick.snapshot.as_of_date) : '';
+
+// stats.nba.com ids to the season's ESPN team (logos, links), as on /nba/standings
+const espnOf = new Map(sims.map((r) => [r.team_id, BASKETBALL.nba.teams.inSeason(r.team_id, pick.season)]));
+const key = (t: CupTeam) => String(espnOf.get(t.sim.team_id)?.espn_id ?? t.sim.team_id);
+const names: Record<string, string> = Object.fromEntries(teams.map((t) => [key(t), espnOf.get(t.sim.team_id)?.name ?? String(t.sim.team_id)]));
+const abbrs: Record<string, string> = Object.fromEntries(teams.map((t) => [key(t), espnOf.get(t.sim.team_id)?.tricode ?? names[key(t)]]));
+const href = (espnId: string | number) => teamHrefFromEspn({ id: espnId }, 'nba', pick.season);
+const logo = (espnId: string) => teamLogoUrl('nba', espnId, false, pick.season);
+
+const prob = (p: number | null | undefined) => (p == null ? '—' : pct(p));
+const probShade = (p: number | null | undefined) => (p == null ? null : oddsShade(p));
+const mcTitle = (se: number | null) => (se == null ? undefined : `Monte Carlo error: ±${roundNumber(se * 100, 1, 1)} points`);
+const diff = (d: number | null | undefined) => (d == null ? '—' : d === 0 ? '0' : generateMarginalString(d, 0, 0));
+const tiebreak = (t: CupTeam) => (t.standing?.tiebreak == null ? '' : TIEBREAK_LABEL[t.standing.tiebreak] ?? t.standing.tiebreak);
+const groupShort = (g: string) => g.replace(/^(East|West) /, '');
+const confTitle = (c: string) => `${c}ern Conference`;
+
+const groups = groupTables(teams);
+const conferences = [...new Set(groups.map((g) => g.name.split(' ')[0]))];
+const race = wildCardRace(teams);
+const odds = oddsOrder(teams);
+
+// each seated team's number is its chance to reach the next round (the sim publishes no head-to-head odds)
+const NEXT_TITLE: Record<CupBracketRound['next'], string> = {
+    p_semifinal: 'Chance to reach the semifinals',
+    p_final: 'Chance to reach the championship game',
+    p_champion: 'Chance to win the Cup',
+};
+const slot = (u: CupUnit, next: CupBracketRound['next']): BracketSlot | { label: string } => ('team' in u ? { seed: u.seed, teamId: key(u.team), pct: u.team.sim[next] } : u);
+const bracket = cupBracket(teams);
+const rounds = bracket?.rounds.map((r) => ({ name: r.name, pctTitle: NEXT_TITLE[r.next], games: r.games.map(([a, b]) => [slot(a, r.next), slot(b, r.next)] as [ReturnType<typeof slot>, ReturnType<typeof slot>]) })) ?? null;
+const champion = bracket?.champion ? { seed: bracket.champion.standing!.knockout_seed!, teamId: key(bracket.champion), pct: 1 } : null;
+const shownIds = teams.map(key);
+
+---
+<GenericPage title={`${title} | Game on Paper`} subtitle={description} slug={path} breadcrumbs={breadcrumbs} description={description} canonicalPath={url({})}>
+  <link href="/assets/css/sticky-table.css" rel="stylesheet">
+  <div class="container my-4">
+    <div class="row mb-2">
+      <div class="col-12 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <h1 class="fs-3 m-0">{title}</h1>
+        <div class="d-flex flex-wrap gap-2">
+          <label class="visually-hidden" for="cup-view">View</label>
+          <select id="cup-view" class="form-select w-auto" onchange={NAV}>
+            {CUP_VIEWS.map((v) => (<option value={url({ view: v.key })} selected={v.key === view}>{v.label}</option>))}
+          </select>
+          {seasons.length > 1 && (
+            <Fragment>
+              <label class="visually-hidden" for="cup-season">Season</label>
+              <select id="cup-season" class="form-select w-auto" onchange={NAV}>
+                {[...seasons].reverse().map((s) => (<option value={url({ season: String(s) })} selected={s === pick.season}>{seasonLabelFor('nba', s)}</option>))}
+              </select>
+            </Fragment>
+          )}
+        </div>
+      </div>
+    </div>
+    {failed && (
+      <p class="text-muted" id="cup-unavailable">The NBA Cup numbers are not available right now. Please try again later.</p>
+    )}
+    {!failed && pick.fallback && (
+      <p class="text-muted" id="cup-fallback">The {seasonLabelFor('nba', current)} Cup has no projections yet. This is the {label} Cup's last snapshot, from {day}.</p>
+    )}
+    {!failed && !pick.snapshot && (
+      <p class="text-muted" id="cup-empty">There are no NBA Cup projections for {label}. They start after the season's first game and end the day after the Cup final.</p>
+    )}
+    {pick.snapshot && !pick.fallback && (
+      <p class="small text-muted">As of {day}: Group Play games before that day count. {n.toLocaleString()} simulated Cups. See also the <a href={lp('/standings')}>standings and playoff picture</a>.</p>
+    )}
+
+    {data && view === 'groups' && conferences.map((c) => (
+      <Fragment>
+        <h2 class="fs-5 mt-4 mb-2">{confTitle(c)}</h2>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle table-fix-first-col">
+            <thead>
+              <tr>
+                <th title="Group rank under the Cup tiebreakers, and team">Team</th>
+                <th class="text-center" title="Group Play record">Record</th>
+                <th class="text-center" title="Group Play games left">Left</th>
+                <th class="text-center" title="Group Play point differential, without overtime">Diff</th>
+                <th class="text-center" title="Group Play points scored, without overtime">Pts</th>
+                <th class="text-center" title="The tiebreaker that placed the team; blank when the record alone did">Tiebreak</th>
+                <th class="text-center" title="Knockout seed on the current table: the group winners 1-3, the wild card 4">Seed</th>
+                <th class="text-center" title="Chance to win the group">Win Group</th>
+                <th class="text-center" title="Chance of the conference's wild card">Wild Card</th>
+                <th class="text-center" title="Chance to reach the knockout (the group or the wild card)">Knockout</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groups.filter((g) => g.name.startsWith(`${c} `)).map((g) => (
+                <Fragment>
+                  <tr><td colspan="10" class="gt_group_heading fw-bold">{groupShort(g.name)}</td></tr>
+                  {g.rows.map((t) => (
+                    <tr>
+                      <td class="text-left text-nowrap"><span class="text-muted numeral me-1">{t.standing?.group_rank ?? '—'}</span><a href={href(key(t))}><img class={`team-logo-${key(t)} me-1`} width="18" height="18" src={logo(key(t))} alt="" loading="lazy" /><span class="d-md-none">{abbrs[key(t)]}</span><span class="d-none d-md-inline">{names[key(t)]}</span></a></td>
+                      <td class="text-center text-nowrap">{record(t.sim.wins, t.sim.losses)}</td>
+                      <td class="text-center numeral">{t.standing?.games_remaining ?? '—'}</td>
+                      <td class="text-center numeral">{diff(t.standing?.point_diff ?? t.sim.point_diff)}</td>
+                      <td class="text-center numeral">{t.standing?.points ?? '—'}</td>
+                      <td class="text-center text-muted small text-nowrap">{tiebreak(t)}</td>
+                      <td class="text-center numeral fw-bold">{t.standing?.knockout_seed ?? ''}</td>
+                      <td class:list={['text-center', 'numeral', probShade(t.sim.p_win_group)]} title={mcTitle(t.sim.p_win_group_se)}>{prob(t.sim.p_win_group)}</td>
+                      <td class:list={['text-center', 'numeral', probShade(t.sim.p_wild_card)]} title={mcTitle(t.sim.p_wild_card_se)}>{prob(t.sim.p_wild_card)}</td>
+                      <td class:list={['text-center', 'numeral', 'fw-bold', probShade(t.sim.p_quarterfinal)]} title={mcTitle(t.sim.p_quarterfinal_se)}>{prob(t.sim.p_quarterfinal)}</td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Fragment>
+    ))}
+
+    {data && view === 'wildcard' && (
+      <Fragment>
+        <p class="small text-muted mt-3">Each conference's wild card is its best group runner-up, by Group Play record, then point differential, points scored and last season's record.</p>
+        {race.map((c) => (
+          <Fragment>
+            <h2 class="fs-5 mt-4 mb-2">{confTitle(c.name)}</h2>
+            {c.rows.length === 0 ? (<p class="text-muted">There are no standings on this day.</p>) : (
+              <div class="table-responsive">
+                <table class="table table-sm align-middle table-fix-first-col">
+                  <thead>
+                    <tr>
+                      <th title="Conference rank (the group winners are 1-3) and team">Team</th>
+                      <th class="text-center">Group</th>
+                      <th class="text-center" title="Place in the group">Place</th>
+                      <th class="text-center" title="Group Play record">Record</th>
+                      <th class="text-center" title="Group Play games left">Left</th>
+                      <th class="text-center" title="Group Play point differential, without overtime">Diff</th>
+                      <th class="text-center" title="Group Play points scored, without overtime">Pts</th>
+                      <th class="text-center" title="Chance of the conference's wild card">Wild Card</th>
+                      <th class="text-center" title="Chance to reach the knockout (the group or the wild card)">Knockout</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { label: 'Group runners-up', rows: c.rows.filter((t) => t.standing!.group_rank === 2) },
+                      { label: 'Third in the group or lower', rows: c.rows.filter((t) => t.standing!.group_rank > 2) },
+                    ].filter((s) => s.rows.length > 0).map((s) => (
+                      <Fragment>
+                        <tr><td colspan="9" class="gt_group_heading fw-bold">{s.label}</td></tr>
+                        {s.rows.map((t) => (
+                          <tr class:list={[t.standing!.holds_wild_card && 'fw-bold']}>
+                            <td class="text-left text-nowrap"><span class="text-muted numeral me-1">{t.standing!.conference_rank}</span><a href={href(key(t))}><img class={`team-logo-${key(t)} me-1`} width="18" height="18" src={logo(key(t))} alt="" loading="lazy" /><span class="d-md-none">{abbrs[key(t)]}</span><span class="d-none d-md-inline">{names[key(t)]}</span></a>{t.standing!.holds_wild_card && (<span class="badge bg-secondary ms-1" title="Holds the wild card on the current table">WC</span>)}</td>
+                            <td class="text-center text-nowrap">{groupShort(t.sim.cup_group)}</td>
+                            <td class="text-center numeral">{t.standing!.group_rank}</td>
+                            <td class="text-center text-nowrap">{record(t.sim.wins, t.sim.losses)}</td>
+                            <td class="text-center numeral">{t.standing!.games_remaining}</td>
+                            <td class="text-center numeral">{diff(t.standing!.point_diff)}</td>
+                            <td class="text-center numeral">{t.standing!.points}</td>
+                            <td class:list={['text-center', 'numeral', probShade(t.sim.p_wild_card)]} title={mcTitle(t.sim.p_wild_card_se)}>{prob(t.sim.p_wild_card)}</td>
+                            <td class:list={['text-center', 'numeral', probShade(t.sim.p_quarterfinal)]} title={mcTitle(t.sim.p_quarterfinal_se)}>{prob(t.sim.p_quarterfinal)}</td>
+                          </tr>
+                        ))}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Fragment>
+        ))}
+      </Fragment>
+    )}
+
+    {data && view === 'bracket' && (
+      <Fragment>
+        <p class="small text-muted mt-3">The knockout on the current table: in each conference the group winners are seeds 1-3 and the wild card is 4; 1 plays 4 and 2 plays 3, East's games above West's. The conference winners meet for the Cup. Each number is the team's chance to reach the next round: the semifinals in a quarterfinal, the championship game in a semifinal, and the Cup itself in the championship game.</p>
+        {rounds
+          ? <PlayoffBracket rounds={rounds} champion={champion} names={names} abbrs={abbrs} league="nba" href={href} label="NBA Cup knockout bracket" />
+          : <p class="text-muted" id="cup-bracket-unseated">The standings on this day do not seat all eight knockout seeds.</p>}
+      </Fragment>
+    )}
+
+    {data && view === 'odds' && (
+      <div class="table-responsive mt-3">
+        <table class="table table-sm align-middle table-fix-first-col">
+          <caption class="caption-top">Every team's chance to reach each round, by its chance to win the Cup.</caption>
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th class="text-center">Group</th>
+              <th class="text-center" title="Group Play record">Record</th>
+              <th class="text-center" title="Adjusted net rating (points per 100 possessions) the simulation plays on">Adj. Net</th>
+              <th class="text-center" title="Chance to win the group">Win Group</th>
+              <th class="text-center" title="Chance of the conference's wild card">Wild Card</th>
+              <th class="text-center" title="Chance to reach the quarterfinals (the group or the wild card)">Quarters</th>
+              <th class="text-center" title="Chance to reach the semifinals">Semis</th>
+              <th class="text-center" title="Chance to reach the championship game">Final</th>
+              <th class="text-center" title="Chance to win the Cup">Champion</th>
+            </tr>
+          </thead>
+          <tbody>
+            {odds.map((t) => (
+              <tr>
+                <td class="text-left text-nowrap"><a href={href(key(t))}><img class={`team-logo-${key(t)} me-1`} width="18" height="18" src={logo(key(t))} alt="" loading="lazy" /><span class="d-md-none">{abbrs[key(t)]}</span><span class="d-none d-md-inline">{names[key(t)]}</span></a></td>
+                <td class="text-center text-nowrap">{t.sim.cup_group}</td>
+                <td class="text-center text-nowrap">{record(t.sim.wins, t.sim.losses)}</td>
+                <td class="text-center numeral">{t.sim.adj_net_rtg == null ? '—' : generateMarginalString(t.sim.adj_net_rtg, 1, 1)}</td>
+                <td class:list={['text-center', 'numeral', probShade(t.sim.p_win_group)]} title={mcTitle(t.sim.p_win_group_se)}>{prob(t.sim.p_win_group)}</td>
+                <td class:list={['text-center', 'numeral', probShade(t.sim.p_wild_card)]} title={mcTitle(t.sim.p_wild_card_se)}>{prob(t.sim.p_wild_card)}</td>
+                <td class:list={['text-center', 'numeral', probShade(t.sim.p_quarterfinal)]} title={mcTitle(t.sim.p_quarterfinal_se)}>{prob(t.sim.p_quarterfinal)}</td>
+                <td class:list={['text-center', 'numeral', probShade(t.sim.p_semifinal)]} title={mcTitle(t.sim.p_semifinal_se)}>{prob(t.sim.p_semifinal)}</td>
+                <td class:list={['text-center', 'numeral', probShade(t.sim.p_final)]} title={mcTitle(t.sim.p_final_se)}>{prob(t.sim.p_final)}</td>
+                <td class:list={['text-center', 'numeral', 'fw-bold', probShade(t.sim.p_champion)]} title={mcTitle(t.sim.p_champion_se)}>{prob(t.sim.p_champion)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+
+    {data && (
+      <p class="small text-muted mt-3">
+        How this works: sportsdataverse-py rates every team on its possessions so far, then plays the rest of Group Play and the knockout {n.toLocaleString()} times inside its season simulation, with the Cup's tiebreakers.
+        The group ranks, tiebreaks, wild card and knockout seeds are the current table's, under the Cup rules: head-to-head, then Group Play point differential and points scored (overtime excluded), then last season's record, then a drawing. Hover a chance for its Monte Carlo error.
+      </p>
+    )}
+  </div>
+  <DarkModeLogos teamIds={shownIds} />
+</GenericPage>

@@ -3,11 +3,13 @@ import type { BracketSlot } from '../utils/playoff';
 import { pct } from '../utils/playoff';
 import { leaguePath, teamLogoUrl, type League } from '../utils/league';
 
-/** A team's slot, or (college) a First Four slot: its label names the pair whose winner takes it, with no number. */
-type Slot = BracketSlot | { seed: number; label: string };
+/** A team's slot, or (college) a First Four slot: its label names the pair whose winner takes it, with no number.
+ *  A later-round slot of a game still to be played (the NBA Cup's knockout) has no seed either. */
+type Slot = BracketSlot | { seed?: number; label: string };
 
 interface Props {
-    rounds: { name: string; games: [Slot, Slot][] }[]
+    /** a round's own pctTitle (the NBA Cup's: each round's number is a different chance) overrides the bracket's */
+    rounds: { name: string; games: [Slot, Slot][]; pctTitle?: string }[]
     /** the CFP's champion box; a bracket without one (college bracketology) leaves it out */
     champion?: BracketSlot | null
     /** cleaned full names (md and up) and abbreviations (mobile), by team id */
@@ -50,7 +52,7 @@ const cols = rounds.length === 4 ? undefined : `--bracket-rounds: ${rounds.lengt
                                             ? <a href={href(s.teamId)}><img class={`team-logo-${s.teamId} me-2`} width="20" height="20" src={teamLogoUrl(league, s.teamId, false)} alt="" />{name(s.teamId)}</a>
                                             : <Fragment><img class={`team-logo-${s.teamId} me-2`} width="20" height="20" src={teamLogoUrl(league, s.teamId, false)} alt="" />{name(s.teamId)}</Fragment>}
                                     </td>
-                                    <td class="text-center numeral bracket-pct" title={pctTitle}>{pct(s.pct)}</td>
+                                    <td class="text-center numeral bracket-pct" title={round.pctTitle ?? pctTitle}>{pct(s.pct)}</td>
                                 </tr>
                             ) : (
                                 <tr class="bracket-slot">
@@ -96,7 +98,7 @@ const cols = rounds.length === 4 ? undefined : `--bracket-rounds: ${rounds.lengt
                                     <td class="text-left text-nowrap"><span class="text-muted numeral me-1">{s.seed}</span>{href(s.teamId)
                                         ? <a href={href(s.teamId)}><img class={`team-logo-${s.teamId} me-1`} width="18" height="18" src={teamLogoUrl(league, s.teamId, false)} alt="" />{abbr(s.teamId)}</a>
                                         : <Fragment><img class={`team-logo-${s.teamId} me-1`} width="18" height="18" src={teamLogoUrl(league, s.teamId, false)} alt="" />{abbr(s.teamId)}</Fragment>}</td>
-                                    <td class="text-center numeral" title={pctTitle}>{pct(s.pct)}</td>
+                                    <td class="text-center numeral" title={round.pctTitle ?? pctTitle}>{pct(s.pct)}</td>
                                 </>
                             ) : (
                                 <td class="text-left text-nowrap text-muted" colspan="2"><span class="numeral me-1">{s.seed}</span>{s.label}</td>

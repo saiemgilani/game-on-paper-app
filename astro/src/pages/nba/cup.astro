@@ -1,0 +1,13 @@
+---
+// src/pages/nba/cup.astro
+import NbaCupRoute from '../../components/routes/NbaCupRoute.astro';
+import { prepareNbaCup } from '../../routes/basketball/nbaCup';
+import { isFeatureEnabled } from '../../utils/features';
+
+if (!isFeatureEnabled('bball-nba-cup', Astro.locals)) {
+    return Astro.rewrite('/404');
+}
+const r = await prepareNbaCup(Astro);
+---
+
+<NbaCupRoute data={r} />
