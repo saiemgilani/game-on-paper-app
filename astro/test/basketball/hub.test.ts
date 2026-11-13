@@ -8,7 +8,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { hubIndex, hubLine, hubTags } from '../../src/basketball/hub';
+import { UPSET_WP, hubIndex, hubLine, hubTags } from '../../src/basketball/hub';
 import { MAX_LINE_READS } from '../../src/resources/gameLines';
 import type { BasketballLeague } from '../../src/utils/league';
 
@@ -53,14 +53,30 @@ describe('hubLine: a game_lines row as card copy', () => {
         expect(l.cover).toBeNull(); // not final
         expect(l.upset).toBe(false);
     });
-    test('a final: who covered, and an upset only when the market underdog won', () => {
+    test('a final: who covered, and an upset only when the winner had a pregame WP under 35%', () => {
+        expect(UPSET_WP).toBe(0.35);
         for (const lg of ['nba', 'wnba', 'mbb', 'wbb'] as const) for (const e of events(lg)) {
             const r = LINES[lg].find((x) => String(x.game_id) === e.id)!;
             const { home, away } = sides(e);
             const hs = Number(home.score), as = Number(away.score);
             const l = hubLine(r, { home: 'H', away: 'A' }, hs > as ? 'home' : 'away')!;
-            expect(l.upset, e.id).toBe(hs > as ? r.market_home_wp_close < 0.5 : r.market_home_wp_close > 0.5);
+            expect(l.upset, e.id).toBe((hs > as ? r.market_home_wp_close : 1 - r.market_home_wp_close) < UPSET_WP);
             expect(l.cover, e.id).toBe(r.ats_result == null ? null : r.ats_result === 'push' ? 'Push' : `${r.ats_result === 'home' ? 'H' : 'A'} covered`);
+        }
+    });
+    test('the 35% cut on real finals: an underdog at 36-45% is no upset, 34.9% and below is', () => {
+        const winnerWp = (lg: 'wnba' | 'mbb', id: string) => {
+            const e = events(lg).find((x) => x.id === id)!;
+            const { home, away } = sides(e);
+            const r = LINES[lg].find((x) => String(x.game_id) === id)!;
+            const won = Number(home.score) > Number(away.score) ? 'home' : 'away';
+            return { up: hubLine(r, { home: 'H', away: 'A' }, won)!.upset, wp: won === 'home' ? r.market_home_wp_close : 1 - r.market_home_wp_close };
+        };
+        // market underdogs that won, so the old under-50% rule tagged all five
+        for (const [lg, id, upset] of [['mbb', '401708409', false], ['wnba', '401736285', false], ['mbb', '401708411', false], ['wnba', '401736289', true], ['mbb', '401721447', true]] as const) {
+            const { up, wp } = winnerWp(lg, id);
+            expect(wp, id).toBeLessThan(0.5);
+            expect(up, id).toBe(upset);
         }
     });
     test('no book closed: the opening line and WP stand in', () => {
@@ -81,10 +97,12 @@ describe('hubTags and hubIndex', () => {
         expect(hubTags({ neutralSite: false, broadcasts: [], broadcast: 'NBA TV' })).toEqual(['TV: NBA TV']);
         expect(hubTags({ neutralSite: false, broadcasts: [], broadcast: '' })).toEqual([]);
     });
-    test('every league indexes its Header pages; the NBA leaves out the featured-team landing the hub replaces', () => {
+    test("every league indexes its Header pages; the NBA's featured-team landing becomes a link to that team's page", () => {
+        expect(hubIndex('nba').map((p) => p.path)).toEqual(['/scoreboard', '/team/17', '/players', '/teams', '/scatter', '/leaders']);
+        expect(hubIndex('nba')[1].label).toBe('Nets');
         for (const lg of ['nba', 'wnba', 'mbb', 'wbb'] as const) {
             const paths = hubIndex(lg).map((p) => p.path);
-            expect(paths, lg).toEqual(['/scoreboard', '/players', '/teams', '/scatter', '/leaders']);
+            if (lg !== 'nba') expect(paths, lg).toEqual(['/scoreboard', '/players', '/teams', '/scatter', '/leaders']);
             expect(hubIndex(lg).every((p) => p.blurb), lg).toBe(true);
         }
     });
@@ -128,6 +146,8 @@ describe('/<league> behind bball-hub', () => {
         expect(at('live')).toBeGreaterThan(-1);
         expect(at('live')).toBeLessThan(at('upcoming'));
         expect(at('upcoming')).toBeLessThan(at('final'));
+        // the Nets landing the hub replaces is one click away in the page index
+        expect(html.slice(html.indexOf('id="hub-index"'))).toContain('href="/nba/team/17"');
         // not final: no cover or upset words on those two cards
         const card = (id: string) => html.split(`data-hub-line="${id}"`)[1].split('</p>')[0];
         for (const id of [a.id, b.id]) expect(card(id)).not.toMatch(/covered|Upset|Push/);
