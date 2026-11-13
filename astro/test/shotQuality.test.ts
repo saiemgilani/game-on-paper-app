@@ -58,6 +58,7 @@ vi.mock('../src/resources/nbaGames', () => ({ retrieveNbaSchedule: (...a: unknow
 vi.mock('../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../src/resources/espn')>()), retrieveGamePageGuarded: async () => { throw new Error('no ESPN in these tests'); } }));
 vi.mock('../src/utils/telemetry', async (orig) => ({ ...(await orig<typeof import('../src/utils/telemetry')>()), gopStorage: { getStore: () => undefined } }));
 
+import NbaGamePage from '../src/components/nba/game/NbaGamePage.astro';
 import NbaShotQuality from '../src/components/nba/game/NbaShotQuality.astro';
 import PlayerShotQuality from '../src/components/nba/PlayerShotQuality.astro';
 import TeamShotQuality from '../src/components/nba/TeamShotQuality.astro';
@@ -186,7 +187,7 @@ describe('the game page', () => {
         sq.game.mockResolvedValueOnce(SQ.wnbaGameDay);
         const { r } = await game('wnba', WNBA_ID);
         const html = await container.renderToString(NbaShotQuality, { props: { game: r.game, poe: r.poe }, locals: { league: 'wnba' } as App.Locals });
-        expect(html).toContain('id="poe"');
+        expect(html).toContain('id="poe-table"');
         for (const side of [r.poe.home, r.poe.away]) {
             expect(html).toContain(side.xpts.toFixed(1));
             expect(html).toContain(`± ${side.poe_se.toFixed(1)}`);
@@ -195,6 +196,31 @@ describe('the game page', () => {
         expect(html).not.toMatch(/undefined|NaN/);
         expect((await container.renderToString(NbaShotQuality, { props: { game: r.game, poe: {} }, locals: { league: 'wnba' } as App.Locals })).trim()).toBe('');
         expect(await container.renderToString(NbaShotQuality, { props: { game: r.game, poe: null }, locals: { league: 'wnba' } as App.Locals })).toContain('id="poe-unavailable"');
+    });
+    test('only POE bolds the better side: one bold cell in the table, the higher POE', async () => {
+        sq.game.mockResolvedValueOnce(SQ.wnbaGameDay);
+        const { r } = await game('wnba', WNBA_ID);
+        const html = await container.renderToString(NbaShotQuality, { props: { game: r.game, poe: r.poe }, locals: { league: 'wnba' } as App.Locals });
+        const bold = [...html.matchAll(/<td class="text-end fw-bold"[^>]*>([^<]*)</g)].map((m) => m[1]);
+        const best = [r.poe.home, r.poe.away].sort((x: any, y: any) => y.poe - x.poe)[0];
+        expect(bold).toEqual([`${signed1(best.poe)} ± ${best.poe_se.toFixed(1)}`]);
+    });
+    test('the page: its own panel and nav entry after Four factors; none for {} or the flag off; a failed read keeps the panel', async () => {
+        sq.game.mockResolvedValueOnce(SQ.wnbaGameDay);
+        const { r } = await game('wnba', WNBA_ID);
+        const page = (poe: unknown) => container.renderToString(NbaGamePage, { props: { game: r.game, poe }, locals: { league: 'wnba' } as App.Locals });
+        const html = await page(r.poe);
+        expect(html).toContain('id="poe-panel"');
+        expect(html).toContain('href="#poe"');
+        expect(html.indexOf('id="factors-panel"')).toBeLessThan(html.indexOf('id="poe-panel"'));
+        expect(html.indexOf('id="poe-panel"')).toBeLessThan(html.indexOf('id="teambox-panel"'));
+        expect(html.split('id="factors-panel"')[1].split('id="poe-panel"')[0]).not.toContain('poe-table');
+        for (const none of [{}, undefined]) {
+            const h = await page(none);
+            expect(h).not.toContain('id="poe-panel"');
+            expect(h).not.toContain('href="#poe"');
+        }
+        expect(await page(null)).toContain('id="poe-unavailable"');
     });
 });
 
@@ -222,6 +248,11 @@ describe('the team page', () => {
         const html = await container.renderToString(TeamShotQuality, { props: { rows: SQ.nbaTeam, season: 2026, seasonQuery: '?season=2026', names }, locals: { league: 'nba' } as App.Locals });
         expect(html).toContain('id="poe-line"');
         expect(html).toContain('7,680.8 expected'); // the Nets 2025-26: 7,215 FG points
+        // the shooters fold behind a closed toggle, the model note stays visible above it, and no cell is shaded
+        expect(html).toMatch(/<details id="poe-shooters"[^>]*>\s*<summary[^>]*>Each shooter \(\d+\)<\/summary>/);
+        expect(html).not.toMatch(/<details id="poe-shooters"[^>]* open/);
+        expect(html.split('id="poe-note"')[1].split('<details')[0]).toContain('Field goals only, no free throws');
+        expect(html.split('id="poe-players"')[1].split('</table>')[0]).not.toMatch(/background|pct-cell|style=/);
         const body = html.split('id="poe-players"')[1].split('</table>')[0];
         expect(body.match(/<tr/g)).toHaveLength(players.length + 1);
         expect(body.indexOf(`P${players[0].person_id}`)).toBeLessThan(body.indexOf(`P${players.at(-1)!.person_id}`));
@@ -257,10 +288,14 @@ describe('the player page', () => {
         const html = await container.renderToString(PlayerShotQuality, { props: { rows: SQ.nbaPlayer } });
         expect(html).toContain('id="nba-poe"');
         expect(html).toContain(`± ${row.poe_se.toFixed(1)}`);
+        // the model note is visible text, not a hover (phones have none)
+        expect(html).toMatch(/id="nba-poe-note"[^>]*>Expected points \(xPTS\)/);
+        expect(html).not.toContain('<abbr');
         expect(html).toContain(row.xpps.toFixed(2));
         expect(html).not.toMatch(/undefined|NaN/);
         expect((await container.renderToString(PlayerShotQuality, { props: { rows: [] } })).trim()).toBe('');
         expect(await container.renderToString(PlayerShotQuality, { props: { rows: null } })).toContain('id="nba-poe-unavailable"');
+        expect(await container.renderToString(PlayerShotQuality, { props: { rows: null } })).not.toContain('nba-poe-note');
     });
     test('traded: one line per team, each named', async () => {
         const two = [SQ.nbaPlayer[0], { ...SQ.nbaPlayer[0], team_id: 1, team_tricode: 'XXX', attempts: 1 }];
