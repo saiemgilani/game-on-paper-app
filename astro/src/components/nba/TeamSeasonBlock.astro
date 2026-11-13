@@ -192,7 +192,7 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
                 <td class="numeral text-end">{pct(r?.orb_pct)}</td>
                 <td class="numeral text-end">{rate(r?.ft_rate)}</td></Fragment>)}
                 {c && (<Fragment>
-                  <td class="numeral text-end text-nowrap">{restLabel(c.rest)}{c.b2b && (<span class="badge text-bg-warning ms-1" title="Second night of a back-to-back">B2B</span>)}{c.threeInFour && (<span class="badge text-bg-secondary ms-1" title="Third game in four nights">3 in 4</span>)}</td>
+                  <td class="numeral text-end text-nowrap">{restLabel(c.rest)}{c.b2b && (<span class="badge bg-warning text-dark ms-1" title="Second night of a back-to-back">B2B</span>)}{c.threeInFour && (<span class="badge bg-secondary ms-1" title="Third game in four nights">3 in 4</span>)}</td>
                   <td class="numeral text-end">{c.trip ? `${c.trip.game}/${c.trip.of}` : ''}</td>
                   {showOpp && (<td class="numeral text-end" title={c.opp?.rating != null ? `Adjusted net ${generateMarginalString(c.opp.rating, 1, 1)}` : undefined}>{rank(c.opp?.rank)}</td>)}
                   {showLine && (<Fragment><td class="numeral text-end">{spreadLabel(c.spread)}</td><td class="numeral text-center">{c.ats ?? ''}</td></Fragment>)}
