@@ -192,11 +192,10 @@ const TEAM_SPECS: Record<TeamGroup, BoardSpec> = {
 };
 
 /**
- * The board's spec: the league picks the impact columns, the group the teams columns. `war` ('bball-war-boards' on) drops
- * player_impact's WAR from the impact board: the WAR board shows player_war's with its interval, and player_impact's
- * double-counts possessions (sdv-db docs/api.md).
+ * The board's spec: the league picks the impact columns, the group the teams columns. The impact board keeps
+ * player_impact's WAR with 'bball-war-boards' on too (review answer Q41 B): the WAR board shows player_war's beside it.
  */
-export function boardSpec(board: Board, league: BasketballLeague, group: TeamGroup, war = false): BoardSpec {
+export function boardSpec(board: Board, league: BasketballLeague, group: TeamGroup): BoardSpec {
     if (board === 'teams') return TEAM_SPECS[group];
     if (board === 'lineups') return { cols: LINEUPS, defaultSort: 'net', defaultBasis: 'per100', qualifiedBy: 'net_rtg_rank' };
     const pro = league === 'nba' || league === 'wnba';
@@ -204,8 +203,7 @@ export function boardSpec(board: Board, league: BasketballLeague, group: TeamGro
     if (board === 'value') return { cols: pro ? VALUE_PRO : VALUE, defaultSort: 'war', defaultBasis: 'totals', qualifiedBy: null, gate: { col: 'poss', min: IMPACT_QUALIFIED_POSS } };
     if (board === 'poe') return { cols: POE, defaultSort: 'poe', defaultBasis: 'totals', qualifiedBy: null, gate: { col: 'attempts', min: POE_QUALIFIED_FGA } };
     // every impact measure is already per 100 possessions and WAR a season total: one basis, and a qualifier is the board's own gate
-    const cols = pro ? (war ? IMPACT_PRO.filter((c) => c.key !== 'war') : IMPACT_PRO) : IMPACT_COLLEGE;
-    return { cols, defaultSort: 'rapm', defaultBasis: 'per100', qualifiedBy: null };
+    return { cols: pro ? IMPACT_PRO : IMPACT_COLLEGE, defaultSort: 'rapm', defaultBasis: 'per100', qualifiedBy: null };
 }
 
 /** The producer column a column shows on a basis; null: the producer ships none for that basis (the cell is a dash). */
@@ -280,7 +278,7 @@ export function parseControls(sp: URLSearchParams, league: BasketballLeague, pct
     const board = pick(boardsFor(war), sp.get('board'), 'impact');
     const group = pick(TEAM_GROUPS, sp.get('group'), 'ratings');
     const unit = pick(UNIT_SIZES, sp.get('unit'), 5);
-    const spec = boardSpec(board, league, group, war);
+    const spec = boardSpec(board, league, group);
     const asked = sp.get('basis');
     const offered = offeredBases(spec);
     const basis = offered.find((b) => b === asked) ?? spec.defaultBasis;

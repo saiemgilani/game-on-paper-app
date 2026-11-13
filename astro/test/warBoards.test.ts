@@ -1,7 +1,7 @@
 // BB-G27: the leaderboards' WAR and VORP board and points over expected board, behind 'bball-war-boards' inside BB-G8's
 // 'bball-leaderboards-v2'. The flag gates the boards (off: BB-G8's three, nothing else read); the reads' exact queries and
 // selects (every column one the real rows carry); WAR never shown without its 90% interval; the qualified gates; the
-// producer's VORP / WAR percentiles; the impact board dropping player_impact's WAR; a 404 before player_war's backfill is
+// producer's VORP / WAR percentiles; the impact board keeping player_impact's WAR; college's VORP-scale note; a 404 before player_war's backfill is
 // the unavailable line, never cached. On real producer output and a live read (fixtures/README.md: war-boards-2026.json.gz).
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
@@ -101,26 +101,25 @@ describe('the flag', () => {
         }
         expect(sdv.from.mock.calls.map((c) => c[1])).toEqual(['player_impact', 'player_impact']);
     });
-    test("on: the two boards in the select; the impact board drops player_impact's WAR", async () => {
+    test("on: the two boards in the select; the impact board keeps player_impact's WAR (Q41 B)", async () => {
         const { data, html } = await board('nba', '');
         expect(options(html)).toEqual(['Players: Impact', 'Teams', 'Lineups', 'Players: WAR and VORP', 'Players: Points over expected', 'Players: Shooting (rolling)']);
-        expect(data.spec.cols.map((c) => c.key)).not.toContain('war');
-        expect(html).toContain('Per 100 possessions.</p>');
-        expect(html).not.toContain('WAR in wins');
+        expect(data.spec.cols.map((c) => c.key)).toContain('war');
+        expect(html).toContain('Per 100 possessions, WAR in wins.');
     });
 });
 
 describe('the reads', () => {
     test("value: the season schema's player_war, the floor, most possessions first, capped, strict and bounded", async () => {
-        await retrieveBoard('nba', 2026, 'value', 'ratings', 5, true);
+        await retrieveBoard('nba', 2026, 'value', 'ratings', 5);
         const [src, table, q, ttl, strict, timeout] = sdv.from.mock.calls[0];
         expect([src.schema, table, ttl, strict, timeout]).toEqual(['nba_stats', 'player_war', 21600, true, NBA_READ_TIMEOUT_MS]);
         expect(q).toMatchObject({ season: '2026', poss__gte: String(IMPACT_FLOOR.nba), order: '-poss', limit: String(BOARD_CAP) });
-        await retrieveBoard('mbb', 2026, 'value', 'ratings', 5, true);
+        await retrieveBoard('mbb', 2026, 'value', 'ratings', 5);
         expect(sdv.from.mock.calls[1][0].schema).toBe('mbb');
     });
     test('poe: the player rows over the floor, most attempts first; named from the season players', async () => {
-        const r = await retrieveBoard('nba', 2026, 'poe', 'ratings', 5, true);
+        const r = await retrieveBoard('nba', 2026, 'poe', 'ratings', 5);
         const [src, table, q, , strict, timeout] = sdv.from.mock.calls[0];
         expect([src.schema, table, strict, timeout]).toEqual(['nba_stats', 'shot_quality_season', true, NBA_READ_TIMEOUT_MS]);
         expect(q).toMatchObject({ season: '2026', level: 'player', attempts__gte: String(POE_FLOOR.nba), order: '-attempts', limit: String(BOARD_CAP) });
@@ -132,7 +131,7 @@ describe('the reads', () => {
         const missing = (rows: Row[], select: string) => select.split(',').filter((c) => !(c in rows[0]));
         for (const [lg, rows] of [['nba', WB.nbaWar], ['mbb', WB.mbbWar]] as const) {
             sdv.from.mockClear();
-            await retrieveBoard(lg, 2026, 'value', 'ratings', 5, true);
+            await retrieveBoard(lg, 2026, 'value', 'ratings', 5);
             expect(missing(rows, sdv.from.mock.calls[0][2].select)).toEqual([]);
             expect(sdv.from.mock.calls[0][2].select).toContain('war_lo,war_hi');
         }
@@ -159,6 +158,7 @@ describe('the WAR and VORP board', () => {
         expect(rows[0][w]).toBe(best.war.toFixed(1));
         expect([rows[0][lo], rows[0][hi]]).toEqual([best.war_lo.toFixed(1), best.war_hi.toFixed(1)]);
         expect(html).toContain('WAR in wins with its 90% interval (Low to High).');
+        expect(html).not.toContain('College seasons are short'); // the scale note is college's
         expect(html).toContain(`href="/nba/players/${best.player_id}`);
         expect(html).not.toMatch(/undefined|NaN/);
     });
@@ -179,9 +179,13 @@ describe('the WAR and VORP board', () => {
         const moved = WB.nbaWar.find((r) => r.teams > 1);
         if (moved) expect(html).toContain(` +${moved.teams - 1}</span>`);
     });
-    test('college: no source columns, linked by ESPN id', async () => {
+    test('college: VORP and WAR both, with the one-line scale note (Q43 A); no source columns, linked by ESPN id', async () => {
         const { data, html } = await board('mbb', '?season=2026&board=value');
+        expect(data.spec.cols.map((c) => c.key)).toEqual(expect.arrayContaining(['vorp', 'war']));
         expect(data.spec.cols.map((c) => c.key)).not.toContain('war_bpm');
+        expect(html).toContain('College seasons are short, so VORP (a full season one point per 100 above replacement is 1) reads above WAR (wins); both are the producer’s.');
+        // the producer's own scale: on the real rows college VORP reads above WAR wherever WAR is positive
+        expect(WB.mbbWar.filter((r) => r.war > 0).every((r) => r.vorp > r.war)).toBe(true);
         expect(html).toContain(`href="/mbb/players/${data.rows![0].player_id}`);
         expect(html).not.toMatch(/undefined|NaN/);
     });

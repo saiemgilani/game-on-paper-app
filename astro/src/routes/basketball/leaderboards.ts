@@ -42,13 +42,13 @@ export async function prepareLeaderboards(Astro: AstroGlobal, league: Basketball
     let rows: BoardRow[] | null = null;
     let names = new Map<string, string>();
     try {
-        ({ rows, names } = await retrieveBoard(league, season, asked.board, asked.group, asked.unit, war));
+        ({ rows, names } = await retrieveBoard(league, season, asked.board, asked.group, asked.unit));
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${asked.board} board for ${season}: ${e}, ${e?.stack}`);
     }
     const all = rows ?? [];
     const controls = parseControls(sp, league, (spec, basis) => hasPercentiles(all, spec, basis), war);
-    const spec = boardSpec(controls.board, league, controls.group, war);
+    const spec = boardSpec(controls.board, league, controls.group);
     const sortCol = spec.cols.find((c) => c.key === controls.sort)!;
     const kept = controls.qualified ? all.filter((r) => isQualified(r, spec, league)) : all;
     if (rows && rows.length > 0) setCache(Astro, seasonCache(league));

@@ -99,9 +99,9 @@ const sample = board === 'value'
 const scope = board === 'impact' ? (pro ? 'Regular season.' : 'Every game.') : (board === 'teams' || board === 'value' || board === 'poe') && pro ? 'Regular season.' : '';
 // player_war ranks every player of the season (sdv-py attach_ranks with no qualifier); BB-G8's boards rank qualifiers
 const among = board === 'value' ? 'the season’s players' : 'qualifiers';
-// with 'bball-war-boards' on the impact board has no WAR (the WAR board has it); off, BB-G8's caption as it was
-const unitNote = board === 'impact' ? (boards.includes('value') ? 'Per 100 possessions.' : 'Per 100 possessions, WAR in wins.')
-    : board === 'value' ? 'Rating per 100 possessions; VORP and WAR are season totals, WAR in wins with its 90% interval (Low to High).'
+// the impact board keeps player_impact's WAR beside the WAR board's (Q41 B); college VORP reads above WAR by definition (Q43 A)
+const unitNote = board === 'impact' ? 'Per 100 possessions, WAR in wins.'
+    : board === 'value' ? `Rating per 100 possessions; VORP and WAR are season totals, WAR in wins with its 90% interval (Low to High).${pro ? '' : ' College seasons are short, so VORP (a full season one point per 100 above replacement is 1) reads above WAR (wins); both are the producer’s.'}`
     : board === 'poe' ? 'Field goals only: free throws are not shots in the model.' : false;
 ---
 <GenericPage title={`${title} | Game on Paper`} subtitle={description} slug={path} breadcrumbs={breadcrumbs} description={description} canonicalPath={url({})}>

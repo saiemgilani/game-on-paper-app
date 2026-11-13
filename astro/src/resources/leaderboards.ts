@@ -62,9 +62,9 @@ export const VALUE_IDENTITY = ['player_id', 'player_name', 'team_id', 'teams'] a
 const VALUE_RANKS = ['vorp_rank', 'vorp_pct', 'war_rank', 'war_pct'] as const;
 export const POE_IDENTITY = ['person_id', 'team_id', 'team_tricode'] as const;
 
-export async function retrieveBoard(league: BasketballLeague, season: number, board: Board, group: TeamGroup, unit: UnitSize, war = false): Promise<BoardReads> {
+export async function retrieveBoard(league: BasketballLeague, season: number, board: Board, group: TeamGroup, unit: UnitSize): Promise<BoardReads> {
     const s = String(season);
-    const spec = boardSpec(board, league, group, war);
+    const spec = boardSpec(board, league, group);
     if (board === 'value') {
         // the season schema's player_war (sdv-db #202): the regular season for the pros; strict, so a 404 before its
         // backfill is the board's "unavailable" line, never an empty board
