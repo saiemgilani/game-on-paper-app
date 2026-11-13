@@ -9,9 +9,9 @@ export default async (page, base) => {
     await table.scrollIntoViewIfNeeded();
     await page.waitForTimeout(1200);
     // five boards: the board picker is a select (Q9)
-    await page.getByLabel('Board', { exact: true }).selectOption('improved');
+    await page.locator('#leaders-board').selectOption('improved');
     await page.waitForTimeout(1500);
-    await page.getByLabel('Board', { exact: true }).selectOption('declined');
+    await page.locator('#leaders-board').selectOption('declined');
     await page.waitForTimeout(1500);
     await page.getByRole('button', { name: '5 games', exact: true }).click();
     await page.waitForTimeout(1500);
