@@ -76,12 +76,8 @@ export interface GameRateRow {
     tov_pct: number | null;
     orb_pct: number | null;
     ft_rate: number | null;
-    /** BB-G14 ('bball-game-set') only: the counts its summed sets add up (box-score possessions, minutes played) */
-    possessions?: number | null;
-    game_minutes?: number | null;
 }
 const GAME_RATE_SELECT = 'game_id,off_rtg,def_rtg,pace,efg_pct,tov_pct,orb_pct,ft_rate';
-const GAME_COUNT_SELECT = ',possessions,game_minutes';
 
 export interface TeamSeasonReads {
     rates: TeamSeasonRateRow[];
@@ -91,12 +87,8 @@ export interface TeamSeasonReads {
     gameRates: GameRateRow[];
 }
 
-/**
- * The four reads, in parallel, strict. `teamId` keys the season tables; `espnId` the games (the same id in college).
- * `counts` (BB-G14, 'bball-game-set' on) adds each game's possessions and minutes to the game_team_rates select; off,
- * the reads are exactly the block's.
- */
-export async function retrieveTeamSeason(league: BasketballLeague, season: number, teamId: number, espnId: number, counts = false): Promise<TeamSeasonReads> {
+/** The four reads, in parallel, strict. `teamId` keys the season tables; `espnId` the games (the same id in college). */
+export async function retrieveTeamSeason(league: BasketballLeague, season: number, teamId: number, espnId: number): Promise<TeamSeasonReads> {
     const s = String(season);
     const games = BASKETBALL[league].gamesSource;
     // the rates' scope: the NBA/WNBA regular season (ESPN season_type 2; sdv-py nba_team_season_rates season_type="regular-season"),
@@ -109,7 +101,52 @@ export async function retrieveTeamSeason(league: BasketballLeague, season: numbe
         retrieveRows<TeamStrengthRow>(league, 'team_strength', { season: s, team_id: String(teamId), select: STRENGTH_SELECT, limit: '1' }, TTL, true),
         side('home_id'),
         side('away_id'),
-        retrieveRowsFrom<GameRateRow>(games, 'game_team_rates', { season: s, team_id: String(espnId), select: counts ? GAME_RATE_SELECT + GAME_COUNT_SELECT : GAME_RATE_SELECT, limit: GAME_LIMIT }, TTL, true),
+        retrieveRowsFrom<GameRateRow>(games, 'game_team_rates', { season: s, team_id: String(espnId), select: GAME_RATE_SELECT, limit: GAME_LIMIT }, TTL, true),
     ]);
     return { rates, strength: strength[0] ?? null, games: [...home, ...away], gameRates };
+}
+
+/** One team-game's play-by-play totals (sdv-db team_game_possessions, split 'all'), the columns BB-G14's summed sets add. */
+export interface TeamGamePossRow {
+    game_id: number | string;
+    poss: number | null;
+    opp_poss: number | null;
+    pts: number | null;
+    opp_pts: number | null;
+    seconds: number | null;
+}
+const POSS_SELECT = 'game_id,poss,opp_poss,pts,opp_pts,seconds';
+/** One row per regular-season team-game (82 for an NBA team); the cap keeps a bad filter from paging silently. */
+const POSS_LIMIT = '100';
+
+export interface GameSetCountReads {
+    /** the team's per-game possessions rows, keyed by the producer's game id */
+    games: TeamGamePossRow[];
+    /** producer game id -> ESPN game id (the schedule's) */
+    espnOf: Map<string, string>;
+    /** college, `conference` asked: the ESPN ids of the team's conference games; null otherwise */
+    conference: Set<string> | null;
+}
+
+/**
+ * BB-G14 ('bball-game-set'), only for a summed set (wins, losses, last N, conference): the team's per-game possessions rows
+ * (team_game_possessions, the play-by-play count the All / Home / Away split rows add up) and the map from their game ids
+ * to ESPN's. The pros' ids map through
+ * the games schema's schedule_crosswalk (both sides), college's through ncaa_team_box (contest id -> ESPN game id).
+ * `conference` (college) adds the schedule's conference_competition flags. Strict, in parallel.
+ */
+export async function retrieveGameSetCounts(league: BasketballLeague, season: number, teamId: number, espnId: number, conference: boolean): Promise<GameSetCountReads> {
+    const s = String(season);
+    const src = BASKETBALL[league].gamesSource;
+    const pro = PRO_LEAGUES.includes(league);
+    const games = retrieveRows<TeamGamePossRow>(league, 'team_game_possessions', { season: s, team_id: String(teamId), split: 'all', select: POSS_SELECT, limit: POSS_LIMIT }, TTL, true);
+    const key = `${league}_game_id`; // nba_game_id / wnba_game_id
+    const crosswalk = (side: 'home' | 'away') => retrieveRowsFrom<Record<string, string | number | null>>(src, 'schedule_crosswalk', { season: s, [`${side}_espn_team_id`]: String(espnId), select: `espn_game_id,${key}`, limit: GAME_LIMIT }, TTL, true);
+    const pairs: Promise<[unknown, unknown][]> = pro
+        ? Promise.all([crosswalk('home'), crosswalk('away')]).then(([h, a]) => [...h, ...a].map((r) => [r[key], r.espn_game_id]))
+        : retrieveRows<{ contest_id: string | number; espn_game_id: string | number }>(league, 'ncaa_team_box', { season: s, team_espn_team_id: String(espnId), select: 'contest_id,espn_game_id', limit: GAME_LIMIT }, TTL, true).then((rows) => rows.map((r) => [r.contest_id, r.espn_game_id]));
+    const flags = (k: 'home_id' | 'away_id') => retrieveRowsFrom<{ id: number | string; conference_competition: boolean | string | null }>(src, 'schedule', { season: s, [k]: String(espnId), select: 'id,conference_competition', limit: GAME_LIMIT }, TTL, true);
+    const conf = conference && !pro ? Promise.all([flags('home_id'), flags('away_id')]).then(([h, a]) => new Set([...h, ...a].filter((g) => g.conference_competition === true || g.conference_competition === 'true').map((g) => String(g.id)))) : Promise.resolve(null);
+    const [rows, ids, confIds] = await Promise.all([games, pairs, conf]);
+    return { games: rows, espnOf: new Map(ids.filter(([p, e]) => p != null && e != null).map(([p, e]) => [String(p), String(e)])), conference: confIds };
 }

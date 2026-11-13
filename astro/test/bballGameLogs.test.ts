@@ -276,6 +276,12 @@ describe('the logs', () => {
         const without = await render(BbTeamGameLog, { ...props, flow: null }, 'nba', `/nba/team/${NETS}`);
         expect(without).not.toContain('>Best run<');
         expect(without).toContain('game-flow numbers are temporarily unavailable');
+        // BB-G14's team-only sets carry no per-game flag here: the log shows every game, captioned All games
+        for (const set of ['close', 'clutch', 'conference'] as const) {
+            const html = await render(BbTeamGameLog, { ...props, flow, set }, 'nba', `/nba/team/${NETS}?games=${set}`);
+            expect(html.match(/<tr data-game=/g)).toHaveLength(sched.filter((g) => g.completed && g.rates).length);
+            expect(html).toContain('All games.');
+        }
     });
     test('the shading is a function of the season rows alone', () => {
         const rows = teamLogRows(scheduleRows(asReads(DUKE_BLOCK).games, DUKE_BLOCK.gameRates, DUKE), new Map());

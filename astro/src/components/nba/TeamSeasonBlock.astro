@@ -4,23 +4,26 @@
 // season rates with their league ranks, the all / home / away / close / clutch splits and the schedule with each game's
 // four factors; college adds adjusted efficiency margin and tempo. Every rate, rank and percentile is the producer's
 // (sdv-db team_season_rates / team_strength / game_team_rates): cells are shaded by the producer's percentile on the
-// site's green-to-purple ramp, one number per cell. Pace is ranked but not shaded: fast is not better.
+// site's green-to-purple ramp, one number per cell. Pace is ranked but not shaded: fast is not better. A value printed
+// unshaded (the season line, Tempo, the splits' Pace) carries its rank and the producer's percentile in text instead.
 import { DateTime } from 'luxon';
 import type { TeamSeasonRateRow, TeamSeasonReads } from '../../resources/teamSeason';
 import { SPLIT_LABEL, scheduleRows, splitRows } from '../../utils/teamSeason';
 import { fmtDate, fmtDec, fmtInt, fmtPct } from '../../nba/format';
 import { gameHref, teamHrefFromEspn } from '../../nba/links';
-import { formatRank, generateColorRampValue, generateMarginalString } from '../../utils/misc';
+import { formatRank, generateColorRampValue, generateMarginalString, ordinal } from '../../utils/misc';
 import { basketball, regulationFor, seasonLabelFor } from '../../basketball/config';
 import { GAME_SET_NAV, bbGameSetLabel, gameSetHref, teamGameSet, type BbGameSet } from '../../utils/bballGameSet';
+import type { GameSetCountReads } from '../../resources/teamSeason';
 import { isNcaaDashboards } from '../../basketball/dashboards';
 import type { ScheduleContextReads } from '../../resources/bballScheduleContext';
 import { atsRecord, b2bRecord, scheduleContext } from '../../utils/bballScheduleContext';
 
-// gameSet: BB-G14 ('bball-game-set'), the ?games= line; absent, the block is BB-G5's byte for byte
+// gameSet: BB-G14 ('bball-game-set'), the ?games= line (gameSetCounts: a summed set's possessions reads, null when they
+// failed); absent, the block is BB-G5's byte for byte
 // context: BB-G53 ('bball-schedule-context'), the schedule's rest, trip, opponent and line columns; absent, likewise
-interface Props { data: TeamSeasonReads | null; season: number; espnId: number; teamName: string; gameSet?: BbGameSet; context?: ScheduleContextReads }
-const { data, season, espnId, teamName, gameSet, context } = Astro.props;
+interface Props { data: TeamSeasonReads | null; season: number; espnId: number; teamName: string; gameSet?: BbGameSet; gameSetCounts?: GameSetCountReads | null; context?: ScheduleContextReads }
+const { data, season, espnId, teamName, gameSet, gameSetCounts, context } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const college = isNcaaDashboards(league);
@@ -39,6 +42,8 @@ const rtg = (v: number | null | undefined) => (v == null ? dash : fmtDec(v, 1));
 const net = (v: number | null | undefined) => (v == null ? dash : generateMarginalString(v, 1, 1));
 const pct = (v: number | null | undefined) => (v == null ? dash : fmtPct(v));
 const rate = (v: number | null | undefined) => (v == null ? dash : fmtDec(v, 3));
+// an unshaded value's rank and percentile, as text: "#26, 16th pctl"; rank only when the producer has no percentile
+const rankPct = (r: number | null | undefined, p: number | null | undefined) => (p == null ? `#${rank(r)}` : `#${rank(r)}, ${ordinal(Math.round(p))} pctl`);
 const cell = (row: TeamSeasonRateRow | null, k: string) => (row as Record<string, number | null> | null)?.[k] ?? null;
 
 // the season table: one row per measure, the offense and the defense side by side (football's Five Factors layout)
@@ -54,10 +59,10 @@ const MEASURES = [
 const day = (iso: string) => fmtDate(DateTime.fromISO(iso, { zone: 'utc' }).setZone(cfg.scoreboardTimeZone).toISODate() ?? iso.slice(0, 10));
 const venueMark = { home: 'vs', away: '@', neutral: 'vs' } as const;
 const reg = regulationFor(league, season);
-const view = gameSet && data ? teamGameSet(data.rates, games, gameSet, reg.periods * reg.periodMinutes) : null;
+const view = gameSet && data ? teamGameSet(data.rates, games, gameSet, reg.periods * reg.periodMinutes, college, gameSetCounts) : null;
 const viewCaption = view && (view.producer
   ? `Per possession: the season's ${bbGameSetLabel(view.set)} split (play-by-play possessions). Shading by percentile.`
-  : `Summed over these games: points from each final score, possessions and minutes from each game's box score (the game page's estimate, not the play-by-play count of All, Home and Away), divided once. Pace per ${reg.periods * reg.periodMinutes} minutes.`);
+  : `Summed over these games: each game's play-by-play points and possessions added up, divided once. Pace per ${reg.periods * reg.periodMinutes} minutes.`);
 // BB-G53: each game's context; the opponent and line columns only when their read worked and named at least one game
 const ctx = context && data ? scheduleContext(games, new Map(data.games.map((g) => [String(g.id), Number(g.home_id) === espnId])), context, cfg.scoreboardTimeZone) : null;
 const ctxOf = (id: string) => ctx?.get(id) ?? null;
@@ -73,11 +78,11 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
   <h2 class="h5">{label} season</h2>
   {data === null ? (<p class="text-muted" id="season-unavailable">The {label} season numbers are temporarily unavailable.</p>) : !all ? (<p class="text-muted" id="season-empty">No {label} possessions are rated for {teamName} yet.</p>) : (<Fragment>
   <p class="numeral mb-2" id="season-line">
-    {record && (<Fragment><span class="fw-bold">{record}</span> &middot; </Fragment>)}{fmtInt(all.games)} games rated &middot; Net {net(all.net_rtg)} <span class="text-muted">(#{rank(all.net_rtg_rank)})</span> &middot; Pace {rtg(all.pace)} <span class="text-muted">(#{rank(all.pace_rank)})</span>
+    {record && (<Fragment><span class="fw-bold">{record}</span> &middot; </Fragment>)}{fmtInt(all.games)} games rated &middot; Net {net(all.net_rtg)} <span class="text-muted">({rankPct(all.net_rtg_rank, all.net_rtg_pct)})</span> &middot; Pace {rtg(all.pace)} <span class="text-muted">({rankPct(all.pace_rank, all.pace_pct)})</span>
   </p>
   {college && st?.adj_net_rtg != null && (
     <p class="numeral mb-2" id="season-adjusted">
-      Adj. EM {net(st.adj_net_rtg)} <span class="text-muted">(#{rank(st.adj_net_rtg_rank)})</span> &middot; Adj. O {rtg(st.adj_off_rtg)} <span class="text-muted">(#{rank(st.adj_off_rtg_rank)})</span> &middot; Adj. D {rtg(st.adj_def_rtg)} <span class="text-muted">(#{rank(st.adj_def_rtg_rank)})</span> &middot; Tempo {rtg(all.pace)} <span class="text-muted">(#{rank(all.pace_rank)})</span>
+      Adj. EM {net(st.adj_net_rtg)} <span class="text-muted">({rankPct(st.adj_net_rtg_rank, st.adj_net_rtg_pct)})</span> &middot; Adj. O {rtg(st.adj_off_rtg)} <span class="text-muted">({rankPct(st.adj_off_rtg_rank, st.adj_off_rtg_pct)})</span> &middot; Adj. D {rtg(st.adj_def_rtg)} <span class="text-muted">({rankPct(st.adj_def_rtg_rank, st.adj_def_rtg_pct)})</span> &middot; Tempo {rtg(all.pace)} <span class="text-muted">({rankPct(all.pace_rank, all.pace_pct)})</span>
     </p>
   )}
   <div class="row g-3">
@@ -103,7 +108,7 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
     <div class="col-lg-7">
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0" id="season-splits">
-          <caption class="small text-muted">Close games: within 5 points in the last 5:00 or overtime. Clutch: those possessions only.</caption>
+          <caption class="small text-muted">Close games: within 5 points in the last 5:00 or overtime. Clutch: those possessions only. Pace is not shaded (faster is not better); its rank and percentile are in brackets.</caption>
           <thead><tr><th scope="col">Split</th><th scope="col" class="text-end">G</th><th scope="col" class="text-end">Poss</th><th scope="col" class="text-end">ORtg</th><th scope="col" class="text-end">DRtg</th><th scope="col" class="text-end">Net</th><th scope="col" class="text-end">Pace</th></tr></thead>
           <tbody>
             {splits.map((s) => (
@@ -114,7 +119,7 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
                 <td class:list={['numeral', 'text-end', shade(s.off_rtg_pct)]}>{rtg(s.off_rtg)}</td>
                 <td class:list={['numeral', 'text-end', shade(s.def_rtg_pct)]}>{rtg(s.def_rtg)}</td>
                 <td class:list={['numeral', 'text-end', shade(s.net_rtg_pct)]}>{net(s.net_rtg)}</td>
-                <td class="numeral text-end">{rtg(s.pace)}</td>
+                <td class="numeral text-end text-nowrap">{rtg(s.pace)} <span class="text-muted small">({rankPct(s.pace_rank, s.pace_pct)})</span></td>
               </tr>
             ))}
           </tbody>
@@ -132,6 +137,7 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
           {view.sets.map((k) => (<option value={gameSetHref(Astro.url, k, 'season-game-set')} selected={k === view.set}>{bbGameSetLabel(k)}</option>))}
         </select>
       </div>
+      {view.line === null ? (<p class="text-muted mb-0" id="season-game-set-unavailable">The {bbGameSetLabel(view.set)} numbers are temporarily unavailable.</p>) : (
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0" id="season-game-set-table">
           <caption class="small text-muted">{viewCaption}</caption>
@@ -144,11 +150,11 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
               <td class:list={['numeral', 'text-end', view.producer && shade(view.line.off_rtg_pct)]}>{rtg(view.line.off_rtg)}</td>
               <td class:list={['numeral', 'text-end', view.producer && shade(view.line.def_rtg_pct)]}>{rtg(view.line.def_rtg)}</td>
               <td class:list={['numeral', 'text-end', view.producer && shade(view.line.net_rtg_pct)]}>{net(view.line.net_rtg)}</td>
-              <td class="numeral text-end">{rtg(view.line.pace)}</td>
+              {view.producer ? (<td class="numeral text-end text-nowrap">{rtg(view.line.pace)} <span class="text-muted small">({rankPct(view.line.pace_rank, view.line.pace_pct)})</span></td>) : (<td class="numeral text-end">{rtg(view.line.pace)}</td>)}
             </tr>
           </tbody>
         </table>
-      </div>
+      </div>)}
     </div>
   )}
   {games.length > 0 && (
