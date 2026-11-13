@@ -7,6 +7,7 @@ import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
 import type { NbaLeadersParams } from '../../routes/nba/leaders';
 import { basketball, islandLeagueProps, seasonLabelFor } from '../../basketball/config';
 import { LEAGUES, leaguePath } from '../../utils/league';
+import { isFeatureEnabled } from '../../utils/features';
 
 interface Props { data: NbaLeadersParams }
 const { season, seasons, current, q, boards, coverage, windows, windowNote, activeByTeam } = Astro.props.data;
@@ -29,6 +30,7 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
       <div class="col-12">
         <h1 class="h3">Rolling leaders, {label}</h1>
         <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/leaders')} />{coverage && (<p class="small text-muted mt-2" id="nba-coverage">{coverage}</p>)}
+        {isFeatureEnabled('bball-leaderboards-v2', Astro.locals) && (<p class="small mt-2" id="leaderboards-link"><a href={`${lp('/leaderboards')}${q}`}>Season leaderboards: impact, teams and lineups</a></p>)}
       </div>
     </div>
     <div class="row">

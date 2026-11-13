@@ -18,13 +18,14 @@ import Header from '../../src/components/Header.astro';
 let container: AstroContainer;
 // the Header carries the site-search island (a Svelte component) for a preview viewer since #304
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
-const render = () => container.renderToString(Header, { locals: { league: 'nba', preview: true } as App.Locals });
+// the NBA Cup entry (BB-G30) shows in November and December only: off here, so the menu does not depend on the day
+const render = () => container.renderToString(Header, { locals: { league: 'nba', preview: true, flagOverrides: { 'bball-nba-cup': false } } as any });
 
 describe('Header basketball menu from the config', () => {
-    test('the nba menu: Scoreboard, Nets, Players, Teams, Scatter, Leaders (and Standings behind its flag)', async () => {
+    test('the nba menu: Scoreboard, Nets, Players, Teams, Scatter, Leaders (and Standings and Leaderboards behind their flags)', async () => {
         const html = await render();
         const items = [...html.matchAll(/<a href="(\/nba[^"]*)" class="nav-link px-2 link-secondary">([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`);
-        expect(items).toEqual(['Scoreboard /nba/scoreboard', 'Nets /nba', 'Players /nba/players', 'Teams /nba/teams', 'Scatter /nba/scatter', 'Leaders /nba/leaders', 'Standings /nba/standings']);
+        expect(items).toEqual(['Scoreboard /nba/scoreboard', 'Nets /nba', 'Players /nba/players', 'Teams /nba/teams', 'Scatter /nba/scatter', 'Leaders /nba/leaders', 'Standings /nba/standings', 'Leaderboards /nba/leaderboards']);
     });
     test('no featured team: no featured entry, the rest unchanged', async () => {
         state.noFeatured = true;
