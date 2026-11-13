@@ -22,8 +22,10 @@ import { atsRecord, b2bRecord, scheduleContext } from '../../utils/bballSchedule
 // gameSet: BB-G14 ('bball-game-set'), the ?games= line (gameSetCounts: a summed set's possessions reads, null when they
 // failed); absent, the block is BB-G5's byte for byte
 // context: BB-G53 ('bball-schedule-context'), the schedule's rest, trip, opponent and line columns; absent, likewise
-interface Props { data: TeamSeasonReads | null; season: number; espnId: number; teamName: string; gameSet?: BbGameSet; gameSetCounts?: GameSetCountReads | null; context?: ScheduleContextReads }
-const { data, season, espnId, teamName, gameSet, gameSetCounts, context } = Astro.props;
+// logged: BB-G50's game log ('bball-game-logs') is on the page and carries each game's ratings and four factors, so the
+// schedule keeps the results, upcoming games and context columns (with Preview links): nothing twice.
+interface Props { data: TeamSeasonReads | null; season: number; espnId: number; teamName: string; gameSet?: BbGameSet; gameSetCounts?: GameSetCountReads | null; context?: ScheduleContextReads; logged?: boolean }
+const { data, season, espnId, teamName, gameSet, gameSetCounts, context, logged = false } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const college = isNcaaDashboards(league);
@@ -167,8 +169,8 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
     )}
     <div class="table-responsive">
       <table class="table table-sm align-middle mb-0" id="season-schedule">
-        <caption class="small text-muted">Each game's own rates (the game page's four factors). A game not yet rated shows dashes.{ctx && (<Fragment> Rest: days off before the game (B2B: the second night of a back-to-back; 3 in 4: the third game in four nights). Trip: the game's place in a run of games away from home.{showOpp && " Opp: the opponent's adjusted net rating rank."}{showLine && ' Line: the closing spread on the team (negative: favoured); ATS: the result against it.'}</Fragment>)}</caption>
-        <thead><tr><th scope="col">Date</th><th scope="col">Opponent</th><th scope="col">Result</th><th scope="col" class="text-end">ORtg</th><th scope="col" class="text-end">DRtg</th><th scope="col" class="text-end">Pace</th><th scope="col" class="text-end">eFG%</th><th scope="col" class="text-end">TOV%</th><th scope="col" class="text-end">ORB%</th><th scope="col" class="text-end">FT rate</th>{ctx && (<Fragment><th scope="col" class="text-end">Rest</th><th scope="col" class="text-end">Trip</th>{showOpp && (<th scope="col" class="text-end">Opp</th>)}{showLine && (<Fragment><th scope="col" class="text-end">Line</th><th scope="col" class="text-center">ATS</th></Fragment>)}</Fragment>)}</tr></thead>
+        <caption class="small text-muted">{logged ? (<Fragment>Results and upcoming games. Each game's ratings and four factors are in the game log.</Fragment>) : (<Fragment>Each game's own rates (the game page's four factors). A game not yet rated shows dashes.</Fragment>)}{ctx && (<Fragment> Rest: days off before the game (B2B: the second night of a back-to-back; 3 in 4: the third game in four nights). Trip: the game's place in a run of games away from home.{showOpp && " Opp: the opponent's adjusted net rating rank."}{showLine && ' Line: the closing spread on the team (negative: favoured); ATS: the result against it.'}</Fragment>)}</caption>
+        <thead><tr><th scope="col">Date</th><th scope="col">Opponent</th><th scope="col">Result</th>{!logged && (<Fragment><th scope="col" class="text-end">ORtg</th><th scope="col" class="text-end">DRtg</th><th scope="col" class="text-end">Pace</th><th scope="col" class="text-end">eFG%</th><th scope="col" class="text-end">TOV%</th><th scope="col" class="text-end">ORB%</th><th scope="col" class="text-end">FT rate</th></Fragment>)}{ctx && (<Fragment><th scope="col" class="text-end">Rest</th><th scope="col" class="text-end">Trip</th>{showOpp && (<th scope="col" class="text-end">Opp</th>)}{showLine && (<Fragment><th scope="col" class="text-end">Line</th><th scope="col" class="text-center">ATS</th></Fragment>)}</Fragment>)}</tr></thead>
         <tbody>
           {games.map((g) => {
             const opp = teamHrefFromEspn({ id: g.oppId }, league, season);
@@ -180,13 +182,13 @@ const result = (g: (typeof games)[number]) => (g.teamScore == null || g.oppScore
                 <td class="text-nowrap">{day(g.date)}</td>
                 <td class="text-nowrap"><span class="text-muted">{venueMark[g.venue]}</span> {opp ? (<a href={opp} title={g.oppName}>{g.oppAbbr}</a>) : (<span title={g.oppName}>{g.oppAbbr}</span>)}{g.venue === 'neutral' && (<span class="text-muted small"> (N)</span>)}</td>
                 <td class="numeral text-nowrap">{res ? (<a href={gameHref(league, g.gameId)}>{res}</a>) : (<a href={gameHref(league, g.gameId)} class="text-muted">Preview</a>)}</td>
-                <td class="numeral text-end">{rtg(r?.off_rtg)}</td>
+                {!logged && (<Fragment><td class="numeral text-end">{rtg(r?.off_rtg)}</td>
                 <td class="numeral text-end">{rtg(r?.def_rtg)}</td>
                 <td class="numeral text-end">{rtg(r?.pace)}</td>
                 <td class="numeral text-end">{pct(r?.efg_pct)}</td>
                 <td class="numeral text-end">{pct(r?.tov_pct)}</td>
                 <td class="numeral text-end">{pct(r?.orb_pct)}</td>
-                <td class="numeral text-end">{rate(r?.ft_rate)}</td>
+                <td class="numeral text-end">{rate(r?.ft_rate)}</td></Fragment>)}
                 {c && (<Fragment>
                   <td class="numeral text-end text-nowrap">{restLabel(c.rest)}{c.b2b && (<span class="badge text-bg-warning ms-1" title="Second night of a back-to-back">B2B</span>)}{c.threeInFour && (<span class="badge text-bg-secondary ms-1" title="Third game in four nights">3 in 4</span>)}</td>
                   <td class="numeral text-end">{c.trip ? `${c.trip.game}/${c.trip.of}` : ''}</td>

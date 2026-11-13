@@ -1,6 +1,7 @@
 ---
 // src/components/nba/BbPlayerGameLog.astro
-// BB-G50, behind 'bball-game-logs': the player's advanced game log. Each game's box with TS%, usage, on-court
+// BB-G50, behind 'bball-game-logs': the player's advanced game log, one row per game he played (his ESPN box, so a game
+// without a field-goal attempt is listed). Each game's box with TS%, usage, on-court
 // possessions, +/- and ratings, points over expected and EPV added; each shaded cell is ranked among his season's games
 // (football's PlayerGameLog "Player Games" mode), and a consistency line gives the game-to-game spread of PTS, AST and
 // TS% over the games shown. Under BB-G14's game-set filter (?games=) it shows that set's games, still shaded against
@@ -45,9 +46,10 @@ const all = reads ? playerLogRows(games, reads, isNcaaDashboards(league)) : [];
 const keys = filledKeys(all, PLAYER_KEYS);
 const shades = shadeTable(all, PLAYER_DIRS);
 // the game-set filter's games; a set with none falls back to all of them (as the select does)
-const picked = pickGames(games, set);
+const logGames = all.map((r) => r.game);
+const picked = pickGames(logGames, set);
 const shownSet: BbGameSet = picked.length ? set : 'all';
-const shownIds = new Set((picked.length ? picked : games).map((g) => g.game_id));
+const shownIds = new Set((picked.length ? picked : logGames).map((g) => g.game_id));
 const shown = all.filter((r) => shownIds.has(r.gameId));
 const sd = (k: PlayerKey) => spread(shown.map((r) => r.values[k]));
 const tsSd = sd('ts_pct');
@@ -64,7 +66,7 @@ const venueMark = { home: 'vs', away: '@', neutral: 'vs' } as const;
   )}
   <div class="table-responsive">
     <table class="table table-sm align-middle mb-0" id="player-game-log-table">
-      <caption class="small text-muted">{bbGameSetLabel(shownSet)}. Each shaded number is ranked among his {fmtInt(all.length)} games this season (none under three). A game without a field-goal attempt is not listed.</caption>
+      <caption class="small text-muted">{bbGameSetLabel(shownSet)}. Each shaded number is ranked among his {fmtInt(all.length)} games this season (none under three).{reads && !reads.played && ' A game without a field-goal attempt is not listed.'}</caption>
       <thead><tr>
         <th scope="col">Date</th><th scope="col">Opp</th><th scope="col">Result</th>
         {keys.map((k) => (<Fragment><th scope="col" class="text-end"><abbr title={COLS[k].title}>{COLS[k].label}</abbr></th>{k === 'tov' && (<Fragment><th scope="col" class="text-end">FG</th><th scope="col" class="text-end">3P</th><th scope="col" class="text-end">FT</th></Fragment>)}</Fragment>))}
