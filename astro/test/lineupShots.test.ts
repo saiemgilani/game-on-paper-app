@@ -89,6 +89,32 @@ describe('NBA (Nets 2025-26, three games)', () => {
         expect(none.line.attempts).toBe(0);
         expect(none.hex).toBeNull();
     });
+    test('defense: the opponent unit is the shooting five (off_player_*), never the Nets players', () => {
+        expect(teamFive(def[0], 'defense', 'opponent')).toEqual([1, 2, 3, 4, 5].map((i) => String((def[0] as any)[`off_player_${i}`])));
+        const own = new Set(lineupOptions(def, 'defense', names).map((o) => o.id));
+        const opp = lineupOptions(def, 'defense', names, 'opponent');
+        expect(opp.length).toBeGreaterThan(5);
+        expect(opp.some((o) => own.has(o.id))).toBe(false);
+        expect(opp.reduce((a, o) => a + o.shots, 0)).toBe(def.length * 5);
+    });
+    test('defense: an opponent player ON and OFF split the opponent shots; with a Nets filter it is the intersection', () => {
+        const opts = lineupOptions(def, 'defense', names);
+        const oppOpts = lineupOptions(def, 'defense', names, 'opponent');
+        const y = oppOpts[0].id;
+        const on = lineupShots(def, 'defense', [], opts, league, COURT, null, { filters: [{ id: y, on: true }], options: oppOpts });
+        const off = lineupShots(def, 'defense', [], opts, league, COURT, null, { filters: [{ id: y, on: false }], options: oppOpts });
+        expect(on.line.attempts).toBe(oppOpts[0].shots);
+        expect(on.line.attempts + off.line.attempts + on.unknown).toBe(def.length);
+        expect(on.oppFilters).toEqual([{ id: y, on: true }]);
+        expect(on.oppOptions).toBe(oppOpts);
+        expect(zoneAttempts(on)).toBe(on.line.attempts);
+        const x = opts[0].id;
+        const both = lineupShots(def, 'defense', [{ id: x, on: true }], opts, league, COURT, null, { filters: [{ id: y, on: true }], options: oppOpts });
+        expect(both.line.attempts).toBe(def.filter((r) => teamFive(r, 'defense').includes(x) && teamFive(r, 'defense', 'opponent').includes(y)).length);
+        expect(both.line.attempts).toBeLessThanOrEqual(on.line.attempts);
+        // no opponent filter: the chart is the Nets-only one it was
+        expect(lineupShots(def, 'defense', [{ id: x, on: true }], opts, league, COURT, null).line).toEqual(lineupShots(def, 'defense', [{ id: x, on: true }], opts, league, COURT, null, { filters: [], options: oppOpts }).line);
+    });
     test('shot distance is rounded feet from the hoop', () => {
         expect(toShotLite({ ...off[0], x_legacy: 30, y_legacy: 40 }).shot_distance).toBe(5);
         expect(toShotLite({ ...off[0], made: true }).shot_result).toBe('Made');
@@ -108,6 +134,22 @@ describe('the route step', () => {
         expect(v.data.side).toBe('defense');
         expect(v.data.filters).toEqual([{ id, on: false }]);
         expect(v.data.options[0].name).toBe('Some Player');
+        expect(v.data.oppFilters).toEqual([]);
+    });
+    test('NBA defense: ?op/?os pairs filter the shooting opponents, named from the league season rows; offense ignores them', async () => {
+        const y = lineupOptions(sideRows('nba', 'defense'), 'defense', new Map(), 'opponent')[0].id;
+        const players = [{ person_id: Number(y), player_name: 'Opposing Player' }] as any;
+        const v = await readLineupShots(astro(`https://x.test/nba/team/${nets}?side=defense&op=${y}&os=on&op=nope&os=off`), 'nba', 2026, nets, players, ctxRows);
+        expect(v.status).toBe('ok');
+        if (v.status !== 'ok') return;
+        expect(v.data.oppFilters).toEqual([{ id: y, on: true }]);
+        expect(v.data.oppOptions[0]).toMatchObject({ id: y, name: 'Opposing Player' });
+        expect(v.data.line.attempts).toBe(v.data.oppOptions[0].shots);
+        const o = await readLineupShots(astro(`https://x.test/nba/team/${nets}?op=${y}&os=on`), 'nba', 2026, nets, players, ctxRows);
+        if (o.status !== 'ok') throw new Error(o.status);
+        expect(o.data.oppFilters).toEqual([]);
+        expect(o.data.oppOptions).toEqual([]);
+        expect(o.data.line.attempts).toBe(o.data.total);
     });
     test('college: a season before 2026-27 is unavailable without a read; 2026-27 names go through the crosswalk', async () => {
         expect(await readLineupShots(astro('https://x.test/wbb/team/36'), 'wbb', 2026, 36, [], ctxRows)).toEqual({ status: 'unavailable', side: 'offense' });
@@ -126,6 +168,13 @@ describe('the route step', () => {
         // an ESPN id is never read as a stats.ncaa.org id
         expect(v.data.options.some((o) => espnName.has(o.id))).toBe(false);
         expect(reads.rows).toHaveBeenCalledWith(2027, 36, 'offense', 'wbb');
+        expect(reads.crosswalk).toHaveBeenCalledWith(2027, 36, 'wbb');
+        // defense names the opponents too: the league's crosswalk
+        const d = await readLineupShots(astro('https://x.test/wbb/team/36?side=defense'), 'wbb', 2027, 36, fx.wbb.season_players, ctxRows);
+        expect(reads.crosswalk).toHaveBeenLastCalledWith(2027, null, 'wbb');
+        if (d.status !== 'ok') throw new Error(d.status);
+        expect(d.data.oppOptions.length).toBeGreaterThan(0);
+        expect(d.data.oppOptions.some((o) => d.data.options.some((t) => t.id === o.id))).toBe(false);
     });
     test('a failed crosswalk keeps the chart with #id names; a failed shot read is the error state', async () => {
         reads.crosswalk.mockRejectedValueOnce(new Error('504'));

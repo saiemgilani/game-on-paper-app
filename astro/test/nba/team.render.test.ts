@@ -84,6 +84,7 @@ describe('/nba/team/[id]', () => {
         expect(all).toContain('href="#lineup-shots"');
         expect(all).toContain('id="lineup-shots-form"');
         expect(all.match(/name="p"/g)).toHaveLength(5);
+        expect(all).not.toContain('name="op"'); // the opponent rows are the defense view's
         expect(all).toContain('<input type="hidden" name="season" value="2026"');
         expect(text(all.split('id="lineup-shots-line"')[1].split('</p>')[0])).toContain('Every lineup: ');
         expect(all).toContain('id="lineup-shots-chart"');
@@ -93,6 +94,14 @@ describe('/nba/team/[id]', () => {
         expect(line).toMatch(/ off: /);
         expect(line).toContain('opponent shots');
         expect(off).toMatch(new RegExp(`<option value="${id}" selected`));
+        expect(off.match(/name="op"/g)).toHaveLength(5);
+        // defense: an opponent player ON (?op=&os=on) narrows the opponent shots, and the line names it
+        const y = off.split('id="lineup-op1"')[1].split('<option value="')[2].split('"')[0];
+        const opp = await render(String(NETS_TEAM_ID), `?season=2026&side=defense&op=${y}&os=on`);
+        const oppLine = text(opp.split('id="lineup-shots-line"')[1].split('</p>')[0]);
+        expect(oppLine).toMatch(/^>\s*opponent .+ on: \d/);
+        expect(opp).toMatch(new RegExp(`<option value="${y}" selected`));
+        expect(opp).toContain('Opponent player 1');
         expect(off).not.toContain('undefined');
         expect(off).not.toContain('NaN');
         const { default: Page } = await import('../../src/pages/nba/team/[id].astro');
