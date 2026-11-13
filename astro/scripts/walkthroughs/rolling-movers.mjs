@@ -8,9 +8,10 @@ export default async (page, base) => {
     if ((await table.count()) !== 1) throw new Error(`${route}: expected the leaders table`);
     await table.scrollIntoViewIfNeeded();
     await page.waitForTimeout(1200);
-    await page.getByRole('button', { name: 'Most improved', exact: true }).click();
+    // five boards: the board picker is a select (Q9)
+    await page.getByLabel('Board', { exact: true }).selectOption('improved');
     await page.waitForTimeout(1500);
-    await page.getByRole('button', { name: 'Most declined', exact: true }).click();
+    await page.getByLabel('Board', { exact: true }).selectOption('declined');
     await page.waitForTimeout(1500);
     await page.getByRole('button', { name: '5 games', exact: true }).click();
     await page.waitForTimeout(1500);
