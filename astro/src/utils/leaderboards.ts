@@ -29,6 +29,15 @@ export const TEAM_GROUPS = ['ratings', 'factors', 'strength', 'flow'] as const;
 export type TeamGroup = (typeof TEAM_GROUPS)[number];
 export const TEAM_GROUP_LABEL: Record<TeamGroup, string> = { ratings: 'Ratings', factors: 'Four factors', strength: 'Team strength', flow: 'Game flow' };
 
+/**
+ * The Impact board's column sets: every impact measure, or (NBA only, the one league current_impact covers) Season vs
+ * Current impact (#463 Q18): the season's prior-informed RAPM beside his expected impact as of the latest weekly date.
+ */
+export const IMPACT_VIEWS = ['measures', 'current'] as const;
+export type ImpactView = (typeof IMPACT_VIEWS)[number];
+export const IMPACT_VIEW_LABEL: Record<ImpactView, string> = { measures: 'All measures', current: 'Season vs Current' };
+export const impactViewsFor = (league: BasketballLeague): readonly ImpactView[] => (league === 'nba' ? IMPACT_VIEWS : ['measures']);
+
 export const UNIT_SIZES = [5, 3, 2] as const;
 export type UnitSize = (typeof UNIT_SIZES)[number];
 
@@ -77,6 +86,18 @@ const IMPACT_PRO: readonly Col[] = [
     C('bpm', 'Net', 'Box plus-minus, per 100 possessions', 'bpm', 'signed1', { group: 'BPM' }),
     C('boban', 'BOBAN', 'Bayesian Online Box-Augmented Net: a filtered estimate of current skill, per 100 possessions', 'boban_filtered_skill', 'signed1'),
     C('war', 'WAR', 'Wins above replacement, season total', 'war', 'dec1'),
+];
+// Season impact is player_impact's reml_rapm trio (BB-D38), Current impact current_impact's (BB-D39), joined by player id
+const IMPACT_CURRENT: readonly Col[] = [
+    C('gp', 'GP', 'Games played', 'gp', 'int', { group: 'Sample' }),
+    C('off_poss', 'O-Poss', 'Offensive possessions on the floor', 'off_poss', 'int', { group: 'Sample' }),
+    C('def_poss', 'D-Poss', 'Defensive possessions on the floor', 'def_poss', 'int', { group: 'Sample' }),
+    C('season_o', 'O', 'Season impact, offense: the regular season’s plus-minus impact shrunk toward his box-score prior, per 100 possessions', 'o_reml_rapm', 'signed1', { group: 'Season impact' }),
+    C('season_d', 'D', 'Season impact, defense, per 100 possessions (positive is better)', 'd_reml_rapm', 'signed1', { group: 'Season impact' }),
+    C('season', 'Net', 'Season impact: credit for what happened this season, per 100 possessions', 'reml_rapm', 'signed1', { group: 'Season impact' }),
+    C('current_o', 'O', 'Current impact, offense: his expected impact going forward, from games before the date in the caption, per 100 possessions', 'o_current_impact', 'signed1', { group: 'Current impact' }),
+    C('current_d', 'D', 'Current impact, defense, per 100 possessions (positive is better)', 'd_current_impact', 'signed1', { group: 'Current impact' }),
+    C('current', 'Net', 'Current impact: the same prior, updated by how he has played against it, older games counting less, per 100 possessions', 'current_impact', 'signed1', { group: 'Current impact' }),
 ];
 const IMPACT_COLLEGE: readonly Col[] = [
     C('off_poss', 'O-Poss', 'Offensive possessions on the floor', 'off_poss', 'int', { group: 'Sample' }),
@@ -152,11 +173,12 @@ const TEAM_SPECS: Record<TeamGroup, BoardSpec> = {
     flow: { cols: FLOW, defaultSort: 'avg_margin', defaultBasis: 'pergame', qualifiedBy: 'avg_margin_rank' },
 };
 
-/** The board's spec: the league picks the impact columns, the group the teams columns. */
-export function boardSpec(board: Board, league: BasketballLeague, group: TeamGroup): BoardSpec {
+/** The board's spec: the league and `impact` pick the impact columns, the group the teams columns. */
+export function boardSpec(board: Board, league: BasketballLeague, group: TeamGroup, impact: ImpactView = 'measures'): BoardSpec {
     if (board === 'teams') return TEAM_SPECS[group];
     if (board === 'lineups') return { cols: LINEUPS, defaultSort: 'net', defaultBasis: 'per100', qualifiedBy: 'net_rtg_rank' };
     const pro = league === 'nba' || league === 'wnba';
+    if (impact === 'current' && impactViewsFor(league).includes('current')) return { cols: IMPACT_CURRENT, defaultSort: 'current', defaultBasis: 'per100', qualifiedBy: null };
     // every impact measure is already per 100 possessions and WAR a season total: one basis, and a qualifier is the board's own gate
     return { cols: pro ? IMPACT_PRO : IMPACT_COLLEGE, defaultSort: 'rapm', defaultBasis: 'per100', qualifiedBy: null };
 }
@@ -219,6 +241,8 @@ export interface Controls {
     board: Board;
     group: TeamGroup;
     unit: UnitSize;
+    /** the Impact board's column set ('measures' outside the NBA) */
+    impact: ImpactView;
     basis: Basis;
     view: View;
     qualified: boolean;
@@ -243,7 +267,8 @@ export function parseControls(sp: URLSearchParams, league: BasketballLeague, pct
     const board = pick(BOARDS, sp.get('board'), 'impact');
     const group = pick(TEAM_GROUPS, sp.get('group'), 'ratings');
     const unit = pick(UNIT_SIZES, sp.get('unit'), 5);
-    const spec = boardSpec(board, league, group);
+    const impact = pick(impactViewsFor(league), sp.get('impact'), 'measures');
+    const spec = boardSpec(board, league, group, impact);
     const asked = sp.get('basis');
     const bases = offeredBases(spec, rows);
     const basis = bases.find((b) => b === asked) ?? spec.defaultBasis;
@@ -251,7 +276,7 @@ export function parseControls(sp: URLSearchParams, league: BasketballLeague, pct
     const wantPct = sp.get('view') === 'percentiles';
     const view: View = wantPct && pctAvailable(spec, basis) ? 'percentiles' : 'values';
     const sort = spec.cols.find((c) => c.key === sp.get('sort'))?.key ?? spec.defaultSort;
-    return { board, group, unit, bases, basis, view, qualified: sp.get('qualified') !== 'all', sort, basisFallback, viewFallback: wantPct && view === 'values' };
+    return { board, group, unit, impact, bases, basis, view, qualified: sp.get('qualified') !== 'all', sort, basisFallback, viewFallback: wantPct && view === 'values' };
 }
 
 /**

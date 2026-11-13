@@ -27,6 +27,8 @@ export interface LeaderboardsParams {
     capped: boolean;
     pctAvailable: boolean;
     names: Map<string, string>;
+    /** Season vs Current: the current_impact rows' date (null: none this season); undefined on the other views */
+    asOf?: string | null;
 }
 
 export async function prepareLeaderboards(Astro: AstroGlobal, league: BasketballLeague): Promise<LeaderboardsParams> {
@@ -37,15 +39,16 @@ export async function prepareLeaderboards(Astro: AstroGlobal, league: Basketball
     const asked = parseControls(sp, league, () => true);
     let rows: BoardRow[] | null = null;
     let names = new Map<string, string>();
+    let asOf: string | null | undefined;
     try {
-        ({ rows, names } = await retrieveBoard(league, season, asked.board, asked.group, asked.unit));
+        ({ rows, names, asOf } = await retrieveBoard(league, season, asked.board, asked.group, asked.unit, asked.impact));
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${asked.board} board for ${season}: ${e}, ${e?.stack}`);
     }
     const all = rows ?? [];
     // a failed read keeps every basis: the page says the board is unavailable, not that a basis is
     const controls = parseControls(sp, league, (spec, basis) => hasPercentiles(all, spec, basis), rows ?? undefined);
-    const spec = boardSpec(controls.board, league, controls.group);
+    const spec = boardSpec(controls.board, league, controls.group, controls.impact);
     const sortCol = spec.cols.find((c) => c.key === controls.sort)!;
     const kept = controls.qualified ? all.filter((r) => isQualified(r, spec, league)) : all;
     if (rows && rows.length > 0) setCache(Astro, seasonCache(league));
@@ -57,5 +60,6 @@ export async function prepareLeaderboards(Astro: AstroGlobal, league: Basketball
         capped: controls.board !== 'teams' && all.length >= BOARD_CAP,
         pctAvailable: hasPercentiles(all, spec, controls.basis),
         names,
+        ...(asOf !== undefined ? { asOf } : {}),
     };
 }

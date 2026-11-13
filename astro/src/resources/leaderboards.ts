@@ -1,7 +1,9 @@
 /**
  * The Data API reads behind the basketball leaderboards (BB-G8, behind 'bball-leaderboards-v2'). One board, one season,
  * one capped read (plus the lineup board's names):
- * - Impact: `player_impact` in the games schema (`nba` / `wnba`, the regular season), or `ncaa_rapm` (`mbb` / `wbb`);
+ * - Impact: `player_impact` in the games schema (`nba` / `wnba`, the regular season), or `ncaa_rapm` (`mbb` / `wbb`); the NBA's
+ *   Season vs Current view adds the games schema's `current_impact` rows at the season's latest `as_of` (BB-D39), joined
+ *   to the season rows by player id;
  * - Teams: `team_season_rates` (split `all`; BB-D3), `team_strength` (BB-D19) or `team_season_flow` (BB-D27) in the
  *   league's season schema;
  * - Lineups: `lineup_seasons` (BB-D4) for one unit size, named from the season's shot_season_players (the pros' stats ids)
@@ -13,7 +15,7 @@ import { retrieveRows, retrieveRowsFrom } from './sdv';
 import { retrieveSeasonPlayerRows } from './nbaShots';
 import { BASKETBALL } from '../basketball/config';
 import { PRO_LEAGUES, type BasketballLeague } from '../utils/league';
-import { boardSpec, srcFor, BASES, ncaaName, type Board, type BoardSpec, type TeamGroup, type UnitSize } from '../utils/leaderboards';
+import { boardSpec, impactViewsFor, srcFor, BASES, ncaaName, type Board, type BoardSpec, type ImpactView, type TeamGroup, type UnitSize } from '../utils/leaderboards';
 
 /** The season products are rebuilt once a day: the season pages' window. */
 const TTL = 6 * 60 * 60;
@@ -48,6 +50,8 @@ export interface BoardReads {
     rows: BoardRow[];
     /** lineups: player id -> name; empty for the other boards */
     names: Map<string, string>;
+    /** Season vs Current: the current_impact rows' date; null when the season has none yet */
+    asOf?: string | null;
 }
 
 const TEAM_TABLE: Record<TeamGroup, string> = { ratings: 'team_season_rates', factors: 'team_season_rates', strength: 'team_strength', flow: 'team_season_flow' };
@@ -55,12 +59,38 @@ export const LINEUP_IDENTITY = ['team_id', 'lineup_id', 'n_players', 'player_1',
 const PRO_IMPACT_IDENTITY = ['player_id', 'player_name', 'team_id', 'team_abbreviation', 'teams'] as const;
 const COLLEGE_IMPACT_IDENTITY = ['player_id', 'player', 'team'] as const;
 
-export async function retrieveBoard(league: BasketballLeague, season: number, board: Board, group: TeamGroup, unit: UnitSize): Promise<BoardReads> {
+/** Current impact's columns, copied onto the season row: the trio, and any `_rank` / `_pct` the producer ships for them. */
+const CURRENT_COL = /^(o_|d_)?current_impact(_rank|_pct)?$/;
+
+/**
+ * Season vs Current (#463 Q18): the season rows (the Impact board's own read, the reml_rapm trio selected) and the
+ * season's latest current_impact rows, read as #463's player page reads them (games schema, season-filtered, latest
+ * `as_of`; current_impact is unselected, so a rank the producer adds arrives with it). Nothing is computed: current
+ * impact's columns are copied onto the season row with the same player id (both bigint; compared as numbers), and a
+ * player without a current row shows dashes.
+ * ponytail: inline until #463 merges; then its resources/currentImpact.ts owns the current_impact read.
+ */
+async function retrieveSeasonVsCurrent(league: BasketballLeague, s: string, q: Record<string, string>): Promise<BoardReads> {
+    const games = BASKETBALL[league].gamesSource;
+    const select = [...PRO_IMPACT_IDENTITY, 'gp', 'off_poss', 'def_poss', 'o_reml_rapm', 'd_reml_rapm', 'reml_rapm'].join(',');
+    const [rows, latest] = await Promise.all([
+        retrieveRowsFrom<BoardRow>(games, 'player_impact', { ...q, season_type: 'Regular Season', select }, TTL, true),
+        retrieveRowsFrom<{ as_of: string }>(games, 'current_impact', { season: s, select: 'as_of', order: '-as_of', limit: '1' }, TTL, true),
+    ]);
+    const asOf = latest[0]?.as_of ?? null;
+    const current = asOf ? await retrieveRowsFrom<BoardRow>(games, 'current_impact', { season: s, as_of: asOf, order: '-off_poss', limit: String(BOARD_CAP) }, TTL, true) : [];
+    const byId = new Map(current.map((r) => [Number(r.player_id), r]));
+    const joined = rows.map((r) => ({ ...r, ...Object.fromEntries(Object.entries(byId.get(Number(r.player_id)) ?? {}).filter(([k]) => CURRENT_COL.test(k))) }));
+    return { rows: joined, names: new Map(), asOf };
+}
+
+export async function retrieveBoard(league: BasketballLeague, season: number, board: Board, group: TeamGroup, unit: UnitSize, impact: ImpactView = 'measures'): Promise<BoardReads> {
     const s = String(season);
-    const spec = boardSpec(board, league, group);
+    const spec = boardSpec(board, league, group, impact);
     const pro = PRO_LEAGUES.includes(league);
     if (board === 'impact') {
         const q = { season: s, off_poss__gte: String(IMPACT_FLOOR[league]), order: '-off_poss', limit: String(BOARD_CAP) };
+        if (impact === 'current' && impactViewsFor(league).includes('current')) return retrieveSeasonVsCurrent(league, s, q);
         const rows = pro
             ? await retrieveRowsFrom<BoardRow>(BASKETBALL[league].gamesSource, 'player_impact', { ...q, season_type: 'Regular Season', select: selectFor(spec, PRO_IMPACT_IDENTITY, false) }, TTL, true)
             : await retrieveRows<BoardRow>(league, 'ncaa_rapm', { ...q, estimand: 'league', select: selectFor(spec, COLLEGE_IMPACT_IDENTITY, false) }, TTL, true);
