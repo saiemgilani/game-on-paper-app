@@ -856,3 +856,14 @@ overtime, under 10 possessions). Nothing is edited.
 
 **To regenerate:** the same reads (season filter and limit as above).
 
+
+## `situations-game-2026.json.gz`
+The game page's Situations panel reads (BB-G25 review, Q27, `resources/situational.ts` `retrieveGameSituational`), captured live on 2026-11-13, sequentially, the `data` array of each response, no edits, as `{nba: {crosswalk, rows}, mbb: {teamBox, rows}}`:
+- `/v1/nba/schedule_crosswalk?season=2026&espn_game_id=401809773&select=nba_game_id,nba_home_team_id,nba_away_team_id&limit=2` (1 row: Detroit at Brooklyn, 2025-11-07, stats game 0022500031)
+- `/v1/nba_stats/situational_team_games?season=2026&game_id=0022500031&select=team_id,family,split,games,minutes,poss,opp_poss,pts,opp_pts,plus_minus,off_rtg,def_rtg,net_rtg&limit=60` (38: 19 splits a team)
+- `/v1/mbb/ncaa_team_box?season=2026&espn_game_id=401856577&select=contest_id&limit=4` (2 rows, contest 6564880: UConn at Duke, neutral site)
+- `/v1/mbb/situational_team_games?season=2026&game_id=6564880&select=...&limit=60` (30: 15 a team)
+
+**Used by:** `test/gameSituations.test.ts`.
+
+**To regenerate:** rerun the same reads (season filter and limit as above).

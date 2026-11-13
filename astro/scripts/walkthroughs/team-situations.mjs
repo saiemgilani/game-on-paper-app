@@ -1,9 +1,11 @@
 // The Situations sections (BB-G25): Minnesota 2025-26's team page, scrolled to the section, then Tied and Transition
-// from its Situation select (each a plain URL); then Anthony Edwards' player page, the same control on Home. Behind
+// from its Situation select (each a plain URL); then Anthony Edwards' player page, the same control on Home; then a final's
+// game page (DET at BKN, Nov 7 2025), its Situations panel on Leading. Behind
 // 'bball-situational' inside each league's flag: pass WALKTHROUGH_COOKIE (see README.md) or run against a tree with the
 // flags forced on.
 const TEAM = '/nba/team/1610612750?season=2026';
 const PLAYER = '/nba/players/1630162?season=2026';
+const GAME = '/nba/game/401809773';
 
 async function settle(page) {
   await page.waitForLoadState('networkidle', { timeout: 60_000 });
@@ -29,4 +31,6 @@ export default async (page, base) => {
   await pick(page, 'Transition', /situation=transition/);
   await open(page, base, PLAYER, '#situations-player');
   await pick(page, 'Home', /situation=home/);
+  await open(page, base, GAME, '#game-situations');
+  await pick(page, 'Leading', /situation=leading/);
 };

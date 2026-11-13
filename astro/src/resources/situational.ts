@@ -3,15 +3,17 @@
  * splits (BB-D21, sdv-db #199) in the league's season schema (`nba_stats` / `wnba_stats`, keyed by the stats.nba.com /
  * stats.wnba.com team and player ids; `mbb` / `wbb`, keyed by the ESPN team id and the stats.ncaa.org player id). One
  * situation is one (family, split) row per team, player or five-man unit; every number is the producer's (sdv-py
- * *_situational_*). There are season rows only: no game-level situational table exists, so the game page has no control.
+ * *_situational_*). The game page (BB-G25 review, Q27) reads situational_team_games: the same columns per team-game, both
+ * teams; there are no per-game player or five-man rows.
  * The player page reads one player's rows (every split); college first maps his ESPN athlete id to the season's
  * stats.ncaa.org id through ncaa_player_crosswalk (BB-D37).
  * Reads are strict, so an outage is never shown as a team with no possessions.
  */
-import { retrieveRows } from './sdv';
+import { retrieveRows, retrieveRowsFrom } from './sdv';
 import { retrieveNcaaNames, type NcaaNameRow } from './lineups';
 import type { BasketballLeague } from '../utils/league';
 import { isNcaaDashboards } from '../basketball/dashboards';
+import { BASKETBALL } from '../basketball/config';
 import { PLAYER_MIN_POSS, UNIT_MIN_POSS } from '../utils/situations';
 
 /** The situational tables are rebuilt with the season products (once a day): the season pages' window. */
@@ -87,4 +89,38 @@ export async function retrievePlayerSituational(league: BasketballLeague, season
         playerId = String(pairs[0].ncaa_player_id);
     }
     return retrieveRows<PlayerSituationalRow>(league, 'situational_player', { season: s, team_id: String(teamId), player_id: playerId, poss__gte: String(PLAYER_MIN_POSS), select: `player_id,${COLS}`, limit: TEAM_LIMIT }, TTL, true);
+}
+
+/** One game's split rows for both teams: at most ~24 splits each (four quarters and overtimes). */
+const GAME_LIMIT = '60';
+
+export interface GameSituationalReads {
+    /** each team's split rows in the game; [] when the producer has no row for it */
+    home: SituationalRow[];
+    away: SituationalRow[];
+}
+
+/**
+ * One final's situational rows (situational_team_games), split by side. The table is keyed like the season tables: the
+ * pros by the stats game and team ids, so the ESPN game id maps through the games schema's schedule_crosswalk first;
+ * college by the stats.ncaa.org contest id with ESPN's team ids, so the ESPN game id maps through ncaa_team_box. No pair:
+ * no rows (the panel says so). Strict.
+ */
+export async function retrieveGameSituational(league: BasketballLeague, season: number, espnGameId: string, espnHome: string, espnAway: string): Promise<GameSituationalReads> {
+    const s = String(season);
+    let gameId: string | null = null;
+    let home = espnHome;
+    let away = espnAway;
+    if (isNcaaDashboards(league)) {
+        const box = await retrieveRows<{ contest_id: string | number | null }>(league, 'ncaa_team_box', { season: s, espn_game_id: espnGameId, select: 'contest_id', limit: '4' }, TTL, true);
+        gameId = box.find((r) => r.contest_id != null)?.contest_id?.toString() ?? null;
+    } else {
+        const k = league; // nba_ / wnba_ columns
+        const xw = await retrieveRowsFrom<Record<string, string | number | null>>(BASKETBALL[league].gamesSource, 'schedule_crosswalk', { season: s, espn_game_id: espnGameId, select: `${k}_game_id,${k}_home_team_id,${k}_away_team_id`, limit: '2' }, TTL, true);
+        const r = xw.find((x) => x[`${k}_game_id`] != null);
+        if (r) [gameId, home, away] = [String(r[`${k}_game_id`]), String(r[`${k}_home_team_id`]), String(r[`${k}_away_team_id`])];
+    }
+    if (!gameId) return { home: [], away: [] };
+    const rows = await retrieveRows<SituationalRow & { team_id: number | string }>(league, 'situational_team_games', { season: s, game_id: gameId, select: `team_id,${COLS}`, limit: GAME_LIMIT }, TTL, true);
+    return { home: rows.filter((r) => String(r.team_id) === home), away: rows.filter((r) => String(r.team_id) === away) };
 }

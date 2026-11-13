@@ -13,6 +13,8 @@ import { SOURCE_PARAM } from '../../utils/adminView';
 import { gopStorage } from '../../utils/telemetry';
 import type { BasketballLeague } from '../../utils/league';
 import { setCache, uncacheable } from './cache';
+import { retrieveGameSituational } from '../../resources/situational';
+import { parseSituation, situationsFor, type GameSituationsTab } from '../../utils/situations';
 
 /** The admin source tool's data (components/nba/game/NbaAdminSourceTools.astro); only an admin on the 'source-switch' path gets it. */
 export interface BasketballSourceTools {
@@ -24,7 +26,30 @@ export interface BasketballSourceTools {
     espn: NbaGame | null
 }
 
-export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { pregame: true; espnGame: ESPNPlayByPlayResponse } | { game: NbaGame; sourceTools?: BasketballSourceTools };
+export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { pregame: true; espnGame: ESPNPlayByPlayResponse } | {
+    game: NbaGame;
+    sourceTools?: BasketballSourceTools;
+    /** BB-G25, only with 'bball-situational' on and a final: the Situations panel; `reads` null when a read failed */
+    situations?: GameSituationsTab;
+};
+
+/**
+ * The game page's Situations panel (BB-G25 review, Q27), for a final only (the producer's per-game rows are built from
+ * finals). Off, or not final: undefined, and nothing is read. A failed read keeps the page and is never cached.
+ */
+async function withSituations<T extends { game: NbaGame }>(Astro: AstroGlobal, league: BasketballLeague, prep: T): Promise<T & { situations?: GameSituationsTab }> {
+    const { game } = prep;
+    if (!isFeatureEnabled('bball-situational', Astro.locals) || !game.status.completed || game.season == null) return prep;
+    const options = situationsFor(league, game.season);
+    const situation = parseSituation(Astro.url.searchParams.get('situation'), options);
+    try {
+        return { ...prep, situations: { situation, options, reads: await retrieveGameSituational(league, game.season, game.id, game.home.team.id, game.away.team.id) } };
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} game ${game.id} situational splits: ${e}, ${e?.stack}`);
+        uncacheable(Astro);
+        return { ...prep, situations: { situation, options, reads: null } };
+    }
+}
 
 /**
  * The registry and, for a non-ESPN selection, the ESPN side of the compare -- the ordinary no-`source` processor request,
@@ -101,7 +126,7 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
                 try {
                     const game = fromDataApi(rows, league); // before setCache: an adapter throw falls through like a gate failure
                     setCache(Astro, finalCache(league));
-                    return sourceSwitch ? { game, sourceTools: await sourceTools(id, league, 0, undefined) } : { game };
+                    return withSituations(Astro, league, sourceSwitch ? { game, sourceTools: await sourceTools(id, league, 0, undefined) } : { game });
                 } catch (e: any) { bad = `adapter: ${e?.message ?? e}`; }
             }
             fellThrough = true;
@@ -151,7 +176,7 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
         // a sanity-gate fall-through must not be pinned, nor a live payload the processor cached
         // moments before ESPN called the game final (it would read "LIVE" for the final's day)
         if (fellThrough || (espnCompleted && !game.status.completed)) uncacheable(Astro); else cache();
-        return tools ? { game, sourceTools: tools } : { game };
+        return withSituations(Astro, league, tools ? { game, sourceTools: tools } : { game });
     } catch (e: any) {
         // a 404 is "no plays yet" only before the game ends; on a final it is a broken payload
         if (e instanceof ProcessorError && e.status === 404 && !espnCompleted) { cache(); return { pregame: true, espnGame }; }

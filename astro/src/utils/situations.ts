@@ -6,7 +6,7 @@
 import { regulationFor } from '../basketball/config';
 import { fmtDec, fmtInt } from '../nba/format';
 import { generateMarginalString } from './misc';
-import type { PlayerSituationalRow, SituationalReads, SituationalRow } from '../resources/situational';
+import type { GameSituationalReads, PlayerSituationalRow, SituationalReads, SituationalRow } from '../resources/situational';
 import type { BasketballLeague } from './league';
 import type { UnitLabel } from './lineups';
 
@@ -98,6 +98,13 @@ export interface PlayerSituationsTab {
     situation: Situation;
     options: Situation[];
     rows: PlayerSituationalRow[] | null;
+}
+
+/** The game page's Situations panel (BB-G25 review, Q27): the control and both teams' rows in the game; `reads` null when a read failed. */
+export interface GameSituationsTab {
+    situation: Situation;
+    options: Situation[];
+    reads: GameSituationalReads | null;
 }
 
 /** The team table's rows (and the player page's): the situation's, then All for reference (the one row when the situation is All). */
