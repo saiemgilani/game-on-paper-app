@@ -17,6 +17,7 @@ import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
 import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/playerImpact';
+import { hasCurrentImpact, retrieveCurrentImpact, type CurrentImpactRow } from '../../resources/currentImpact';
 import { hasEpv, retrievePlayerEpv, retrievePlayerWar, type EpvPlayerSeasonRow, type PlayerWarRow } from '../../resources/playerWar';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { isFeatureEnabled } from '../../utils/features';
@@ -55,6 +56,9 @@ export interface BasketballPlayerParams {
     war?: PlayerWarRow[] | null;
     /** BB-G27, only with 'bball-war' on and a season from 2021-22: his epv_player_seasons row; null when the read failed */
     epv?: EpvPlayerSeasonRow[] | null;
+    /** BB-G56, only with 'bball-current-impact' on and an NBA season from 2006-07: his player_impact rows (the season
+     *  rating) and his latest current_impact row; each null when its read failed */
+    currentImpact?: { seasonRows: PlayerImpactRow[] | null; current: CurrentImpactRow[] | null };
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -136,6 +140,10 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const withWar = isFeatureEnabled('bball-war', Astro.locals);
     const warP = withWar ? readDecorative('WAR', league, season, personId, retrievePlayerWar) : undefined;
     const epvP = withWar && hasEpv(league, season) ? readDecorative('EPV', league, season, personId, retrievePlayerEpv) : undefined;
+    // BB-G56: the season rating rides on BB-G6's player_impact read (shared when that flag is on too); current_impact is one row
+    const withCurrent = isFeatureEnabled('bball-current-impact', Astro.locals) && hasCurrentImpact(league, season);
+    const seasonImpactP = withCurrent ? impactP ?? readPlayerImpact(league, season, personId) : undefined;
+    const currentP = withCurrent ? readDecorative('current impact', league, season, personId, retrieveCurrentImpact) : undefined;
     // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
     const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
     if (poe.poe === null) degraded = true;
@@ -144,6 +152,8 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const war = warP ? { war: await warP } : {};
     const epv = epvP ? { epv: await epvP } : {};
     if (war.war === null || epv.epv === null) degraded = true;
+    const currentImpact = seasonImpactP && currentP ? { currentImpact: { seasonRows: await seasonImpactP, current: await currentP } } : {};
+    if (currentImpact.currentImpact && (currentImpact.currentImpact.seasonRows === null || currentImpact.currentImpact.current === null)) degraded = true;
 
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
@@ -170,6 +180,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         ...impact,
         ...war,
         ...epv,
+        ...currentImpact,
     };
 }
 
