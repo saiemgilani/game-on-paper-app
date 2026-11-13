@@ -831,7 +831,7 @@ possessions, oracle, names}`:
   rows as they are; bigballR's `is_garbage_time` is already in them. `teams` is the ESPN home and away ids.
 - **`oracle`**: `situational_team`, `situational_player` and `situational_lineup` (`_common/situational_splits.py`) on
   `nba_situation_rows(...)` / `ncaa_situation_rows(...)` for the game, the `all` and `garbage` families only
-  (`top_n=1` and empty ratings: the `opponent` family is not kept).
+  (`top_n=1` and empty ratings: the `opponent` family is not kept). The `team` rows carry the same values as the Data API's `situational_team_games` rows for 0022300718 and contest 6387150 (checked 2026-11-13), so the tests use them as the per-game splits the four factors read.
 - **`names`**: for the 2023-24 game only (no BB-G1 capture covers it), `load_nba_stats_player_boxscores(2023)`'s
   `person_id, first_name, family_name, name_i`.
 
