@@ -7,10 +7,11 @@
  * possession is mapped the way sdv-py maps it for its situational splits (BB-D21, `_common/situational_splits.py`, through
  * `nba_possession_rate_rows` / `ncaa_possession_rate_rows`), so a split here is that module's `not_garbage_time` row for
  * the one game: every possession seen from both sides, credited to the ten players on the floor as it starts, counts
- * summed and divided once.
+ * summed and divided once. The four factors' Possessions, ORtg and DRtg are read as published from `situational_team_games`
+ * (the same module's per-game rows); the shooting factors and pace stay on the log until the producer publishes them.
  */
 import { TOP_UNITS, type ImpactBoxReads, type LineupRow } from '../resources/impactBox';
-import type { GarbageReads } from '../resources/garbageTime';
+import type { GameSplitRow, GarbageReads } from '../resources/garbageTime';
 import { PRO_LEAGUES, type BasketballLeague } from './league';
 
 /** One possession of the log, mapped. */
@@ -167,8 +168,12 @@ export function garbageStart(possessions: readonly SplitPossession[]): { period:
 /** "5:07" from seconds left in the period. */
 export const clockText = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.floor(Math.max(0, s) % 60)).padStart(2, '0')}`;
 
-/** The four factors and the team box from one team's split: the game page's formulas (sdv-py `team_game_rates`) on the log's counts. */
-export function splitRates(t: TeamSplit | undefined, regulationMinutes: number) {
+/**
+ * The four factors from one team's split: the shooting factors and pace by the game page's formulas (sdv-py
+ * `team_game_rates`) on the log's counts; Possessions, ORtg and DRtg the producer's `situational_team_games` row as
+ * published (null with no row).
+ */
+export function splitRates(t: TeamSplit | undefined, regulationMinutes: number, row?: GameSplitRow) {
     if (!t) return null;
     const c = t.counts;
     const ratio = (a: number, b: number) => (b > 0 ? a / b : null);
@@ -177,9 +182,9 @@ export function splitRates(t: TeamSplit | undefined, regulationMinutes: number) 
         tov_pct: c ? ratio(c.tov, c.fga + 0.44 * c.fta + c.tov) : null,
         orb_pct: c ? ratio(c.oreb, c.oreb + t.opp_dreb!) : null,
         ft_rate: c ? ratio(c.fta, c.fga) : null,
-        possessions: t.poss,
-        off_rtg: t.off_rtg,
-        def_rtg: t.def_rtg,
+        possessions: row?.poss ?? null,
+        off_rtg: row?.off_rtg ?? null,
+        def_rtg: row?.def_rtg ?? null,
         // every possession is seen from both sides, so the team's seconds are the split's game clock
         pace: t.seconds > 0 ? (regulationMinutes * (t.poss + t.opp_poss)) / 2 / (t.seconds / 60) : null,
     };
@@ -192,6 +197,8 @@ const splitBox = (t: TeamSplit | undefined): SplitBox | null => (t?.counts ? { p
 
 type Side = 'home' | 'away';
 type Pair<T> = Record<Side, { all: T; out: T }>;
+/** situational_team_games' (family, split) for each column: the whole game, and garbage time out */
+const SPLIT_KEYS = { all: ['all', 'all'], out: ['garbage', 'not_garbage_time'] } as const;
 export interface GarbageView {
     out: boolean;
     /** the log could not be read for a `?garbage=out` render: the page says so and shows the whole game */
@@ -223,8 +230,9 @@ export function garbageView(reads: GarbageReads | null, impact: ImpactBoxReads |
     if (!out) return view;
     const all = splitTotals(log, () => true), kept = splitTotals(log, isOut);
     const team = (s: Split, side: Side) => s.teams.find((t) => t.team_id === reads.teams![side]);
-    const pair = <T>(f: (s: Split, side: Side) => T): Pair<T> => ({ home: { all: f(all, 'home'), out: f(kept, 'home') }, away: { all: f(all, 'away'), out: f(kept, 'away') } });
-    view.rates = pair((s, side) => splitRates(team(s, side), view.regulationMinutes));
+    const pair = <T>(f: (s: Split, side: Side, k: 'all' | 'out') => T): Pair<T> => ({ home: { all: f(all, 'home', 'all'), out: f(kept, 'home', 'out') }, away: { all: f(all, 'away', 'all'), out: f(kept, 'away', 'out') } });
+    const published = (side: Side, k: 'all' | 'out') => reads.splits.find((r) => String(r.team_id) === String(reads.teams![side]) && r.family === SPLIT_KEYS[k][0] && r.split === SPLIT_KEYS[k][1]);
+    view.rates = pair((s, side, k) => splitRates(team(s, side), view.regulationMinutes, published(side, k)));
     view.box = PRO_LEAGUES.includes(league) ? pair((s, side) => splitBox(team(s, side))) : null;
     const units = (side: Side): LineupRow[] => kept.lineups.filter((u) => u.team_id === reads.teams![side])
         .sort((a, b) => b.seconds - a.seconds || ascending(a.lineup_id, b.lineup_id)).slice(0, TOP_UNITS)
