@@ -1,0 +1,73 @@
+---
+// src/components/nba/PlayerValue.astro
+// BB-G27, behind 'bball-war': the player page's Value block, inside the Impact section (`nested`, its default slot) or,
+// with 'bball-impact' off, a section of its own. WAR (always with its 90% interval), VORP and the rating
+// behind them from sdv-db's player_war (BB-D26), with the producer's rank and percentile; from 2021-22 his season EPV
+// added from epv_player_seasons (sdv-db #223), with its rank and percentile. Points over expected stay on the shooting line (BB-G15).
+import type { EpvPlayerSeasonRow, PlayerWarRow } from '../../resources/playerWar';
+import { warPanel, type WarCell } from '../../utils/playerWar';
+import { signed1 } from '../../utils/shotQuality';
+import { fmtDec, fmtInt } from '../../nba/format';
+import { formatRank, generateColorRampValue, numberOrNull, ordinal } from '../../utils/misc';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+import { isNcaaDashboards } from '../../basketball/dashboards';
+
+interface Props { war: PlayerWarRow[] | null; epv?: EpvPlayerSeasonRow[] | null; season: number; name: string; nested?: boolean }
+const { war, epv, season, name, nested = false } = Astro.props;
+const Root = nested ? 'div' : 'section';
+const Head = nested ? 'h3' : 'h2';
+const league = basketball(Astro.locals.league).league;
+const college = isNcaaDashboards(league);
+const label = seasonLabelFor(league, season);
+const panel = war ? warPanel(war) : null;
+// his producer row as read: no summing here (Q39)
+const epRow = epv?.[0];
+const epOwn = numberOrNull(epRow?.epv_own);
+const ep = epRow && epOwn != null ? { row: epRow, cell: { value: epOwn, rank: numberOrNull(epRow.epv_own_rank), pct: numberOrNull(epRow.epv_own_pct) } } : null;
+const epvGames = college ? 'his games' : 'his regular-season games';
+const dash = '—';
+const dec1 = (v: number | null) => (v == null ? dash : fmtDec(v, 1));
+const shade = (c: WarCell) => generateColorRampValue(c.pct, 100);
+const tip = (c: WarCell) => (c.pct != null ? `${ordinal(Math.round(c.pct))} percentile` : undefined);
+const RATING_NOTE = college
+    ? 'Box plus-minus anchored to his team and centred: points per 100 possessions above a league-average player'
+    : 'The mean of his BPM, RAPM and BOBAN, each anchored to his team and centred: points per 100 possessions above a league-average player';
+const WAR_NOTE = 'Wins above replacement: his possessions at his rating over a replacement-level player’s, in wins. The range is a 90% interval from resampling each team’s games.';
+const VORP_NOTE = 'Value over replacement player on Basketball-Reference’s scale: a full season one point per 100 possessions above replacement is 1.';
+---
+<Root id="value" class:list={[nested ? 'mt-3' : 'mb-4']} {...(nested ? {} : { 'aria-label': 'Value' })}>
+  <Head class:list={[nested ? 'h6' : 'h5']}>Value</Head>
+  {war === null ? (<p class="text-muted" id="value-unavailable">WAR and VORP are temporarily unavailable.</p>) : !panel ? (<p class="text-muted" id="value-empty">No {label} WAR for {name} yet.</p>) : (<Fragment>
+  <p class="numeral small text-muted mb-2" id="value-sample">{fmtInt(panel.poss)} possessions &middot; {fmtInt(panel.min)} MIN{panel.teams != null && panel.teams > 1 && (<Fragment> &middot; {fmtInt(panel.teams)} teams</Fragment>)}</p>
+  <div class="table-responsive col-lg-6 px-0">
+    <table class="table table-sm align-middle mb-0" id="value-table">
+      <caption class="small text-muted">Regular season, against a replacement-level player.{panel.ranked && ' Rank among the league’s players.'}{panel.ranked && ' Shading by percentile.'}</caption>
+      <thead><tr><th scope="col"></th><th scope="col" class="text-end">Value</th><th scope="col">90% interval</th>{panel.ranked && (<th scope="col" class="text-end">Rank</th>)}</tr></thead>
+      <tbody>
+        <tr id="value-war">
+          <th scope="row" class="fw-normal"><abbr title={WAR_NOTE}>WAR</abbr></th>
+          <td class:list={['numeral', 'text-end', 'fw-bold', shade(panel.war)]} title={tip(panel.war)}>{dec1(panel.war.value)}</td>
+          <td class="numeral small text-muted" id="value-war-interval">{panel.war.lo != null && panel.war.hi != null ? `${fmtDec(panel.war.lo, 1)} to ${fmtDec(panel.war.hi, 1)}` : 'no interval yet'}</td>
+          {panel.ranked && (<td class="numeral text-end text-muted small">{panel.war.rank == null ? dash : formatRank(panel.war.rank)}</td>)}
+        </tr>
+        <tr id="value-vorp">
+          <th scope="row" class="fw-normal"><abbr title={VORP_NOTE}>VORP</abbr></th>
+          <td class:list={['numeral', 'text-end', shade(panel.vorp)]} title={tip(panel.vorp)}>{dec1(panel.vorp.value)}</td>
+          <td></td>
+          {panel.ranked && (<td class="numeral text-end text-muted small">{panel.vorp.rank == null ? dash : formatRank(panel.vorp.rank)}</td>)}
+        </tr>
+        <tr id="value-rating">
+          <th scope="row" class="fw-normal"><abbr title={RATING_NOTE}>Rating</abbr></th>
+          <td class="numeral text-end">{panel.rating == null ? dash : signed1(panel.rating)}</td>
+          <td class="small text-muted">per 100 possessions</td>
+          {panel.ranked && (<td></td>)}
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {panel.sources.length > 0 && (<p class="numeral small text-muted mb-0 mt-2" id="value-sources">The spread across sources (WAR is their mean): {panel.sources.map((s, i) => (<Fragment>{i > 0 && ' · '}{`${s.label} ${dec1(s.war)}`}</Fragment>))}</p>)}
+  </Fragment>)}
+  {epv !== undefined && (epv === null ? (<p class="small text-muted mb-0 mt-2" id="value-epv-unavailable">EPV is temporarily unavailable.</p>) : ep && (
+  <p class="numeral small mb-0 mt-2" id="value-epv"><abbr title={`Expected possession value added on his own events (shots, turnovers, rebounds, fouls, steals and blocks): the points plus the EPV after each play minus the EPV before it, over ${epvGames}`}>EPV added</abbr>: <span class:list={['fw-bold', 'px-1', shade(ep.cell)]} title={tip(ep.cell)} id="value-epv-own">{signed1(ep.cell.value)}</span>{ep.cell.rank != null && (<Fragment> (rank <span id="value-epv-rank">{formatRank(ep.cell.rank)}</span>{ep.cell.pct != null && `, ${ordinal(Math.round(ep.cell.pct))} percentile`})</Fragment>)} on {fmtInt(ep.row.own_actions)} plays in {fmtInt(ep.row.games)} games &middot; <abbr title={`The team's EPV added minus the opponent's while he was on the floor, over ${epvGames}`}>on-court EPV +/-</abbr> {signed1(ep.row.epv_on)}</p>
+  ))}
+</Root>

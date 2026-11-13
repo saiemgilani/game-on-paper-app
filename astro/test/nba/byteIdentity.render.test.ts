@@ -60,6 +60,11 @@ vi.mock('../../src/resources/shotQuality', () => {
 });
 // 'bball-impact' is off here too: an impact read throws and would put "unavailable" in the snapshot
 vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => { throw new Error('an impact read with bball-impact off'); } }));
+// 'bball-war' is off here too: a WAR or EPV read throws and would put "unavailable" in the snapshot
+vi.mock('../../src/resources/playerWar', async (orig) => {
+    const no = async () => { throw new Error('a WAR or EPV read with bball-war off'); };
+    return { ...(await orig<typeof import('../../src/resources/playerWar')>()), retrievePlayerWar: no, retrievePlayerEpv: no };
+});
 const games = { schedule: vi.fn(), rows: vi.fn(), proc: vi.fn() };
 vi.mock('../../src/resources/nbaGames', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaGames')>()),
@@ -94,8 +99,8 @@ beforeEach(() => { for (const m of [...Object.values(games), ...Object.values(es
 async function page(path: string, url: string, params: Record<string, string> = {}, flagOverrides?: Record<string, boolean>) {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/nba/${path}`);
     // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture', BB-G30's (NBA Cup, November and December only)
-    // behind 'bball-nba-cup' and BB-G5's team season block behind 'bball-team-season', and BB-G15's points over expected behind 'bball-poe', and BB-G6's Impact panel behind 'bball-impact': off here, so these pages stay byte for byte main's on any day
-    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-playoff-picture': false, 'bball-nba-cup': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false, ...flagOverrides } } as App.Locals }));
+    // behind 'bball-nba-cup' and BB-G5's team season block behind 'bball-team-season', and BB-G15's points over expected behind 'bball-poe', and BB-G6's Impact panel behind 'bball-impact', and BB-G27's Value panel behind 'bball-war': off here, so these pages stay byte for byte main's on any day
+    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-playoff-picture': false, 'bball-nba-cup': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false, 'bball-war': false, ...flagOverrides } } as App.Locals }));
 }
 const snap = (name: string) => `./__byte_identity__/${name}.html`;
 const finalPage = { gameId: 401766458, gamepackageJSON: { header: proc.header } };
