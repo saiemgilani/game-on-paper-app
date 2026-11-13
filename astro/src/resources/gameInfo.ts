@@ -1,7 +1,7 @@
 /**
  * The reads behind BB-G42's Game info (behind 'bball-game-info'). The crew: an ingested final's `{lg}.officials` rows (the
  * page never touches ESPN for one), else ESPN's summary. Profiles: the game season's official_seasons (BB-D34, sdv-db #214)
- * in the league's season schema, all of it (the league average needs every official). The pros' injury report: ESPN's
+ * in the league's season schema, all of it (the league average needs every official), and the previous season's while a crew member has fewer than PREV_SEASON_UNDER games in this one (Q33). The pros' injury report: ESPN's
  * summary before and during the game; for a final the last `{nba,wnba}.espn_injuries` snapshot filed by the game day (within
  * SNAPSHOT_DAYS), since a final's summary carries today's report, not the game day's. Snapshots skip days. College has no injury source. Strict: a failed read is never an empty crew.
  */

@@ -858,6 +858,8 @@ official_seasons, officials, espn_injuries}`:
   401856902, MBB 401823353, WBB 401812873 (the BB-G28 games).
 - **`official_seasons`**: the Data API's `{nba_stats,wnba_stats,mbb,wbb}/official_seasons` (BB-D34) for NBA 2025 (78
   officials) and WNBA, MBB and WBB 2026 (35, 813, 839), the columns `PROFILE_SELECT` names, `limit=5000`.
+  Added 2026-11-13 for Q33 (the previous season beside a thin one), captured live with the same query: NBA 2024, 2026
+  and 2027 (80, 81, 83 officials), WNBA 2025 (38), MBB 2025 (823) and WBB 2025 (0: its officials release starts in 2026).
 - **`officials`**: `nba/officials?season=2025&game_id=401766458` (names only) and `wnba/officials?season=2026&game_id=401856902`
   (with ESPN's `official_id`).
 - **`espn_injuries`**: `nba/espn_injuries?season=2027&as_of_date__gte=2026-11-06&as_of_date__lte=2026-11-09&order=-as_of_date`
