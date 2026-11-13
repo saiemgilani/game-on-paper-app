@@ -8,6 +8,9 @@ import type { NbaGame } from '../../../resources/nbaGame';
 import { epvSide, type EpvBoxReads } from '../../../resources/epvBox';
 import { fmtInt } from '../../../nba/format';
 import { cleanAbbreviation, cleanField } from '../../../utils/misc';
+import { playerHref, seasonQuery } from '../../../nba/links';
+import { LEAGUES } from '../../../utils/league';
+import { basketball } from '../../../basketball/config';
 
 interface Props { game: NbaGame; epv: EpvBoxReads | null }
 const { game, epv } = Astro.props;
@@ -18,6 +21,13 @@ const signed = (v: number | null | undefined, digits = 1) => { if (v == null) re
 const int = (v: number | null | undefined) => (v == null ? dash : fmtInt(v));
 const perPoss = (v: number | null | undefined) => (v == null ? dash : signed(v, 2));
 const built = epv && epv.players.length > 0;
+// Q31: the Impact box's links. A page for the game's season (one the player pages list: a league with shot dashboards from
+// shotFirstSeason on), ?season= left off for the current one; any other season, or a player with no page, links nothing
+const cfg = basketball(Astro.locals.league);
+const seasons = LEAGUES[cfg.league].seasons;
+const listed = game.season != null && seasons.includes(game.season) && game.season >= (cfg.shotFirstSeason ?? seasons[0]);
+const q = listed ? seasonQuery(game.season, seasons[seasons.length - 1]) : null;
+const href = (pageId: string | null) => (pageId && q !== null ? playerHref(Number(pageId), q, cfg.league) : null);
 const sides = built
     ? (['away', 'home'] as const).map((key) => ({ key, abbr: cleanAbbreviation(game[key].team), name: cleanField(game[key].team, 'displayName'), ...epvSide(epv, key) }))
     : [];
@@ -50,7 +60,7 @@ const sides = built
         <tbody>
           {s.players.map((p) => (
             <tr>
-              <th scope="row" class="fw-normal text-nowrap">{p.name}</th>
+              <th scope="row" class="fw-normal text-nowrap">{href(p.pageId) ? (<a href={href(p.pageId)!}>{p.name}</a>) : p.name}</th>
               <td class="text-end fw-bold">{signed(p.epv_own)}</td>
               <td class="text-end">{int(p.own_actions)}</td>
               <td class="text-end">{signed(p.off_epv_on)}</td>

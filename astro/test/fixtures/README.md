@@ -880,6 +880,11 @@ id and name rows are sportsdataverse-py `origin/main` loaders on the sportsdatav
   (`contest_id`, `player_id`, `clean_name`, `player`), what `ncaa_player_box?season=2025&espn_game_id=...` serves; `home`,
   `away` and `score` are `load_{mbb,wbb}_schedule(2025)`'s ESPN ids, names and scores.
 
+Added 2026-11-13 for Q31's player links, captured live with exactly the Impact box's queries (the `data` arrays, no
+edits), in all four `epv-box-*-2025` files: `pages` is `/v1/<nba_stats|wnba_stats|mbb|wbb>/shot_season_players?season=2025&select=person_id&limit=50000`
+(566, 179, 4852 and 4516 rows), and college's `pairs` is `{<espn team id>: ncaa_player_crosswalk?season=2025&espn_team_id=…&select=ncaa_player_id,espn_athlete_id&limit=80}`
+for each side (151 and 350; 59 and 2737). One player a college game has no crosswalk pair or page, so stays unlinked.
+
 **Used by:** `test/epvBox.test.ts`.
 
 **To regenerate:** rerun those calls in an sdv-py checkout (polars, no network beyond the GitHub release assets), filter to

@@ -37,6 +37,9 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         // the cap applies, so a lowered limit would drop rows and fail the tests below
         if (table === 'epv_player_games') return c.players.slice(0, Number(query.limit));
         if (table === 'epv_team_games') return c.teams.slice(0, Number(query.limit));
+        // Q31's links: the season's player pages, and college's per-side crosswalk pairs
+        if (table === 'shot_season_players') return c.pages ?? [];
+        if (table === 'ncaa_player_crosswalk') return c.pairs?.[query.espn_team_id] ?? [];
         throw new Error(`unexpected table ${table}`);
     },
 }));
@@ -56,6 +59,9 @@ import { fromDataApi } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
 
+/** Q31's link reads, the Impact box's (left out of the game-read checks below) */
+const LINKS = new Set(['shot_season_players', 'ncaa_player_crosswalk']);
+const gameCalls = () => api.calls.filter((c) => !LINKS.has(c.table));
 const reads = async (cap = CAP): Promise<EpvBoxReads> => { api.cap = cap; return retrieveEpvBox('nba', 2025, '401703372', 19, 30); };
 const read = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/nba/${name}.json`, import.meta.url)).toString());
 const gameApi = () => read('game_401766458_api'); // ATL 95 at ORL 120, the 2025 play-in: the route tests' final
@@ -91,7 +97,7 @@ describe('retrieveEpvBox', () => {
     test('the crosswalk first, then three reads in nba_stats, each season-filtered, by the stats game id, capped', async () => {
         const r = await reads();
         expect(api.calls[0]).toEqual({ schema: 'nba', table: 'schedule_crosswalk', query: { season: '2025', espn_game_id: '401703372', select: 'nba_game_id,nba_home_team_id,nba_away_team_id', limit: '1' } });
-        const rest = api.calls.slice(1);
+        const rest = gameCalls().slice(1);
         expect(rest.map((c) => c.table).sort()).toEqual(['epv_player_games', 'epv_team_games', 'player_box']);
         for (const c of rest) {
             expect(c.schema).toBe('nba_stats');
@@ -122,6 +128,48 @@ describe('retrieveEpvBox', () => {
             expect(hasEpv(l, 2026)).toBe(true);
             expect(hasEpv(l, 2021)).toBe(false);
         }
+    });
+});
+
+describe("Q31: player links, the Impact box's rule", () => {
+    const more = async (league: 'wnba' | 'mbb' | 'wbb') => { const c = MORE[league]; api.cap = c; return retrieveEpvBox(league, c.season, c.espnGameId, c.home, c.away); };
+    test("the link reads are the Impact box's queries, key for key (one cache entry each)", async () => {
+        await reads();
+        expect(api.calls.find((c) => c.table === 'shot_season_players')).toEqual({ schema: 'nba_stats', table: 'shot_season_players', query: { season: '2025', select: 'person_id', limit: '50000' } });
+        expect(api.calls.some((c) => c.table === 'ncaa_player_crosswalk')).toBe(false);
+        api.calls.length = 0;
+        await more('mbb');
+        expect(api.calls.filter((c) => c.table === 'ncaa_player_crosswalk').map((c) => c.query)).toEqual([151, 350].map((t) =>
+            ({ season: '2025', espn_team_id: String(t), select: 'ncaa_player_id,espn_athlete_id', limit: '80' })));
+    });
+    test('the pros link by the stats id; college by the ESPN athlete id; a player with no page has no link', async () => {
+        const all = (r: EpvBoxReads) => (['home', 'away'] as const).flatMap((side) => epvSide(r, side).players);
+        const nba = all(await reads());
+        expect(nba.every((p) => p.pageId === String(p.player_id))).toBe(true);
+        expect(all(await more('wnba')).every((p) => p.pageId === String(p.player_id))).toBe(true);
+        for (const l of ['mbb', 'wbb'] as const) {
+            const ps = all(await more(l));
+            const linked = ps.filter((p) => p.pageId);
+            // the real captures: every college player but one has a crosswalk pair and a page that season
+            expect(linked.length, l).toBe(ps.length - 1);
+            expect(linked.every((p) => p.pageId !== String(p.player_id))).toBe(true);
+        }
+        const r = await reads();
+        expect(all({ ...r, pages: new Set() }).every((p) => p.pageId === null)).toBe(true);
+    });
+    test('the box links each named player to his page and leaves the rest as text', async () => {
+        const html = await render(await reads());
+        const wagner = epvSide(await reads(), 'home').players.find((p) => p.name === 'Franz Wagner')!;
+        expect(table(html, 'ORL EPV')).toContain(`/players/${wagner.player_id}`);
+        expect(table(html, 'ORL EPV')).toMatch(/<a href="[^"]+">Franz Wagner<\/a>/);
+        const c = await more('wbb');
+        const page = await render(c, 'wbb', 'GT', 'WIN');
+        const rows = (['GT EPV', 'WIN EPV'] as const).map((t) => table(page, t)).join('');
+        expect((rows.match(/<a href="[^"]*\/players\//g) ?? []).length).toBe(MORE.wbb.players.length - 1);
+        expect(await render({ ...(await reads()), pages: new Set() })).not.toContain('/players/');
+    });
+    test('a failed link read rejects like the rest (strict)', async () => {
+        await expect(reads({ ...CAP, get pages() { throw new Error('down'); } })).rejects.toThrow('down');
     });
 });
 
@@ -163,7 +211,7 @@ describe('BB-G46: the WNBA and college', () => {
     test('the WNBA: the crosswalk, then wnba_stats by the stats game id and the season\'s names from the player crosswalk', async () => {
         const r = await more('wnba');
         expect(api.calls[0]).toEqual({ schema: 'wnba', table: 'schedule_crosswalk', query: { season: '2025', espn_game_id: '401736116', select: 'wnba_game_id,wnba_home_team_id,wnba_away_team_id', limit: '1' } });
-        const by = Object.fromEntries(api.calls.slice(1).map((c) => [c.table, c]));
+        const by = Object.fromEntries(gameCalls().slice(1).map((c) => [c.table, c]));
         expect(Object.keys(by).sort()).toEqual(['epv_player_games', 'epv_team_games', 'player_crosswalk']);
         for (const t of ['epv_player_games', 'epv_team_games']) expect(by[t]).toMatchObject({ schema: 'wnba_stats', query: { season: '2025', game_id: '1022500005' } });
         // one read per season, not per game: no game filter, capped
@@ -177,8 +225,8 @@ describe('BB-G46: the WNBA and college', () => {
             const c = MORE[l];
             const r = await more(l);
             expect(api.calls[0]).toEqual({ schema: l, table: 'ncaa_player_box', query: { season: '2025', espn_game_id: c.espnGameId, select: 'contest_id,player_id,clean_name,player', limit: '80' } });
-            for (const x of api.calls.slice(1)) expect(x).toMatchObject({ schema: l, query: { season: '2025', game_id: c.box[0].contest_id } });
-            expect(api.calls.slice(1).map((x) => x.table).sort()).toEqual(['epv_player_games', 'epv_team_games']);
+            for (const x of gameCalls().slice(1)) expect(x).toMatchObject({ schema: l, query: { season: '2025', game_id: c.box[0].contest_id } });
+            expect(gameCalls().slice(1).map((x) => x.table).sort()).toEqual(['epv_player_games', 'epv_team_games']);
             expect(r.teams).toEqual({ home: c.home, away: c.away });
         }
     });
