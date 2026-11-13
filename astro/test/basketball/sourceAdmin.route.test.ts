@@ -21,6 +21,8 @@ afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 vi.mock('../../src/resources/impactBox', async (orig) => ({ ...(await orig<typeof import('../../src/resources/impactBox')>()), retrieveImpactBox: async () => (await orig<typeof import('../../src/resources/impactBox')>()).EMPTY_IMPACT }));
 // BB-G28's Game flow likewise ('bball-game-flow', preview): no rows, never a read
 vi.mock('../../src/resources/gameFlow', async (orig) => ({ ...(await orig<typeof import('../../src/resources/gameFlow')>()), retrieveGameFlow: async () => (await orig<typeof import('../../src/resources/gameFlow')>()).EMPTY_FLOW }));
+// BB-G26's EPV box likewise ('bball-epv', preview): no rows, never a read
+vi.mock('../../src/resources/epvBox', async (orig) => ({ ...(await orig<typeof import('../../src/resources/epvBox')>()), retrieveEpvBox: async () => (await orig<typeof import('../../src/resources/epvBox')>()).EMPTY_EPV }));
 
 const api = () => JSON.parse(readFileSync(new URL('../fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
 const ID = '401766458';

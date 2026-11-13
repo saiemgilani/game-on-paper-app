@@ -84,6 +84,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // stops, kills, game control). The season board is the leaderboards' Teams board (BB-G8). Off: no read and the game
     // page is today's.
     'bball-game-flow': 'preview',
+    // BB-G26's EPV box: on /nba/game/[id] for a final from 2021-22 on, each side's EPV added with the ball and allowed and
+    // each player's EPV added on their own events and on-court EPV +/- (sdv-db's epv_player_games / epv_team_games, BB-D24).
+    // NBA only (no WNBA or college tables yet). Off: no read and the game page is today's, byte for byte.
+    'bball-epv': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
