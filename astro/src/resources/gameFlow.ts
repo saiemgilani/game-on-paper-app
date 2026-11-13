@@ -1,7 +1,7 @@
 /**
- * The Data API reads behind BB-G28 (behind 'bball-game-flow'): sdv-db's game_flow (one row per team and game, every
- * season type for the pros) and team_season_flow (one row per team and season, with `_rank` / `_pct` / `_n`), BB-D27,
- * sdv-db #197, in the league's season schema. As the Impact box (resources/impactBox.ts): the pro tables are keyed by
+ * The Data API read behind BB-G28 (behind 'bball-game-flow'): sdv-db's game_flow (one row per team and game, every
+ * season type for the pros), BB-D27, sdv-db #197, in the league's season schema. The season board (team_season_flow) is
+ * the leaderboards' Teams board's Game flow group (BB-G8). As the Impact box (resources/impactBox.ts): the pro tables are keyed by
  * stats.nba.com / stats.wnba.com ids, so an ESPN game is mapped through schedule_crosswalk; the college tables by the
  * stats.ncaa.org contest id with ESPN team ids, so ncaa_player_box (by the ESPN game id) gives the contest. Every
  * number is the producer's (sdv-py `_common.game_flow`); the page reads and formats. Reads are strict: an outage is
@@ -14,8 +14,6 @@ import { PRO_LEAGUES, leagueSource, type BasketballLeague } from '../utils/leagu
 
 /** The tables are rebuilt once a day (the 16:00 UTC season products): the season pages' window. */
 const TTL = 6 * 60 * 60;
-/** A pro season is 30 (NBA) or 15 (WNBA) teams; the cap keeps a bad filter from paging silently. */
-const TEAM_LIMIT = '40';
 
 /** One team's flow in one game (sdv-py nba_game_flow's columns). */
 export interface GameFlowRow {
@@ -80,18 +78,4 @@ export async function retrieveGameFlow(league: BasketballLeague, season: number,
     // a non-D1 opponent has no ESPN-keyed row: that side stays null
     const of = (id: number) => rows.find((r) => Number(r.team_id) === id) ?? null;
     return { gameId, home: of(teams.home), away: of(teams.away) };
-}
-
-/** The season flow metrics the board shows, each with the producer's `_rank` and `_pct`. */
-export const SEASON_FLOW_METRICS = ['avg_margin', 'avg_wp', 'lead_pct', 'runs_10_pg', 'opp_runs_10_pg', 'avg_longest_drought_sec', 'stop_pct', 'kills_pg', 'double_kills_pg', 'kills_per_100'] as const;
-export type SeasonFlowMetric = (typeof SEASON_FLOW_METRICS)[number];
-
-/** One team's season flow (sdv-py nba_team_season_flow): the values the board shows, with their ranks and percentiles. */
-export type TeamSeasonFlowRow = { season: number; team_id: number; games: number; wins: number; lead_changes_pg: number | null; max_run: number | null; largest_comeback: number | null }
-    & { [K in SeasonFlowMetric | `${SeasonFlowMetric}_rank` | `${SeasonFlowMetric}_pct`]: number | null }
-    & { [K in `${SeasonFlowMetric}_n`]: number | null };
-
-/** A pro season's team rows, strict (the season-filtered table is one row per team). */
-export async function retrieveTeamSeasonFlow(league: 'nba' | 'wnba', season: number): Promise<TeamSeasonFlowRow[]> {
-    return retrieveRowsFrom<TeamSeasonFlowRow>(leagueSource(league), 'team_season_flow', { season: String(season), limit: TEAM_LIMIT }, TTL, true, NBA_READ_TIMEOUT_MS);
 }

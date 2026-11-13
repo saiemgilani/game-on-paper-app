@@ -39,6 +39,8 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         }
         if (table === 'game_units') return api.inGame.units;
         if (table === 'game_on_off') return api.inGame.onoff;
+        // BB-G1's player-page reads (links only): none needed here
+        if (table === 'shot_season_players' || table === 'ncaa_player_crosswalk') return [];
         throw new Error(`unexpected table ${table}`);
     },
 }));
@@ -52,7 +54,7 @@ vi.mock('../src/resources/nbaGames', async (orig) => ({ ...(await orig<typeof im
 vi.mock('../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../src/resources/espn')>()), retrieveGamePageGuarded: (...a: unknown[]) => espn(...a) }));
 
 import NbaImpactBox from '../src/components/nba/game/NbaImpactBox.astro';
-import { retrieveImpactBox, retrieveInGameLineups, UNIT_LIMIT, type ImpactBoxReads, type InGameReads } from '../src/resources/impactBox';
+import { retrieveImpactBox, retrieveInGameLineups, GAME_UNIT_LIMIT, type ImpactBoxReads, type InGameReads } from '../src/resources/impactBox';
 import { fromDataApi } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
@@ -162,7 +164,7 @@ describe('the reads', () => {
         expect(api.calls.every((c) => Number(c.query.limit) > 0 && c.query.select)).toBe(true);
     });
     test('a units read at its cap is a failure, never a short table', async () => {
-        api.inGame = { units: Array.from({ length: UNIT_LIMIT }, () => LEAGUES.nba.inGame.units[0]), onoff: [] };
+        api.inGame = { units: Array.from({ length: GAME_UNIT_LIMIT }, () => LEAGUES.nba.inGame.units[0]), onoff: [] };
         await expect(retrieveInGameLineups('nba', 2027, '0022600001')).rejects.toThrow(/cap/);
     });
     test('with the impact box: one round more, the college reads by the contest id; without the flag no units read', async () => {
