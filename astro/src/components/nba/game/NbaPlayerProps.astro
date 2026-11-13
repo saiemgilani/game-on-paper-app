@@ -51,5 +51,6 @@ const pct = (line: number, actual: number) => Math.max(0, Math.min(100, Math.rou
     </div>
   ))}
 </div>
+{view.voided.length > 0 && (<p class="text-muted small mb-0" id="props-void">{`${view.voided.length} ${view.voided.length === 1 ? "player's lines" : "players' lines"} void: did not play (${view.voided.join(', ')}).`}</p>)}
 </Fragment>
 )}

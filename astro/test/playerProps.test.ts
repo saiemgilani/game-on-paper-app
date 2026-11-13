@@ -85,6 +85,17 @@ describe('propsView on real lines and the same games\' box scores', () => {
             expect(pts).toEqual([...pts].sort((a, b) => b - a));
         }
     });
+    test("Q34: the void players are named once each, the ones whose lines were left out", () => {
+        const game = nbaGame(), v = propsView(NBA, game)!;
+        const inBox = (id: number | null) => [...game.home.players, ...game.away.players].some((p) => p.athlete_id === id && !p.did_not_play);
+        const onSide = (r: (typeof NBA)[number]) => [game.home, game.away].some((s) => Number(s.team.id) === Number(r.team_id) || s.players.some((p) => p.athlete_id === r.athlete_id));
+        const want = [...new Set(NBA.filter((r) => r.athlete_id != null && onSide(r) && !inBox(r.athlete_id)).map((r) => r.athlete_id))];
+        expect(want.length).toBeGreaterThan(0);
+        expect(v.voided).toHaveLength(want.length);
+        expect(new Set(v.voided).size).toBe(v.voided.length);
+        // live, nothing is void yet: a player may still check in
+        expect(propsView(NBA, live(nbaGame()))!.voided).toEqual([]);
+    });
     test('MBB: points, rebounds and assists only', () => {
         const v = propsView(MBB, mbbGame())!;
         expect(v.stats).toEqual(['points', 'rebounds', 'assists']);
@@ -189,6 +200,15 @@ describe('NbaGamePage', () => {
         expect(html).toMatch(/title="Under">U</);
         expect(html).not.toContain('NaN');
         expect(html).not.toContain('progressbar');
+    });
+    test('Q34: a final names its void lines under the tables; live has no such line', async () => {
+        const v = propsView(NBA, nbaGame())!;
+        const html = await page(nbaGame(), 'nba', NBA);
+        const line = html.split('id="props-void"')[1].split('</p>')[0];
+        expect(line).toContain(`${v.voided.length} ${v.voided.length === 1 ? 'player&#39;s lines' : 'players&#39; lines'} void: did not play (`);
+        for (const n of v.voided) expect(line).toContain(n);
+        expect(html.indexOf('id="props-home"')).toBeLessThan(html.indexOf('id="props-void"'));
+        expect(await page(live(nbaGame()), 'nba', NBA)).not.toContain('id="props-void"');
     });
     test('live: progress bars, no U marks', async () => {
         const html = await page(live(nbaGame()), 'nba', NBA);

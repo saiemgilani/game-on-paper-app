@@ -27,7 +27,11 @@ export interface PropCell {
     result: PropResult | null
 }
 export interface PropPlayer { athleteId: number; name: string; cells: Partial<Record<PropStat, PropCell>> }
-export interface PropsView { final: boolean; stats: PropStat[]; away: PropPlayer[]; home: PropPlayer[] }
+export interface PropsView {
+    final: boolean; stats: PropStat[]; away: PropPlayer[]; home: PropPlayer[]
+    /** Q34: a final's players whose lines are void (they never checked in), named once each; empty live */
+    voided: string[]
+}
 
 const num = (v: unknown): number | null => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
 
@@ -61,13 +65,14 @@ export function propsView(rows: PropRow[], game: NbaGame): PropsView | null {
     };
     const players = { home: new Map<number, PropPlayer>(), away: new Map<number, PropPlayer>() };
     const seen = new Set<PropStat>();
+    const voided = new Map<number, string>();
     for (const r of rows) {
         const id = num(r.athlete_id), line = num(r.line), s = sideOf(r);
         const def = PROP_STATS.find((d) => d.stat === r.stat);
         if (id == null || line == null || !s || !def) continue;
         const box = game[s].players.find((p) => p.athlete_id === id);
         // a final's line for a player who never checked in (out, or a DNP row) is void at the books: left out
-        if (final && (!box || box.did_not_play)) continue;
+        if (final && (!box || box.did_not_play)) { voided.set(id, box?.name ?? r.player_name); continue; }
         const player = players[s].get(id) ?? { athleteId: id, name: box?.name ?? r.player_name, cells: {} };
         const actual = box ? actualStat(box, def.stat) : null;
         player.cells[def.stat] = { line, overProb: num(r.over_prob), actual, result: propResult(actual, line, final) };
@@ -80,5 +85,5 @@ export function propsView(rows: PropRow[], game: NbaGame): PropsView | null {
         for (const { stat } of PROP_STATS) { const d = (b.cells[stat]?.line ?? -1) - (a.cells[stat]?.line ?? -1); if (d) return d; }
         return a.name.localeCompare(b.name);
     });
-    return { final, stats: PROP_STATS.map((d) => d.stat).filter((s) => seen.has(s)), away: order(players.away), home: order(players.home) };
+    return { final, stats: PROP_STATS.map((d) => d.stat).filter((s) => seen.has(s)), away: order(players.away), home: order(players.home), voided: [...voided.values()] };
 }
