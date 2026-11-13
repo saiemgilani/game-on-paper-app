@@ -777,3 +777,25 @@ and `nba_cup_overtime_2027.parquet`), which sdv-db pins equal to the live call. 
 **Used by:** `test/nbaCup.test.ts`.
 
 **To regenerate:** rerun both producers on sdv-db main's fixtures, write the rows as JSON (dates as ISO strings) and gzip.
+
+## `impact-box-{nba-2027,wnba-2026,mbb-2026,wbb-2026,wbb-2026-nond1}.json.gz`, `impact-box-mbb-2026-xwalk.json.gz`
+The Data API reads behind the game page's Impact box (BB-G1, `resources/impactBox.ts`), captured live on 2026-11-05 with
+exactly that module's queries, as `{league, season, espnGameId, schedule, crosswalk | box, names?, players, home, away}`
+(the `data` array of each response, no edits). The pros: `/v1/<nba|wnba>/schedule_crosswalk?season=…&espn_game_id=…&limit=1`,
+then `/v1/<nba_stats|wnba_stats>/player_box`, `game_player_impact` (`game_id=<stats id>`, `limit=80`) and `game_lineups_used`
+once per side (`team_id=<stats id>&order=-seconds&limit=5`). College: `/v1/<mbb|wbb>/ncaa_player_box?season=…&espn_game_id=…`
+(`limit=80`), then the same two tables by the contest id (ESPN team ids). `schedule` is the games schema's row
+(`schedule?season=…&id=…&limit=1`), the final-score oracle for the +/- check. Games: BOS 113 at DET 121, 2026-10-20 (ESPN
+401909088); CON 75 at NY 106, 2026-05-08 (401856890); Southern Miss 79 at Buffalo 85, 2025-11-03 (401823425); GW 50 at
+Temple 86 (401824983); UDC 47 at GW 86 (401824982), whose non-D1 side has no stats.ncaa.org ids and no impact rows.
+
+The player links (`impact-box-mbb-2026-xwalk`, captured live on 2026-11-10 once `ncaa_player_crosswalk` (BB-D37) was served): `{2084, 2572}` =
+`/v1/mbb/ncaa_player_crosswalk?season=2026&espn_team_id=<2084|2572>&select=ncaa_player_id,espn_athlete_id&limit=40` (Buffalo 14 rows,
+Southern Miss 18), the `data` array of each, no edits; every one of the game's 24 impact players has a pair. The module reads
+the same with `limit=80`. The wbb captures carry no crosswalk rows, so their names stay unlinked in the tests.
+
+Every unit and the player pages (`impact-box-units-pages`, captured live on 2026-11-12 with the module's queries) = `{units, pages}`. `units[<capture>]` = `{home, away}`, each side's `/v1/<schema>/game_lineups_used?season=…&game_id=…&team_id=…&order=-seconds&limit=100` (`UNIT_LIMIT`; 14 to 24 units a side, the first five equal to the captures' top five; the non-D1 side none). `pages[<schema>-<season>]` = `/v1/<schema>/shot_season_players?season=…&select=person_id&limit=50000`, the season's shooters, whose ids are the player pages (nba_stats 2027: 452 rows, wnba_stats 2026: 260, mbb 2026: 4,861, wbb 2026: 4,501). The `data` array of each, no edits; every captured impact player with a page id is in his season's list, so the no-page case is tested by removing one id.
+
+**Used by:** `test/impactBox.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
