@@ -153,11 +153,11 @@ describe('retrievePlayerSituational (the player page)', () => {
 
 describe('the control', () => {
     const keys = (o: Situation[]) => o.map((s) => s.key);
-    test('the NBA: All, Clutch, four quarters and overtime, Leading, Tied, Trailing, Home, Away, Transition, Half court, Garbage time out, vs top 10', () => {
+    test('the NBA: All, Clutch, four quarters and overtime, Leading, Tied, Trailing, Home, Away, Transition, Half court, Second chance, Garbage time out, vs top 10', () => {
         const o = situationsFor('nba', 2024);
-        expect(keys(o)).toEqual(['all', 'clutch', 'p1', 'p2', 'p3', 'p4', 'ot', 'leading', 'tied', 'trailing', 'home', 'away', 'transition', 'half_court', 'not_garbage_time', 'vs_top']);
-        expect(o.map((s) => s.label)).toEqual(['All', 'Clutch', '1st quarter', '2nd quarter', '3rd quarter', '4th quarter', 'Overtime', 'Leading', 'Tied', 'Trailing', 'Home', 'Away', 'Transition', 'Half court', 'Garbage time out', 'vs top 10']);
-        expect(o.filter((s) => ['tied', 'home', 'away', 'transition', 'half_court'].includes(s.key)).map((s) => `${s.family}/${s.split}`)).toEqual(['score/tied', 'venue/home', 'venue/away', 'play_type/transition', 'play_type/half_court']);
+        expect(keys(o)).toEqual(['all', 'clutch', 'p1', 'p2', 'p3', 'p4', 'ot', 'leading', 'tied', 'trailing', 'home', 'away', 'transition', 'half_court', 'second_chance', 'not_garbage_time', 'vs_top']);
+        expect(o.map((s) => s.label)).toEqual(['All', 'Clutch', '1st quarter', '2nd quarter', '3rd quarter', '4th quarter', 'Overtime', 'Leading', 'Tied', 'Trailing', 'Home', 'Away', 'Transition', 'Half court', 'Second chance', 'Garbage time out', 'vs top 10']);
+        expect(o.filter((s) => ['tied', 'home', 'away', 'transition', 'half_court', 'second_chance'].includes(s.key)).map((s) => `${s.family}/${s.split}`)).toEqual(['score/tied', 'venue/home', 'venue/away', 'play_type/transition', 'play_type/half_court', 'chance/second_chance']);
         expect(o.find((s) => s.key === 'ot')!.note).toBe('Possessions that start in overtime.');
         // every option is a (family, split) the producer writes
         for (const s of o) expect(NBA.team.some((r) => r.family === s.family && r.split === s.split)).toBe(true);
@@ -172,10 +172,15 @@ describe('the control', () => {
         expect(keys(situationsFor('wnba', 2006)).filter((k) => /^p\d$/.test(k))).toEqual(['p1', 'p2', 'p3', 'p4']);
         expect(situationsFor('wnba', 2026).at(-1)!.label).toBe('vs top 4');
         expect(keys(situationsFor('wbb', 2015)).filter((k) => /^p\d$/.test(k))).toEqual(['p1', 'p2']);
+        // Second chance is the pros' only: college publishes no chance rows (the MBB fixture has none)
+        expect(MBB.team.some((r) => r.family === 'chance')).toBe(false);
+        expect(keys(situationsFor('wnba', 2025))).toContain('second_chance');
+        for (const l of ['mbb', 'wbb'] as const) expect(keys(situationsFor(l, 2026))).not.toContain('second_chance');
     });
     test('?situation= is whitelisted: anything else (a family the control does not offer, junk, none) is All', () => {
         const o = situationsFor('nba', 2024);
-        expect(['clutch', 'p3', 'vs_top', 'transition', 'second_chance', 'h1', 'neutral', 'p5', 'CLUTCH', null].map((v) => parseSituation(v, o).key)).toEqual(['clutch', 'p3', 'vs_top', 'transition', 'all', 'all', 'all', 'all', 'all', 'all']);
+        expect(['clutch', 'p3', 'vs_top', 'transition', 'second_chance', 'h1', 'neutral', 'p5', 'CLUTCH', null].map((v) => parseSituation(v, o).key)).toEqual(['clutch', 'p3', 'vs_top', 'transition', 'second_chance', 'all', 'all', 'all', 'all', 'all']);
+        expect(parseSituation('second_chance', situationsFor('mbb', 2025)).key).toBe('all');
     });
     test("the team table: the situation's row then All; All alone for All, or when the team has no row in the situation", () => {
         const o = situationsFor('nba', 2024);
@@ -221,9 +226,12 @@ describe('prepareNbaTeam with the flag', () => {
         expect(r.situations!.playerNames).toEqual([rows[0].player_name]);
         expect(r.situations!.unitLabels[0].full).toBe(`${rows[0].player_name}, ${rows[1].player_name}, #1, #2, #3`);
     });
-    test('?situation= junk reads All', async () => {
-        await prepareNbaTeam(fakeAstro({ preview: true }, '?season=2026&situation=second_chance').astro);
+    test('?situation= junk reads All; Second chance reads the chance family', async () => {
+        await prepareNbaTeam(fakeAstro({ preview: true }, '?season=2026&situation=first_chance').astro);
         expect(sit.fn).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, 'all', 'all');
+        sit.fn.mockClear();
+        await prepareNbaTeam(fakeAstro({ preview: true }, '?season=2026&situation=second_chance').astro);
+        expect(sit.fn).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, 'chance', 'second_chance');
     });
     test('on, a 404 spends no read', async () => {
         expect(await prepareNbaTeam(fakeAstro({ preview: true }, '?season=2026', '1').astro)).toEqual({ notFound: true });
@@ -292,6 +300,16 @@ describe('SituationsTab', () => {
         expect(sel.split('<optgroup label="By period">')[1].split('</optgroup>')[0].match(/<option/g)).toHaveLength(5);
         expect(html.match(/onchange="window.location.href = this.value"/g)).toHaveLength(1);
         expect(html).toContain('Possessions that start in the 3rd quarter.');
+    });
+    test("Minnesota on second chances: the producer's chance/second_chance team row then All, its players' rows", async () => {
+        const html = await render('nba', NBA, 2024, 'second_chance');
+        const own = NBA.team.find((r) => r.family === 'chance' && r.split === 'second_chance')!;
+        const team = cells(html, 'situations-team');
+        expect(team.map((t) => t[0])).toEqual(['Second chance', 'All']);
+        expect(team[0].slice(3, 7)).toEqual([own.poss, own.opp_poss, own.pts, own.opp_pts].map((v) => v.toLocaleString('en-US')));
+        expect(rowsOf(html, 'situations-players')).toBe(api(NBA, { family: 'chance', split: 'second_chance' }).players.length);
+        expect(html).toContain('Possessions with an offensive rebound.');
+        expect(html).toContain(`value="${BASE}?season=2024&amp;situation=second_chance#situations" selected`);
     });
     test('Michigan State vs the top 25: named from ncaa_player_box (text ids), the units capped', async () => {
         const html = await render('mbb', MBB, 2025, 'vs_top');

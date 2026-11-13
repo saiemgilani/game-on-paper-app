@@ -103,6 +103,22 @@ describe('the route', () => {
         expect(bad.situations.reads).toBeNull();
         expect(a.response.headers.get('Cache-Control')).toBe('no-store');
     });
+    test("a Data API final with no situational rows yet is held 6 hours, not the final's year; with rows, the year", async () => {
+        final();
+        sdv.from.mockResolvedValueOnce(CAP.nba.crosswalk);
+        sdv.rows.mockResolvedValueOnce([]);
+        const empty = astro({ preview: true });
+        const r: any = await prepareNbaGame(empty);
+        expect(r.situations.reads).toEqual({ home: [], away: [] });
+        expect(empty.cache.set.mock.calls.at(-1)[0]).toMatchObject({ maxAge: 6 * 60 * 60 });
+        final();
+        sdv.from.mockResolvedValueOnce(CAP.nba.crosswalk);
+        sdv.rows.mockResolvedValueOnce(CAP.nba.rows);
+        const built = astro({ preview: true });
+        await prepareNbaGame(built);
+        expect(built.cache.set).toHaveBeenCalledTimes(1);
+        expect(built.cache.set.mock.calls[0][0]).toMatchObject({ maxAge: 60 * 60 * 24 * 7 * 52, tags: ['game-completed', 'nba'] });
+    });
 });
 
 describe('GameSituations', () => {
@@ -126,6 +142,16 @@ describe('GameSituations', () => {
         expect(html).toContain('?situation=leading#situations');
         expect(html).toContain('value="/nba/game/401809773#situations"'); // All drops the param
         for (const bad of ['undefined', 'NaN']) expect(html).not.toContain(bad);
+    });
+    test("Second chance: each team's chance/second_chance row from the producer, then its whole game", async () => {
+        const html = await render(tab('second_chance'));
+        const body = html.split('id="game-situations"')[1].split('<tbody>')[1].split('</tbody>')[0];
+        expect(body.match(/<tr>/g)).toHaveLength(4);
+        const own = reads.home.find((r: any) => r.family === 'chance' && r.split === 'second_chance');
+        const nets = body.split('<tr>').find((t) => t.includes('Brooklyn Nets') && t.includes('Second chance'))!;
+        const cells = [...nets.matchAll(/<td class="numeral text-end">([^<]*)<\/td>/g)].map((m) => m[1]);
+        expect(cells.slice(2, 5)).toEqual([String(own.poss), String(own.opp_poss), String(own.pts)]);
+        expect(html).toContain('value="/nba/game/401809773?situation=second_chance#situations" selected');
     });
     test('a situation a team had no possession in shows its whole game only; no rows and a failed read say so', async () => {
         const clutch = await render(tab('clutch'));

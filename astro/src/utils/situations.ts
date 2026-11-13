@@ -7,7 +7,7 @@ import { regulationFor } from '../basketball/config';
 import { fmtDec, fmtInt } from '../nba/format';
 import { generateMarginalString } from './misc';
 import type { GameSituationalReads, PlayerSituationalRow, SituationalReads, SituationalRow } from '../resources/situational';
-import type { BasketballLeague } from './league';
+import { PRO_LEAGUES, type BasketballLeague } from './league';
 import type { UnitLabel } from './lineups';
 
 /**
@@ -32,7 +32,8 @@ const ORD = ['1st', '2nd', '3rd', '4th'];
 
 /**
  * The control's options: All, Clutch, the season's periods and overtime, Leading, Tied, Trailing, Home, Away, Transition,
- * Half court, Garbage time out, vs top N (the producer's family / split names, sdv-db docs/api.md BB-D21).
+ * Half court, Second chance (the pros only: college publishes no chance rows), Garbage time out, vs top N (the producer's
+ * family / split names, sdv-db docs/api.md BB-D21).
  */
 export function situationsFor(league: BasketballLeague, season: number): Situation[] {
     const reg = regulationFor(league, season);
@@ -49,6 +50,7 @@ export function situationsFor(league: BasketballLeague, season: number): Situati
         { key: 'away', family: 'venue', split: 'away', label: 'Away', note: 'Road games.' },
         { key: 'transition', family: 'play_type', split: 'transition', label: 'Transition', note: 'Transition possessions.' },
         { key: 'half_court', family: 'play_type', split: 'half_court', label: 'Half court', note: 'Half-court possessions.' },
+        ...(PRO_LEAGUES.includes(league) ? [{ key: 'second_chance', family: 'chance', split: 'second_chance', label: 'Second chance', note: 'Possessions with an offensive rebound.' }] : []),
         { key: 'not_garbage_time', family: 'garbage', split: 'not_garbage_time', label: 'Garbage time out', note: 'Every possession outside garbage time.' },
         { key: 'vs_top', family: 'opponent', split: 'vs_top', label: `vs top ${TOP_N[league]}`, note: `Games against the top ${TOP_N[league]} by adjusted net rating at the season's end.` },
     ];

@@ -12,7 +12,7 @@ import { isFeatureEnabled } from '../../utils/features';
 import { SOURCE_PARAM } from '../../utils/adminView';
 import { gopStorage } from '../../utils/telemetry';
 import type { BasketballLeague } from '../../utils/league';
-import { setCache, uncacheable } from './cache';
+import { seasonCache, setCache, uncacheable } from './cache';
 import { retrieveGameSituational } from '../../resources/situational';
 import { parseSituation, situationsFor, type GameSituationsTab } from '../../utils/situations';
 
@@ -35,7 +35,9 @@ export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { 
 
 /**
  * The game page's Situations panel (BB-G25 review, Q27), for a final only (the producer's per-game rows are built from
- * finals). Off, or not final: undefined, and nothing is read. A failed read keeps the page and is never cached.
+ * finals). Off, or not final: undefined, and nothing is read. A failed read keeps the page and is never cached; a Data API
+ * final with no rows yet (the nightly per-game build has not reached it) is held for the season pages' 6 hours, not the
+ * final's year, so the panel fills once the rows land.
  */
 async function withSituations<T extends { game: NbaGame }>(Astro: AstroGlobal, league: BasketballLeague, prep: T): Promise<T & { situations?: GameSituationsTab }> {
     const { game } = prep;
@@ -43,7 +45,9 @@ async function withSituations<T extends { game: NbaGame }>(Astro: AstroGlobal, l
     const options = situationsFor(league, game.season);
     const situation = parseSituation(Astro.url.searchParams.get('situation'), options);
     try {
-        return { ...prep, situations: { situation, options, reads: await retrieveGameSituational(league, game.season, game.id, game.home.team.id, game.away.team.id) } };
+        const reads = await retrieveGameSituational(league, game.season, game.id, game.home.team.id, game.away.team.id);
+        if (game.source === 'data_api' && reads.home.length === 0 && reads.away.length === 0) setCache(Astro, seasonCache(league));
+        return { ...prep, situations: { situation, options, reads } };
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} game ${game.id} situational splits: ${e}, ${e?.stack}`);
         uncacheable(Astro);
