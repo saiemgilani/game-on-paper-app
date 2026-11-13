@@ -1,10 +1,10 @@
 <script lang="ts">
     // BB-G38 ('bball-shot-filters'): one filter bar over both teams' shot charts, the state kept in the URL (`?shot_*=`, the
-    // server renders the asked filters first). With the league curve (BB-G39) each team's chart, signature and FG% bars
+    // server renders the asked filters first). With the league curve (BB-G39) each team's chart, signature and distance bars (Share / FG%)
     // share a `data-shot-link` dashboard and the signature and bars follow the filters: a chosen player's are his own.
     import ChartSvg from './ChartSvg.svelte';
     import ShootingSignature from './ShootingSignature.svelte';
-    import DistanceBars from './DistanceBars.svelte';
+    import DistanceBarsToggle from './DistanceBarsToggle.svelte';
     import type { Draw } from '../chartFrame';
     import type { Court } from '../../../basketball/config';
     import { COURT } from '../../../nba/data/court';
@@ -112,7 +112,7 @@
                     <ChartSvg draw={drawFor(xs)} viewBox={GAME_SHOT_VIEWBOX} title={`${who} shots`} desc={describeShots(xs, court)} />
                     {#if d}
                         <h4 class="h6 small text-muted mt-2">Shooting signature</h4><ShootingSignature data={d.signature} title={`${who} FG% by distance vs league`} />
-                        <h4 class="h6 small text-muted mt-2">Field goal percentage by distance</h4><DistanceBars data={d.bars} metric="fgPct" subjectLabel={f.player ? who : s.abbr} pinnable title={`${who} FG% by distance vs league`} />
+                        <DistanceBarsToggle data={d.bars} team={who} subjectLabel={f.player ? who : s.abbr} />
                         <p class="small text-muted mb-3">{caption}</p>
                     {/if}
                 </div>

@@ -75,7 +75,7 @@ const filtered = filters && (() => {
     return {
         sides: fside.map(({ withPlayers: _, ...s }) => s), periods, zones, kinds, withPlayers, initial, gameId: game.id,
         ...(stints ? { stints } : {}),
-        ...(curve ? { league: { byFoot: shooting!.byFoot, byBin: shooting!.byBin }, caption: `League: ${seasonLabelFor(league, game.season!)} ${dashboardScope(league, game.season!).noun}. Hover a distance to mark it on every chart; click a bar to hold it.` } : {}),
+        ...(curve ? { league: { byFoot: shooting!.byFoot, byBin: shooting!.byBin }, caption: `League: ${seasonLabelFor(league, game.season!)} ${dashboardScope(league, game.season!).noun}. Share is each distance's part of the shots; FG% its makes. Hover a distance to mark it on every chart; click a bar to hold it.` } : {}),
         ...(at ? { placeholder: at } : {}), ...(court === COURT ? {} : { court }),
     };
 })();
