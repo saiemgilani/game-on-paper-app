@@ -857,9 +857,15 @@ page's select). `averages` is each side's `player_season_stats?season=…&team_i
 Games: ATL 95 at ORL 120 (2024-25), GS 73 at CHI 66 (WNBA 2025), NC State 90 at Notre Dame 96 (MBB 2025-26), UTEP 87
 at Louisiana Tech 91 in overtime (WBB 2025-26).
 
-Two things the capture shows about `player_season_stats` (the page handles both): WNBA 2025's rows are mostly career
-lines under the season filter (games played up to 436), and WBB 2026 has one or two players a team, all career lines
-(82 to 107 games). `resources/seasonAverages.ts` leaves out any row with more games than a season holds.
+This 2026-11-09 capture predates the women's producer fix: its WNBA 2025 rows are mostly career lines under the season
+filter (games played up to 436), and WBB 2026 has one or two career rows a team (82 to 107 games). The wehoop data repos
+write season-only rows since 2026-11-10, and the page draws what the producer serves (no games-played ceiling), so these
+two captures exercise the pivot and the panel only, not the numbers' meaning.
+
+## `season-averages-wnba-2025-team-17.json.gz`
+One live read on 2026-11-13, after the producer fix: `wnba/player_season_stats?season=2025&team_id=17&select=category,stat_name,value,athlete_id,team_id&limit=3000`
+(Las Vegas, 645 rows, 15 players), saved as `{league, season, teamId, rows}` with `rows` the response's `data` array, no
+edits. NaLyssa Smith (4398776), traded in from Dallas, has 45 games, one more than a team's 44-game schedule; nobody has more.
 
 **Used by:** `test/gameLeaders.test.ts`.
 

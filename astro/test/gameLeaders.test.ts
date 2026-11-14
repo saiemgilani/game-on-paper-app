@@ -57,7 +57,7 @@ function rowsOf(lg: Lg) {
     return r;
 }
 const gameOf = (lg: Lg): NbaGame => fromDataApi(rowsOf(lg), lg);
-const averagesOf = (lg: Lg): SeasonAverage[] => pivotSeasonAverages([...cap[lg].averages.home, ...cap[lg].averages.away], lg);
+const averagesOf = (lg: Lg): SeasonAverage[] => pivotSeasonAverages([...cap[lg].averages.home, ...cap[lg].averages.away]);
 const num = (v: unknown) => (v == null || v === '' ? null : Number(v));
 const played = (r: any) => !(r.did_not_play === true || r.did_not_play === 'True' || r.did_not_play === 'true');
 
@@ -172,8 +172,9 @@ describe('against their average', () => {
     for (const lg of LEAGUES) {
         test(`${lg}: the pivot is the captured rows, and each listed player is 8+ minutes and points minus that average`, () => {
             const avgs = averagesOf(lg);
-            // the pros' and MBB's tables have the rosters; WBB 2026 has one or two players a team (all career lines)
-            if (lg === 'wbb') { expect(avgs).toEqual([]); return; }
+            // the 2026-11-09 WBB capture predates the producer's season-only rows (one or two career rows a team, none in this box
+            // with 8+ minutes); the pivot keeps them, the page draws what the producer serves
+            if (lg === 'wbb') { expect(avgs.map((a) => a.gp).sort((x, y) => x - y)).toEqual([82, 97, 107]); return; }
             expect(avgs.length).toBeGreaterThan(lg === 'wnba' ? 3 : 10);
             const g = gameOf(lg);
             for (const ha of ['home', 'away'] as const) {
@@ -227,6 +228,17 @@ describe('retrieveSeasonAverages', () => {
         api.rows = () => Array(5000).fill({ athlete_id: 1, stat_name: 'avgPoints', value: 1 });
         await expect(retrieveSeasonAverages('nba', 2025, '401766458', 19, 1)).rejects.toThrow(/cap/);
     });
+    test("WNBA 2025, Las Vegas: a player traded mid-season keeps her 45-game season (more than a team's 44)", async () => {
+        const lv = gz('season-averages-wnba-2025-team-17') as { season: number; teamId: number; rows: Record<string, unknown>[] };
+        api.rows = (q) => (q.team_id === String(lv.teamId) ? lv.rows : []);
+        const got = await retrieveSeasonAverages('wnba', lv.season, '0', lv.teamId, 1);
+        expect(api.calls.map((c) => [c.schema, c.query.season, c.query.team_id])).toEqual([['wnba', '2025', '17'], ['wnba', '2025', '1']]);
+        // every rostered player, none above the 45 a traded player can reach: season-only rows, no career lines
+        expect(got.length).toBe(lv.rows.filter((r) => r.stat_name === 'gamesPlayed').length);
+        expect(Math.max(...got.map((a) => a.gp))).toBe(45);
+        // NaLyssa Smith (traded from Dallas): 45 games, 7.6 / 5.1 / 0.7
+        expect(got.find((a) => a.athleteId === 4398776)).toEqual({ athleteId: 4398776, gp: 45, pts: 7.6, reb: 5.1, ast: 0.7 });
+    });
 });
 
 function fakeAstro(locals: Record<string, unknown>, lg: Lg = 'nba', id = '401766458') {
@@ -261,14 +273,14 @@ describe('prepareBasketballGame', () => {
         expect('game' in (await prepareBasketballGame(empty.astro, 'nba'))).toBe(true);
         expect(empty.cache.at(-1)).toEqual({ maxAge: 6 * 60 * 60, swr: 6 * 60 * 60, tags: ['nba'] });
     });
-    test('WNBA and WBB: no averages read and no averages key (career lines under the season filter), NBA and MBB read', async () => {
+    test("WNBA, MBB and WBB finals read the averages too (the women's season rows are season-only since the producer fix)", async () => {
         for (const lg of ['wnba', 'wbb', 'mbb'] as const) {
             afn.mockClear();
             const r0 = rowsOf(lg); sched.mockResolvedValueOnce(r0.schedule[0]); rows.mockResolvedValueOnce(r0);
             const r = await prepareBasketballGame(fakeAstro({ preview: true }, lg, cap[lg].espnGameId).astro, lg);
             expect('game' in r, lg).toBe(true);
-            expect('averages' in r, lg).toBe(lg === 'mbb');
-            expect(afn.mock.calls.length, lg).toBe(lg === 'mbb' ? 1 : 0);
+            expect('averages' in r, lg).toBe(true);
+            expect(afn.mock.calls.length, lg).toBe(1);
         }
     });
     test('on, a failed read: averages null, the page renders, nothing is cached', async () => {

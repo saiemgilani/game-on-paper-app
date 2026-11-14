@@ -18,24 +18,10 @@ const SELECT = 'athlete_id,category,stat_name,value';
 /** ESPN's per-game stat names (all in the `averages` category, with `gamesPlayed`). */
 const STAT: Record<string, keyof Omit<SeasonAverage, 'athleteId'>> = { gamesPlayed: 'gp', avgPoints: 'pts', avgRebounds: 'reb', avgAssists: 'ast' };
 
-/**
- * The most games a player can have in one season. Some WNBA and WBB rows carry a career line under the season filter
- * (WNBA 2025: 436 games played; WBB 2026: 82 to 107), and those are not the season's average, so they are left out.
- * ponytail: a fixed ceiling per league; replace it with the producer's fix once player_season_stats is season-only.
- */
-const SEASON_GAMES: Record<BasketballLeague, number> = { nba: 82, wnba: 44, mbb: 45, wbb: 45 };
-
-/**
- * The leagues whose "against their average" section is drawn. WNBA and WBB `player_season_stats` carry career lines under the
- * season filter, so the section is hidden there until the producer writes season-only rows.
- * ponytail: add 'wnba' and 'wbb' back once the producer fix is republished.
- */
-export const AVERAGES_LEAGUES: ReadonlySet<BasketballLeague> = new Set(['nba', 'mbb']);
-
 type Row = Record<string, unknown>;
 
-/** The long rows to one average per athlete; an athlete without games played, or with more than a season's, is left out. */
-export function pivotSeasonAverages(rows: readonly Row[], league: BasketballLeague): SeasonAverage[] {
+/** The long rows to one average per athlete; an athlete without games played is left out. */
+export function pivotSeasonAverages(rows: readonly Row[]): SeasonAverage[] {
     const by = new Map<number, SeasonAverage>();
     for (const r of rows) {
         const key = STAT[String(r.stat_name)];
@@ -46,7 +32,7 @@ export function pivotSeasonAverages(rows: readonly Row[], league: BasketballLeag
         else a[key] = v;
         by.set(id, a);
     }
-    return [...by.values()].filter((a) => a.gp > 0 && a.gp <= SEASON_GAMES[league]);
+    return [...by.values()].filter((a) => a.gp > 0);
 }
 
 /** Both sides' averages for one ESPN game (the readPanel signature: league, season, ESPN game id, home id, away id). */
@@ -57,5 +43,5 @@ export async function retrieveSeasonAverages(league: BasketballLeague, season: n
         return rows;
     };
     const [home, away] = await Promise.all([read(homeId), read(awayId)]);
-    return pivotSeasonAverages([...home, ...away], league);
+    return pivotSeasonAverages([...home, ...away]);
 }
