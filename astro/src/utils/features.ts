@@ -90,6 +90,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // 'bball-team-season': each game's four factors and ratings plus game_flow. Cells shaded against the season, a consistency line, and under
     // 'bball-game-set' the chosen set's games. Off: no read and both pages unchanged.
     'bball-game-logs': 'preview',
+    // BB-G53: schedule context and rotation on /<league>/team/[id], inside 'bball-team-season'. The schedule gains each game's
+    // rest (back-to-back, third in four nights), road-trip position, opponent strength (team_strength) and closing line with
+    // the ATS result (game_lines, where lines exist), plus the ATS and back-to-back records; a Rotation section adds a minutes
+    // strip (players x games, starts marked) from player_box. Off: none of the three reads and the page unchanged.
+    'bball-schedule-context': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

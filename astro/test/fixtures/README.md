@@ -843,3 +843,29 @@ The reads behind the advanced game logs (BB-G50, `resources/bballGameLogs.ts`), 
 
 
 **To regenerate:** rerun the same reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `schedule-context-nba-2026.json.gz`, `schedule-context-mbb-2026.json.gz`
+The reads behind the schedule context and rotation (BB-G53, `resources/bballScheduleContext.ts`), captured live on 2026-11-10,
+sequentially, the `data` array of each response, no edits other than the filter noted; for the same teams as `game-set-*-2026`
+(the Brooklyn Nets, ESPN 17; Duke, ESPN 150), as `{lines, strength, box}`:
+- `lines`: `{nba,mbb}/game_lines?season=2026&select=game_id,spread_home_close,ats_result,home_margin&limit=8000` (1,310 / 5,435 rows),
+  kept to the team's schedule games (82 / 38). `home_margin` is not in the module's select: the test uses it as the join oracle
+  against the schedule's final score.
+- `strength`: `nba_stats/team_strength` and `mbb/team_strength`, `?season=2026&select=team_id,adj_net_rtg,adj_net_rtg_rank&limit=1000` (30 / 365).
+- `box`: `nba/player_box?season=2026&team_id=17&season_type=2` (1,026) and `mbb/player_box?season=2026&team_id=150` (500), both
+  `select=game_id,athlete_id,athlete_short_name,minutes,starter,did_not_play&limit=3000`.
+
+**Used by:** `test/bballScheduleContext.test.ts`.
+
+**To regenerate:** rerun the same six reads (season filter and limit as above, never unfiltered), keep the team's games in `lines`, wrap and gzip.
+
+## `schedule-context-proj-nba-2026.json.gz`, `schedule-context-proj-mbb-2026.json.gz`
+The rated pregame projections for the schedule's projection column (Q21 on GOP#457), as `{proj}`: `game_id, exp_home_margin`.
+Captured live on 2026-11-13 from the served table (sportsdataverse-py#1193, sdv-db#229):
+`{nba,mbb}/rated_priors?season=2026&select=game_id,home_team_id,away_team_id,exp_home_margin&limit=8000` (1,330 / 6,318 rows),
+kept to games with `home_team_id` or `away_team_id` 17 (the Nets, 82 games; the opener has no rating yet, so its margin is
+null) or 150 (Duke, 38 games, all rated), then the module's two columns. No other edits.
+
+**Used by:** `test/bballScheduleContext.test.ts`.
+
+**To regenerate:** once sdv-db serves it, `nba/rated_priors?season=2026&select=game_id,exp_home_margin&limit=8000`, kept to the Nets' games.
