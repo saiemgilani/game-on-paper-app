@@ -11,21 +11,14 @@ import { getBasketballGameCacheConfig } from '../../utils/config';
 import { isFeatureEnabled } from '../../utils/features';
 import { SOURCE_PARAM } from '../../utils/adminView';
 import { gopStorage } from '../../utils/telemetry';
-import { PRO_LEAGUES, type BasketballLeague } from '../../utils/league';
+import type { BasketballLeague } from '../../utils/league';
 import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBox';
 import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
-import { retrieveSeasonRatings } from '../../resources/pregameProjection';
-import { heldForPrior, projectGame, type Projection, type TeamRating } from '../../utils/pregameProjection';
+import { retrieveRatedPrior, type RatedPrior } from '../../resources/pregameProjection';
 import { seasonCache, setCache, uncacheable } from './cache';
 
-/** BB-G18's pregame card: each side's producer rating and the producer's projection from them. */
-export interface PregameProjection {
-    season: number;
-    neutral: boolean;
-    home: TeamRating;
-    away: TeamRating;
-    projection: Projection;
-}
+/** BB-G18's pregame card: the game's `rated_priors` row as published, with its prediction present. */
+export type PregameProjection = RatedPrior & { exp_home_margin: number; rated_home_prob: number };
 
 /** The admin source tool's data (components/nba/game/NbaAdminSourceTools.astro); only an admin on the 'source-switch' path gets it. */
 export interface BasketballSourceTools {
@@ -116,40 +109,28 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
 }
 
 /**
- * The pregame card's data from the ESPN header: the season, the neutral-site flag and the two ESPN team ids, mapped to the
- * ratings' keys (college: the ESPN id; the pros: the stats id from the league's team list). null when a side has no rating
- * (a non-D-I opponent, a season with no rated game yet), a college side has played fewer games than the producer's prior is
- * worth (utils/pregameProjection.ts heldForPrior), or the read failed; a failed read is never held.
+ * The pregame card's data: the game's `rated_priors` row by the ESPN season and game id, as published. null (no card) when
+ * the producer has no row (a preseason game), its prediction is null (a pro side yet to play), its home side is not ESPN's,
+ * or the read failed; a failed read is never held. No hold for the college prior: the producer's college rating already
+ * blends it in.
  */
 async function readProjection(Astro: AstroGlobal, league: BasketballLeague, espnGame: ESPNPlayByPlayResponse): Promise<PregameProjection | null> {
     const header = espnGame.gamepackageJSON.header;
     const comp: any = header.competitions[0];
     const season = Number(header.season?.year);
     if (!Number.isInteger(season)) return null;
-    const side = (ha: 'home' | 'away') => comp.competitors.find((c: any) => c.homeAway === ha)?.team?.id;
-    const key = (espnId: unknown): string | null => {
-        if (espnId == null) return null;
-        if (!PRO_LEAGUES.includes(league)) return String(espnId);
-        const team = BASKETBALL[league].teams.byEspnId(Number(espnId));
-        return team ? String(team.team_id) : null;
-    };
-    const homeKey = key(side('home'));
-    const awayKey = key(side('away'));
-    if (!homeKey || !awayKey) return null;
-    let ratings: Map<string, TeamRating>;
+    let row: RatedPrior | null;
     try {
-        ratings = await retrieveSeasonRatings(league, season);
+        row = await retrieveRatedPrior(league, season, String(espnGame.gameId));
     } catch (e: any) {
-        console.error(`ERROR while loading the ${league} ${season} ratings for game ${espnGame.gameId}: ${e}, ${e?.stack}`);
+        console.error(`ERROR while loading the ${league} ${season} rated prior for game ${espnGame.gameId}: ${e}, ${e?.stack}`);
         uncacheable(Astro);
         return null;
     }
-    const home = ratings.get(homeKey);
-    const away = ratings.get(awayKey);
-    const neutral = comp.neutralSite === true;
-    // college waits until both sides have played the games the producer's prior is worth (no card, not a failure)
-    const projection = home && away && !heldForPrior(league, home, away) ? projectGame(league, home, away, neutral) : null;
-    return home && away && projection ? { season, neutral, home, away, projection } : null;
+    const espnHome = comp.competitors.find((c: any) => c.homeAway === 'home')?.team?.id;
+    if (!row || String(row.home_team_id) !== String(espnHome)) return null;
+    const ok = (x: number | null): x is number => x != null && Number.isFinite(x);
+    return ok(row.exp_home_margin) && ok(row.rated_home_prob) ? row as PregameProjection : null;
 }
 
 /** A game panel's reads (BB-G1's Impact box, BB-G28's Game flow) by the season and the ESPN ids; null when any failed. */

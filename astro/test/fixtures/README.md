@@ -818,17 +818,14 @@ changes), BOS 113 at DET 121 (401909088), MIN 88 at PHX 84 (401856902), Sam Hous
 **To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
 
 ## `pregame-projection.json.gz`
-The Data API reads behind BB-G18's pregame projection
-(`resources/pregameProjection.ts`), captured live on 2026-11-08, each one season-filtered with a cap and the page's
-select, the `data` array of each response with no edits: `ratings.mbb_2027` / `wbb_2027` / `mbb_2026`
-(`/v1/<mbb|wbb>/ratings?season=…&select=season,team_id,adj_em,rank,games&limit=1000`) and `ratings.nba_2027` /
-`wnba_2026` (`/v1/<nba|wnba>_stats/team_strength?season=…&select=season,team_id,games,adj_net_rtg,adj_net_rtg_rank,pace&limit=40`).
-`pages` are three real scheduled ESPN captures (`cdn.espn.com/core/<sport>/playbyplay?gameId=…&xhr=1`, trimmed to
-`{gameId, gamepackageJSON: {header}}`, the part the pregame page reads): MARQ at MICH (401909524, 2026-11-11), UK v IU at
-a neutral site (401916290), CONN at OSU women (401911739). `oracle` is sportsdataverse-py main 306abe15 run on those rows
-(`mbb_game_predict.predict_margin` / `win_prob_from_margin`, `nba_game_predict.predict_margin` / `win_prob_from_margin`):
-five games (the three pages, CLE at ORL from `nba/pregame_401898403.json`, and MIN at NY on the 2026 WNBA rows) and every pair of
-the 2025-26 men's final projected field at a neutral site (a check of the neutral-site closed form; the bracket itself keeps its bid chances) (`bracketology-mbb-2026.json.gz`, 68 teams, 2,278 pairs).
+The Data API reads behind BB-G18's pregame projection (`resources/pregameProjection.ts`). `rated_priors` holds, keyed
+`<schema>.<season>.<game_id>`, the `data` array of `GET /v1/<lg>/rated_priors?season=…&game_id=…&limit=1`, captured
+live on 2026-11-13 with no edits: MARQ at MICH (mbb 401909524, 2 and 2 games in), UK v IU at a neutral site (mbb
+401916290), CONN at OSU women (wbb 401911739), ORL at BOS (nba 401909994), CLE at ORL (nba 401898403, a preseason game:
+no row, `[]`), an opening-night game with a null prediction (nba 2026 401809243) and a 2026 WNBA game (401856990).
+`pages` are four real scheduled ESPN captures (`cdn.espn.com/core/<sport>/playbyplay?gameId=…&xhr=1`, trimmed to
+`{gameId, gamepackageJSON: {header}}`, the part the pregame page reads): the three college games (captured 2026-11-08)
+and ORL at BOS (2026-11-13).
 
 **Used by:** `test/pregameProjection.test.ts`, `test/pregameProjectionOff.test.ts`.
 
