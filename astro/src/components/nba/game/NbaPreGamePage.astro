@@ -11,9 +11,12 @@ import RecentForm from '../../game/RecentForm.astro';
 import NbaPlayersToWatch from './NbaPlayersToWatch.astro';
 import { basketballEventJsonLd } from '../../../basketball/parity';
 import { retrieveGameSummary, type ESPNPlayByPlayResponse } from '../../../resources/espn';
+import NbaPregameProjection from './NbaPregameProjection.astro';
+import type { PregameProjection } from '../../../routes/basketball/game';
 
-interface Props { espnGame: ESPNPlayByPlayResponse }
-const { espnGame } = Astro.props;
+/** `projection`: BB-G18, set only with 'bball-pregame-projection' on (null: no card) */
+interface Props { espnGame: ESPNPlayByPlayResponse; projection?: PregameProjection | null }
+const { espnGame, projection } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const comp = espnGame.gamepackageJSON.header.competitions[0];
@@ -47,6 +50,7 @@ const jsonLd = basketballEventJsonLd({
     {networks && <p class="text-muted m-0">{networks}</p>}
   </div>
   <div class="container">
+    {projection && <NbaPregameProjection projection={projection} homeTeam={home.team} awayTeam={away.team} />}
     {season !== null && <NbaPlayersToWatch homeTeam={home.team} awayTeam={away.team} season={season} />}
     <RecentForm summary={summary} homeTeam={home.team} awayTeam={away.team} />
   </div>

@@ -1,0 +1,49 @@
+---
+// BB-G18 (behind 'bball-pregame-projection'): the pregame page's Projection, football's GameEssentials projection column
+// for basketball. The favourite, the expected margin and its win chance as the producer publishes them (the game's
+// `{lg}.rated_priors` row, resources/pregameProjection.ts); each side's rating, its rank and games, and the home edge.
+import { basketball, seasonLabelFor } from '../../../basketball/config';
+import { cleanAbbreviation, generateMarginalString, roundNumber } from '../../../utils/misc';
+import { teamLogoUrl } from '../../../utils/league';
+import { pct } from '../../../utils/playoff';
+import type { PregameProjection } from '../../../routes/basketball/game';
+import DarkModeLogos from '../../DarkModeLogos.astro';
+
+interface Props {
+    projection: PregameProjection
+    homeTeam: { id: string | number; abbreviation?: string }
+    awayTeam: { id: string | number; abbreviation?: string }
+}
+const { projection: p, homeTeam, awayTeam } = Astro.props;
+const league = basketball(Astro.locals.league).league;
+const college = league === 'mbb' || league === 'wbb';
+const margin = p.exp_home_margin;
+const homeFav = margin >= 0;
+const fav = homeFav ? homeTeam : awayTeam;
+const favProb = homeFav ? p.rated_home_prob : 1 - p.rated_home_prob;
+// college ratings carry the producer's preseason prior, worth `prior_games` games (4 men, 3 women)
+const metric = college
+    ? `adjusted efficiency margin${p.prior_games != null ? ` with a ${roundNumber(p.prior_games, 0, 0)}-game preseason prior` : ''}`
+    : 'adjusted net rating';
+const signed = (x: number) => generateMarginalString(x, 2, 1);
+const sideText = (t: Props['homeTeam'], rating: number | null, rank: number | null, games: number | null) =>
+    `${cleanAbbreviation(t as any)}${rating != null ? ` ${signed(rating)}` : ''}${rank != null ? ` (#${roundNumber(rank, 0, 0)})` : ''}${games != null ? `, ${games} ${games === 1 ? 'game' : 'games'}` : ''}`;
+const edge = p.neutral_site ? 'neutral site, no home edge' : `home court ${signed(p.hfa)} pts`;
+---
+<DarkModeLogos teamIds={[fav.id]} />
+<div class="row my-3">
+    <div class="col-lg-2 d-none d-lg-block"></div>
+    <div class="col-lg-8 col-md-12 margin-override">
+        <div class="card border rounded">
+            <div class="card-body py-3 text-center" id="pregame-projection">
+                <p class="small text-muted text-uppercase mb-1">Projection</p>
+                <p class="mb-0 fw-bold d-flex align-items-center justify-content-center gap-1">
+                    <img class={`team-logo-${fav.id}`} width="24" height="24" src={teamLogoUrl(league, fav.id, false, p.season)} alt={cleanAbbreviation(fav as any)} />
+                    <span>{Math.abs(margin) < 0.05 ? 'Even' : `${cleanAbbreviation(fav as any)} by ${roundNumber(Math.abs(margin), 2, 1)}`}</span>
+                </p>
+                <p class="small text-muted m-0">{pct(favProb)} by {metric}, {seasonLabelFor(league, p.season)}</p>
+                <p class="small text-muted m-0">{sideText(awayTeam, p.away_rating, p.away_rank, p.away_games)}; {sideText(homeTeam, p.home_rating, p.home_rank, p.home_games)}; {edge}</p>
+            </div>
+        </div>
+    </div>
+</div>

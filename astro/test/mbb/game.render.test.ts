@@ -22,7 +22,7 @@ const buttons = (h: string) => [...h.matchAll(/<button[^>]*>([\s\S]*?)<\/button>
 const linescoreHeads = (h: string) => [...(h.match(/aria-label="Linescore">[\s\S]*?<\/thead>/)?.[0] ?? '').matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((m) => plain(m[1]));
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
-const render = (id: string) => container.renderToString(Page, { request: new Request(`https://gameonpaper.com/mbb/game/${id}`), params: { id }, locals: { preview: true, league: 'mbb' } as App.Locals });
+const render = (id: string) => container.renderToString(Page, { request: new Request(`https://gameonpaper.com/mbb/game/${id}`), params: { id }, locals: { preview: true, league: 'mbb', flagOverrides: { 'bball-pregame-projection': false } } as unknown as App.Locals });
 
 function common(html: string) {
     expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
@@ -110,7 +110,7 @@ describe('/mbb/game/[id] render (real captures)', () => {
     });
     test('the processor-unavailable answer is a 503 naming the game', async () => {
         prep.mockResolvedValueOnce({ unavailable: true });
-        const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/mbb/game/401820775'), params: { id: '401820775' }, locals: { preview: true, league: 'mbb' } as App.Locals });
+        const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/mbb/game/401820775'), params: { id: '401820775' }, locals: { preview: true, league: 'mbb', flagOverrides: { 'bball-pregame-projection': false } } as unknown as App.Locals });
         expect([res.status, res.headers.get('Cache-Control'), await res.text()]).toEqual([503, 'no-store', 'This game is temporarily unavailable. Please try again shortly.']);
     });
 });

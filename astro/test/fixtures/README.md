@@ -816,3 +816,18 @@ changes), BOS 113 at DET 121 (401909088), MIN 88 at PHX 84 (401856902), Sam Hous
 **Used by:** `test/gameFlow.test.ts`.
 
 **To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `pregame-projection.json.gz`
+The Data API reads behind BB-G18's pregame projection (`resources/pregameProjection.ts`). `rated_priors` holds, keyed
+`<schema>.<season>.<game_id>`, the `data` array of `GET /v1/<lg>/rated_priors?season=…&game_id=…&limit=1`, captured
+live on 2026-11-13 with no edits: MARQ at MICH (mbb 401909524, 2 and 2 games in), UK v IU at a neutral site (mbb
+401916290), CONN at OSU women (wbb 401911739), ORL at BOS (nba 401909994), CLE at ORL (nba 401898403, a preseason game:
+no row, `[]`), an opening-night game with a null prediction (nba 2026 401809243) and a 2026 WNBA game (401856990).
+`pages` are four real scheduled ESPN captures (`cdn.espn.com/core/<sport>/playbyplay?gameId=…&xhr=1`, trimmed to
+`{gameId, gamepackageJSON: {header}}`, the part the pregame page reads): the three college games (captured 2026-11-08)
+and ORL at BOS (2026-11-13).
+
+**Used by:** `test/pregameProjection.test.ts`, `test/pregameProjectionOff.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), rerun the oracle with sdv-py, wrap
+them as above and gzip.
