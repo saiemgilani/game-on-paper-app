@@ -6,17 +6,17 @@
  * - `team_strength` (BB-D19): every team's adjusted net rating and rank, the opponent-strength column. The pros key it by
  *   the stats.nba.com / stats.wnba.com id, mapped here to ESPN's; college is ESPN-keyed.
  * - `player_box`: the team's minutes and starts per game, the rotation strip (the pros' regular season, as the block).
- * - `rated_priors` (sdv-py's pregame projections, the game page's rated prior): each game's projected home margin, one
- *   season-wide read like the lines. Until sdv-db serves the table its 404 is "no projections yet", not a failure.
+ * - `rated_priors` (sdv-py#1193, sdv-db#229; the game page's pregame projection): each game's projected home margin by
+ *   ESPN game id in all four leagues, one season-wide read like the lines (MBB 6,318 rows in 2025-26).
  * A failed read is null (its columns are left out) and the page is not cached.
  */
-import { SDVRequestError, retrieveRowsFrom } from './sdv';
+import { retrieveRowsFrom } from './sdv';
 import { BASKETBALL } from '../basketball/config';
 import { PRO_LEAGUES, leagueSource, type BasketballLeague } from '../utils/league';
 
 /** The season products move once a day, the games with the nightly ingest: the season pages' window. */
 const TTL = 6 * 60 * 60;
-/** One season's lined games: MBB 5,435 in 2025-26, the most of the four leagues. */
+/** One season's games: MBB 5,435 lined and 6,318 rated in 2025-26, the most of the four leagues. */
 const LINES_LIMIT = '8000';
 /** Every rated team: 365 MBB teams in 2025-26, 30 / 15 pro. */
 const STRENGTH_LIMIT = '1000';
@@ -42,7 +42,7 @@ export interface ScheduleContextReads {
     strength: Map<string, OppStrength> | null;
     /** null: the read failed */
     box: RotationBoxRow[] | null;
-    /** each game's projected home margin (exp_home_margin) by ESPN game id; null: the read failed; empty before the table is served */
+    /** each game's projected home margin (exp_home_margin) by ESPN game id; null: the read failed */
     proj: Map<string, number> | null;
 }
 
@@ -62,8 +62,7 @@ export async function retrieveScheduleContext(league: BasketballLeague, season: 
             { season: s, select: 'team_id,adj_net_rtg,adj_net_rtg_rank', limit: STRENGTH_LIMIT }, TTL, true),
         retrieveRowsFrom<RotationBoxRow>(games, 'player_box',
             { season: s, team_id: String(espnId), ...(pro ? { season_type: '2' } : {}), select: 'game_id,athlete_id,athlete_short_name,minutes,starter,did_not_play', limit: BOX_LIMIT }, TTL, true),
-        retrieveRowsFrom<{ game_id: number | string; exp_home_margin: number | null }>(games, 'rated_priors', { season: s, select: 'game_id,exp_home_margin', limit: LINES_LIMIT }, TTL, true)
-            .catch((e) => { if (e instanceof SDVRequestError && e.status === 404) return []; throw e; }),
+        retrieveRowsFrom<{ game_id: number | string; exp_home_margin: number | null }>(games, 'rated_priors', { season: s, select: 'game_id,exp_home_margin', limit: LINES_LIMIT }, TTL, true),
     ]);
     const projRows = settled(proj, 'projections');
     const lineRows = settled(lines, 'game lines');

@@ -14,6 +14,12 @@ export default async (page, base) => {
   await panel.locator('summary').click();
   await page.locator('#season-schedule-context').scrollIntoViewIfNeeded();
   await page.waitForTimeout(2000);
+  // Q21: the Proj / vs Proj columns (rated_priors) and the "Against our projection" W-L on the records line
+  if ((await page.locator('#season-schedule-vs-proj').count()) !== 1) throw new Error(`${PATH}: no projection W-L (is rated_priors served?)`);
+  await page.locator('#season-schedule-vs-proj').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(1500);
+  await panel.locator('#season-schedule th', { hasText: 'vs Proj' }).scrollIntoViewIfNeeded();
+  await page.waitForTimeout(2000);
   const b2b = panel.locator('#season-schedule .badge').first();
   if ((await b2b.count()) === 1) {
     await b2b.scrollIntoViewIfNeeded();
