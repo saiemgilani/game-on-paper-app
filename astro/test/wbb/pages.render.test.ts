@@ -4,8 +4,20 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
+// BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
+// BB-G51's Shot profile reads the Data API with 'bball-shot-profile' on (preview): never from a test
+vi.mock('../../src/resources/shotZones', async (orig) => ({ ...(await orig<typeof import('../../src/resources/shotZones')>()), retrievePlayerShotZones: async () => [], retrieveTeamPlayerShotZones: async () => [], retrieveTeamShotZones: async () => ({ zones: null, rates: [] }), retrieveSeasonFt: async () => null, retrieveNcaaPlayerId: async () => null }));
+vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
+// BB-G6's Impact panel reads the Data API with 'bball-impact' on (preview): never from a test (test/playerImpact.test.ts covers the read)
+vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => [] }));
+// BB-G17's play-style chips read the Data API with 'bball-play-styles' on (preview): never from a test (no row: no chip)
+vi.mock('../../src/resources/playStyles', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playStyles')>()), retrievePlayerPlayStyle: async () => [], retrieveTeamPlayStyle: async () => [] }));
+// BB-G27's Value panel reads the Data API with 'bball-war' on (preview): never from a test
+vi.mock('../../src/resources/playerWar', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playerWar')>()), retrievePlayerWar: async () => [], retrievePlayerEpv: async () => [] }));
+// BB-G54's Career panel reads the Data API with 'bball-career' on (preview): never from a test
+vi.mock('../../src/resources/playerCareer', () => ({ retrievePlayerWarCareer: async () => [], retrievePlayerImpactCareer: async () => [] }));
 import { BASKETBALL, courtFor, rankMins } from '../../src/basketball/config';
-import { NCAA_USAGE_NOTE } from '../../src/basketball/dashboards';
+import { NCAA_USAGE_NOTE, defaultScatterConference } from '../../src/basketball/dashboards';
 import { leagueContextFromRows, shotsFromRows } from '../../src/nba/adapters';
 import { describeHex } from '../../src/nba/charts/hexShotChart';
 import { buildDashboard } from '../../src/nba/dashboard';
@@ -13,12 +25,34 @@ import {
     NOLA, SC, conferenceNames, conferences, coverage, leadersGames2026, leadersLatest2026, leagueContext, p26, player2019Games, player2026Games,
     nolaShots2026, player2026Seasons, player2026Shots, scShots, scheduleTeams, seasonPlayers, type Season,
 } from './dashboardFixtures';
-import { defaultScatterConference } from '../../src/basketball/dashboards';
 
 const CAPTURED = [2019, 2022, 2026];
 const lite = ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result }: any) => ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result });
 // BB-G52's lineup shot chart reads the Data API with 'bball-lineup-shotchart' on (preview): never from a test
 vi.mock('../../src/resources/lineupShots', () => ({ retrieveLineupShotRows: async () => [], retrieveLineupCrosswalk: async () => [] }));
+// BB-G12's nearby ranks read the Data API with 'bball-rank-neighbors' on (preview): never from a test
+vi.mock('../../src/resources/bballNeighbors', async (orig) => ({ ...(await orig<typeof import('../../src/resources/bballNeighbors')>()), retrieveTeamRankRows: async () => [] }));
+// BB-G5's season block reads the Data API with 'bball-team-season' on (preview): never from a test
+vi.mock('../../src/resources/teamSeason', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/teamSeason')>()),
+    retrieveTeamSeason: async () => ({ rates: [], strength: null, games: [], gameRates: [] }),
+}));
+// BB-G3's Lineups tab reads the Data API with 'bball-lineups' on (preview): never from a test
+vi.mock('../../src/resources/lineups', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/lineups')>()),
+    retrieveLineups: async () => ({ units: [], names: [], pairs: [] }),
+}));
+// BB-G4's On/Off section reads the Data API with 'bball-on-off' on (preview): never from a test
+vi.mock('../../src/resources/onOff', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/onOff')>()),
+    retrieveOnOff: async () => ({ players: [], pairs: [], names: [] }),
+}));
+// BB-G25's Situations section reads the Data API with 'bball-situational' on (preview): never from a test
+vi.mock('../../src/resources/situational', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/situational')>()),
+    retrieveSituational: async () => ({ team: [], players: [], units: [], names: [] }),
+    retrievePlayerSituational: async () => [],
+}));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async (s: number, lg: string) => { if (lg !== 'wbb') throw new Error(`league ${lg}`); return CAPTURED.includes(s) ? seasonPlayers(s as Season) : []; },
@@ -137,6 +171,9 @@ describe('the WBB dashboard pages', () => {
     test('/wbb/players/<p26>: the season bars, the scope, the women\'s court, box-score USG%, her', async () => {
         const id = p26().person_id;
         const html = size('/wbb/players/[p26]', await page('players/[id].astro', `/wbb/players/${id}?season=2026`, { id: String(id) }));
+        // 'bball-impact' is on here (preview: true): college's Impact panel and its link (no rows mocked: the empty state)
+        expect(html).toContain('id="impact-empty"');
+        expect(html).toContain('href="#impact"');
         wbbPage(html, '2025-26 regular season + postseason');
         expect(html).toContain(`Among players with ${bar}+ field-goal attempts this regular season + postseason;`);
         expect(html).toContain('full regular season + postseason');
@@ -175,7 +212,7 @@ describe('the WBB dashboard pages', () => {
         expect(await prepareBasketballPlayer(fake('/wbb/players/123?season=2026', '123'), 'wbb')).toEqual({ notFound: true });
     });
     test('HTML budgets (measured on these captures x 1.2)', () => {
-        const BUDGET: Record<string, number> = { '/wbb': 242253, '/wbb/team/2579': 144102, '/wbb/players/[p26]': 304592, '/wbb/scatter': 123536, '/wbb/scatter all': 2029853, '/wbb/leaders': 105629 };
+        const BUDGET: Record<string, number> = { '/wbb': 242253, '/wbb/team/2579': 144102, '/wbb/players/[p26]': 304592, '/wbb/scatter': 123536, '/wbb/scatter all': 2029853, '/wbb/leaders': 127402 }; // /wbb/leaders: BB-G11's Most declined boards (preview), 106,168 bytes x 1.2
         for (const [k, b] of Object.entries(BUDGET)) expect(sizes[k], k).toBeLessThanOrEqual(b);
     });
 });

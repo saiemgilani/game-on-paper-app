@@ -403,6 +403,20 @@ export function rankMins(league: BasketballLeague, season: number): RankMins {
     return { fga: Math.round((RANK_MIN.fga * g) / NBA_SEASON_GAMES), fg3a: Math.round((RANK_MIN.fg3a * g) / NBA_SEASON_GAMES) };
 }
 
+/**
+ * BB-G10 (Q30): the scatter's impact-axes bar, offensive possessions over a full regular season (82 NBA / 44 WNBA games),
+ * scaled by the season's games like the FGA bar. About a 10th man's share of his team's possessions: in 2025-26 a team's
+ * median 10th man had 2,094 (NBA) and 678 (WNBA) and a team about 8,100 / 3,500, so 2,000 / 800 keep 286 NBA and 136
+ * WNBA players, about nine a team. The same bar as the leaderboards' Impact qualifier.
+ */
+const IMPACT_MIN_OFF_POSS: Partial<Record<BasketballLeague, { poss: number; games: number }>> = {
+    nba: { poss: 2000, games: NBA_SEASON_GAMES }, wnba: { poss: 800, games: 44 },
+};
+export function impactPossMin(league: BasketballLeague, season: number): number | null {
+    const bar = IMPACT_MIN_OFF_POSS[league];
+    return bar ? Math.round((bar.poss * BASKETBALL[league].regularSeasonGames(season)) / bar.games) : null;
+}
+
 export interface IslandLeagueProps { highlight?: string | null; minFga?: number; pronoun?: Pronoun; leaderBars?: LeaderBars }
 /**
  * The league props the scatter, leaders and player islands take, minus every one equal to the island's own default (the

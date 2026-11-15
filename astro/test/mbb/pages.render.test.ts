@@ -4,6 +4,18 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
+// BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
+// BB-G51's Shot profile reads the Data API with 'bball-shot-profile' on (preview): never from a test
+vi.mock('../../src/resources/shotZones', async (orig) => ({ ...(await orig<typeof import('../../src/resources/shotZones')>()), retrievePlayerShotZones: async () => [], retrieveTeamPlayerShotZones: async () => [], retrieveTeamShotZones: async () => ({ zones: null, rates: [] }), retrieveSeasonFt: async () => null, retrieveNcaaPlayerId: async () => null }));
+vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
+// BB-G6's Impact panel reads the Data API with 'bball-impact' on (preview): never from a test (test/playerImpact.test.ts covers the read)
+vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => [] }));
+// BB-G17's play-style chips read the Data API with 'bball-play-styles' on (preview): never from a test (no row: no chip)
+vi.mock('../../src/resources/playStyles', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playStyles')>()), retrievePlayerPlayStyle: async () => [], retrieveTeamPlayStyle: async () => [] }));
+// BB-G27's Value panel reads the Data API with 'bball-war' on (preview): never from a test
+vi.mock('../../src/resources/playerWar', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playerWar')>()), retrievePlayerWar: async () => [], retrievePlayerEpv: async () => [] }));
+// BB-G54's Career panel reads the Data API with 'bball-career' on (preview): never from a test
+vi.mock('../../src/resources/playerCareer', () => ({ retrievePlayerWarCareer: async () => [], retrievePlayerImpactCareer: async () => [] }));
 import { BASKETBALL, courtFor } from '../../src/basketball/config';
 import { NCAA_USAGE_NOTE, defaultScatterConference, withSeasonMembers } from '../../src/basketball/dashboards';
 import { leagueContextFromRows, shotsFromRows } from '../../src/nba/adapters';
@@ -17,6 +29,30 @@ import {
 const lite = ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result }: any) => ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result });
 // BB-G52's lineup shot chart reads the Data API with 'bball-lineup-shotchart' on (preview): never from a test
 vi.mock('../../src/resources/lineupShots', () => ({ retrieveLineupShotRows: async () => [], retrieveLineupCrosswalk: async () => [] }));
+// BB-G12's nearby ranks read the Data API with 'bball-rank-neighbors' on (preview): never from a test
+vi.mock('../../src/resources/bballNeighbors', async (orig) => ({ ...(await orig<typeof import('../../src/resources/bballNeighbors')>()), retrieveTeamRankRows: async () => [] }));
+// BB-G5's season block reads the Data API with 'bball-team-season' on (preview): never from a test
+vi.mock('../../src/resources/teamSeason', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/teamSeason')>()),
+    retrieveTeamSeason: async () => ({ rates: [], strength: null, games: [], gameRates: [] }),
+}));
+// BB-G3's Lineups tab reads the Data API with 'bball-lineups' on (preview): never from a test
+const lineupsRead = vi.hoisted(() => ({ value: { units: [] as any[], names: [] as any[], pairs: [] as any[] } }));
+vi.mock('../../src/resources/lineups', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/lineups')>()),
+    retrieveLineups: async () => lineupsRead.value,
+}));
+// BB-G4's On/Off section reads the Data API with 'bball-on-off' on (preview): never from a test
+vi.mock('../../src/resources/onOff', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/onOff')>()),
+    retrieveOnOff: async () => ({ players: [], pairs: [], names: [] }),
+}));
+// BB-G25's Situations section reads the Data API with 'bball-situational' on (preview): never from a test
+vi.mock('../../src/resources/situational', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/situational')>()),
+    retrieveSituational: async () => ({ team: [], players: [], units: [], names: [] }),
+    retrievePlayerSituational: async () => [],
+}));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async (s: number, lg: string) => { if (lg !== 'mbb') throw new Error(`league ${lg}`); return [2019, 2023, 2026].includes(s) ? seasonPlayers(s as 2019 | 2023 | 2026) : []; },
@@ -84,6 +120,18 @@ describe('the MBB dashboard pages', () => {
         expect(plain(html)).toContain(NCAA_USAGE_NOTE);
         expect(html).toContain(`href="/mbb/players?season=2026&amp;team=${TEX}"`);
     });
+    test("/mbb/team/<Texas>, Lineups: a unit's stats.ncaa.org ids are never named from the ESPN-keyed season rows", async () => {
+        const [p1, p2] = seasonPlayers(2026).filter((r) => r.team_id === TEX);
+        lineupsRead.value = { units: [{ lineup_id: `${p1.person_id}-${p2.person_id}`, n_players: 2, player_1: String(p1.person_id), player_2: String(p2.person_id), player_3: null, player_4: null, player_5: null, minutes: 10, poss: 60, opp_poss: 60, pts: 60, opp_pts: 60, plus_minus: 0 }], names: [], pairs: [] };
+        try {
+            const tab = (await page('team/[id].astro', `/mbb/team/${TEX}?season=2026&unit=2`, { id: String(TEX) })).split('id="lineups"')[1].split('</section>')[0];
+            expect(tab.replace(/<[^>]+>/g, '')).toContain(`#${p1.person_id} · #${p2.person_id}`);
+            expect(tab).not.toContain(`/mbb/players/${p1.person_id}`); // no crosswalk pair: no link
+            expect(tab).not.toContain(p1.player_name);
+        } finally {
+            lineupsRead.value = { units: [], names: [], pairs: [] };
+        }
+    });
     test('/mbb/team/<Texas>?season=2019: the 20\' 9" court', async () => {
         const html = await page('team/[id].astro', `/mbb/team/${TEX}?season=2019`, { id: String(TEX) });
         mbbPage(html, '2018-19 regular season + postseason');
@@ -113,6 +161,9 @@ describe('the MBB dashboard pages', () => {
     test('/mbb/players/<p26>: the season bars, the scope, the NCAA court, box-score USG%', async () => {
         const id = p26().person_id;
         const html = size('/mbb/players/[p26]', await page('players/[id].astro', `/mbb/players/${id}?season=2026`, { id: String(id) }));
+        // 'bball-impact' is on here (preview: true): college's Impact panel and its link (no rows mocked: the empty state)
+        expect(html).toContain('id="impact-empty"');
+        expect(html).toContain('href="#impact"');
         mbbPage(html, '2025-26 regular season + postseason');
         expect(html).toContain('Among players with 40+ field-goal attempts this regular season + postseason;');
         expect(html).toContain('else stats.ncaa.org shot charts.'); // review Minor 3: not the NBA's "play-by-play shots"
@@ -144,7 +195,7 @@ describe('the MBB dashboard pages', () => {
         expect(await prepareBasketballPlayer(fake('/mbb/players/123?season=2026', '123'), 'mbb')).toEqual({ notFound: true });
     });
     test('HTML budgets (measured on these captures x 1.2; Step 3 sets them)', () => {
-        const BUDGET: Record<string, number> = { '/mbb': 243155, '/mbb/team/251': 147119, '/mbb/players/[p26]': 260507, '/mbb/scatter': 124539, '/mbb/scatter?conference=all': 2069946, '/mbb/leaders': 101289 };
+        const BUDGET: Record<string, number> = { '/mbb': 243155, '/mbb/team/251': 147119, '/mbb/players/[p26]': 260507, '/mbb/scatter': 124539, '/mbb/scatter?conference=all': 2069946, '/mbb/leaders': 125027 }; // /mbb/leaders: BB-G11's Most declined boards (preview), 104,189 bytes x 1.2
         for (const [k, b] of Object.entries(BUDGET)) expect(sizes[k], k).toBeLessThanOrEqual(b);
     });
 });

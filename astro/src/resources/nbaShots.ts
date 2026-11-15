@@ -70,6 +70,25 @@ export interface SeasonPlayerRow {
     fga_pg: number | null;
     min_total: number | null;
     headshot_href: string | null;
+    /**
+     * The season's shooting percentages and the producer's ranks of them (sdv-db#225): the same on every team row of a
+     * player. `<m>_n` is the attempts behind `<m>`; `<m>_rank` (fractional for ties) and `<m>_pct` are null under the
+     * producer's attempt minimum. Optional: rows read before #225 have none.
+     */
+    fg3_pct?: number | null;
+    ft_pct?: number | null;
+    fg_pct_n?: number | null;
+    efg_pct_n?: number | null;
+    fg3_pct_n?: number | null;
+    ft_pct_n?: number | null;
+    fg_pct_rank?: number | null;
+    fg_pct_pct?: number | null;
+    efg_pct_rank?: number | null;
+    efg_pct_pct?: number | null;
+    fg3_pct_rank?: number | null;
+    fg3_pct_pct?: number | null;
+    ft_pct_rank?: number | null;
+    ft_pct_pct?: number | null;
 }
 
 export interface PlayerGameRow {
@@ -101,6 +120,20 @@ export interface ShotApiRow {
 
 export function retrieveLeagueContextRows(season: number, league: BasketballLeague): Promise<LeagueContextRow[]> {
     return read<LeagueContextRow>(league, 'shot_league_context', { season: String(season), limit: LIMIT }, SEASON_TTL, true);
+}
+
+/** sdv-db #221 `shot_team_context`: one row per (season, team_id, kind, key1, key2), the shooting team's squares and line. */
+export interface TeamContextRow extends LeagueContextRow {
+    team_id: number;
+    /** college only: the team_group_seasons conference ('mbb:sec') */
+    conference_id: string | null;
+    /** kind='square': the ZONES index most of the square's attempts fall in */
+    zone: number | null;
+}
+
+/** Every team's squares and line for the season in one read; a college league reads one conference (a D-I season is over the cap). */
+export function retrieveTeamContextRows(season: number, league: BasketballLeague, conferenceId?: string): Promise<TeamContextRow[]> {
+    return read<TeamContextRow>(league, 'shot_team_context', { season: String(season), ...(conferenceId ? { conference_id: conferenceId } : {}), limit: LIMIT }, SEASON_TTL, true);
 }
 
 export function retrieveSeasonPlayerRows(season: number, league: BasketballLeague): Promise<SeasonPlayerRow[]> {

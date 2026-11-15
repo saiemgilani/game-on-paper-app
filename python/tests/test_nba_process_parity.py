@@ -1,5 +1,5 @@
 # python/tests/test_nba_process_parity.py
-"""Compare the full NBA process response with the captured baseline, excluding regulation_periods.
+"""Compare the full NBA process response with the captured baseline, excluding the additive regulation_periods and excitement keys.
 
 The baseline is from 81dbaf1e. Only prior.home_team_spread was refreshed from
 06d88c0c, using the same ESPN capture and the locked SportsDataverse dependency.
@@ -16,7 +16,7 @@ import pathlib
 FIX = pathlib.Path(__file__).parent / "fixtures"
 SUMMARY = FIX / "nba_summary_401585607.json.gz"
 SNAP = FIX / "nba_process_401585607.payload.json"
-ADDED_IN_PR0 = {"regulation_periods"}
+ADDED_IN_PR0 = {"regulation_periods", "excitement", "splits", "expected"}  # excitement: BB-G29, splits: BB-G32, expected: BB-G33 (test_game_expected_payload)
 
 
 class _Resp:
@@ -48,6 +48,12 @@ def _body(monkeypatch):
 
 
 def test_nba_process_payload_is_unchanged(monkeypatch):
-    kept = {k: v for k, v in _body(monkeypatch).items() if k not in ADDED_IN_PR0}
+    body = _body(monkeypatch)
+    # BB-G35 added one per-play key, the assister of a made shot (athlete_id_2); everything else is the snapshot's
+    # and it is the assister: on every made field goal, set exactly when the text credits an assist
+    makes = [p for p in body["plays"] if p.get("scoring_play") and (p.get("score_value") or 0) >= 2]
+    assert makes and all((p.get("athlete_id_2") is not None) == ("assist" in p["text"].lower()) for p in makes)
+    body["plays"] = [{k: v for k, v in p.items() if k != "athlete_id_2"} for p in body["plays"]]
+    kept = {k: v for k, v in body.items() if k not in ADDED_IN_PR0}
     assert SNAP.exists(), "PR 0 snapshot missing; never regenerate"
     assert kept == json.loads(SNAP.read_text(encoding="utf-8"))

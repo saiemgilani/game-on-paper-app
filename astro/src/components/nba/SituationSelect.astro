@@ -1,0 +1,20 @@
+---
+// src/components/nba/SituationSelect.astro
+// BB-G25: the Situation control of the team page's and the player page's Situations sections, a plain <select> of URLs
+// (NbaSeasonSelect's pattern: no JS island). Order: All and Clutch, the periods, then the rest.
+import type { Situation } from '../../utils/situations';
+
+interface Props { options: Situation[]; situation: Situation; href: (key: string) => string }
+const { options, situation, href } = Astro.props;
+const ungrouped = options.filter((o) => !o.group);
+const periods = options.filter((o) => o.group === 'By period');
+const [lead, rest] = [ungrouped.slice(0, 2), ungrouped.slice(2)];
+---
+<div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+  <label class="visually-hidden" for="situation">Situation</label>
+  <select id="situation" class="form-select form-select-sm w-auto" onchange="window.location.href = this.value">
+    {lead.map((o) => (<option value={href(o.key)} selected={o.key === situation.key}>{o.label}</option>))}
+    <optgroup label="By period">{periods.map((o) => (<option value={href(o.key)} selected={o.key === situation.key}>{o.label}</option>))}</optgroup>
+    {rest.map((o) => (<option value={href(o.key)} selected={o.key === situation.key}>{o.label}</option>))}
+  </select>
+</div>

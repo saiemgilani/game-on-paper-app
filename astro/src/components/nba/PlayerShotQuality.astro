@@ -1,0 +1,16 @@
+---
+// src/components/nba/PlayerShotQuality.astro
+// BB-G15, behind 'bball-poe': the player page's points over expected, one line under his shooting line (one per team he
+// shot for, the team named, when he was traded), the model note under it as text (no hover on a phone). Every number is sdv-db's shot_quality_season (BB-D9); no row, no line.
+import type { ShotQualityRow } from '../../resources/shotQuality';
+import { fmtDec, fmtInt, fmtPts } from '../../nba/format';
+import { signed1, XPTS_NOTE } from '../../utils/shotQuality';
+
+interface Props { rows: ShotQualityRow[] | null }
+const { rows } = Astro.props;
+const mine = (rows ?? []).filter((r) => r.level === 'player').sort((a, b) => b.attempts - a.attempts);
+const many = mine.length > 1;
+---
+{rows === null ? (<p class="small text-muted mb-1" id="nba-poe-unavailable">Points over expected are temporarily unavailable.</p>) : mine.map((r) => (
+  <p class="numeral mb-1" id={many ? `nba-poe-${r.team_id}` : 'nba-poe'}>{many && (<Fragment>{r.team_tricode}: </Fragment>)}<span class="fw-bold">{signed1(r.poe)}</span>{r.poe_se != null && (<span class="text-muted"> ± {fmtDec(r.poe_se, 1)}</span>)} points over expected on {fmtInt(r.attempts)} FGA &middot; {r.xpps == null ? '—' : fmtDec(r.xpps, 2)} xPTS per shot &middot; {r.fg_pct_oe == null ? '—' : fmtPts(r.fg_pct_oe)} FG% over expected</p>
+))}{mine.length > 0 && (<p class="small text-muted mb-1" id="nba-poe-note">{XPTS_NOTE}</p>)}
