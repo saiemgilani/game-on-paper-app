@@ -5,7 +5,7 @@ import svelte from '@astrojs/svelte';
 
 // Dummy secrets so resource modules (which read them at import via astro:env)
 // load; every network call they would make is mocked in the tests, and
-// test/setup/networkGuard.ts fails any test whose read reaches a real host.
+// test/helpers/networkGuard.ts fails any test whose read reaches a real host.
 for (const k of ['PYTHON_HTTP_TOKEN', 'SDV_AUTH_TOKEN', 'ADMIN_USER', 'ADMIN_PASS', 'GOP_INGEST_KEY']) process.env[k] ||= 'test';
 
 // getViteConfig lets tests import .astro components (Container API). The real
@@ -15,7 +15,7 @@ for (const k of ['PYTHON_HTTP_TOKEN', 'SDV_AUTH_TOKEN', 'ADMIN_USER', 'ADMIN_PAS
 export default getViteConfig(
     {
         resolve: { conditions: ['browser'], alias: { 'cloudflare:workers': fileURLToPath(new URL('./test/stubs/cloudflare-workers.ts', import.meta.url)) } },
-        test: { include: ['test/**/*.test.ts'], setupFiles: ['test/helpers/networkGuard.ts', 'test/stubs/noLiveDataApi.ts', 'test/setup/networkGuard.ts'] },
+        test: { include: ['test/**/*.test.ts'], setupFiles: ['test/helpers/networkGuard.ts', 'test/stubs/noLiveDataApi.ts'] },
     },
     { configFile: false, output: 'server', integrations: [svelte()], trailingSlash: 'ignore' },
 );
