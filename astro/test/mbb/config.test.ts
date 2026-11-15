@@ -19,7 +19,7 @@ describe('the mbb league entry', () => {
         const l = LEAGUES.mbb;
         expect([l.sport, l.name, l.shortName, l.urlPrefix, l.espnPath, l.espnCoreLeague, l.logoLeague, l.scoreboardCacheKey, l.sdvApiBase, l.sdvSchema, l.teamCount, l.pool, l.defaultGroup, l.scoreboardQuery])
             .toEqual(['basketball', "Men's College Basketball", 'MBB', '/mbb', 'mens-college-basketball', 'mens-college-basketball', 'ncaa', 'scoreboard:mbb', 'https://data.sportsdataverse.org/v1/mbb', 'mbb', 366, 'D-I', null, '']);
-        expect([l.seasons[0], l.seasons.at(-1)]).toEqual([2003, 2026]);
+        expect([l.seasons[0], l.seasons.at(-1)]).toEqual([2003, 2027]); // BB-D29: 2026-27 listed once its stats.ncaa.org shots landed
     });
     test('sources: ESPN-keyed games and the mbb schema; no stats ids', () => {
         const m = BASKETBALL.mbb;

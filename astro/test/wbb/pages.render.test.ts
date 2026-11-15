@@ -66,13 +66,13 @@ const ALL_DI = 'all';
 
 describe('the WBB dashboard pages', () => {
     test('/wbb: the teams index of all 363 programs by conference is the landing, with a scoreboard link and the coverage note', async () => {
-        const html = size('/wbb', await page('index.astro', '/wbb'));
+        const html = size('/wbb', await page('index.astro', '/wbb?season=2026')); // BB-D29: 2025-26 is a past season now
         wbbPage(html, 'WBB teams, 2025-26');
         expect(html).toContain('id="nba-teams-table"');
-        expect(new Set([...html.matchAll(/href="\/wbb\/team\/(\d+)"/g)].map((m) => m[1])).size).toBe(363);   // D38
-        for (const id of [2130, 2385, 2441, 2837, 88]) expect(html, String(id)).toContain(`href="/wbb/team/${id}"`);
+        expect(new Set([...html.matchAll(/href="\/wbb\/team\/(\d+)\?season=2026"/g)].map((m) => m[1])).size).toBe(363);   // D38
+        for (const id of [2130, 2385, 2441, 2837, 88]) expect(html, String(id)).toContain(`href="/wbb/team/${id}?season=2026"`);
         expect(html).toContain('href="/wbb/scoreboard"');
-        expect(html).toContain('href="https://gameonpaper.com/wbb"');
+        expect(html).toContain('href="https://gameonpaper.com/wbb?season=2026"');
         expect(plain(html)).toContain('stats.ncaa.org shot charts, 2025-26:');
         expect(plain(html)).toContain('from teams linked to an ESPN Division I team');
         expect(html).toContain('regular-season and postseason shooting line, from stats.ncaa.org shot charts');
@@ -88,12 +88,12 @@ describe('the WBB dashboard pages', () => {
         expect(html).toContain('href="https://gameonpaper.com/wbb/teams?season=2019"');
     });
     test("/wbb/team/<South Carolina>: the 2026 women's court in the hex chart; USG% labelled, no PIE", async () => {
-        const html = size('/wbb/team/2579', await page('team/[id].astro', `/wbb/team/${SC}`, { id: String(SC) }));
+        const html = size('/wbb/team/2579', await page('team/[id].astro', `/wbb/team/${SC}?season=2026`, { id: String(SC) }));
         wbbPage(html, '2025-26 regular season + postseason');
         expect(html).toContain(hexDesc(scShots(2026).map(lite), 2026));
         expect(html).toContain('>USG%<');
         expect(plain(html)).toContain(NCAA_USAGE_NOTE);
-        expect(html).toContain(`href="/wbb/players?team=${SC}"`);
+        expect(html).toContain(`href="/wbb/players?season=2026&amp;team=${SC}"`);
     });
     test('/wbb/team/<South Carolina>?season=2022 and 2019: each season\'s own arc', async () => {
         for (const s of [2022, 2019] as const) {
@@ -103,14 +103,14 @@ describe('the WBB dashboard pages', () => {
         }
     });
     test('/wbb/team/2837: a reclassifying program with no linked shots is a page that says so (D38, Decision 8)', async () => {
-        const html = await page('team/[id].astro', '/wbb/team/2837', { id: '2837' });
+        const html = await page('team/[id].astro', '/wbb/team/2837?season=2026', { id: '2837' });
         const name = BASKETBALL.wbb.teams.inSeason(2837, 2026)!.name.replace(/&/g, '&amp;'); // East Texas A&M, as the HTML escapes it
         wbbPage(html, name);
         expect(plain(html)).toContain(`No stats.ncaa.org shots are linked to ${name} in 2025-26.`);
         expect(html).not.toContain('id="nba-hex-panel"');
     });
     test('/wbb/team/2443: New Orleans, placed shots but no player named on them (R-S14): the dashboard, no roster, no players link', async () => {
-        const html = await page('team/[id].astro', `/wbb/team/${NOLA}`, { id: String(NOLA) });
+        const html = await page('team/[id].astro', `/wbb/team/${NOLA}?season=2026`, { id: String(NOLA) });
         wbbPage(html, '2025-26 regular season + postseason');
         expect(html).not.toContain('id="nba-empty"');
         expect(plain(html)).not.toContain('No stats.ncaa.org shots are linked');
@@ -122,19 +122,19 @@ describe('the WBB dashboard pages', () => {
         expect(plain(html)).toContain('348/992 FG');
     });
     test('/wbb/players: choose a team; ?team=<South Carolina>: her team list', async () => {
-        const choose = await page('players.astro', '/wbb/players');
+        const choose = await page('players.astro', '/wbb/players?season=2026');
         wbbPage(choose, 'Players, 2025-26');
         expect(plain(choose)).toContain('Choose a team to list its players.');
         expect(choose).not.toContain('id="nba-players"');
-        const sc = await page('players.astro', `/wbb/players?team=${SC}`);
+        const sc = await page('players.astro', `/wbb/players?team=${SC}&season=2026`);
         wbbPage(sc, 'Players, 2025-26');
         expect(sc).toContain('id="nba-players"');
-        expect(sc).toContain(`href="https://gameonpaper.com/wbb/players?team=${SC}"`);
+        expect(sc).toContain(`href="https://gameonpaper.com/wbb/players?season=2026&amp;team=${SC}"`);
         expect(sc).toContain('Regular-season and postseason field-goal attempts from stats.ncaa.org shot charts');
     });
     test('/wbb/players/<p26>: the season bars, the scope, the women\'s court, box-score USG%, her', async () => {
         const id = p26().person_id;
-        const html = size('/wbb/players/[p26]', await page('players/[id].astro', `/wbb/players/${id}`, { id: String(id) }));
+        const html = size('/wbb/players/[p26]', await page('players/[id].astro', `/wbb/players/${id}?season=2026`, { id: String(id) }));
         wbbPage(html, '2025-26 regular season + postseason');
         expect(html).toContain(`Among players with ${bar}+ field-goal attempts this regular season + postseason;`);
         expect(html).toContain('full regular season + postseason');
@@ -145,21 +145,21 @@ describe('the WBB dashboard pages', () => {
         expect(plain(html)).not.toMatch(/\bhis season\b/);
     });
     test('/wbb/scatter: D42/D46 opens on the computed default conference; All D-I on request; the 2026 bar, no highlight, the usage note', async () => {
-        const html = size('/wbb/scatter', await page('scatter.astro', '/wbb/scatter'));
+        const html = size('/wbb/scatter', await page('scatter.astro', '/wbb/scatter?season=2026'));
         wbbPage(html, 'WBB scatter, 2025-26');
         expect(html).toContain(`Players with ${bar}+ FGA.`);
         expect(plain(html)).toContain(NCAA_USAGE_NOTE);
         const dflt = defaultScatterConference(seasonPlayers(2026), conferences(2026), 2026, 'wbb'); // D46: computed (R2: a reference slug)
         expect(dflt).toBe('acc'); // R-S8: computed; 2026 ACC and Big Ten tie at 167 qualifiers, the A-Z tiebreak picks the ACC
         expect(html).toMatch(new RegExp(`<option value="${dflt}" selected`));
-        const all = size('/wbb/scatter all', await page('scatter.astro', `/wbb/scatter?${CONF_PARAM}=${ALL_DI}`));
+        const all = size('/wbb/scatter all', await page('scatter.astro', `/wbb/scatter?season=2026&${CONF_PARAM}=${ALL_DI}`));
         wbbPage(all, 'WBB scatter, 2025-26');
         expect(sizes['/wbb/scatter'] * 10).toBeLessThan(sizes['/wbb/scatter all']); // only one conference's 167 points serialized (D42), not All D-I's 3,431
-        const bad = await page('scatter.astro', `/wbb/scatter?${CONF_PARAM}=49`); // an ESPN group id is not a reference slug (R2)
+        const bad = await page('scatter.astro', `/wbb/scatter?season=2026&${CONF_PARAM}=49`); // an ESPN group id is not a reference slug (R2)
         expect(bad).toMatch(new RegExp(`<option value="${dflt}" selected`)); // unknown value: the default, never a 404 and never the whole league
     });
     test('/wbb/leaders: two windows inside the 49-day read, her pronoun', async () => {
-        const html = size('/wbb/leaders', await page('leaders.astro', '/wbb/leaders'));
+        const html = size('/wbb/leaders', await page('leaders.astro', '/wbb/leaders?season=2026'));
         wbbPage(html, 'WBB rolling leaders, 2025-26');
         expect(html).toContain('over their last 5 and 10 games');
         expect(html).toContain('the last 49 days of games.');
@@ -170,7 +170,7 @@ describe('the WBB dashboard pages', () => {
     test('unknown ids are 404s', async () => {
         const { prepareBasketballPlayer } = await import('../../src/routes/basketball/player');
         const fake = (path: string, id: string) => ({ params: { id }, url: new URL(`https://gameonpaper.com${path}`), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } }) as any;
-        expect(await prepareBasketballPlayer(fake('/wbb/players/123', '123'), 'wbb')).toEqual({ notFound: true });
+        expect(await prepareBasketballPlayer(fake('/wbb/players/123?season=2026', '123'), 'wbb')).toEqual({ notFound: true });
     });
     test('HTML budgets (measured on these captures x 1.2)', () => {
         const BUDGET: Record<string, number> = { '/wbb': 242253, '/wbb/team/2579': 144102, '/wbb/players/[p26]': 304592, '/wbb/scatter': 123536, '/wbb/scatter all': 2029853, '/wbb/leaders': 105629 };
