@@ -104,9 +104,14 @@ export const FLAGS: Record<string, FeatureState> = {
     // GET /api/search proxy it calls, which 404s for every other viewer. Hits
     // into a gated namespace are dropped per viewer: players while
     // 'player-pages' is off, NFL rows while 'nfl' is off. Prerendered pages
-    // (glossary, data-sources, changelog) resolve the flag at build time, so
+    // (glossary, changelog) resolve the flag at build time, so
     // they show no box while this is 'preview'.
     'site-search': 'on',
+    // The data-status table in /data-sources' Freshness section: when each season surface
+    // last refreshed (its table's /v1/meta stamp, the one that stamps and keys the surface
+    // itself; utils/freshness.ts STATUS_SURFACES), plus one "Live from ESPN" row. The page is
+    // SSR for this (5 min edge cache); off, its HTML is unchanged and it reads nothing.
+    'data-status': 'preview',
 
     // Game link previews: og:image becomes the API's 1200x630 card for the
     // game's state (utils/shareTags.ts), ?spoilers=off previews without the
