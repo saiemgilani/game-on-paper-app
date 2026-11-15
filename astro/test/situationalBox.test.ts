@@ -116,7 +116,7 @@ describe('the page', () => {
     test.each(LEAGUES)('%s: priced, the expected columns on all three tables, every number the producer\'s', async (lg) => {
         const g = game(lg), a = g.away.splits!, h = g.home.splits!, ea = g.away.expected!, eh = g.home.expected!;
         const html = await render(lg, g);
-        expect(html).toContain('id="situations"'); expect(html).toContain('href="#situations"');
+        expect(html).toContain('id="possession-factors"'); expect(html).toContain('href="#possession-factors"');
         for (const t of ['Situations', 'Shot zones', 'Ball and flow']) expect(html).toContain(`aria-label="${t}"`);
         clean(plain(html));
         // situations: the splits' counts and PPP, the expected row's POE; half-court and first chance are the differences
@@ -208,7 +208,7 @@ describe('the page', () => {
     test('neither row (before the tip, or a season not built): the panel says so, with no tables', async () => {
         const g = game('nba'); for (const s of SIDES) { delete g[s].splits; delete g[s].expected; }
         const html = await render('nba', g);
-        expect(html).toContain('id="situations"');
+        expect(html).toContain('id="possession-factors"');
         expect(plain(html)).toContain('not available for this game yet'); expect(html).not.toContain('aria-label="Situations"');
     });
     test.each(LEAGUES)('%s: neither row but the producer\'s situational rows: possessions, points and ORtg by situation, a note for the rest', async (lg) => {
@@ -232,7 +232,7 @@ describe('the page', () => {
     });
     test('flag off: no panel and no nav entry', async () => {
         const html = await render('wbb', game('wbb'), false);
-        expect(html).not.toContain('id="situations"'); expect(html).not.toContain('href="#situations"'); expect(html).not.toContain('Possession factors');
+        expect(html).not.toContain('id="possession-factors"'); expect(html).not.toContain('href="#possession-factors"'); expect(html).not.toContain('Possession factors');
     });
 });
 
