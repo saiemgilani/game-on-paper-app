@@ -11,7 +11,7 @@ from sportsdataverse.nba.nba_game_page import game_excitement
 PLAY_COLUMNS = [
     "id", "sequence_number", "game_play_number", "period_number", "clock_display_value",
     "start_game_seconds_remaining", "home_score", "away_score", "team_id", "text", "type_text",
-    "scoring_play", "score_value", "shooting_play", "athlete_id_1",
+    "scoring_play", "score_value", "shooting_play", "athlete_id_1", "athlete_id_2",
     "home_win_prob", "wp_delta", "wp_regime", "x_legacy", "y_legacy",
 ]
 

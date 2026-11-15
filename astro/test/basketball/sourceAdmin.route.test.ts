@@ -29,6 +29,8 @@ vi.mock('../../src/resources/gameFlow', async (orig) => ({ ...(await orig<typeof
 vi.mock('../../src/resources/epvBox', async (orig) => ({ ...(await orig<typeof import('../../src/resources/epvBox')>()), retrieveEpvBox: async () => (await orig<typeof import('../../src/resources/epvBox')>()).EMPTY_EPV }));
 // BB-G2's garbage-time log likewise ('bball-garbage-time', preview): unmapped, never a read
 vi.mock('../../src/resources/garbageTime', async (orig) => ({ ...(await orig<typeof import('../../src/resources/garbageTime')>()), retrieveGarbageTime: async () => ({ teams: null, rows: [] }) }));
+// BB-G35's season averages likewise ('bball-game-leaders', preview): none, never a read
+vi.mock('../../src/resources/seasonAverages', async (orig) => ({ ...(await orig<typeof import('../../src/resources/seasonAverages')>()), retrieveSeasonAverages: async () => [] }));
 
 const api = () => JSON.parse(readFileSync(new URL('../fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
 const ID = '401766458';

@@ -20,6 +20,8 @@ import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
 import { hasEpv, retrieveEpvBox, type EpvBoxReads } from '../../resources/epvBox';
 import { retrieveRatedPrior, type RatedPrior } from '../../resources/pregameProjection';
 import { retrieveGarbageTime, type GarbageReads } from '../../resources/garbageTime';
+import { retrieveSeasonAverages } from '../../resources/seasonAverages';
+import type { SeasonAverage } from '../../utils/gameLeaders';
 import { seasonCache, setCache, uncacheable } from './cache';
 import { retrieveGameSituational } from '../../resources/situational';
 import { parseSituation, situationsFor, type GameSituationsTab } from '../../utils/situations';
@@ -55,6 +57,8 @@ export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { 
     projection?: PregameProjection | null;
     /** BB-G2, only with 'bball-garbage-time' and 'bball-impact-box' on and a final; `reads` null when the log's read failed */
     garbage?: { reads: GarbageReads | null; out: boolean };
+    /** BB-G35, only with 'bball-game-leaders' on and a final; null when the read failed (the panel says so) */
+    averages?: SeasonAverage[] | null;
 };
 
 /**
@@ -145,19 +149,23 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     const withEpv = isFeatureEnabled('bball-epv', Astro.locals) && hasEpv(league, r.game.season);
     // the toggle sits beside the Impact box: no box, no toggle and no read
     const withGarbage = withImpact && isFeatureEnabled('bball-garbage-time', Astro.locals);
-    if (!withImpact && !withFlow && !withEpv) return r;
-    const [impact, flow, epv, garbage] = await Promise.all([
+    const withLeaders = isFeatureEnabled('bball-game-leaders', Astro.locals);
+    if (!withImpact && !withFlow && !withLeaders && !withEpv) return r;
+    const [impact, flow, epv, garbage, averages] = await Promise.all([
         withImpact ? readPanel('impact box', league, r.game, r.game.season, retrieveImpactBox) : undefined,
         withFlow ? readPanel('game flow', league, r.game, r.game.season, retrieveGameFlow) : undefined,
         withEpv ? readPanel('EPV box', league, r.game, r.game.season, retrieveEpvBox) : undefined,
         withGarbage ? readPanel('garbage-time log', league, r.game, r.game.season, retrieveGarbageTime) : undefined,
+        withLeaders ? readPanel('season averages', league, r.game, r.game.season, retrieveSeasonAverages) : undefined,
     ]);
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
-    if (impact === null || flow === null || epv === null || garbage === null) uncacheable(Astro);
-    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || (epv && (epv.players.length === 0 || epv.team.length < 2 || epv.plays.length === 0)))) setCache(Astro, seasonCache(league));
+    if (impact === null || flow === null || epv === null || garbage === null || averages === null) uncacheable(Astro);
+    // season averages move with every game (and arrive after it): a final that reads them follows the nightly ingest too
+    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || averages !== undefined || (epv && (epv.players.length === 0 || epv.team.length < 2 || epv.plays.length === 0)))) setCache(Astro, seasonCache(league));
     return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}), ...(epv !== undefined ? { epv } : {}),
-        ...(garbage !== undefined ? { garbage: { reads: garbage, out: Astro.url.searchParams.get(GARBAGE_PARAM) === 'out' } } : {}) };
+        ...(garbage !== undefined ? { garbage: { reads: garbage, out: Astro.url.searchParams.get(GARBAGE_PARAM) === 'out' } } : {}),
+        ...(averages !== undefined ? { averages } : {}) };
 }
 
 /**

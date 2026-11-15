@@ -208,6 +208,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // a points column and WPA beside home WP, and a sort toggle kept in `?order=` (newest first while live, oldest first
     // otherwise). Off: `?order=` is ignored and the plays table is today's, byte for byte.
     'bball-pbp-controls': 'preview',
+    // BB-G35's Leaders panel on /<league>/game/[id], live or final: each side's leader by category (from the box), the
+    // assist web (who assisted whom, from the play-by-play's assister on made shots; assisted and unassisted points by
+    // zone) and, for a final, the players over and under their season scoring average (player_season_stats). Off: no
+    // read, no panel, and the game page is today's, byte for byte.
+    'bball-game-leaders': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

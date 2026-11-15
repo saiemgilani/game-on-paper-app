@@ -16,6 +16,7 @@ import NbaImpactBox from './NbaImpactBox.astro';
 import NbaGameFlow from './NbaGameFlow.astro';
 import NbaEpvBox from './NbaEpvBox.astro';
 import NbaGarbageTime from './NbaGarbageTime.astro';
+import NbaGameLeaders from './NbaGameLeaders.astro';
 import { isFeatureEnabled } from '../../../utils/features';
 import { cleanAbbreviation, pickGameColors } from '../../../utils/misc';
 import { gameHref, scoreboardDayHref, teamHrefFromEspn } from '../../../nba/links';
@@ -28,6 +29,7 @@ import type { ImpactBoxReads } from '../../../resources/impactBox';
 import type { GameFlowReads } from '../../../resources/gameFlow';
 import type { GarbageReads } from '../../../resources/garbageTime';
 import { garbageView } from '../../../utils/garbageTime';
+import type { SeasonAverage } from '../../../utils/gameLeaders';
 import type { EpvBoxReads } from '../../../resources/epvBox';
 import type { GameShotQuality } from '../../../utils/shotQuality';
 import type { GameSituationsTab } from '../../../utils/situations';
@@ -48,8 +50,10 @@ interface Props {
   epv?: EpvBoxReads | null;
   /** BB-G2, 'bball-garbage-time' with the Impact box and a final only: the possession log and `?garbage=out`; absent: no toggle */
   garbage?: { reads: GarbageReads | null; out: boolean };
+  /** BB-G35, 'bball-game-leaders' and a final only: the season averages; null when the read failed; absent: none drawn */
+  averages?: SeasonAverage[] | null;
 }
-const { game, sourceTools, situations, poe, impact, flow, epv, garbage } = Astro.props;
+const { game, sourceTools, situations, poe, impact, flow, epv, garbage, averages } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const title = `${game.away.team.displayName} ${game.away.score ?? ''} at ${game.home.team.displayName} ${game.home.score ?? ''} | Game on Paper`.replace(/\s+/g, ' ');
@@ -58,6 +62,9 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: 
 // BB-G15 ('bball-poe'): its own panel after Four factors, for a game with both team rows or a failed read (it says so)
 const poeShown = poe === null || (poe != null && poe.home != null && poe.away != null);
 const items: ScrollerItem[] = [{ href: '#wp', title: 'Win probability' }, ...(flow !== undefined ? [{ href: '#flow', title: 'Game flow' }] : []), { href: '#factors', title: 'Four factors' }, ...(poeShown ? [{ href: '#poe', title: 'Points over expected' }] : []), { href: '#teambox', title: 'Team box' }, ...(situations ? [{ href: '#situations', title: 'Situations' }] : []), { href: '#players', title: 'Players' }, ...(impact !== undefined ? [{ href: '#impact', title: 'Impact' }] : []), ...(epv !== undefined ? [{ href: '#epv', title: 'EPV' }] : []), { href: '#shots', title: 'Shots' }, { href: '#plays', title: 'Plays' }];
+// BB-G35: the Leaders panel, live or final, after the box score
+const withLeaders = isFeatureEnabled('bball-game-leaders', Astro.locals);
+if (withLeaders) items.splice(items.findIndex((i) => i.href === '#shots'), 0, { href: '#leaders', title: 'Leaders' });
 const side = (s: typeof game.home) => ({ name: s.team.displayName, href: teamHrefFromEspn(s.team, league, game.season), score: s.score });
 const jsonLd = basketballEventJsonLd({ league, path: gameHref(league, game.id), date: game.date, description, venue: game.venue, statusDetail: game.status.detail, home: side(game.home), away: side(game.away) });
 const colors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(game.home.team, game.away.team) : null;
@@ -74,7 +81,7 @@ const split = gt?.rates ? gt : undefined;
     <Panel id="factors" title="Four factors" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="select" />}{split ? <NbaGarbageTime game={game} view={split} part="factors" /> : <NbaFourFactors game={game} />}</div></Panel>{poeShown && (<Panel id="poe" title="Points over expected" show={true}><div slot="panel-body"><NbaShotQuality game={game} poe={poe ?? null} /></div></Panel>)}
     <Panel id="teambox" title="Team box" show={true}><div slot="panel-body">{split?.box ? <NbaGarbageTime game={game} view={split} part="teambox" /> : (<Fragment>{split && <NbaGarbageTime game={game} view={split} part="teambox" />}<NbaTeamBox game={game} /></Fragment>)}</div></Panel>
     {situations && <Panel id="situations" title="Situations" show={true}><div slot="panel-body"><GameSituations game={game} data={situations} /></div></Panel>}
-    <Panel id="players" title="Players" show={true}><div slot="panel-body">{split && <NbaGarbageTime game={game} view={split} part="whole" />}<div class="row"><div class="col-12 col-xl-6"><NbaPlayerBox side={game.away} id="box-away" league={league} /></div><div class="col-12 col-xl-6"><NbaPlayerBox side={game.home} id="box-home" league={league} /></div></div></div></Panel>{impact !== undefined && (<Panel id="impact" title="Impact and lineups" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="toggle" />}<NbaImpactBox game={game} impact={gt?.impact ?? impact} fromLog={gt?.impact !== undefined} /></div></Panel>)}{epv !== undefined && (<Panel id="epv" title="EPV added" show={true}><div slot="panel-body"><NbaEpvBox game={game} epv={epv} /></div></Panel>)}
+    <Panel id="players" title="Players" show={true}><div slot="panel-body">{split && <NbaGarbageTime game={game} view={split} part="whole" />}<div class="row"><div class="col-12 col-xl-6"><NbaPlayerBox side={game.away} id="box-away" league={league} /></div><div class="col-12 col-xl-6"><NbaPlayerBox side={game.home} id="box-home" league={league} /></div></div></div></Panel>{impact !== undefined && (<Panel id="impact" title="Impact and lineups" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="toggle" />}<NbaImpactBox game={game} impact={gt?.impact ?? impact} fromLog={gt?.impact !== undefined} /></div></Panel>)}{epv !== undefined && (<Panel id="epv" title="EPV added" show={true}><div slot="panel-body"><NbaEpvBox game={game} epv={epv} /></div></Panel>)}{withLeaders && (<Panel id="leaders" title="Leaders" show={true}><div slot="panel-body"><NbaGameLeaders game={game} league={league} averages={averages} /></div></Panel>)}
     <Panel id="shots" title="Shot charts" show={true}><div slot="panel-body"><NbaGameShotCharts game={game} /></div></Panel>
     <Panel id="plays" title="Play-by-play" show={true}><div slot="panel-body"><NbaPlaysTable game={game} /></div></Panel>
   </div>
