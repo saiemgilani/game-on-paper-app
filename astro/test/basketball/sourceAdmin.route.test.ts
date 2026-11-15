@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
-import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 // BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
 vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
 import { mockLive, procJson } from './liveSource';
@@ -17,6 +17,12 @@ vi.mock('../../src/resources/espn', async (orig) => ({ ...(await orig<typeof imp
 vi.mock('../../src/resources/python', async (orig) => ({ ...(await orig<typeof import('../../src/resources/python')>()), retrieveGameSources: (...a: unknown[]) => sources(...a) }));
 // BB-G25's game-page Situations panel reads under 'preview' too: no rows, no network (the panel's own tests are gameSituations.test.ts)
 vi.mock('../../src/resources/situational', async (orig) => ({ ...(await orig<typeof import('../../src/resources/situational')>()), retrieveGameSituational: async () => ({ home: [], away: [] }) }));
+// no network: an unmocked read would reach the Data API with the dummy SDV_AUTH_TOKEN (a 429 lockout); any fetch fails the file
+const fetched: string[] = [];
+vi.stubGlobal('fetch', async (input: RequestInfo | URL) => { fetched.push(String(input instanceof Request ? input.url : input)); throw new Error('no network in tests'); });
+afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
+// BB-G1's Impact box reads the Data API for a final with 'bball-impact-box' on (preview): never from a test
+vi.mock('../../src/resources/impactBox', async (orig) => ({ ...(await orig<typeof import('../../src/resources/impactBox')>()), retrieveImpactBox: async () => (await orig<typeof import('../../src/resources/impactBox')>()).EMPTY_IMPACT }));
 
 const api = () => JSON.parse(readFileSync(new URL('../fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
 const ID = '401766458';

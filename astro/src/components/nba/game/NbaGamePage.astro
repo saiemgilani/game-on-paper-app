@@ -12,6 +12,7 @@ import NbaGameShotCharts from './NbaGameShotCharts.astro';
 import NbaPlaysTable from './NbaPlaysTable.astro';
 import GameSituations from './GameSituations.astro';
 import NbaShotQuality from './NbaShotQuality.astro';
+import NbaImpactBox from './NbaImpactBox.astro';
 import { isFeatureEnabled } from '../../../utils/features';
 import { cleanAbbreviation, pickGameColors } from '../../../utils/misc';
 import { gameHref, scoreboardDayHref, teamHrefFromEspn } from '../../../nba/links';
@@ -20,6 +21,7 @@ import { LEAGUES, leaguePath } from '../../../utils/league';
 import { basketball } from '../../../basketball/config';
 import type { NbaGame } from '../../../resources/nbaGame';
 import type { BasketballSourceTools } from '../../../routes/basketball/game';
+import type { ImpactBoxReads } from '../../../resources/impactBox';
 import type { GameShotQuality } from '../../../utils/shotQuality';
 import type { GameSituationsTab } from '../../../utils/situations';
 
@@ -31,8 +33,10 @@ interface Props {
   situations?: GameSituationsTab;
   /** BB-G15, 'bball-poe' only */
   poe?: GameShotQuality | null;
+  /** BB-G1, 'bball-impact-box' and a final only: the Impact box's reads; null when one failed; absent: no panel */
+  impact?: ImpactBoxReads | null;
 }
-const { game, sourceTools, situations, poe } = Astro.props;
+const { game, sourceTools, situations, poe, impact } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const title = `${game.away.team.displayName} ${game.away.score ?? ''} at ${game.home.team.displayName} ${game.home.score ?? ''} | Game on Paper`.replace(/\s+/g, ' ');
@@ -40,7 +44,7 @@ const description = `${game.away.team.displayName} at ${game.home.team.displayNa
 const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: leaguePath(league, '/'), active: false }, { title: 'Scoreboard', url: scoreboardDayHref(league, game.date), active: false }, { title: `${cleanAbbreviation(game.away.team)} @ ${cleanAbbreviation(game.home.team)}`, active: true }];
 // BB-G15 ('bball-poe'): its own panel after Four factors, for a game with both team rows or a failed read (it says so)
 const poeShown = poe === null || (poe != null && poe.home != null && poe.away != null);
-const items: ScrollerItem[] = [{ href: '#wp', title: 'Win probability' }, { href: '#factors', title: 'Four factors' }, ...(poeShown ? [{ href: '#poe', title: 'Points over expected' }] : []), { href: '#teambox', title: 'Team box' }, ...(situations ? [{ href: '#situations', title: 'Situations' }] : []), { href: '#players', title: 'Players' }, { href: '#shots', title: 'Shots' }, { href: '#plays', title: 'Plays' }];
+const items: ScrollerItem[] = [{ href: '#wp', title: 'Win probability' }, { href: '#factors', title: 'Four factors' }, ...(poeShown ? [{ href: '#poe', title: 'Points over expected' }] : []), { href: '#teambox', title: 'Team box' }, ...(situations ? [{ href: '#situations', title: 'Situations' }] : []), { href: '#players', title: 'Players' }, ...(impact !== undefined ? [{ href: '#impact', title: 'Impact' }] : []), { href: '#shots', title: 'Shots' }, { href: '#plays', title: 'Plays' }];
 const side = (s: typeof game.home) => ({ name: s.team.displayName, href: teamHrefFromEspn(s.team, league, game.season), score: s.score });
 const jsonLd = basketballEventJsonLd({ league, path: gameHref(league, game.id), date: game.date, description, venue: game.venue, statusDetail: game.status.detail, home: side(game.home), away: side(game.away) });
 const colors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(game.home.team, game.away.team) : null;

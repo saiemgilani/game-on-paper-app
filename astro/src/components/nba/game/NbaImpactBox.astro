@@ -1,0 +1,98 @@
+---
+// src/components/nba/game/NbaImpactBox.astro
+// BB-G1, behind 'bball-impact-box': each side's on-court impact (minutes, possessions, +/- and the ratings while on the
+// floor) and its five most-used five-man units, the rest behind "All lineups". Every number is the producer's (sdv-db game_player_impact /
+// game_lineups_used, sdv-py *_impact_rows); this reads, orders and formats.
+import type { NbaGame } from '../../../resources/nbaGame';
+import type { ImpactBoxReads } from '../../../resources/impactBox';
+import { TOP_UNITS } from '../../../resources/impactBox';
+import { impactSide, shortName, type ImpactSide } from '../../../utils/impactBox';
+import { fmtDec, fmtInt } from '../../../nba/format';
+import { cleanAbbreviation } from '../../../utils/misc';
+import { playerHref, seasonQuery } from '../../../nba/links';
+import { LEAGUES } from '../../../utils/league';
+import { basketball } from '../../../basketball/config';
+
+interface Props { game: NbaGame; impact: ImpactBoxReads | null }
+const { game, impact } = Astro.props;
+const dash = '—';
+const minus = '−';
+const signed = (v: number | null | undefined, digits = 0) => (v == null ? dash : v > 0 ? `+${v.toFixed(digits)}` : v < 0 ? `${minus}${Math.abs(v).toFixed(digits)}` : (0).toFixed(digits));
+const rtg = (v: number | null | undefined) => (v == null ? dash : fmtDec(v, 1));
+const mins = (v: number | null | undefined) => (v == null ? dash : fmtDec(v, 1));
+const int = (v: number | null | undefined) => (v == null ? dash : fmtInt(v));
+// a rating over a handful of possessions (a 2-minute stint reads 0.0 or 200.0) is dashed: ORtg needs MIN_POSS offensive
+// possessions, DRtg as many defensive ones, Net both
+const MIN_POSS = 10;
+const few = (n: number | null | undefined) => n == null || n < MIN_POSS;
+const fewTitle = `Fewer than ${MIN_POSS} possessions`;
+const built = impact && impact.players.length > 0;
+// "Lineups used": the top TOP_UNITS units in the open; the rest, still by minutes, behind a native <details> closed by default
+// a player's page for the game's season: one the player pages list (resolveBasketballSeason's: a league with shot
+// dashboards from shotFirstSeason on), ?season= left off for the current one; any other season links nothing
+const cfg = basketball(Astro.locals.league);
+const league = cfg.league;
+const seasons = LEAGUES[league].seasons;
+const season = game.season;
+const listed = season != null && seasons.includes(season) && season >= (cfg.shotFirstSeason ?? seasons[0]);
+const q = listed ? seasonQuery(season, seasons[seasons.length - 1]) : null;
+const href = (pageId: string | null) => (pageId && q !== null ? playerHref(Number(pageId), q, league) : null);
+const sides: { key: 'away' | 'home'; abbr: string; name: string; rows: ImpactSide }[] = built
+    ? (['away', 'home'] as const).map((key) => ({ key, abbr: cleanAbbreviation(game[key].team), name: game[key].team.displayName, rows: impactSide(impact, key) }))
+    : [];
+---
+{impact === null ? (<p class="text-muted" id="impact-unavailable">The impact box is temporarily unavailable.</p>) : !built ? (<p class="text-muted" id="impact-empty">The impact box is not built for this game yet; it follows the nightly ingest.</p>) : (
+<Fragment>
+<div class="row">
+  {sides.map((s) => (
+    <div class="col-12 col-xl-6" id={`impact-${s.key}`}>
+      <h3 class="h6">{s.name}</h3>
+      {s.rows.players.length === 0 ? (<p class="text-muted small">No on-court rows for {s.abbr} (its players carry no ids in the source's box).</p>) : (<Fragment>
+      <div class="table-responsive"><table class="table table-sm numeral align-middle" aria-label={`${s.abbr} impact`}>
+        <thead><tr><th scope="col">Player</th><th scope="col" class="text-end">MIN</th><th scope="col" class="text-end"><abbr title="Possessions on the floor (offense)">Poss</abbr></th><th scope="col" class="text-end"><abbr title="Points for minus points against while on the floor">+/-</abbr></th><th scope="col" class="text-end"><abbr title="Points scored per 100 possessions while on the floor">ORtg</abbr></th><th scope="col" class="text-end"><abbr title="Points allowed per 100 possessions while on the floor">DRtg</abbr></th><th scope="col" class="text-end">Net</th></tr></thead>
+        <tbody>
+          {s.rows.players.map((p) => (
+            <tr>
+              <th scope="row" class="fw-normal text-nowrap">{href(p.pageId) ? (<a href={href(p.pageId)!}>{p.name}</a>) : p.name}</th>
+              <td class="text-end">{mins(p.minutes)}</td>
+              <td class="text-end">{int(p.poss)}</td>
+              <td class="text-end fw-bold">{signed(p.plus_minus)}</td>
+              <td class="text-end">{few(p.poss) ? (<span title={fewTitle}>{dash}</span>) : rtg(p.off_rtg)}</td>
+              <td class="text-end">{few(p.opp_poss) ? (<span title={fewTitle}>{dash}</span>) : rtg(p.def_rtg)}</td>
+              <td class="text-end">{few(p.poss) || few(p.opp_poss) ? (<span title={fewTitle}>{dash}</span>) : signed(p.net_rtg, 1)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      <h4 class="h6 mt-2">Lineups used <span class="text-muted small fw-normal">(top {TOP_UNITS} by minutes)</span></h4>
+      {s.rows.units.length === 0 ? (<p class="text-muted small">No five-man units for {s.abbr}.</p>) : (
+      [s.rows.units.slice(0, TOP_UNITS), s.rows.units.slice(TOP_UNITS)].map((chunk, i) => {
+        const Wrap = i === 0 ? 'div' : 'details';
+        return chunk.length > 0 && (
+      <Wrap class:list={[i > 0 && 'mb-2']} id={i > 0 ? `impact-${s.key}-all-lineups` : undefined}>
+      {i > 0 && (<summary class="small">All lineups ({chunk.length} more)</summary>)}
+      <div class="table-responsive"><table class="table table-sm numeral align-middle" aria-label={i === 0 ? `${s.abbr} lineups used` : `${s.abbr} all lineups`}>
+        <thead><tr><th scope="col">Unit</th><th scope="col" class="text-end">MIN</th><th scope="col" class="text-end">Poss</th><th scope="col" class="text-end">+/-</th><th scope="col" class="text-end">Net</th></tr></thead>
+        <tbody>
+          {chunk.map((u) => (
+            <tr>
+              <th scope="row" class="fw-normal small">{u.names.map(shortName).join(', ')}</th>
+              <td class="text-end">{mins(u.minutes)}</td>
+              <td class="text-end">{int(u.poss)}</td>
+              <td class="text-end fw-bold">{signed(u.plus_minus)}</td>
+              <td class="text-end">{few(u.poss) || few(u.opp_poss) ? (<span title={fewTitle}>{dash}</span>) : signed(u.net_rtg, 1)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      </Wrap>
+        );
+      })
+      )}
+      </Fragment>)}
+    </div>
+  ))}
+</div>
+<p class="small text-muted mb-0">From the play-by-play's substitutions: the points scored and allowed while each player or unit was on the floor, and the ratings per 100 of those possessions. A rating over fewer than {MIN_POSS} possessions is shown as a dash.</p>
+</Fragment>
+)}
