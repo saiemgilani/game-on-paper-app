@@ -63,6 +63,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // game, and an index of the league's pages. Off: the landing is today's (the NBA's featured team, the others' teams
     // index), byte for byte, and no game_lines read is made.
     'bball-hub': 'preview',
+    // BB-G48's "Tonight" on that hub (so it shows only where 'bball-hub' is on too): the night's five best games by game score
+    // from `{league}.player_box` (the board's day once the nightly has its finals, else the day before), linked to their game
+    // pages, and a win-probability sparkline from `{league}.play_wp` on each final's card. Off: the hub of 'bball-hub' alone,
+    // byte for byte, with no player_box or play_wp read.
+    'bball-hub-tonight': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

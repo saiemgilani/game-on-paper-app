@@ -4,14 +4,16 @@
 // BB-G48 / BB-G49 sections go between the games and the index.
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import NbaGameCard from '../nba/NbaGameCard.astro';
-import { darkLogoCss, hasEspnLogo, statusSections } from '../../nba/scoreboard';
+import { darkLogoCss, dayNav, hasEspnLogo, statusSections } from '../../nba/scoreboard';
 import { hubTags } from '../../basketball/hub';
+import { gameHref } from '../../nba/links';
+import { cleanAbbreviation } from '../../utils/misc';
 import type { BasketballHubParams } from '../../routes/basketball/hub';
 import { basketball } from '../../basketball/config';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: BasketballHubParams }
-const { board, lines, index } = Astro.props.data;
+const { board, lines, index, tonight } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -43,6 +45,12 @@ const subtitle = `${name} games today with the market line and win probability, 
             const tags = hubTags(g.competitions[0]);
             return (
               <NbaGameCard game={g}>
+                {tonight?.sparklines[g.id] && (
+                  <svg class="d-block w-100 mb-2 text-primary hub-wp" data-hub-wp={g.id} viewBox="0 0 100 24" preserveAspectRatio="none" height="28" role="img" aria-label={`${cleanAbbreviation(g.competitions[0].competitors.find((c) => c.homeAway === 'home')!.team)} win probability, play by play`}>
+                    <line x1="0" y1="12" x2="100" y2="12" stroke="currentColor" stroke-opacity="0.3" stroke-dasharray="2 2" vector-effect="non-scaling-stroke" />
+                    <polyline points={tonight.sparklines[g.id]} fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke" />
+                  </svg>
+                )}
                 {(l || tags.length > 0) && (
                   <p class="small mb-3 hub-line" data-hub-line={g.id}>
                     {l?.spread && <span class="d-block">Line: {l.spread}{l.total !== null && `, O/U ${l.total}`}</span>}
@@ -58,6 +66,21 @@ const subtitle = `${name} games today with the market line and win probability, 
         </section>
       ))}
     </section>
+    {tonight && tonight.standouts.length > 0 && (
+      <section aria-labelledby="hub-standouts-heading" id="hub-standouts" class="mt-4">
+        <h2 id="hub-standouts-heading" class="h4">Standouts</h2>
+        <p class="text-muted small mb-2">The best individual games of {dayNav(tonight.day!).label}, by game score.</p>
+        <ol class="mb-0">
+          {tonight.standouts.map((s) => (
+            <li class="mb-1" data-hub-standout={s.gameId}>
+              <a href={gameHref(league, s.gameId)} class="fw-semibold">{s.name}</a>{' '}
+              <span class="text-muted">{s.team}{s.opponent && ` vs ${s.opponent}`}</span>: {s.line}{' '}
+              <span class="text-muted">(game score {s.gameScore.toFixed(1)})</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+    )}
     <section aria-labelledby="hub-index-heading" id="hub-index" class="mt-4">
       <h2 id="hub-index-heading" class="h4">{name} pages</h2>
       <ul class="list-unstyled row">

@@ -74,3 +74,43 @@ export function hubIndex(league: BasketballLeague): HubLink[] {
         ...(ft ? [{ label: ft.menuLabel, path: `/team/${ft.espnTeamId}`, blurb: `The ${ft.menuLabel} roster's shooting, with the team shot chart.` }] : []),
     ];
 }
+
+/** BB-G48: the player_box columns a standout needs. */
+export interface StandoutBoxRow {
+    game_id: number | string; athlete_id: number | string; athlete_display_name: string;
+    team_abbreviation: string | null; opponent_team_abbreviation: string | null; minutes: number | null;
+    points: number | null; field_goals_made: number | null; field_goals_attempted: number | null;
+    free_throws_made: number | null; free_throws_attempted: number | null;
+    offensive_rebounds: number | null; defensive_rebounds: number | null; rebounds: number | null;
+    assists: number | null; steals: number | null; blocks: number | null; turnovers: number | null; fouls: number | null;
+}
+export interface Standout { gameId: string; name: string; team: string; opponent: string; line: string; gameScore: number }
+
+/** Game score, the box-score summary of one player's game (points plus weighted makes, misses, boards, stocks, fouls, turnovers). */
+export function gameScore(r: StandoutBoxRow): number {
+    const n = (v: number | null) => Number(v ?? 0);
+    return n(r.points) + 0.4 * n(r.field_goals_made) - 0.7 * n(r.field_goals_attempted) - 0.4 * (n(r.free_throws_attempted) - n(r.free_throws_made))
+        + 0.7 * n(r.offensive_rebounds) + 0.3 * n(r.defensive_rebounds) + n(r.steals) + 0.7 * n(r.assists) + 0.7 * n(r.blocks) - 0.4 * n(r.fouls) - n(r.turnovers);
+}
+
+/** The night's best `n` games by game score (ties: more points first), from a day's player_box rows; DNPs never count. */
+export function standouts(rows: readonly StandoutBoxRow[], n = 5): Standout[] {
+    return rows.filter((r) => Number(r.minutes ?? 0) > 0)
+        .map((r) => ({ r, gs: gameScore(r) }))
+        .sort((a, b) => b.gs - a.gs || Number(b.r.points ?? 0) - Number(a.r.points ?? 0))
+        .slice(0, n)
+        .map(({ r, gs }) => ({
+            gameId: String(r.game_id), name: r.athlete_display_name, team: r.team_abbreviation ?? '', opponent: r.opponent_team_abbreviation ?? '',
+            line: `${r.points ?? 0} PTS, ${r.rebounds ?? 0} REB, ${r.assists ?? 0} AST`,
+            gameScore: Math.round(gs * 10) / 10,
+        }));
+}
+
+/** SVG polyline points (a 100 x 24 box, the home side's win probability rising up) for a game's play-by-play WP; null under two plays. */
+export function sparkline(homeWp: readonly (number | null)[], maxPoints = 80): string | null {
+    const wp = homeWp.filter((v): v is number => v != null && Number.isFinite(v));
+    if (wp.length < 2) return null;
+    const step = Math.max(1, Math.ceil(wp.length / maxPoints));
+    const idx = wp.map((_, i) => i).filter((i) => i % step === 0 || i === wp.length - 1);
+    return idx.map((i) => `${(i / (wp.length - 1) * 100).toFixed(1)},${((1 - Math.min(1, Math.max(0, wp[i]))) * 24).toFixed(1)}`).join(' ');
+}
