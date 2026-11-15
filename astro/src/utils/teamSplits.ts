@@ -131,7 +131,7 @@ function values(row: SDVTeamTendency, r: TeamSplitRowDef, side: TeamSplitSide): 
 }
 
 /** Competition rank ("1224") of `value` among `field`; null when either is missing. */
-function rankIn(value: number | null, field: (number | null)[], side: TeamSplitSide): number | null {
+export function rankIn(value: number | null, field: (number | null)[], side: TeamSplitSide): number | null {
     if (value === null) return null;
     const better = (v: number) => (side === 'def' ? v < value : v > value);
     return 1 + field.filter((v): v is number => v !== null && better(v)).length;

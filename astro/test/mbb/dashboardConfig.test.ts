@@ -40,9 +40,9 @@ describe('the NCAA court zones like the SQL, every dashboard season', () => {
 });
 
 describe('the dashboard seasons and the source', () => {
-    test('mbb lists 2019-2026 on the dashboards; an earlier ?season= is the current season', () => {
+    test('mbb lists 2019-2027 on the dashboards; an earlier ?season= is the current season', () => {
         const r = resolveBasketballSeason(fakeAstro('/mbb/teams?season=2018'), 'mbb');
-        expect([r.seasons[0], r.seasons.at(-1), r.season, r.current, r.q]).toEqual([2019, 2026, 2026, 2026, '']);
+        expect([r.seasons[0], r.seasons.at(-1), r.season, r.current, r.q]).toEqual([2019, 2027, 2027, 2027, '']);
         expect(resolveBasketballSeason(fakeAstro('/mbb/teams?season=2019'), 'mbb').season).toBe(2019);
     });
     test('the NBA and WNBA season lists did not change', () => {

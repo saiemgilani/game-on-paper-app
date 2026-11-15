@@ -16,7 +16,7 @@ export const SUBJECT_TTL = 60 * 60;
 const LIMIT = '50000';
 
 /** Regular season only: `<prefix>%` on game_id where the league's ids carry one (stats.nba.com '002'). Key order is the cache key's. */
-const regularOnly = (league: BasketballLeague): Record<string, string> => {
+export const regularOnly = (league: BasketballLeague): Record<string, string> => {
     const p = BASKETBALL[league].regularGameIdPrefix;
     return p ? { game_id__like: `${p}%` } : {};
 };
