@@ -98,6 +98,12 @@ const world: { live: string[], board: any[], payload: any, fail: boolean } =
     { live: [], board: [], payload: {}, fail: false };
 const processed = vi.fn();
 
+// No live Data API (test/helpers/networkGuard.ts): the reads left unmocked, the /v1/meta
+// ingest stamp among them, get an empty answer and stay on their unversioned keys.
+vi.mock('../src/utils/telemetry', async (orig) => ({
+    ...(await orig<typeof import('../src/utils/telemetry')>()),
+    wrappedFetch: async () => new Response('{"data":[]}', { status: 200 }),
+}));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     retrievePlayer: async () => identity,
