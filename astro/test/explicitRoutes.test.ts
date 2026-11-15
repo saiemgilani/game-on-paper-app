@@ -46,8 +46,8 @@ describe('explicit /nfl pages', () => {
         // have no professional equivalent, and the CFP projection has no NFL
         // version (yet). Standings are NOT in here: the NFL
         // publishes them per division and /nfl/standings renders them. Game on
-        // Paper Pro (pro/**) is college football only.
-        const cfbOnly = /^(rankings\.|playoff\.|pro\/)/;
+        // Paper Pro (pro/**) and the agents tour (for/**) are college football only.
+        const cfbOnly = /^(rankings\.|playoff\.|pro\/|for\/)/;
         const cfb = walk(PAGES).filter((p) => !leagueless.test(p) && !cfbOnly.test(p)).sort();
         const nfl = walk(join(PAGES, 'nfl')).sort();
         expect(nfl).toEqual(cfb);

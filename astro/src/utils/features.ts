@@ -66,6 +66,9 @@ export const FLAGS: Record<string, FeatureState> = {
     // The About page (/about): who builds the site, with each person's bio. Stays in preview
     // until all three bios are in; promote to 'on' to publish the URL and the footer link.
     'about-page': 'preview',
+    // /for/agents: a guided tour of the free player and team pages with talking points for a player's
+    // representatives (the TBA call). Links follow ?player=&season=&team=. No reads, no header link.
+    'agent-demo': 'preview',
     // The CFP projection page (/playoff): sportsdataverse-py's season sims + cfbseedR tiebreakers
     // through the API (python/playoff_projection.py), the 2026 selection rules and the fixed
     // bracket, plus the committee's field from the CFP rankings. Public since #389: linked
