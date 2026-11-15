@@ -125,7 +125,8 @@ describe('flag on, no membership', () => {
         expect(html).toContain('game-set-panel');
         expect(cells(html)[0]).toBe('15');
         expect(html).not.toContain('rank among');
-        expect(html).not.toMatch(/#\d/);
+        // a rank renders as "#N"; an HTML entity in the header (Men&#39;s) is not one
+        expect(html).not.toMatch(/(?<!&)#\d/);
     });
 });
 
