@@ -157,6 +157,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // weekly date (current_impact, BB-D39), each with its prior in the hover and Current impact's date in the table caption.
     // NBA from 2006-07 only. Off: no read and the player page is today's, byte for byte.
     'bball-current-impact': 'preview',
+    // Team strength (BB-G24) inside the season block, so it needs 'bball-team-season' too: adjusted net rating, strength
+    // of schedule, strength of victory and pace, each with its league rank (sdv-db's team_strength, BB-D19). Off: the
+    // block is BB-G5's, byte for byte.
+    'bball-team-strength': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
