@@ -23,6 +23,7 @@ import FallbackSpinner from '../../components/FallbackSpinner.astro';
 import { leaguePath } from "../../utils/league";
 import NeighborRanks from "../../components/leaderboards/NeighborRanks.astro";
 import { resumeRows } from "../../utils/resume";
+import { seasonNote } from "../../utils/methodNotes";
 
 // Route component: routes/seasonTeam.ts (per-league page) checked the params,
 // read ESPN + the season tables and made the not-found decision; this renders.
@@ -103,7 +104,7 @@ const breadcrumbs: PageBreadcrumb[] = [
     </div>
     <div class="container mb-3">
         <GenericPanel id="radar" title="Profile" show={true}>
-            <p slot="panel-subtitle" class="text-muted text-small m-0">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>{league === 'cfb' && <Fragment> and <a href="https://collegefootballdata.com">collegefootballdata.com</a></Fragment>}. Based on <a href="https://twitter.com/ESPN_BillC">Bill Connelly</a>'s team profile radars (<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).</p>
+            <p slot="panel-subtitle" class="text-muted text-small m-0">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>{league === 'cfb' && <Fragment> and <a href="https://collegefootballdata.com">collegefootballdata.com</a></Fragment>}. Based on <a href="https://twitter.com/ESPN_BillC">Bill Connelly</a>'s team profile radars (<a href="https://www.sbnation.com/college-football/2018/7/16/17532360/georgia-tech-football-2018-preview-schedule-roster">example</a>).{isFeatureEnabled('method-notes', Astro.locals) && seasonNote(league) && ` ${seasonNote(league)}`}</p>
             <TeamRadarChart slot="panel-body" client:only team={team} teamData={teamData} showSeasonPicker={false} league={league}>
                 <FallbackSpinner slot="fallback" />
             </TeamRadarChart>
