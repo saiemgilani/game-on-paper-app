@@ -6,13 +6,39 @@ import { gameHref } from '../../nba/links';
 import { retrieveNbaGameRows, retrieveNbaProcessedGame, retrieveNbaSchedule } from '../../resources/nbaGames';
 import { fromDataApi, fromProcessor, isTrue, requiredPeriods, scheduleRegulation, type DataApiGameRows, type NbaGame } from '../../resources/nbaGame';
 import { ESPN_INVALID_GAME_STATUS_NAMES, retrieveGamePageGuarded, type ESPNPlayByPlayResponse } from '../../resources/espn';
-import { ProcessorError } from '../../resources/python';
+import { ProcessorError, retrieveGameSources } from '../../resources/python';
 import { getBasketballGameCacheConfig } from '../../utils/config';
+import { isFeatureEnabled } from '../../utils/features';
+import { SOURCE_PARAM } from '../../utils/adminView';
 import { gopStorage } from '../../utils/telemetry';
 import type { BasketballLeague } from '../../utils/league';
 import { setCache, uncacheable } from './cache';
 
-export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { pregame: true; espnGame: ESPNPlayByPlayResponse } | { game: NbaGame };
+/** The admin source tool's data (components/nba/game/NbaAdminSourceTools.astro); only an admin on the 'source-switch' path gets it. */
+export interface BasketballSourceTools {
+    /** the contract's registry for the league, ESPN first, from GET /<league>/<id>/sources; ['espn'] when it cannot answer */
+    sources: string[]
+    /** the `?source=` the page was asked for; null without one (the public render: the Data API for an ingested final) */
+    selected: string | null
+    /** the ESPN processor payload to compare against, only when another source was selected; null when it failed */
+    espn: NbaGame | null
+}
+
+export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { pregame: true; espnGame: ESPNPlayByPlayResponse } | { game: NbaGame; sourceTools?: BasketballSourceTools };
+
+/**
+ * The registry and, for a non-ESPN selection, the ESPN side of the compare -- the ordinary no-`source` processor request,
+ * the same cache entry a public render of a live or un-ingested game fills. Fail-open: a missing registry is ESPN alone, a
+ * failed ESPN side an empty column, never a failed page.
+ */
+async function sourceTools(id: string, league: BasketballLeague, cacheTTL: number, source: string | undefined): Promise<BasketballSourceTools> {
+    const selected = source ?? null;
+    const [registry, espn] = await Promise.all([
+        retrieveGameSources(id, league),
+        !selected || selected === 'espn' ? null : retrieveNbaProcessedGame(id, cacheTTL, league).then((j) => fromProcessor(j, league)).catch(() => null),
+    ]);
+    return { sources: registry?.sources ?? ['espn'], selected, espn };
+}
 
 const ID = /^\d{6,12}$/;
 /** Only a Data API-served final is immutable; a processor-served one gets a day (getBasketballGameCacheConfig). */
@@ -53,10 +79,17 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     const id = Astro.params.id ?? '';
     if (!ID.test(id)) { uncacheable(Astro); return { notFound: true }; }
 
+    // 'source-switch' (preview) AND an admin session, as on the football game page (routes/game.ts). For every other viewer
+    // nothing here is read: the reads, the processor request and its cache key are today's. An admin render is uncacheable
+    // already (middleware withPreviewCacheGuard).
+    const sourceSwitch = isFeatureEnabled('source-switch', Astro.locals) && Astro.locals.adminAuthed === true;
+    const source = sourceSwitch ? Astro.url.searchParams.get(SOURCE_PARAM) || undefined : undefined;
+
     let fellThrough = false;
-    // 1. the Data API knows the game and says it is final: render from it, no ESPN
+    // 1. the Data API knows the game and says it is final: render from it, no ESPN. An explicit `?source=` skips it: the
+    // warehouse is ESPN's play-by-play, so serving it would hide the feed the admin asked for.
     try {
-        const row = await retrieveNbaSchedule(id, league);
+        const row = source ? null : await retrieveNbaSchedule(id, league);
         if (isTrue(row?.status_type_completed)) {
             // a failed read of an ingested final is not "not ingested": record it, or a broken
             // nightly stage would quietly send every final back through ESPN
@@ -68,7 +101,7 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
                 try {
                     const game = fromDataApi(rows, league); // before setCache: an adapter throw falls through like a gate failure
                     setCache(Astro, finalCache(league));
-                    return { game };
+                    return sourceSwitch ? { game, sourceTools: await sourceTools(id, league, 0, undefined) } : { game };
                 } catch (e: any) { bad = `adapter: ${e?.message ?? e}`; }
             }
             fellThrough = true;
@@ -108,11 +141,17 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
 
     // 3. live, or final but not ingested: the processor
     try {
-        const game = fromProcessor(await retrieveNbaProcessedGame(id, config.maxAge || 30, league), league);
+        const ttl = config.maxAge || 30;
+        const [payload, tools] = await Promise.all([
+            // an admin source request holds a minute at most: a failed-over (ESPN) answer must not outlive the outage by a day
+            retrieveNbaProcessedGame(id, source ? Math.min(ttl, 60) : ttl, league, source),
+            sourceSwitch ? sourceTools(id, league, ttl, source) : undefined,
+        ]);
+        const game = fromProcessor(payload, league);
         // a sanity-gate fall-through must not be pinned, nor a live payload the processor cached
         // moments before ESPN called the game final (it would read "LIVE" for the final's day)
         if (fellThrough || (espnCompleted && !game.status.completed)) uncacheable(Astro); else cache();
-        return { game };
+        return tools ? { game, sourceTools: tools } : { game };
     } catch (e: any) {
         // a 404 is "no plays yet" only before the game ends; on a final it is a broken payload
         if (e instanceof ProcessorError && e.status === 404 && !espnCompleted) { cache(); return { pregame: true, espnGame }; }

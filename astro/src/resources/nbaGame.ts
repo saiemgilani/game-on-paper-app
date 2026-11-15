@@ -1,6 +1,7 @@
 // One game, one shape, two sources. The adapters rename and group; the numbers are Python's
 // (sportsdataverse.nba.nba_game_page), live through the processor or nightly through sdv-db.
 import type { ESPNGameHeader } from './espn';
+import type { ProcessedGame } from './python';
 import { regulationFor, type PeriodKind, type Regulation } from '../basketball/config';
 import type { BasketballLeague } from '../utils/league';
 import { wnbaEraTricode } from '../nba/data/wnbaTeams';
@@ -43,9 +44,15 @@ export interface NbaSide {
     box: NbaTeamBox | null; rates: NbaTeamRates | null; players: NbaPlayerRow[]
 }
 
+/** Which feed produced a `?source=` response: the football payload's block, emitted by the same app.py helper. */
+export type SourceProvenance = NonNullable<ProcessedGame['provenance']>
+
 export interface NbaGame {
     id: string
+    /** the render path (the Data API or the processor); noLineText keys its wording on it */
     source: 'processor' | 'data_api'
+    /** the feed the processor read, present only on an admin's `?source=` render ('source-switch'); absent on every public payload */
+    provenance?: SourceProvenance
     status: { name: string; completed: boolean; period: number | null; displayClock: string | null; detail: string | null }
     date: string
     venue: string | null
@@ -68,6 +75,8 @@ export interface NbaGame {
 export interface NbaProcessorPayload {
     gameId: number
     source: 'processor'
+    /** only when the request carried `?source=` (python/app.py `_provenance`) */
+    provenance?: SourceProvenance
     header: ESPNGameHeader
     venue?: string | null
     teamInfo: { home: Record<string, any>; away: Record<string, any> }
@@ -220,7 +229,7 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague):
     }
     const reg = regulationFor(league, season, j.regulation_periods)
     return blankUnrecorded({
-        id: String(j.gameId), source: 'processor',
+        id: String(j.gameId), source: 'processor', ...(j.provenance ? { provenance: j.provenance } : {}),
         status: { name: j.status.name, completed: j.status.completed, period: j.status.period, displayClock: j.status.display_clock, detail: j.status.detail },
         date: comp.date, venue: j.venue ?? null, periods: j.periods, season, regulation: reg.periods, periodKind: reg.kind,
         prior: { homeWinProb: j.prior.home_win_prob, source: priorSource(j.prior.source), homeTeamSpread: j.prior.home_team_spread, gameSpreadAvailable: j.prior.game_spread_available },

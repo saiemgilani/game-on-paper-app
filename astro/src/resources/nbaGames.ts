@@ -63,10 +63,15 @@ export async function retrieveNbaGameRows(id: string, league: BasketballLeague):
     return { schedule, pbp, team_box, player_box, play_wp, game_team_rates, game_player_rates };
 }
 
-/** The processor's payload; a non-2xx (404 = not started / no plays, 5xx = degraded) or a timeout throws `ProcessorError`. */
-export async function retrieveNbaProcessedGame(id: string, cacheTTL: number, league: BasketballLeague): Promise<NbaProcessorPayload> {
+/**
+ * The processor's payload; a non-2xx (404 = not started / no plays, 5xx = degraded) or a timeout throws `ProcessorError`.
+ * `source` only ever arrives from an admin's `?source=` on the 'source-switch' path (routes/basketball/game.ts). It reaches
+ * the cache key as well as the URL (requestProcessor), so two feeds' payloads for one game never share an entry.
+ */
+export async function retrieveNbaProcessedGame(id: string, cacheTTL: number, league: BasketballLeague, source?: string): Promise<NbaProcessorPayload> {
     assertGameId(id, league);
-    const json = JSON.parse(await requestProcessor(`${league}/${id}/process`, cacheTTL, '', NBA_PROCESSOR_TIMEOUT_MS));
+    const query = source ? `source=${encodeURIComponent(source)}` : '';
+    const json = JSON.parse(await requestProcessor(`${league}/${id}/process`, cacheTTL, query, NBA_PROCESSOR_TIMEOUT_MS));
     if (json?.status === 'bad' || !Array.isArray(json?.plays)) throw new ProcessorError(502, `processor: ${json?.message ?? 'no plays'} for ${id}`);
     return json as NbaProcessorPayload;
 }
