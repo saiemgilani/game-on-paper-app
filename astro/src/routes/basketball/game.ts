@@ -20,16 +20,18 @@ import { retrieveGameFlow, type GameFlowReads } from '../../resources/gameFlow';
 import { hasEpv, retrieveEpvBox, type EpvBoxReads } from '../../resources/epvBox';
 import { retrieveRatedPrior, type RatedPrior } from '../../resources/pregameProjection';
 import { retrieveGarbageTime, type GarbageReads } from '../../resources/garbageTime';
-import { retrieveSeasonAverages } from '../../resources/seasonAverages';
-import type { SeasonAverage } from '../../utils/gameLeaders';
-import { retrieveLeagueContextRows } from '../../resources/nbaShots';
 import { leagueContextFromRows } from '../../nba/adapters';
-import { retrieveGameStints, retrieveShiftReads, type GameStints, type ShiftReads } from '../../resources/gameStints';
 import type { LeagueContext } from '../../nba/dashboard';
+import { retrieveGameExpected } from '../../resources/gameExpected';
+import { retrieveGameInfo } from '../../resources/gameInfo';
+import { retrieveGameStints, retrieveShiftReads, type GameStints, type ShiftReads } from '../../resources/gameStints';
+import { retrieveLeagueContextRows } from '../../resources/nbaShots';
+import { retrievePlayerSeasonRates, type PlayerSeasonRate } from '../../resources/playerSeasonRates';
+import { retrieveSeasonAverages } from '../../resources/seasonAverages';
 import { retrieveTeamGridFinal, retrieveTeamGridSeason, type TeamGridSeason } from '../../resources/teamGrid';
 import { retrieveTeamGridFinal, retrieveTeamGridGame, retrieveTeamGridSeason, type TeamGridSeason } from '../../resources/teamGrid';
-import { retrieveGameExpected } from '../../resources/gameExpected';
-import { retrievePlayerSeasonRates, type PlayerSeasonRate } from '../../resources/playerSeasonRates';
+import type { GameInfoReads } from '../../utils/gameInfo';
+import type { SeasonAverage } from '../../utils/gameLeaders';
 import { seasonCache, setCache, uncacheable } from './cache';
 import { retrieveGameSituational } from '../../resources/situational';
 import { parseSituation, situationsFor, type GameSituationsTab } from '../../utils/situations';
@@ -77,6 +79,8 @@ export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { 
     season?: TeamGridSeason | null;
     /** BB-G34, only with 'bball-player-box-views' on, live or final; null when its read failed (Vs average says so) */
     playerSeason?: PlayerSeasonRate[] | null;
+    /** BB-G42, only with 'bball-game-info' on, live or final; null when a read failed (the panel says so) */
+    info?: GameInfoReads | null;
 };
 
 /**
@@ -153,6 +157,23 @@ function degraded(id: string, message: string, league: BasketballLeague): void {
 
 export async function prepareBasketballGame(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballGamePrep> {
     const r = await prepareGame(Astro, league);
+    // BB-G42's Game info, live or final (the pregame page reads its own from the summary it holds)
+    if (!('game' in r) || !isFeatureEnabled('bball-game-info', Astro.locals)) return finalPanels(Astro, league, r);
+    const game = r.game;
+    const [p, info] = await Promise.all([finalPanels(Astro, league, r), retrieveGameInfo(league, game).catch((e: any) => {
+        console.error(`ERROR while loading the ${league} game info for game ${game.id}: ${e}, ${e?.stack}`);
+        return null;
+    })]);
+    // decorative like the final's panels: a failed read is never cached. An ingested final's season profiles move with the
+    // nightly products, so it follows their window -- unless a panel's failed read (a null) already made it uncacheable
+    const failed = (v: object) => Object.values(v).some((x) => x === null || (x && typeof x === 'object' && 'reads' in x && x.reads === null));
+    if (info === null) uncacheable(Astro);
+    else if (game.source === 'data_api' && !failed(p)) setCache(Astro, seasonCache(league));
+    return { ...(p as Extract<BasketballGamePrep, { game: NbaGame }>), info };
+}
+
+/** The final's panels (BB-G1, BB-G28, BB-G2): read only once a final will render. */
+async function finalPanels(Astro: AstroGlobal, league: BasketballLeague, r: BasketballGamePrep): Promise<BasketballGamePrep> {
     // BB-G18: a pregame page with the flag on spends one season ratings read; off, nothing is read and the page is today's
     if ('pregame' in r) {
         if (!isFeatureEnabled('bball-pregame-projection', Astro.locals)) return r;
