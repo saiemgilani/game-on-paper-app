@@ -10,6 +10,8 @@
 // pregame's Players to Watch card (with DarkModeLogos' CSS for its two team logos).
 // home, leaders, player, players, scatter, team and teams .html were re-captured on feat/basketball-2026-27: the NBA lists
 // 2026-27, so each season picker gains it and the 2025-26 pages these captures load carry ?season=2026 in canonical and links.
+// Every capture was re-captured on feat/about-page: the shared footer gains "Meet the team on our About page." behind the
+// 'about-page' preview flag (these renders hold the preview cookie). That one footer line is the whole diff.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
@@ -85,7 +87,8 @@ beforeEach(() => { for (const m of [...Object.values(games), ...Object.values(es
 
 async function page(path: string, url: string, params: Record<string, string> = {}) {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/nba/${path}`);
-    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true } as App.Locals }));
+    // BB-G52's lineup shot chart is behind 'bball-lineup-shotchart': off here, so these pages stay byte for byte main's
+    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-lineup-shotchart': false } } as App.Locals }));
 }
 const snap = (name: string) => `./__byte_identity__/${name}.html`;
 const finalPage = { gameId: 401766458, gamepackageJSON: { header: proc.header } };
