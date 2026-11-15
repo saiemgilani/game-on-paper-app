@@ -14,7 +14,6 @@ import { shootingLine, type ShootingLine } from '../../nba/data/aggregate';
 import type { Team } from '../../nba/data/teams';
 import type { SortDir } from '../../nba/table';
 import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterRows, teamsFromSeasonRows, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
-import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
 import type { LineupShotsView } from '../../nba/lineupShots';
 import { retrieveLineups } from '../../resources/lineups';
 import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots, type SeasonPlayerRow } from '../../resources/nbaShots';
