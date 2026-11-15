@@ -23,6 +23,7 @@ import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/play
 import { retrievePlayerOnOff } from '../../resources/playerOnOff';
 import { PLAYER_PLAY_STYLE_LEAGUES, retrievePlayerPlayStyle } from '../../resources/playStyles';
 import { hasMatchups, hasPlayTypes, retrievePlayerHustle, retrievePlayerMatchupRollup, retrievePlayerSynergy, retrievePlayerTopMatchups, type HustleRow, type MatchupRollupRow, type MatchupRow, type SynergyRow } from '../../resources/playerPlayTypes';
+import { hasCurrentImpact, retrieveCurrentImpact, type CurrentImpactRow } from '../../resources/currentImpact';
 import { hasEpv, retrievePlayerEpv, retrievePlayerWar, type EpvPlayerSeasonRow, type PlayerWarRow } from '../../resources/playerWar';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { retrieveNcaaPlayerId, retrievePlayerShotZones, retrieveSeasonFt, retrieveTeamPlayerShotZones, type SeasonFt, type ShotZoneRow } from '../../resources/shotZones';
@@ -80,6 +81,9 @@ export interface BasketballPlayerParams {
     zones?: ShotZoneRow[] | null;
     /** BB-G51, with `zones`: his season FGM and FTM from player_season_stats, the split's free throws; null when there are none or a read failed */
     zonesFt?: SeasonFt | null;
+    /** BB-G56, only with 'bball-current-impact' on and an NBA season from 2006-07: his player_impact rows (the season
+     *  rating) and his latest current_impact row; each null when its read failed */
+    currentImpact?: { seasonRows: PlayerImpactRow[] | null; current: CurrentImpactRow[] | null };
 }
 
 /** BB-G19's rows, each null when its read failed. */
@@ -186,6 +190,10 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     // BB-G51: the same rule; college reads his ESPN team's rows and picks his by his crosswalk id (utils/shotProfile.ts collegePlayerRows);
     // his season FTM is read with them
     const zonesP = isFeatureEnabled('bball-shot-profile', Astro.locals) ? readShotZones(league, season, personId, player.team_id) : undefined;
+    // BB-G56: the season rating rides on BB-G6's player_impact read (shared when that flag is on too); current_impact is one row
+    const withCurrent = isFeatureEnabled('bball-current-impact', Astro.locals) && hasCurrentImpact(league, season);
+    const seasonImpactP = withCurrent ? impactP ?? readPlayerImpact(league, season, personId) : undefined;
+    const currentP = withCurrent ? readDecorative('current impact', league, season, personId, retrieveCurrentImpact) : undefined;
     // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
     const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
     if (poe.poe === null) degraded = true;
@@ -205,6 +213,8 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const zr = zonesP ? await zonesP : undefined;
     const zones = zonesP ? { zones: zr?.rows ?? null, zonesFt: zr?.ft ?? null } : {};
     if (zones.zones === null) degraded = true;
+    const currentImpact = seasonImpactP && currentP ? { currentImpact: { seasonRows: await seasonImpactP, current: await currentP } } : {};
+    if (currentImpact.currentImpact && (currentImpact.currentImpact.seasonRows === null || currentImpact.currentImpact.current === null)) degraded = true;
 
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
@@ -239,6 +249,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         ...playTypes,
         ...career,
         ...zones,
+        ...currentImpact,
     };
 }
 

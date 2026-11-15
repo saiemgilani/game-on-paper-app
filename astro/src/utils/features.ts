@@ -152,6 +152,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // 3 attempts, share, FG% and assisted share with the producer's ranks, from sdv-db's player_shot_zones / team_shot_zones
     // (BB-D35), the team's allowed side, and where the points come from. Off: no read, today's pages byte for byte.
     'bball-shot-profile': 'preview',
+    // Season impact and Current impact (BB-G56) as two rows of the NBA player page's Impact table, inside 'nba': the
+    // season's prior-informed RAPM (player_impact's reml_rapm, BB-D38) beside his expected impact as of the season's latest
+    // weekly date (current_impact, BB-D39), each with its prior in the hover and Current impact's date in the table caption.
+    // NBA from 2006-07 only. Off: no read and the player page is today's, byte for byte.
+    'bball-current-impact': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

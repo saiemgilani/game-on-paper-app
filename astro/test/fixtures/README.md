@@ -1221,6 +1221,16 @@ so the page drops Duke's split and says why; ESPN's team totals carry no opponen
 **Used by:** `test/shotProfile.test.ts`.
 
 **To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+## `current-impact.json.gz`
+The Data API reads behind the NBA player page's Season impact / Current impact rows in the Impact table (BB-G56, `resources/currentImpact.ts`), captured live
+on 2026-11-12 as `{season, latest, opening}` (the `data` array of each response, no edits), all Michael Porter Jr. (1629008,
+the player of `nba/player_games.json`) in 2025-26: `/v1/nba/player_impact?season=2026&season_type=Regular%20Season&player_id=1629008&limit=5`
+(every column: the season rating `reml_rapm` and its box prior, BB-D38), `/v1/nba/current_impact?season=2026&player_id=1629008&order=-as_of&limit=1`
+(the page's read: the season's latest `as_of`, BB-D39) and the same with `order=as_of` (opening night, 0 possessions).
+
+**Used by:** `test/currentImpact.test.ts`.
+
+**To regenerate:** rerun the three reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
 
 ## `player-impact-xwalk.json.gz`
 College's Impact panel through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of

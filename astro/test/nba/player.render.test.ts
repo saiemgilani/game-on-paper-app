@@ -19,6 +19,8 @@ vi.mock('../../src/resources/playerWar', async (orig) => ({ ...(await orig<typeo
 vi.mock('../../src/resources/playerPlayTypes', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playerPlayTypes')>()), retrievePlayerSynergy: async () => [], retrievePlayerHustle: async () => [], retrievePlayerMatchupRollup: async () => [], retrievePlayerTopMatchups: async () => [] }));
 // BB-G54's Career panel reads the Data API with 'bball-career' on (preview): never from a test
 vi.mock('../../src/resources/playerCareer', () => ({ retrievePlayerWarCareer: async () => [], retrievePlayerImpactCareer: async () => [] }));
+// BB-G56's Season impact / Current impact rows read the Data API with 'bball-current-impact' on (preview): never from a test
+vi.mock('../../src/resources/currentImpact', async (orig) => ({ ...(await orig<typeof import('../../src/resources/currentImpact')>()), retrieveCurrentImpact: async () => [] }));
 import { readFileSync } from 'node:fs';
 import { text } from '../helpers/tables';
 
