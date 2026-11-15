@@ -193,6 +193,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // each player's EPV added on their own events and on-court EPV +/- (sdv-db's epv_player_games / epv_team_games, BB-D24).
     // NBA only (no WNBA or college tables yet). Off: no read and the game page is today's, byte for byte.
     'bball-epv': 'preview',
+    // BB-G18's pregame projection: on /<league>/game/[id] before tip, a Projection card (the favourite, the expected margin
+    // and its win chance) read as published from the game's {lg}.rated_priors row (sdv-py#1193, sdv-db#229); no card when
+    // the row is missing or its prediction is null. The bracketology bracket keeps its bid chances. Off: no read, and the
+    // pregame page is today's, byte for byte.
+    'bball-pregame-projection': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
