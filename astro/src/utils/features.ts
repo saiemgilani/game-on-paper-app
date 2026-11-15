@@ -256,6 +256,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // unit with a size selector and a small-sample toggle, each player's on/off, and an on/off picker that splits the game by
     // up to five players on or off (sdv-db game_units / game_on_off, BB-D32). Off: no read and the Impact box is BB-G1's.
     'bball-ingame-lineups': 'preview',
+    // BB-G26's EPV box: on /<league>/game/[id] for a final from 2021-22 on, each side's EPV added with the ball and allowed
+    // and each player's EPV added on their own events and on-court EPV +/- (sdv-db's epv_player_games / epv_team_games,
+    // BB-D24). All four leagues (BB-G46 added the WNBA and college). Off: no read and the game page is today's, byte for byte.
+    'bball-epv': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

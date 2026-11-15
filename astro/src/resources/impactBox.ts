@@ -165,7 +165,7 @@ interface NcaaPair { ncaa_player_id: string | null; espn_athlete_id: number | st
 interface NcaaName { contest_id: string; player_id: string | null; clean_name: string | null; player: string | null }
 
 /** "ANGELO.BRIZZI" (the stats.ncaa.org box's raw name) as "Angelo Brizzi", for a row with no clean name. */
-const titleCase = (raw: string) => raw.replace(/[._]+/g, ' ').toLowerCase().replace(/(^|[\s'-])\p{L}/gu, (m) => m.toUpperCase()).trim();
+export const titleCase = (raw: string) => raw.replace(/[._]+/g, ' ').toLowerCase().replace(/(^|[\s'-])\p{L}/gu, (m) => m.toUpperCase()).trim();
 
 /**
  * An ESPN NBA / WNBA game's stats.nba.com / stats.wnba.com game and team ids, from the games schema's schedule_crosswalk;

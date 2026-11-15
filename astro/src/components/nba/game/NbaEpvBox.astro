@@ -1,12 +1,16 @@
 ---
 // src/components/nba/game/NbaEpvBox.astro
-// BB-G26, behind 'bball-epv': the NBA game page's EPV box, football's per-player EPA. Each side's EPV added with the ball
-// and allowed, and each player's EPV added on their own events and on-court EPV +/-. Every number is the producer's
-// (sdv-db epv_player_games / epv_team_games, sdv-py nba_epv_*); this reads, orders and formats.
+// BB-G26 / BB-G46, behind 'bball-epv': the basketball game page's EPV box (all four leagues), football's per-player EPA.
+// Each side's EPV added with the ball and allowed, and each player's EPV added on their own events and on-court EPV +/-.
+// Every number is the producer's (sdv-db epv_player_games / epv_team_games, sdv-py {nba,wnba,mbb}_epv_*); this reads,
+// orders and formats.
 import type { NbaGame } from '../../../resources/nbaGame';
 import { epvSide, playClock, type EpvBoxReads } from '../../../resources/epvBox';
 import { fmtInt } from '../../../nba/format';
-import { cleanAbbreviation } from '../../../utils/misc';
+import { cleanAbbreviation, cleanField } from '../../../utils/misc';
+import { playerHref, seasonQuery } from '../../../nba/links';
+import { LEAGUES } from '../../../utils/league';
+import { basketball } from '../../../basketball/config';
 
 interface Props { game: NbaGame; epv: EpvBoxReads | null }
 const { game, epv } = Astro.props;
@@ -17,8 +21,15 @@ const signed = (v: number | null | undefined, digits = 1) => { if (v == null) re
 const int = (v: number | null | undefined) => (v == null ? dash : fmtInt(v));
 const perPoss = (v: number | null | undefined) => (v == null ? dash : signed(v, 2));
 const built = epv && epv.players.length > 0;
+// Q31: the Impact box's links. A page for the game's season (one the player pages list: a league with shot dashboards from
+// shotFirstSeason on), ?season= left off for the current one; any other season, or a player with no page, links nothing
+const cfg = basketball(Astro.locals.league);
+const seasons = LEAGUES[cfg.league].seasons;
+const listed = game.season != null && seasons.includes(game.season) && game.season >= (cfg.shotFirstSeason ?? seasons[0]);
+const q = listed ? seasonQuery(game.season, seasons[seasons.length - 1]) : null;
+const href = (pageId: string | null) => (pageId && q !== null ? playerHref(Number(pageId), q, cfg.league) : null);
 const sides = built
-    ? (['away', 'home'] as const).map((key) => ({ key, abbr: cleanAbbreviation(game[key].team), name: game[key].team.displayName, ...epvSide(epv, key) }))
+    ? (['away', 'home'] as const).map((key) => ({ key, abbr: cleanAbbreviation(game[key].team), name: cleanField(game[key].team, 'displayName'), ...epvSide(epv, key) }))
     : [];
 // the biggest plays, in the producer's order (most EPV added first); the event team's abbreviation from the side it maps to
 const abbrOf = new Map(sides.map((s) => [epv?.teams?.[s.key], s.abbr]));
@@ -45,14 +56,14 @@ const plays = built ? epv.plays : [];
 <div class="row">
   {sides.map((s) => (
     <div class="col-12 col-xl-6" id={`epv-${s.key}`}>
-      <h3 class="h6">{s.name}</h3>
+      <h3 class="h6"><span class="d-none d-md-inline">{s.name}</span><span class="d-md-none">{s.abbr}</span></h3>
       {s.players.length === 0 ? (<p class="text-muted small">No EPV rows for {s.abbr}.</p>) : (
       <div class="table-responsive"><table class="table table-sm numeral align-middle" aria-label={`${s.abbr} EPV`}>
         <thead><tr><th scope="col">Player</th><th scope="col" class="text-end"><abbr title="EPV added on the player's own events: shots, turnovers, rebounds, fouls, steals and blocks">EPV added</abbr></th><th scope="col" class="text-end"><abbr title="The player's own events">Plays</abbr></th><th scope="col" class="text-end"><abbr title="The team's EPV added with the ball while the player was on the floor">On off.</abbr></th><th scope="col" class="text-end"><abbr title="The opponent's EPV added while the player was on the floor: lower is better">On def.</abbr></th><th scope="col" class="text-end"><abbr title="On-court EPV +/-: On off. minus On def.">On net</abbr></th></tr></thead>
         <tbody>
           {s.players.map((p) => (
             <tr>
-              <th scope="row" class="fw-normal text-nowrap">{p.name}</th>
+              <th scope="row" class="fw-normal text-nowrap">{href(p.pageId) ? (<a href={href(p.pageId)!}>{p.name}</a>) : p.name}</th>
               <td class="text-end fw-bold">{signed(p.epv_own)}</td>
               <td class="text-end">{int(p.own_actions)}</td>
               <td class="text-end">{signed(p.off_epv_on)}</td>
