@@ -162,7 +162,7 @@ describe('retrieveGameFlow', () => {
 const gameApi = () => JSON.parse(readFileSync(new URL('./fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
 function fakeAstro(locals: Record<string, unknown>) {
     const cache: unknown[] = []; const headers = new Headers();
-    return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { flagOverrides: { 'bball-impact-box': false, 'bball-game-info': false, 'bball-team-grid': false, 'bball-player-box-views': false, 'bball-situational-box': false, 'bball-game-shooting': false, 'bball-shot-filters': false, 'bball-shift-chart': false, 'bball-game-leaders': false, 'bball-epv': false }, ...locals }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { flagOverrides: { 'bball-impact-box': false, 'bball-props': false, 'bball-game-info': false, 'bball-team-grid': false, 'bball-player-box-views': false, 'bball-situational-box': false, 'bball-game-shooting': false, 'bball-shot-filters': false, 'bball-shift-chart': false, 'bball-game-leaders': false, 'bball-epv': false }, ...locals }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 
 describe('prepareBasketballGame with the flag', () => {
