@@ -36,6 +36,7 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         feed.calls.push({ season, id, league });
         return feed.override ?? splitsOf(league);
     },
+    retrieveTeamTendencies: async () => [], // the Situational Splits panel: no rows
 }));
 
 let container: AstroContainer;
