@@ -23,14 +23,14 @@ const fakeAstro = (path: string, params: Record<string, string> = {}) =>
 describe('/mbb/players', () => {
     test('no team: the pickers and a prompt, no table', async () => {
         const { prepareBasketballPlayers } = await import('../../src/routes/basketball/players');
-        const r: any = await prepareBasketballPlayers(fakeAstro('/mbb/players'), 'mbb');
+        const r: any = await prepareBasketballPlayers(fakeAstro('/mbb/players?season=2026'), 'mbb');
         expect([r.needsTeam, r.byId, r.team, r.rows.length, r.selected]).toEqual([true, true, '', 0, null]);
-        expect(r.defaults).toEqual({ season: '2026', team: '' });
+        expect(r.defaults).toEqual({ season: '2027', team: '' }); // the current season (BB-D29)
         expect(r.teams.length).toBe(new Set(seasonPlayers(2026).map((x) => x.team_id)).size);
     });
     test('?team=<ESPN id>: that team; 2023 SDSU is two teams', async () => {
         const { prepareBasketballPlayers } = await import('../../src/routes/basketball/players');
-        const tex: any = await prepareBasketballPlayers(fakeAstro(`/mbb/players?team=${TEX}`), 'mbb');
+        const tex: any = await prepareBasketballPlayers(fakeAstro(`/mbb/players?team=${TEX}&season=2026`), 'mbb');
         expect([tex.selected.team_id, tex.team]).toEqual([TEX, String(TEX)]);
         expect(tex.rows.length).toBe(seasonPlayers(2026).filter((x) => x.team_id === TEX).length);
         const a: any = await prepareBasketballPlayers(fakeAstro('/mbb/players?season=2023&team=21'), 'mbb');
@@ -41,7 +41,7 @@ describe('/mbb/players', () => {
     });
     test('ALL, a tricode, an unknown id and junk are 404s', async () => {
         const { prepareBasketballPlayers } = await import('../../src/routes/basketball/players');
-        for (const q of ['ALL', 'TEX', '999999', 'abc']) expect(await prepareBasketballPlayers(fakeAstro(`/mbb/players?team=${q}`), 'mbb'), q).toEqual({ notFound: true });
+        for (const q of ['ALL', 'TEX', '999999', 'abc']) expect(await prepareBasketballPlayers(fakeAstro(`/mbb/players?team=${q}&season=2026`), 'mbb'), q).toEqual({ notFound: true });
     });
     test('the by-id team select: no All teams, a prompt option, ids in the URLs', async () => {
         const container = await AstroContainer.create();
@@ -58,7 +58,7 @@ describe('/mbb/team/<id>: membership decides (D43, D47, D48)', () => {
         expect(BASKETBALL.mbb.teams.all.some((t) => t.team_id === 42)).toBe(true);
         expect(conferences(2026).some((r) => r.team_id === '42')).toBe(false);
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
-        expect(await prepareBasketballTeam(fakeAstro('/mbb/team/42', { id: '42' }), 'mbb')).toEqual({ notFound: true });
+        expect(await prepareBasketballTeam(fakeAstro('/mbb/team/42?season=2026', { id: '42' }), 'mbb')).toEqual({ notFound: true });
     });
     test('a season member with no linked shot is a 200 page that says so (the first such 2019 member Task 2 Step 4 printed)', async () => {
         const shotTeams = new Set(seasonPlayers(2019).map((x) => x.team_id));
@@ -83,6 +83,6 @@ describe('/mbb/team/<id>: membership decides (D43, D47, D48)', () => {
     });
     test('an id that is no D-I member that season is still a 404', async () => {
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
-        expect(await prepareBasketballTeam(fakeAstro('/mbb/team/2476', { id: '2476' }), 'mbb')).toEqual({ notFound: true }); // Oglethorpe, non-D-I
+        expect(await prepareBasketballTeam(fakeAstro('/mbb/team/2476?season=2026', { id: '2476' }), 'mbb')).toEqual({ notFound: true }); // Oglethorpe, non-D-I
     });
 });

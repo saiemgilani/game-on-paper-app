@@ -57,13 +57,15 @@ const typeOrder = (t: string) => (SEARCH_TYPES as readonly string[]).indexOf(t);
  * Upstream rows to the hits this viewer may follow: teams, then players, then games,
  * each group by score, capped at MAX_HITS. Players are dropped unless player pages are
  * enabled for the viewer, and NFL rows unless the NFL is: a link into a 404 namespace
- * is worse than no link.
+ * is worse than no link. `only` keeps one type, before the cap: the compare page's add box
+ * wants players, which eight team hits would otherwise crowd out.
  */
-export function rankHits(rows: SearchRow[], opts: { players: boolean; nfl: boolean }): SearchHit[] {
+export function rankHits(rows: SearchRow[], opts: { players: boolean; nfl: boolean; only?: string }): SearchHit[] {
     return rows
         .filter((r) => typeOrder(r.type) >= 0 && (r.league === 'cfb' || r.league === 'nfl')
             && /^\d{1,12}$/.test(String(r.id)) && !!r.label
-            && (opts.players || r.type !== 'player') && (opts.nfl || r.league !== 'nfl'))
+            && (opts.players || r.type !== 'player') && (opts.nfl || r.league !== 'nfl')
+            && (!opts.only || r.type === opts.only))
         .sort((a, b) => typeOrder(a.type) - typeOrder(b.type) || (b.score ?? 0) - (a.score ?? 0))
         .slice(0, MAX_HITS)
         .map((r) => {

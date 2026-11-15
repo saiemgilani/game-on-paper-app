@@ -60,9 +60,8 @@ beforeEach(() => { feed.calls = []; });
 
 /** What pages/{,nfl/}charts/builder.astro do: the loader (with a stub Astro, since the container has
  *  no Workers Caching), then the route component with its result spread in. */
-async function render(league: 'cfb' | 'nfl', query: string) {
+async function render(league: 'cfb' | 'nfl', query: string, locals = {} as App.Locals) {
     const url = `https://gameonpaper.com${league === 'nfl' ? '/nfl' : ''}/charts/builder?${query}`;
-    const locals = {} as App.Locals;
     const { loadChartBuilder } = await import('../src/routes/charts');
     const data = await loadChartBuilder({ url: new URL(url), locals, cache: { set: () => {} } } as any, league);
     const { default: Route } = await import('../src/components/routes/ChartBuilderRoute.astro');
@@ -71,9 +70,9 @@ async function render(league: 'cfb' | 'nfl', query: string) {
 
 /** The island is client:only, so the page above never holds its markup: render the component itself
  *  (svelte/server, with the browser globals its script reads at load) from the props the page passed it. */
-async function islandMarkup(league: 'cfb' | 'nfl', query: string) {
+async function islandMarkup(league: 'cfb' | 'nfl', query: string, locals?: App.Locals) {
     // decoded from the page, so untyped: the island's own prop types are checked where the route passes them
-    const props: any = island(await render(league, query));
+    const props: any = island(await render(league, query, locals));
     const g = globalThis as any;
     g.document = { readyState: 'loading', addEventListener() {}, documentElement: { clientWidth: 1280 } };
     g.window = { innerWidth: 1280, matchMedia: () => ({ matches: false }), location: { pathname: `${league === 'nfl' ? '/nfl' : ''}/charts/builder` } };
@@ -131,5 +130,24 @@ describe('chart-builder-v2 on: the public builder is what main renders', () => {
         const { points } = island(await render('cfb', QUERY.cfb));
         expect(points.find((p: any) => p.team_id === 242).x).toBeNull();
         expect(plottedMedians(points)).toEqual({ teams: 137, x: 0.38461538461538464, y: 0.4369369369369369 });
+    });
+});
+
+describe("'metric-registry' (F13): the island gets it only when the flag admits the viewer", () => {
+    const Q = 'season=2026&x=plays_off_rush&y=start_position_off';
+    test('flag off: the island props are exactly what main passes (no registry key)', async () => {
+        const props = island(await render('cfb', Q));
+        expect(props).not.toHaveProperty('registry');
+        expect(Object.keys(props).sort()).toEqual(['league', 'points', 'season', 'v2', 'highlight', 'mode', 'x', 'y'].sort());
+    });
+
+    test('flag on: registry reaches the island, and the island renders the registry titles', async () => {
+        const locals = { flagOverrides: { 'metric-registry': true } } as any;
+        expect(island(await render('cfb', Q, locals))).toMatchObject({ registry: true });
+        const on = await islandMarkup('cfb', Q, locals);
+        expect(on).toMatch(/<option value="plays_off_rush"[^>]*>Off Total Rushes<\/option>/);
+        expect(on).toMatch(/<option value="playsdrive_off_rush"[^>]*>Off Rushes\/Drive<\/option>/);
+        const off = await islandMarkup('cfb', Q);
+        expect(off).toMatch(/<option value="plays_off_rush"[^>]*>Off Total Rushs<\/option>/);
     });
 });

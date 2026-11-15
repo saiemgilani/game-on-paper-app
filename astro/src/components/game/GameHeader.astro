@@ -50,6 +50,9 @@ const backLabel = backToWeek ? `Back to Week ${espnHeader.week}` : 'Back to Scor
 const share = isFeatureEnabled('share-card', Astro.locals);
 const shareUrl = new URL(leaguePath(league, `/game/${espnHeader?.id ?? espnComp.id}`), "https://gameonpaper.com").href;
 const shareProps = { url: shareUrl, spoilerFreeUrl: `${shareUrl}?spoilers=off` };
+// 'final-score-first' (preview): the chip's label, looked up by the game route (routes/game.ts)
+// before it picks the cache policy. Unset (flag off, not final, pregame): nothing rendered.
+const firstFinal = Astro.locals.firstFinal ?? null;
 
 ---
 
@@ -71,6 +74,9 @@ const shareProps = { url: shareUrl, spoilerFreeUrl: `${shareUrl}?spoilers=off` }
                     {
                         (!isGameInactive) && <p class="text-small m-0">{`LIVE - ${statusDetail}`}</p>
                     }
+                    {
+                        firstFinal && <p class="m-0 mt-1"><span class="badge bg-secondary">{firstFinal}</span></p>
+                    }
                 </div>
             </div>
             <div class={share ? "col-2 d-flex justify-content-end align-items-center gap-2" : "col-2 d-flex justify-content-end align-items-center"}>
@@ -91,6 +97,9 @@ const shareProps = { url: shareUrl, spoilerFreeUrl: `${shareUrl}?spoilers=off` }
                     }
                     {
                         (!isGameInactive) && <p class="text-small m-0">{`LIVE - ${statusDetail}`}</p>
+                    }
+                    {
+                        firstFinal && <p class="m-0 mt-1"><span class="badge bg-secondary">{firstFinal}</span></p>
                     }
                 </div>
             </div>
