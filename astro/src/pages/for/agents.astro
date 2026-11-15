@@ -3,6 +3,7 @@ import GenericPage from '../../layouts/GenericPage.astro';
 import { isFeatureEnabled } from '../../utils/features';
 import { isEspnAthleteId } from '../../utils/players';
 import { CURRENT_YEAR } from '../../utils/constants';
+import { FLAGS_PARAM, VIEW_PARAM } from '../../utils/adminView';
 
 if (!isFeatureEnabled('agent-demo', Astro.locals)) {
     return Astro.rewrite("/404");
@@ -16,6 +17,9 @@ const pick = (v: string | null, ok: (s: string) => boolean, fallback: string) =>
 const player = pick(q.get('player'), isEspnAthleteId, '4428993');
 const season = pick(q.get('season'), (s) => /^\d{4}$/.test(s) && +s >= 2004 && +s <= CURRENT_YEAR, '2025');
 const team = pick(q.get('team'), (s) => /^\d{1,6}$/.test(s), '59');
+// The form submits to the URL it was opened on (no action), so /preview/for/agents stays on the preview surface;
+// an admin's ?view= and ?flags= ride along as hidden fields, or the next render loses the preview and 404s.
+const carried = [VIEW_PARAM, FLAGS_PARAM].flatMap((name) => { const v = q.get(name); return v ? [{ name, value: v }] : []; });
 
 const tour = [
     {
@@ -103,7 +107,8 @@ const subtitle = 'How agents can use the free site in conversations with program
             <li>Plain English for families: every metric defined, every page free to share.</li>
         </ol>
 
-        <form class="row g-2 align-items-end my-3" method="get" action="/for/agents" id="agent-demo-form">
+        <form class="row g-2 align-items-end my-3" method="get" id="agent-demo-form">
+            {carried.map((c) => <input type="hidden" name={c.name} value={c.value} />)}
             <div class="col-auto">
                 <label class="form-label small mb-0" for="agent-demo-player">Player (ESPN id)</label>
                 <input class="form-control form-control-sm" id="agent-demo-player" name="player" value={player} inputmode="numeric" />

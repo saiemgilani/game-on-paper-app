@@ -9,7 +9,8 @@ export default async (page, base) => {
   await page.waitForTimeout(600);
   await Promise.all([page.waitForURL(/player=4433971/), page.click('#agent-demo-form button[type=submit]')]);
   await page.waitForTimeout(1000);
-  const hrefs = await page.locator('a[href^="/players/"]').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  // the tour's cards only: the header's Player Compare link also starts /players/ when its flag is on
+  const hrefs = await page.locator('.card[id^="agent-demo-"] a[href^="/players/"]').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
   if (!hrefs.length || hrefs.some((h) => !h.includes('4433971'))) throw new Error(`player links did not follow the form: ${hrefs.join(' ')}`);
   for (const id of ['percentiles', 'compare', 'fit', 'coverage']) {
     await page.locator(`#agent-demo-${id}`).scrollIntoViewIfNeeded();

@@ -37,6 +37,16 @@ describe('/for/agents', () => {
         expect(html).not.toContain('4428993');
     });
 
+    test('the form stays on the URL it was opened on and carries an admin view and flags', async () => {
+        const plain = await render('', { preview: true });
+        expect(plain).toMatch(/<form[^>]*id="agent-demo-form"[^>]*>/);
+        expect(plain).not.toMatch(/<form[^>]*id="agent-demo-form"[^>]*action=/);
+        expect(plain).not.toMatch(/type="hidden" name="(view|flags)"/);
+        const admin = await render('?view=preview&flags=agent-demo:on', { preview: true });
+        expect(admin).toContain('type="hidden" name="view" value="preview"');
+        expect(admin).toContain('type="hidden" name="flags" value="agent-demo:on"');
+    });
+
     test('preview, bad values: fall back to the example, never echoed', async () => {
         const html = await render('?player=%22%3E%3Cscript%3E&season=1850&team=abc', { preview: true });
         expect(html).toContain('href="/players/4428993?season=2025"');
