@@ -1,0 +1,54 @@
+---
+import GenericPanel from '../../layouts/panel/GenericPanel.astro';
+import { GAME_SET_COLUMNS, GAME_SETS, type GameSetTable } from '../../utils/gameSet';
+import { formatMetricValue, formatRank, generateColorRampValue } from '../../utils/misc';
+
+interface Props {
+    table: GameSetTable
+}
+
+const { table } = Astro.props;
+const league = Astro.locals.league ?? 'cfb';
+const label = (key: string) => GAME_SETS.find((s) => s.key === key)!.label;
+const note = league === 'cfb'
+    ? 'Data shown is from every game, FCS opponents and the postseason included.'
+    : 'Data shown is from regular season games only.';
+// no rank (a team outside the population, or no membership read): no rank sentence
+const ranked = Object.values(table.ranks).some((r) => r !== null);
+const caption = `Points are per game. Home and Away follow the listed home team, neutral sites included.${ranked ? ` # = rank among the ${table.ranked} ${table.pool} teams with a game in this set.` : ''}`;
+---
+
+<GenericPanel id="game-set" title={table.set === 'all' ? 'Team Stats' : 'Team Stats (Filtered)'} show={true}>
+    <p slot="panel-subtitle" class="text-small text-muted">{note}</p>
+    <Fragment slot="panel-controls">
+        <label class="visually-hidden" for="game-set-select">Games</label>
+        {/* each option is the same page with ?games=, so the chosen set is a shareable URL */}
+        <select id="game-set-select" class="form-select form-select-md" autocomplete="off" onchange="window.location.href = this.value">
+            {table.sets.map((key) => <option value={`?games=${key}`} selected={key === table.set}>{label(key)}</option>)}
+        </select>
+    </Fragment>
+    <div slot="panel-body" class="table-responsive">
+        <table class="table table-sm table-responsive">
+            <caption class="text-small text-muted">{caption}</caption>
+            <thead>
+                <tr>
+                    <th rowspan="1" colspan="1" class="text-center">Games</th>
+                    {GAME_SET_COLUMNS.map((c) => <th rowspan="1" colspan="1" class="text-center">{c.label}</th>)}
+                </tr>
+            </thead>
+            <tbody>
+                <tr data-games={table.set}>
+                    <td class="numeral text-center">{table.line.games}</td>
+                    {GAME_SET_COLUMNS.map((c) => (
+                        <td class:list={["numeral", "text-center", generateColorRampValue(table.ranks[c.key], table.ranked, true)]}>
+                            {formatMetricValue(table.line[c.key], c.format)}
+                            {table.ranks[c.key] !== null && (
+                                <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(table.ranks[c.key])}</span>
+                            )}
+                        </td>
+                    ))}
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</GenericPanel>
