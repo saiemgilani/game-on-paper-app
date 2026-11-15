@@ -18,6 +18,7 @@ import NbaEpvBox from './NbaEpvBox.astro';
 import NbaGarbageTime from './NbaGarbageTime.astro';
 import NbaGameLeaders from './NbaGameLeaders.astro';
 import NbaTeamGrid from './NbaTeamGrid.astro';
+import NbaSituationalBox from './NbaSituationalBox.astro';
 import { isFeatureEnabled } from '../../../utils/features';
 import { cleanAbbreviation, pickGameColors } from '../../../utils/misc';
 import { gameHref, scoreboardDayHref, teamHrefFromEspn } from '../../../nba/links';
@@ -74,14 +75,6 @@ const league = cfg.league;
 const title = `${game.away.team.displayName} ${game.away.score ?? ''} at ${game.home.team.displayName} ${game.home.score ?? ''} | Game on Paper`.replace(/\s+/g, ' ');
 const description = `${game.away.team.displayName} at ${game.home.team.displayName}: win probability, biggest plays, four factors, advanced box score and shot charts.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: leaguePath(league, '/'), active: false }, { title: 'Scoreboard', url: scoreboardDayHref(league, game.date), active: false }, { title: `${cleanAbbreviation(game.away.team)} @ ${cleanAbbreviation(game.home.team)}`, active: true }];
-// BB-G15 ('bball-poe'): its own panel after Four factors, for a game with both team rows or a failed read (it says so)
-const poeShown = poe === null || (poe != null && poe.home != null && poe.away != null);
-const items: ScrollerItem[] = [...(latest ? [{ href: '#latest', title: 'Latest' }] : []), { href: '#wp', title: 'Win probability' }, ...(flow !== undefined ? [{ href: '#flow', title: 'Game flow' }] : []), { href: '#factors', title: 'Four factors' }, ...(poeShown ? [{ href: '#poe', title: 'Points over expected' }] : []), { href: '#teambox', title: 'Team box' }, ...(situations ? [{ href: '#situations', title: 'Situations' }] : []), { href: '#players', title: 'Players' }, ...(impact !== undefined ? [{ href: '#impact', title: 'Impact' }] : []), ...(shift !== undefined ? [{ href: '#shifts', title: 'Shifts' }] : []), ...(epv !== undefined ? [{ href: '#epv', title: 'EPV' }] : []), { href: '#shots', title: 'Shots' }, { href: '#plays', title: 'Plays' }];
-// BB-G35: the Leaders panel, live or final, after the box score
-const withLeaders = isFeatureEnabled('bball-game-leaders', Astro.locals);
-if (withLeaders) items.splice(items.findIndex((i) => i.href === '#shots'), 0, { href: '#leaders', title: 'Leaders' });
-// BB-G41: null (the page as without the flag) unless the game is live
-const latest = isFeatureEnabled('bball-latest-strip', Astro.locals) ? latestStrip(game, { rimPlaceholder: cfg.espnRimPlaceholder === true, court: courtFor(league, game.season) }) : null;
 const side = (s: typeof game.home) => ({ name: s.team.displayName, href: teamHrefFromEspn(s.team, league, game.season), score: s.score });
 const jsonLd = basketballEventJsonLd({ league, path: gameHref(league, game.id), date: game.date, description, venue: game.venue, statusDetail: game.status.detail, home: side(game.home), away: side(game.away) });
 const colors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(game.home.team, game.away.team) : null;
@@ -90,19 +83,29 @@ const gt = garbage && garbageView(garbage.reads, impact, garbage.out, league, ga
 const split = gt?.rates ? gt : undefined;
 // BB-G32: one Team stats panel for the four factors and the team box; `?garbage=out` keeps BB-G2's split tables
 const grid = isFeatureEnabled('bball-team-grid', Astro.locals) && !split;
+// BB-G33: the possession factors (BB-D31 splits, whole game), so not beside `?garbage=out`'s split tables
+const situational = isFeatureEnabled('bball-situational-box', Astro.locals) && !split;
+// BB-G15 ('bball-poe'): its own panel after Four factors, for a game with both team rows or a failed read (it says so)
+const poeShown = poe === null || (poe != null && poe.home != null && poe.away != null);
+// BB-G41: null (the page as without the flag) unless the game is live
+const latest = isFeatureEnabled('bball-latest-strip', Astro.locals) ? latestStrip(game, { rimPlaceholder: cfg.espnRimPlaceholder === true, court: courtFor(league, game.season) }) : null;
+const items: ScrollerItem[] = [...(latest ? [{ href: '#latest', title: 'Latest' }] : []), { href: '#wp', title: 'Win probability' }, ...(flow !== undefined ? [{ href: '#flow', title: 'Game flow' }] : []), { href: '#factors', title: 'Four factors' }, ...(poeShown ? [{ href: '#poe', title: 'Points over expected' }] : []), { href: '#teambox', title: 'Team box' }, ...(situational ? [{ href: '#possession-factors', title: 'Possession factors' }] : []), ...(situations ? [{ href: '#situations', title: 'Situations' }] : []), { href: '#players', title: 'Players' }, ...(impact !== undefined ? [{ href: '#impact', title: 'Impact' }] : []), ...(shift !== undefined ? [{ href: '#shifts', title: 'Shifts' }] : []), ...(epv !== undefined ? [{ href: '#epv', title: 'EPV' }] : []), { href: '#shots', title: 'Shots' }, { href: '#plays', title: 'Plays' }];
+// BB-G35: the Leaders panel, live or final, after the box score
+const withLeaders = isFeatureEnabled('bball-game-leaders', Astro.locals);
+if (withLeaders) items.splice(items.findIndex((i) => i.href === '#shots'), 0, { href: '#leaders', title: 'Leaders' });
 ---
 <GenericPage title={title} subtitle={description} slug={gameHref(league, game.id)} breadcrumbs={breadcrumbs} description={description} jsonLd={[jsonLd]}>
   <link href="/assets/css/sticky-table.css" rel="stylesheet">
   <div class="container">
     <NbaGameHeader game={game} />{sourceTools && <NbaAdminSourceTools game={game} tools={sourceTools} />}
     <div class="game-nav-sticky py-1 mb-3 border-top border-bottom"><NavScroller items={items} /></div>
-    {latest && (<Panel id="latest" title="Latest" show={true}><div slot="panel-body"><NbaLatest game={game} latest={latest} /></div></Panel>)}<Panel id="wp" title="Win probability" show={true}><div slot="panel-body"><NbaWinProbability game={game} colors={colors} /></div></Panel>{flow !== undefined && (<Panel id="flow" title="Game flow" show={true}><div slot="panel-body"><NbaGameFlow game={game} flow={flow} /></div></Panel>)}
+    {latest && (<Panel id="latest" title="Latest" show={true}><div slot="panel-body"><NbaLatest game={game} latest={latest} /></div></Panel>)}
     <Panel id="wp" title="Win probability" show={true}><div slot="panel-body"><NbaWinProbability game={game} colors={colors} /></div></Panel>{flow !== undefined && (<Panel id="flow" title="Game flow" show={true}><div slot="panel-body"><NbaGameFlow game={game} flow={flow} /></div></Panel>)}
-    {grid ? (<Panel id="factors" title="Team stats" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="select" />}<NbaTeamGrid game={game} season={season} /></div></Panel>) : (<Fragment><Panel id="factors" title="Four factors" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="select" />}{split ? <NbaGarbageTime game={game} view={split} part="factors" /> : <NbaFourFactors game={game} />}</div></Panel>{poeShown && (<Panel id="poe" title="Points over expected" show={true}><div slot="panel-body"><NbaShotQuality game={game} poe={poe ?? null} /></div></Panel>)}
-    <Panel id="teambox" title="Team box" show={true}><div slot="panel-body">{split?.box ? <NbaGarbageTime game={game} view={split} part="teambox" /> : (<Fragment>{split && <NbaGarbageTime game={game} view={split} part="teambox" />}<NbaTeamBox game={game} /></Fragment>)}</div></Panel></Fragment>)}
+    {grid ? (<Panel id="factors" title="Team stats" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="select" />}<NbaTeamGrid game={game} season={season} /></div></Panel>) : (<Fragment><Panel id="factors" title="Four factors" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="select" />}{split ? <NbaGarbageTime game={game} view={split} part="factors" /> : <NbaFourFactors game={game} />}</div></Panel>
+    <Panel id="teambox" title="Team box" show={true}><div slot="panel-body">{split?.box ? <NbaGarbageTime game={game} view={split} part="teambox" /> : (<Fragment>{split && <NbaGarbageTime game={game} view={split} part="teambox" />}<NbaTeamBox game={game} /></Fragment>)}{poeShown && (<Panel id="poe" title="Points over expected" show={true}><div slot="panel-body"><NbaShotQuality game={game} poe={poe ?? null} /></div></Panel>)}</div></Panel></Fragment>)}
     {situations && <Panel id="situations" title="Situations" show={true}><div slot="panel-body"><GameSituations game={game} data={situations} /></div></Panel>}
     <Panel id="players" title="Players" show={true}><div slot="panel-body">{split && <NbaGarbageTime game={game} view={split} part="whole" />}<div class="row"><div class="col-12 col-xl-6"><NbaPlayerBox side={game.away} id="box-away" league={league} /></div><div class="col-12 col-xl-6"><NbaPlayerBox side={game.home} id="box-home" league={league} /></div></div></div></Panel>{impact !== undefined && (<Panel id="impact" title="Impact and lineups" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="toggle" />}<NbaImpactBox game={game} impact={gt?.impact ?? impact} fromLog={gt?.impact !== undefined} /></div></Panel>)}{epv !== undefined && (<Panel id="epv" title="EPV added" show={true}><div slot="panel-body"><NbaEpvBox game={game} epv={epv} /></div></Panel>)}{withLeaders && (<Panel id="leaders" title="Leaders" show={true}><div slot="panel-body"><NbaGameLeaders game={game} league={league} averages={averages} /></div></Panel>)}
-    {shift !== undefined && (<Panel id="shifts" title="Shift chart" show={true}><div slot="panel-body"><NbaShiftChart game={game} reads={shift} periodMinutes={pickRegulation(cfg.regulation, game.season, game.regulation).periodMinutes} /></div></Panel>)}
+    {shift !== undefined && (<Panel id="shifts" title="Shift chart" show={true}><div slot="panel-body"><NbaShiftChart game={game} reads={shift} periodMinutes={pickRegulation(cfg.regulation, game.season, game.regulation).periodMinutes} /></div></Panel>)}{situational && (<Panel id="possession-factors" title="Possession factors" show={true}><div slot="panel-body"><NbaSituationalBox game={game} league={league} /></div></Panel>)}
     <Panel id="shots" title="Shot charts" show={true}><div slot="panel-body"><NbaGameShotCharts game={game} /></div></Panel>
     <Panel id="plays" title="Play-by-play" show={true}><div slot="panel-body"><NbaPlaysTable game={game} /></div></Panel>
   </div>

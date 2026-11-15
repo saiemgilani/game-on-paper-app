@@ -749,6 +749,7 @@ def _process_basketball(league: str, game_id: int, source: str | None = None):
     from sportsdataverse.nba.nba_game_page import game_page_frames
 
     from nba_game import build_payload
+    from shot_cells import league_shot_cells
 
     spec = BASKETBALL_PROCESSORS[league]
     pbp_module = importlib.import_module(spec["module"])
@@ -789,7 +790,8 @@ def _process_basketball(league: str, game_id: int, source: str | None = None):
             with stage(timings, "parse"):
                 final = parse_pbp(game_id, summary)  # the rest of espn_nba_pbp; errors here are real bugs
             with stage(timings, "process"):
-                frames = game_page_frames(final, **spec["frames_kwargs"])
+                # BB-D40's expected points: the league's as-of shot cells (None when unreadable: the columns stay null)
+                frames = game_page_frames(final, **spec["frames_kwargs"], shot_cells=league_shot_cells(league))
             served, fallback_used, regulation = "espn", False, _regulation_periods(summary)
         else:
             # fetch, contract check, parse and frames in one call, ESPN the terminal fallback; a game

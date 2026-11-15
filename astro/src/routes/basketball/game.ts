@@ -27,6 +27,8 @@ import { leagueContextFromRows } from '../../nba/adapters';
 import { retrieveGameStints, retrieveShiftReads, type GameStints, type ShiftReads } from '../../resources/gameStints';
 import type { LeagueContext } from '../../nba/dashboard';
 import { retrieveTeamGridFinal, retrieveTeamGridSeason, type TeamGridSeason } from '../../resources/teamGrid';
+import { retrieveTeamGridFinal, retrieveTeamGridGame, retrieveTeamGridSeason, type TeamGridSeason } from '../../resources/teamGrid';
+import { retrieveGameExpected } from '../../resources/gameExpected';
 import { seasonCache, setCache, uncacheable } from './cache';
 import { retrieveGameSituational } from '../../resources/situational';
 import { parseSituation, situationsFor, type GameSituationsTab } from '../../utils/situations';
@@ -173,8 +175,12 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     const withShooting = final && isFeatureEnabled('bball-game-shooting', Astro.locals);
     const withFinalStints = final && withStints;
     const withShift = final && isFeatureEnabled('bball-shift-chart', Astro.locals);
-    if (!withImpact && !withFlow && !withShooting && !withFinalStints && !withShift && !withLeaders && !withEpv && !withGrid) return { ...r, ...live };
-    const [impact, flow, epv, garbage, averages, shooting, stints, shift, season] = await Promise.all([
+    // BB-G33's expected points: the processor payload carries them, so only a Data API final reads {lg}.game_team_expected
+    const withExpected = final && r.game.source === 'data_api' && isFeatureEnabled('bball-situational-box', Astro.locals);
+    // BB-G33 review Q23: a final with no splits shows the producer's situational rows; the grid's final read carries them
+    const withSituational = final && !r.game.home.splits && !r.game.away.splits && !withGrid && isFeatureEnabled('bball-situational-box', Astro.locals);
+    if (!withImpact && !withFlow && !withShooting && !withFinalStints && !withShift && !withLeaders && !withEpv && !withGrid && !withExpected && !withSituational) return { ...r, ...live };
+    const [impact, flow, epv, garbage, averages, shooting, stints, shift, season, expected, counted] = await Promise.all([
         withImpact ? readPanel('impact box', league, r.game, r.game.season, retrieveImpactBox) : undefined,
         withFlow ? readPanel('game flow', league, r.game, r.game.season, retrieveGameFlow) : undefined,
         withEpv ? readPanel('EPV box', league, r.game, r.game.season, retrieveEpvBox) : undefined,
@@ -185,15 +191,22 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
         withShift ? readPanel('shift chart', league, r.game, r.game.season, retrieveShiftReads) : undefined,
         // a final adds its counted rows (possessions and ratings), so the game row and the season row share one definition
         withGrid ? readPanel('team grid', league, r.game, r.game.season, final ? retrieveTeamGridFinal : retrieveTeamGridSeason) : undefined,
+        withExpected ? readPanel('game expected points', league, r.game, r.game.season, retrieveGameExpected) : undefined,
+        withSituational ? readPanel('situational rows', league, r.game, r.game.season, retrieveTeamGridGame) : undefined,
     ]);
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
-    if (impact === null || flow === null || epv === null || garbage === null || season === null || shooting === null || stints === null || shift === null || averages === null) uncacheable(Astro);
+    if (impact === null || flow === null || epv === null || garbage === null || season === null || shooting === null || stints === null || shift === null || averages === null || expected === null || counted === null) uncacheable(Astro);
     // season averages move with every game (and arrive after it): a final that reads them follows the nightly ingest too
     // a season with no league curve yet (fgPct null: no total row) draws no signature: held for the season window too; so is a
     // recent final with no stints yet (the nightly build), not an old one (stints start with recent seasons: never coming)
-    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || season !== undefined || shooting?.fgPct === null || (((stints && Object.keys(stints).length === 0) || shift?.stints.length === 0) && recentFinal(r.game)) || (stints && Object.keys(stints).length === 0 && recentFinal(r.game)) || averages !== undefined || (epv && (epv.players.length === 0 || epv.team.length < 2 || epv.plays.length === 0)))) setCache(Astro, seasonCache(league));
-    return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}), ...(epv !== undefined ? { epv } : {}),
+    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || season !== undefined || shooting?.fgPct === null || (((stints && Object.keys(stints).length === 0) || shift?.stints.length === 0) && recentFinal(r.game)) || averages !== undefined || (expected && (!expected.home || !expected.away)) || (counted && !counted.home.length) || (epv && (epv.players.length === 0 || epv.team.length < 2 || epv.plays.length === 0)))) setCache(Astro, seasonCache(league));
+    // the rows ride on the sides, where a processor game already has them
+    // a final with no splits: each side's situational rows (Q23), from the grid's read or its own
+    const sit = r.game.home.splits || r.game.away.splits ? undefined : (season?.game ?? counted ?? undefined);
+    const ride = (s: 'home' | 'away') => ({ ...r.game[s], ...(expected?.[s] ? { expected: expected[s] } : {}), ...(sit?.[s].length ? { situational: sit[s] } : {}) });
+    const game = expected || sit ? { ...r.game, home: ride('home'), away: ride('away') } : r.game;
+    return { ...r, game, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}), ...(epv !== undefined ? { epv } : {}),
         ...(garbage !== undefined ? { garbage: { reads: garbage, out: Astro.url.searchParams.get(GARBAGE_PARAM) === 'out' } } : {}),
         ...(season !== undefined ? { season } : {}), ...(shooting !== undefined ? { shooting } : {}),
         ...(withStints ? { shotFilters: { stints: stints ?? null } } : {}), ...(shift !== undefined ? { shift } : {}),

@@ -114,3 +114,11 @@ carries both runs.
   `test_nba_process_parity._body`: sdv-py #1075 refit the NBA/WNBA in-game WP, so `home_win_prob` moved on 448 of 450 rows and
   `wp_delta` on 160; the last row still settles at 1.0. No other field moved. The payload's new `excitement` key is additive
   (`ADDED_IN_PR0`), checked in `test_basketball_route`.
+- `{nba,wnba,mbb,wbb}_shot_quality_cells.json.gz`: the Data API's `GET /v1/<league>/shot_quality_cells?limit=5000` (sdv-db BB-D40,
+  sdv-db #215), read 2026-11-10, the response's `data` array as written (`as_of` 2026-11-10; nba 1,293 rows, wnba 1,172, mbb 1,304,
+  wbb 1,371), `json.dumps(..., separators=(",", ":"))`, gzip `mtime=0`. The league's as-of shot counts the processor prices every
+  field-goal attempt against (`shot_cells.py`); seeded into its cache by `test_game_expected_payload.py`, never read live.
+- `game_team_expected_api.json`: the Data API's `GET /v1/<league>/game_team_expected?season=<s>&game_id=<id>&limit=10`, read
+  2026-11-10, the `data` arrays keyed by league: wnba 2025 401736325, mbb 2026 401820775, wbb 2026 401805076 (two rows each, scored
+  as of each game's own date). `test_game_expected_payload.py` checks the processor's counts equal them and its expected points sit
+  within 5% (the cells above are a later as-of window). NBA 2023-24 is not built yet, so it has no rows here.

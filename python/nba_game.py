@@ -102,4 +102,10 @@ def build_payload(game_id: int, final: dict, frames: dict, regulation_periods: i
             }
             for ha, side in (("home", home), ("away", away))
         },
+        # sdv-py BB-D40 on the same plays: each side's team_game_expected row (null before the tip); its expected
+        # columns are null when the league's shot cells could not be read. Read only under 'bball-situational-box'.
+        "expected": {
+            ha: next(iter(_rows(frames["team_game_expected"].filter(pl.col("team_id") == int(side["id"])))), None)
+            for ha, side in (("home", home), ("away", away))
+        },
     }
