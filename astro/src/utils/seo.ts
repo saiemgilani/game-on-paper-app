@@ -414,6 +414,13 @@ export const COACH_BOARD_COPY: Record<string, CoachBoardCopy> = {
         intro: 'Every column here is what opposing offenses did against the head coach\'s defense, so lower is better throughout. As with the offensive boards, the numbers are raw and cover the games he coached.',
         variables: ['EPA per play allowed', 'success rate allowed', 'explosive-play rate allowed', 'third-down conversion rate allowed', 'points per drive allowed'],
     },
+    situations: {
+        h1: (s, l) => `${coachScope(s, l)} Situations: Record After a Bye, in Openers and One-Score Games`,
+        title: (s, l) => `${coachScope(s, l)} Situational Records: One-Score Games, After a Bye | Game on Paper`,
+        description: (s, l) => `How ${coachPool(s, l)} does when it matters: games and win rate after a bye, in season openers, in one-score games${l === 'nfl' ? '' : ' and against ranked opponents'}.`,
+        intro: 'After a bye is a regular-season game played at least 12 days after the team\'s previous one; an opener is the team\'s first regular-season game; a one-score game was decided by 8 points or fewer. In college, a ranked opponent is one ranked at kickoff. A rate is blank when the coach has no such game.',
+        variables: ['win rate after a bye', 'season opener win rate', 'one-score game win rate'],
+    },
 };
 
 /** Metrics an individual player page publishes, for its Dataset JSON-LD. */

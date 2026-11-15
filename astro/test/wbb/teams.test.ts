@@ -59,12 +59,12 @@ describe('D-I membership by season (plan #6 TeamModule members, D34)', () => {
         expect(wbbFranchiseOf('LIU')).toBe(112358); // Long Island (core) over LIU Brooklyn 2341 (2003-2019)
         expect(wbbFranchiseOf('NOPE')).toBeUndefined();
     });
-    test('seasonsOf (R-W2): a core team lists every season, another program its D-I seasons up to 2026, an unknown id none', () => {
-        expect(wbbSeasonsOf(41)).toEqual(span(2003, 2026));
-        for (const r of OTHER) expect(wbbSeasonsOf(r.id), String(r.id)).toEqual(span(r.first, Math.min(r.last, 2026)));
+    test('seasonsOf (R-W2): a core team lists every season, another program its D-I seasons up to 2027, an unknown id none', () => {
+        expect(wbbSeasonsOf(41)).toEqual(span(2003, 2027));
+        for (const r of OTHER) expect(wbbSeasonsOf(r.id), String(r.id)).toEqual(span(r.first, Math.min(r.last, 2027)));
         expect(wbbSeasonsOf(42)).toEqual(span(2003, 2023));     // Hartford
-        expect(wbbSeasonsOf(2511)).toEqual(span(2023, 2026));   // Queens: its 2027 schedule is past WBB_LAST_KNOWN_SEASON
-        expect(wbbSeasonsOf(2697)).toEqual([]);                 // West Florida: D-I only from 2027, no listed season yet
+        expect(wbbSeasonsOf(2511)).toEqual(span(2023, 2027));   // Queens: 2027 listed since BB-D29
+        expect(wbbSeasonsOf(2697)).toEqual([2027]);             // West Florida: D-I from 2027
         expect(wbbSeasonsOf(111956)).toBeUndefined();
     });
 });

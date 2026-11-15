@@ -35,7 +35,7 @@ describe("the WBB dashboard loaders use the women's court", () => {
     test('player page, 2026: the court, seasons from 2019, the pronoun', async () => {
         const { prepareBasketballPlayer } = await import('../../src/routes/basketball/player');
         const id = p26().person_id;
-        const r: any = await prepareBasketballPlayer(fakeAstro(`/wbb/players/${id}`, { id: String(id) }), 'wbb');
+        const r: any = await prepareBasketballPlayer(fakeAstro(`/wbb/players/${id}?season=2026`, { id: String(id) }), 'wbb');
         expect(r.explorer.court).toBe(courtFor('wbb', 2026));
         expect(r.hisSeasons.every((s: number) => s >= 2019)).toBe(true);
     });
