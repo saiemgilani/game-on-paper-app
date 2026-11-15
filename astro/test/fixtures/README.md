@@ -1167,6 +1167,18 @@ kept to `PLAYER_ID, TEAM_ID, TEAM_ABBREVIATION, PLAY_TYPE, TYPE_GROUPING, GP, PO
 
 **To regenerate:** rerun the eight Data API reads (season filter and limit as above, never unfiltered) and the 18
 stats.nba.com requests (residential IP only), keep the two players' rows, wrap them as above and gzip.
+## `player-career.json.gz`
+The rows behind the player page's Career panel (BB-G54, `resources/playerCareer.ts`), as `{nba, nbaImpact, wnba, wnbaImpact, mbb, wbb}`,
+each the `data` array of one live Data API read on 2026-11-10 (no edits), the season range and his id as the page reads them:
+`/v1/nba_stats/player_war?season__gte=1998&season__lte=2026&player_id=1629008&limit=40` (Michael Porter Jr., 7 seasons),
+`/v1/nba/player_impact?…&player_id=1629008&season_type=Regular%20Season&limit=40` (his 2022, nine games, carries null RAPM / BPM
+ranks: below the gate), `/v1/wnba_stats/player_war` and `/v1/wnba/player_impact` with `season__gte=1997` for A'ja Wilson (1628932,
+9 seasons), `/v1/mbb/player_war?season__gte=2003&…&player_id=4848625` (Dailyn Swain, 3 seasons) and `/v1/wbb/player_war` for
+Joyce Edwards (5239100, 2 seasons).
+
+**Used by:** `test/playerCareer.test.ts`.
+
+**To regenerate:** rerun the six reads (season range and limit as above), wrap the `data` arrays as above and gzip.
 
 ## `player-impact-xwalk.json.gz`
 College's Impact panel through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of

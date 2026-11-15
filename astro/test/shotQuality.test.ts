@@ -35,6 +35,8 @@ vi.mock('../src/resources/playStyles', async (orig) => ({ ...(await orig<typeof 
 vi.mock('../src/resources/playerWar', async (orig) => ({ ...(await orig<typeof import('../src/resources/playerWar')>()), retrievePlayerWar: async () => [], retrievePlayerEpv: async () => [] }));
 // BB-G19's Play types and Defense panels read the Data API with 'bball-play-types' on (preview): never from a test
 vi.mock('../src/resources/playerPlayTypes', async (orig) => ({ ...(await orig<typeof import('../src/resources/playerPlayTypes')>()), retrievePlayerSynergy: async () => [], retrievePlayerHustle: async () => [], retrievePlayerMatchupRollup: async () => [], retrievePlayerTopMatchups: async () => [] }));
+// BB-G54's Career panel reads the Data API with 'bball-career' on (preview): never from a test
+vi.mock('../src/resources/playerCareer', () => ({ retrievePlayerWarCareer: async () => [], retrievePlayerImpactCareer: async () => [] }));
 // the pages' other reads, as teamSeason.test.ts and byteIdentity.render.test.ts mock them
 vi.mock('../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../src/resources/teamSeason')>()),

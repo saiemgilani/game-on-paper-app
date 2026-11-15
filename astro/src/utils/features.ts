@@ -144,6 +144,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // 2017-18, his matchups by position and the players he guarded most (matchups_rollup, matchups). Off: no read and the
     // player page is today's, byte for byte.
     'bball-play-types': 'preview',
+    // The player page's Career panel (BB-G54) inside each league's flag: one row per season of sdv-db's player_war (rating,
+    // WAR, VORP; all four leagues) and, for the NBA/WNBA, player_impact's RAPM and BPM. A click on a ranked number opens its
+    // producer rank, cohort, percentile and sample; the foot row is his percentile by season. Off: no read, today's page.
+    'bball-career': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
