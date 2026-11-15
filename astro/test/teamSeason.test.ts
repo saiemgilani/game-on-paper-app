@@ -37,10 +37,12 @@ vi.mock('../src/resources/lineups', async (orig) => ({
 vi.mock('../src/resources/onOff', async (orig) => ({
     ...(await orig<typeof import('../src/resources/onOff')>()),
     retrieveOnOff: async () => ({ players: [], pairs: [], names: [] }),
+}));
 // BB-G25's Situations section reads the Data API with 'bball-situational' on (preview): never from a test
 vi.mock('../src/resources/situational', async (orig) => ({
     ...(await orig<typeof import('../src/resources/situational')>()),
     retrieveSituational: async () => ({ team: [], players: [], units: [], names: [] }),
+}));
 // BB-G53's schedule-context reads ride on the block's schedule under preview: answered empty here, never from the network
 vi.mock('../src/resources/bballScheduleContext', async (orig) => ({
     ...(await orig<typeof import('../src/resources/bballScheduleContext')>()),

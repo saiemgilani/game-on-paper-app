@@ -1,4 +1,4 @@
-// BB-G26 / BB-G46: the basketball game page's EPV box behind 'bball-epv', all four leagues. The reads (the id mapping and
+// BB-G26 / BB-G46: the basketball game page's EPV box behind 'bball-epv', all four leagues, with the NBA's biggest plays (GOP Q35). The reads (the id mapping and
 // every query season-filtered and capped), the side split, the page-side step (the flag, the season, and a final gate the
 // read; a failed read keeps the page and is never cached) and the template, on real rows (fixtures/README.md:
 // epv-box-{nba,wnba,mbb,wbb}-2025.json.gz). Every Data API read here is mocked.
@@ -37,7 +37,7 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         // the cap applies, so a lowered limit would drop rows and fail the tests below
         if (table === 'epv_player_games') return c.players.slice(0, Number(query.limit));
         if (table === 'epv_team_games') return c.teams.slice(0, Number(query.limit));
-        if (table === 'epv_plays') return c.plays.slice(0, Number(query.limit));
+        if (table === 'epv_plays') return (c.plays ?? []).slice(0, Number(query.limit));
         // Q31's links: the season's player pages, and college's per-side crosswalk pairs
         if (table === 'shot_season_players') return c.pages ?? [];
         if (table === 'ncaa_player_crosswalk') return c.pairs?.[query.espn_team_id] ?? [];
@@ -104,10 +104,8 @@ describe('retrieveEpvBox', () => {
     test('the crosswalk first, then four reads in nba_stats, each season-filtered, by the stats game id, capped', async () => {
         const r = await reads();
         expect(api.calls[0]).toEqual({ schema: 'nba', table: 'schedule_crosswalk', query: { season: '2025', espn_game_id: '401703372', select: 'nba_game_id,nba_home_team_id,nba_away_team_id', limit: '1' } });
-        const rest = api.calls.slice(1);
-        expect(rest.map((c) => c.table).sort()).toEqual(['epv_player_games', 'epv_plays', 'epv_team_games', 'player_box']);
         const rest = gameCalls().slice(1);
-        expect(rest.map((c) => c.table).sort()).toEqual(['epv_player_games', 'epv_team_games', 'player_box']);
+        expect(rest.map((c) => c.table).sort()).toEqual(['epv_player_games', 'epv_plays', 'epv_team_games', 'player_box']);
         for (const c of rest) {
             expect(c.schema).toBe('nba_stats');
             expect(c.query).toMatchObject({ season: '2025', game_id: '0022400003' });

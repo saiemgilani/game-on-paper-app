@@ -77,6 +77,7 @@ vi.mock('../../src/resources/playerOnOff', () => ({ retrievePlayerOnOff: async (
 vi.mock('../../src/resources/playStyles', async (orig) => {
     const no = async () => { throw new Error('a play-style read with bball-play-styles off'); };
     return { ...(await orig<typeof import('../../src/resources/playStyles')>()), retrievePlayerPlayStyle: no, retrieveTeamPlayStyle: no };
+});
 // 'bball-war' is off here too: a WAR or EPV read throws and would put "unavailable" in the snapshot
 vi.mock('../../src/resources/playerWar', async (orig) => {
     const no = async () => { throw new Error('a WAR or EPV read with bball-war off'); };

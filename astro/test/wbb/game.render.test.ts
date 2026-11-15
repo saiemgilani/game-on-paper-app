@@ -214,7 +214,6 @@ describe('/wbb/game/[id] render (real captures)', () => {
     test('the processor-unavailable answer is a 503 naming the game', async () => {
         prep.mockResolvedValueOnce({ unavailable: true });
         const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/wbb/game/401805076'), params: { id: '401805076' }, locals: { preview: true, league: 'wbb', flagOverrides: { 'bball-pregame-projection': false } } as unknown as App.Locals });
-        const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/wbb/game/401805076'), params: { id: '401805076' }, locals: { preview: true, league: 'wbb', flagOverrides: { 'bball-team-grid': false } } as App.Locals });
         const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/wbb/game/401805076'), params: { id: '401805076' }, locals: { preview: true, league: 'wbb', flagOverrides: { 'bball-team-grid': false, 'bball-player-box-views': false } } as App.Locals });
         expect([res.status, res.headers.get('Cache-Control'), await res.text()]).toEqual([503, 'no-store', 'This game is temporarily unavailable. Please try again shortly.']);
     });
