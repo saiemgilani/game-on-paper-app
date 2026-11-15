@@ -270,6 +270,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // player_props, BB-D33), beside the box score's count, O / U after the final and progress toward the line live. No
     // panel when the game has no matched lines. Off: no read and the game page is today's, byte for byte.
     'bball-props': 'preview',
+    // BB-G43's Lines and markets on /<league>/game/[id], pregame, live and final: the game's open and close spread, total
+    // and moneylines with the no-vig market win % (sdv-db game_lines, BB-D33) beside our pregame prior; a final's cover,
+    // total and upset; a live game's "at this pace" projection against the line. A game with no row (the current season is
+    // mostly unmapped) gets no panel. Off: no read, and the pregame and game pages are today's.
+    'bball-lines': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

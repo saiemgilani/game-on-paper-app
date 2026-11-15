@@ -33,6 +33,8 @@ import { retrieveTeamGridFinal, retrieveTeamGridSeason, type TeamGridSeason } fr
 import { retrieveTeamGridFinal, retrieveTeamGridGame, retrieveTeamGridSeason, type TeamGridSeason } from '../../resources/teamGrid';
 import type { GameInfoReads } from '../../utils/gameInfo';
 import type { SeasonAverage } from '../../utils/gameLeaders';
+import { retrieveGameLine, settled } from '../../resources/gameLines';
+import type { GameLine } from '../../utils/gameLines';
 import { seasonCache, setCache, uncacheable } from './cache';
 import { retrieveGameSituational } from '../../resources/situational';
 import { parseSituation, situationsFor, type GameSituationsTab } from '../../utils/situations';
@@ -84,6 +86,8 @@ export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { 
     info?: GameInfoReads | null;
     /** BB-G44, only with 'bball-props' on, nba/wnba/mbb, a final or live game; null when its read failed */
     playerProps?: PropRow[] | null;
+    /** BB-G43, only with 'bball-lines' on, live or final, and only when the game has a row; null when the read failed */
+    lines?: GameLine | null;
 };
 
 /**
@@ -107,6 +111,9 @@ async function withSituations<T extends { game: NbaGame }>(Astro: AstroGlobal, l
         return { ...prep, situations: { situation, options, reads: null } };
     }
 }
+
+/** BB-G43: how long after the game a final without a settled market row is still re-read on the nightly's window (a season). */
+export const LINES_RECENT_MS = 200 * 24 * 60 * 60 * 1000;
 
 /** BB-G2's toggle: `?garbage=out` leaves the garbage-time possessions out; read only with 'bball-garbage-time' on. */
 export const GARBAGE_PARAM = 'garbage';
@@ -160,19 +167,32 @@ function degraded(id: string, message: string, league: BasketballLeague): void {
 
 export async function prepareBasketballGame(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballGamePrep> {
     const r = await prepareGame(Astro, league);
-    // BB-G42's Game info, live or final (the pregame page reads its own from the summary it holds)
-    if (!('game' in r) || !isFeatureEnabled('bball-game-info', Astro.locals)) return finalPanels(Astro, league, r);
+    // BB-G42's Game info and BB-G43's Lines and markets, live or final (the pregame page reads its own)
+    const withInfo = isFeatureEnabled('bball-game-info', Astro.locals);
+    const withLines = isFeatureEnabled('bball-lines', Astro.locals);
+    if (!('game' in r) || (!withInfo && !withLines)) return finalPanels(Astro, league, r);
     const game = r.game;
-    const [p, info] = await Promise.all([finalPanels(Astro, league, r), retrieveGameInfo(league, game).catch((e: any) => {
-        console.error(`ERROR while loading the ${league} game info for game ${game.id}: ${e}, ${e?.stack}`);
-        return null;
-    })]);
-    // decorative like the final's panels: a failed read is never cached. An ingested final's season profiles move with the
-    // nightly products, so it follows their window -- unless a panel's failed read (a null) already made it uncacheable
-    const failed = (v: object) => Object.values(v).some((x) => x === null || (x && typeof x === 'object' && 'reads' in x && x.reads === null));
-    if (info === null) uncacheable(Astro);
-    else if (game.source === 'data_api' && !failed(p)) setCache(Astro, seasonCache(league));
-    return { ...(p as Extract<BasketballGamePrep, { game: NbaGame }>), info };
+    const [p, info, read] = await Promise.all([
+        finalPanels(Astro, league, r),
+        withInfo ? retrieveGameInfo(league, game).catch((e: any) => {
+            console.error(`ERROR while loading the ${league} game info for game ${game.id}: ${e}, ${e?.stack}`);
+            return null;
+        }) : undefined,
+        withLines ? retrieveGameLine(league, game.season, game.id).then((row) => ({ row }), (e: any) => {
+            console.error(`ERROR while loading the ${league} game lines for game ${game.id}: ${e}, ${e?.stack}`);
+            return null;
+        }) : undefined,
+    ]);
+    // decorative like the final's panels: a failed read is never cached. An ingested final's season profiles (Game info) move
+    // with the nightly products, and so does a recent final with no settled market row yet (the current season's are mostly
+    // unmapped): each follows the nightly's window, unless a panel's failed read (a null) already made it uncacheable.
+    // ponytail: "recent" is the game date within LINES_RECENT_MS, not the season; an older unmapped game keeps its year
+    const failed = Object.values(p).some((x) => x === null || (x && typeof x === 'object' && 'reads' in x && x.reads === null));
+    const recent = Date.now() - Date.parse(game.date) < LINES_RECENT_MS;
+    if (info === null || read === null) uncacheable(Astro);
+    else if (game.source === 'data_api' && !failed && (info !== undefined || (read !== undefined && recent && !settled(read.row)))) setCache(Astro, seasonCache(league));
+    const lines = read === null ? null : read?.row ?? undefined;
+    return { ...(p as Extract<BasketballGamePrep, { game: NbaGame }>), ...(info !== undefined ? { info } : {}), ...(lines !== undefined ? { lines } : {}) };
 }
 
 /** The final's panels (BB-G1, BB-G28, BB-G2): read only once a final will render. */

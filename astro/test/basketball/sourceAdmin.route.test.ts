@@ -45,6 +45,8 @@ vi.mock('../../src/resources/epvBox', async (orig) => ({ ...(await orig<typeof i
 vi.mock('../../src/resources/gameInfo', async (orig) => ({ ...(await orig<typeof import('../../src/resources/gameInfo')>()), retrieveGameInfo: async () => ({ officials: [], profiles: [] }) }));
 // BB-G44's player lines likewise ('bball-props', preview): none for the game, never a read
 vi.mock('../../src/resources/playerProps', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playerProps')>()), retrievePlayerProps: async () => [] }));
+// BB-G43's market row ('bball-lines', preview, live or final): no row, never a read
+vi.mock('../../src/resources/gameLines', async (orig) => ({ ...(await orig<typeof import('../../src/resources/gameLines')>()), retrieveGameLine: async () => null }));
 
 const api = () => JSON.parse(readFileSync(new URL('../fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
 const ID = '401766458';
