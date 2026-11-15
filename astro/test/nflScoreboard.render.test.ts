@@ -44,10 +44,10 @@ describe('SchedulePage renders the NFL scoreboard', () => {
     test('title and description name the league', () => {
         expect(html).toContain('<title>NFL | Game on Paper</title>');
         expect(html).toContain('Live nfl scoreboard');
-        // the only "College Football" left is the switcher's title attribute
+        // the only "College Football" left is the league switch's entry (a preview viewer's switch is the dropdown, BB-G31)
         expect(html).not.toContain('College Football | Game on Paper');
         expect(html).not.toContain('college football scoreboard');
-        expect(html).toContain('Switch to College Football');
+        expect(html).toContain('href="/">College Football</a>');
     });
 
     test('game links and the brand link carry the /nfl prefix', () => {
@@ -66,6 +66,6 @@ describe('SchedulePage renders the NFL scoreboard', () => {
         }
         expect(html).toContain('href="/nfl/charts/builder"');
         expect(html).not.toMatch(/href="\/year\/\d{4}\/teams\//);
-        expect(html).toMatch(/league-switch[^>]*href="\/"|href="\/"[^>]*league-switch/);
+        expect(html).toContain('class="dropdown-item" href="/">College Football</a>');
     });
 });
