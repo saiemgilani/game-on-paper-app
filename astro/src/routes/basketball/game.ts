@@ -24,7 +24,7 @@ import { retrieveSeasonAverages } from '../../resources/seasonAverages';
 import type { SeasonAverage } from '../../utils/gameLeaders';
 import { retrieveLeagueContextRows } from '../../resources/nbaShots';
 import { leagueContextFromRows } from '../../nba/adapters';
-import { retrieveGameStints, type GameStints } from '../../resources/gameStints';
+import { retrieveGameStints, retrieveShiftReads, type GameStints, type ShiftReads } from '../../resources/gameStints';
 import type { LeagueContext } from '../../nba/dashboard';
 import { seasonCache, setCache, uncacheable } from './cache';
 import { retrieveGameSituational } from '../../resources/situational';
@@ -67,6 +67,8 @@ export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { 
     shooting?: LeagueContext | null;
     /** BB-G38, only with 'bball-shot-filters' on, live or final: a final's stints (ON/OFF); null for a live game or a failed read */
     shotFilters?: { stints: GameStints | null };
+    /** BB-G36, only with 'bball-shift-chart' on and a final: the game's mapped stints and minutes; null when the read failed */
+    shift?: ShiftReads | null;
 };
 
 /**
@@ -163,8 +165,9 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     const withGarbage = withImpact && isFeatureEnabled('bball-garbage-time', Astro.locals);
     const withLeaders = isFeatureEnabled('bball-game-leaders', Astro.locals);
     const withShooting = isFeatureEnabled('bball-game-shooting', Astro.locals);
-    if (!withImpact && !withFlow && !withShooting && !withStints && !withLeaders && !withEpv) return r;
-    const [impact, flow, epv, garbage, averages, shooting, stints] = await Promise.all([
+    const withShift = isFeatureEnabled('bball-shift-chart', Astro.locals);
+    if (!withImpact && !withFlow && !withShooting && !withStints && !withShift && !withLeaders && !withEpv) return r;
+    const [impact, flow, epv, garbage, averages, shooting, stints, shift] = await Promise.all([
         withImpact ? readPanel('impact box', league, r.game, r.game.season, retrieveImpactBox) : undefined,
         withFlow ? readPanel('game flow', league, r.game, r.game.season, retrieveGameFlow) : undefined,
         withEpv ? readPanel('EPV box', league, r.game, r.game.season, retrieveEpvBox) : undefined,
@@ -172,18 +175,19 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
         withLeaders ? readPanel('season averages', league, r.game, r.game.season, retrieveSeasonAverages) : undefined,
         withShooting ? readPanel('league shot context', league, r.game, r.game.season, (lg, season) => retrieveLeagueContextRows(season, lg).then(leagueContextFromRows)) : undefined,
         withStints ? readPanel('game stints', league, r.game, r.game.season, retrieveGameStints) : undefined,
+        withShift ? readPanel('shift chart', league, r.game, r.game.season, retrieveShiftReads) : undefined,
     ]);
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
-    if (impact === null || flow === null || epv === null || garbage === null || shooting === null || stints === null || averages === null) uncacheable(Astro);
+    if (impact === null || flow === null || epv === null || garbage === null || shooting === null || stints === null || shift === null || averages === null) uncacheable(Astro);
     // season averages move with every game (and arrive after it): a final that reads them follows the nightly ingest too
     // a season with no league curve yet (fgPct null: no total row) draws no signature: held for the season window too; so is a
     // recent final with no stints yet (the nightly build), not an old one (stints start with recent seasons: never coming)
-    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || shooting?.fgPct === null || (stints && Object.keys(stints).length === 0 && recentFinal(r.game)) || averages !== undefined || (epv && (epv.players.length === 0 || epv.team.length < 2 || epv.plays.length === 0)))) setCache(Astro, seasonCache(league));
+    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || shooting?.fgPct === null || (((stints && Object.keys(stints).length === 0) || shift?.stints.length === 0) && recentFinal(r.game)) || (stints && Object.keys(stints).length === 0 && recentFinal(r.game)) || averages !== undefined || (epv && (epv.players.length === 0 || epv.team.length < 2 || epv.plays.length === 0)))) setCache(Astro, seasonCache(league));
     return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}), ...(epv !== undefined ? { epv } : {}),
         ...(garbage !== undefined ? { garbage: { reads: garbage, out: Astro.url.searchParams.get(GARBAGE_PARAM) === 'out' } } : {}),
         ...(shooting !== undefined ? { shooting } : {}), ...(withStints ? { shotFilters: { stints: stints ?? null } } : {}),
-        ...(averages !== undefined ? { averages } : {}) };
+        ...(shift !== undefined ? { shift } : {}), ...(averages !== undefined ? { averages } : {}) };
 }
 
 /**
