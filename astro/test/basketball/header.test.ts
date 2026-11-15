@@ -14,10 +14,10 @@ beforeAll(async () => { container = await AstroContainer.create({ renderers: awa
 const render = () => container.renderToString(Header, { locals: { league: 'nba', preview: true, flagOverrides: { 'bball-nba-cup': false } } as any });
 
 describe('Header basketball menu from the config', () => {
-    test('the nba menu: Scoreboard, Players, Teams, Scatter, Leaders (and Best Games and Standings behind their flags)', async () => {
+    test('the nba menu: Scoreboard, Players, Teams, Scatter, Leaders (and Best Games and Standings and Coaches behind their flags)', async () => {
         const html = await render();
         const items = [...html.matchAll(/<a href="(\/nba[^"]*)" class="nav-link px-2 link-secondary">([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`);
-        expect(items).toEqual(['Scoreboard /nba/scoreboard', 'Players /nba/players', 'Teams /nba/teams', 'Scatter /nba/scatter', 'Leaders /nba/leaders', 'Best Games /nba/best-games', 'Standings /nba/standings']);
+        expect(items).toEqual(['Scoreboard /nba/scoreboard', 'Players /nba/players', 'Teams /nba/teams', 'Scatter /nba/scatter', 'Leaders /nba/leaders', 'Best Games /nba/best-games', 'Standings /nba/standings', 'Coaches /nba/coaches']);
         expect(html).not.toContain('>Nets<');
     });
 });

@@ -1,0 +1,17 @@
+---
+// src/pages/wnba/coaches.astro
+import BasketballCoachesRoute from '../../components/routes/BasketballCoachesRoute.astro';
+import { prepareBasketballCoaches } from '../../routes/basketball/coaches';
+import { unavailable } from '../../routes/basketball/cache';
+import { isFeatureEnabled } from '../../utils/features';
+
+if (!isFeatureEnabled('bball-coaches', Astro.locals)) {
+    return Astro.rewrite('/404');
+}
+const r = await prepareBasketballCoaches(Astro, 'wnba');
+if ('unavailable' in r) {
+    return unavailable('wnba', 'The head coach boards are temporarily unavailable. Please try again shortly.');
+}
+---
+
+<BasketballCoachesRoute data={r} />

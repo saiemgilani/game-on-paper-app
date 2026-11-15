@@ -1355,3 +1355,13 @@ The player capture (`player_stats_advanced` rank windows) was dropped along with
 **Used by:** `test/bballNeighbors.test.ts`.
 
 **To regenerate:** repeat the reads above and write each response's `data` array.
+## `bball-coaches-2025.json.gz`
+Head-coach rows as the Data API served them on 2026-11-05 (BB-D8, sdv-db #196; sdv-py `nba_coach_seasons` #1109), with
+the `select` the BB-G9 page sends (`utils/bballCoaches.ts bballCoachSelect`): `{nba, wnba}`, each `{season: 2025,
+seasons, careers}`. `seasons` is `/v1/<lg>_stats/coach_seasons?season=2025&limit=40` (NBA: 27 rows, three 2024-25
+team-seasons left uncredited; WNBA: 9 of 13 teams); `careers` is `/v1/<lg>_stats/coach_careers?limit=25` (NBA) and
+`limit=20` (WNBA), the first rows the table returns, not the whole table. No edits.
+
+**Used by:** `test/bballCoaches.test.ts`.
+
+**To regenerate:** re-fetch the four URLs with that `select` (Bearer `SDV_DATA_READ_KEY`), wrap as above and gzip.

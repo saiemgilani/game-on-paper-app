@@ -344,6 +344,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // of twelve measures, the teams ranked within five places, the page's own row marked, by team_strength's ranks (all four
     // leagues). Player lists wait for a producer-ranked player table with a minimum. Off: no read, the page is today's.
     'bball-rank-neighbors': 'preview',
+    // Head-coach boards (BB-G9): /nba/coaches and /wnba/coaches and their Header entry, inside each league's flag.
+    // Football's coach boards on sdv-db's coach_seasons / coach_careers: Career or a season, Ratings or Four Factors,
+    // the producer's ranks and percentiles, with the partial-coverage notice. College waits on an NCAA coach release.
+    // Off: the pages are the site's 404 and the Header is today's.
+    'bball-coaches': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
