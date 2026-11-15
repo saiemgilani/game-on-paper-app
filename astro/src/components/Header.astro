@@ -96,6 +96,7 @@ const switchHref = (lg: League) => carryAdminParams(leaguePath(lg, "/"), Astro.u
                     {!football && (
                         <Fragment>
                             {basketball(league).headerMenu.map((m) => (<li><a href={lp(m.path)} class="nav-link px-2 link-secondary">{m.label}</a></li>))}
+                            {(league === 'mbb' || league === 'wbb') && isFeatureEnabled("bball-bracketology", Astro.locals) && (<li><a href={lp("/bracketology")} class="nav-link px-2 link-secondary">Bracketology</a></li>)}
                         </Fragment>
                     )}
                     <li class="nav-item dropdown">
