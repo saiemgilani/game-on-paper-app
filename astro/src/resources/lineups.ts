@@ -109,10 +109,3 @@ export async function retrieveLineups(league: BasketballLeague, season: number, 
     ]);
     return { units, names, pairs };
 }
-
-/** College's stats.ncaa.org names for one team-season (ncaa_player_box, strict); [] for the NBA/WNBA, whose names are the page's season rows. */
-export function retrieveNcaaNames(league: BasketballLeague, season: number, teamId: number): Promise<NcaaNameRow[]> {
-    return isNcaaDashboards(league)
-        ? retrieveRows<NcaaNameRow>(league, 'ncaa_player_box', { season: String(season), team_espn_team_id: String(teamId), select: 'player_id,clean_name', limit: NAME_LIMIT }, TTL, true)
-        : Promise.resolve([]);
-}
