@@ -139,6 +139,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // reads, plus the Compare button on /<league>/players/[id]. Off: the page is the site's 404 and the player page is
     // today's, byte for byte.
     'bball-compare': 'preview',
+    // The NBA player page's Play types and Defense panels (BB-G19), from 2015-16: his Synergy play types at both ends with
+    // stats.nba.com's frequency, PPP and percentile (sdv-db nba_stats.synergy), his hustle line (hustle_player) and, from
+    // 2017-18, his matchups by position and the players he guarded most (matchups_rollup, matchups). Off: no read and the
+    // player page is today's, byte for byte.
+    'bball-play-types': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

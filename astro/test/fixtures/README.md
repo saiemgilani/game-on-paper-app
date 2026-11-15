@@ -1150,6 +1150,23 @@ each response, concatenated, no edits): for Michael Porter Jr. (1629008) and Noa
 **Used by:** `test/basketballCompare.test.ts`.
 
 **To regenerate:** rerun the eight reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+## `player-play-types.json.gz`
+The rows behind the NBA player page's Play types and Defense panels (BB-G19, `resources/playerPlayTypes.ts`), as
+`{porter, zubac, statsNba}` (no edits). `porter` (Michael Porter Jr., 1629008, the player of `nba/player_games.json`) and
+`zubac` (Ivica Zubac, 1627826, traded LAC to IND in 2025-26) are each `{synergy, hustle, rollup, matchups}`: live Data API
+reads of 2026-11-08 with the resource's exact queries, `season=2026&season_type=regular-season` plus
+`/v1/nba_stats/synergy?player_id=…&per_mode=totals&select=…&limit=80`,
+`/v1/nba_stats/hustle_player?player_id=…&per_mode=pergame&select=…&limit=5`,
+`/v1/nba_stats/matchups_rollup?def_player_id=…&per_mode=totals&select=…&limit=10` and
+`/v1/nba_stats/matchups?def_player_id=…&per_mode=totals&order=-partial_poss&select=…&limit=8`. `statsNba` is the oracle:
+the same two players' rows of stats.nba.com's `synergyplaytypes` (PlayerOrTeam=P, PerMode=Totals, Regular Season,
+2025-26; the 11 offensive and 7 defensive play types, one request each, curl_cffi `impersonate="chrome"`), same day,
+kept to `PLAYER_ID, TEAM_ID, TEAM_ABBREVIATION, PLAY_TYPE, TYPE_GROUPING, GP, POSS, POSS_PCT, PPP, PERCENTILE`.
+
+**Used by:** `test/playerPlayTypes.test.ts`.
+
+**To regenerate:** rerun the eight Data API reads (season filter and limit as above, never unfiltered) and the 18
+stats.nba.com requests (residential IP only), keep the two players' rows, wrap them as above and gzip.
 
 ## `player-impact-xwalk.json.gz`
 College's Impact panel through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of

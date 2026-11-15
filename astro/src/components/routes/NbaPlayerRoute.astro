@@ -9,6 +9,7 @@ import PlayerExplorer from '../nba/PlayerExplorer.svelte';
 import PlayerSituations from '../nba/PlayerSituations.astro';
 import PlayerImpact from '../nba/PlayerImpact.astro';
 import PlayerOnOff from '../nba/PlayerOnOff.astro';
+import PlayerPlayTypes from '../nba/PlayerPlayTypes.astro';
 import PlayerShotQuality from '../nba/PlayerShotQuality.astro';
 import PlayStyleChips from '../nba/PlayStyleChips.astro';
 import PlayerValue from '../nba/PlayerValue.astro';
@@ -23,7 +24,7 @@ import { compareHref } from '../../utils/compare';
 import { isFeatureEnabled } from '../../utils/features';
 
 interface Props { data: NbaPlayerParams }
-const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons, min, unlocated, coverage, situations, poe, impact, onOff, playStyles, war, epv } = Astro.props.data;
+const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons, min, unlocated, coverage, situations, poe, impact, onOff, playStyles, war, epv, playTypes } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -38,7 +39,7 @@ const title = `${player.player_name}, ${label} shooting | Game on Paper`;
 const description = `${player.player_name} (${teams.join(', ')}) ${label}: ${fmtInt(line.makes)}/${fmtInt(line.attempts)} FG, ${fmtPct(line.fgPct)} FG%, ${fmtPct(line.efgPct)} eFG%. Hex shot chart, shooting signature and distance and side splits against the league.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Players', url: `${lp('/players')}${q}`, active: false }, { title: player.player_name, active: true }];
 const subject = `${player.player_name} ${label}`;
-const sections = [...(impact !== undefined ? [['#impact', 'Impact']] : []), ...(war !== undefined && impact === undefined ? [['#value', 'Value']] : []), ...(onOff !== undefined ? [['#on-off', 'On/Off']] : []), ['#ranks', 'League ranks'], ...(situations ? [['#situations', 'Situations']] : []), ...(explorer.games ? [['#nba-games-panel', 'Games']] : []), ['#charts', 'Shot charts'], ...(explorer.games ? [['#nba-rolling-panel', 'Rolling shooting'], ['#nba-versus-panel', 'Versus each opponent']] : [])];
+const sections = [...(impact !== undefined ? [['#impact', 'Impact']] : []), ...(war !== undefined && impact === undefined ? [['#value', 'Value']] : []), ...(playTypes !== undefined ? [['#play-types', 'Play types'], ['#defense', 'Defense']] : []), ...(onOff !== undefined ? [['#on-off', 'On/Off']] : []), ['#ranks', 'League ranks'], ...(situations ? [['#situations', 'Situations']] : []), ...(explorer.games ? [['#nba-games-panel', 'Games']] : []), ['#charts', 'Shot charts'], ...(explorer.games ? [['#nba-rolling-panel', 'Rolling shooting'], ['#nba-versus-panel', 'Versus each opponent']] : [])];
 ---
 <GenericPage title={title} subtitle={description} slug={lp(`/players/${player.person_id}`)} breadcrumbs={breadcrumbs} description={description} canonicalPath={playerHref(player.person_id, q, league)}>
   <div class="container">
@@ -61,6 +62,7 @@ const sections = [...(impact !== undefined ? [['#impact', 'Impact']] : []), ...(
     </nav>
     {impact !== undefined && (<PlayerImpact rows={impact} season={season} name={player.player_name} {...(war !== undefined ? { relabelWar: true } : {})}>{war !== undefined && <PlayerValue war={war} {...(epv !== undefined ? { epv } : {})} season={season} name={player.player_name} nested />}</PlayerImpact>)}
     {impact === undefined && war !== undefined && <PlayerValue war={war} {...(epv !== undefined ? { epv } : {})} season={season} name={player.player_name} />}
+    {playTypes !== undefined && <PlayerPlayTypes data={playTypes} season={season} name={player.player_name} q={q} />}
     {impact !== undefined && <PlayerImpact rows={impact} season={season} name={player.player_name} />}
     {onOff !== undefined && <PlayerOnOff data={onOff} season={season} q={q} name={player.player_name} />}
     <NbaRankLists ranks={ranks} personId={player.person_id} seasonQuery={q} min={min} {...(scope.noun === 'regular season' ? {} : { scope: scope.noun })} />{situations && (<PlayerSituations data={situations} season={season} current={current} basePath={lp(`/players/${player.person_id}`)} playerName={player.player_name} teamTricode={player.team_tricode} />)}

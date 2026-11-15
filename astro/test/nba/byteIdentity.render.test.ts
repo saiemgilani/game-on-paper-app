@@ -80,6 +80,11 @@ vi.mock('../../src/resources/playerWar', async (orig) => {
     const no = async () => { throw new Error('a WAR or EPV read with bball-war off'); };
     return { ...(await orig<typeof import('../../src/resources/playerWar')>()), retrievePlayerWar: no, retrievePlayerEpv: no };
 });
+// 'bball-play-types' is off here too: a play-types read throws and would put "unavailable" in the snapshot
+vi.mock('../../src/resources/playerPlayTypes', async (orig) => {
+    const no = async () => { throw new Error('a play-types read with bball-play-types off'); };
+    return { ...(await orig<typeof import('../../src/resources/playerPlayTypes')>()), retrievePlayerSynergy: no, retrievePlayerHustle: no, retrievePlayerMatchupRollup: no, retrievePlayerTopMatchups: no };
+});
 const games = { schedule: vi.fn(), rows: vi.fn(), proc: vi.fn() };
 vi.mock('../../src/resources/nbaGames', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaGames')>()),
@@ -115,8 +120,8 @@ beforeEach(() => { for (const m of [...Object.values(games), ...Object.values(es
 async function page(path: string, url: string, params: Record<string, string> = {}, flagOverrides?: Record<string, boolean>) {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/nba/${path}`);
     // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture', BB-G30's (NBA Cup, November and December only)
-    // behind 'bball-nba-cup' and BB-G5's team season block behind 'bball-team-season', and BB-G15's points over expected behind 'bball-poe', and BB-G6's Impact panel behind 'bball-impact', and BB-G27's Value panel behind 'bball-war', and BB-G13's Compare button behind 'bball-compare': off here, so these pages stay byte for byte main's on any day
-    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-hub': false, 'bball-lineup-shotchart': false, 'bball-playoff-picture': false, 'bball-best-games': false, 'bball-nba-cup': false, 'bball-rolling-movers': false, 'bball-team-season': false, 'bball-lineups': false, 'bball-on-off': false, 'bball-situational': false, 'bball-poe': false, 'bball-impact': false, 'bball-player-on-off': false, 'bball-play-styles': false, 'bball-war': false, 'bball-compare': false, ...flagOverrides } } as App.Locals }));
+    // behind 'bball-nba-cup' and BB-G5's team season block behind 'bball-team-season', and BB-G15's points over expected behind 'bball-poe', and BB-G6's Impact panel behind 'bball-impact', and BB-G27's Value panel behind 'bball-war', and BB-G19's Play types and Defense panels behind 'bball-play-types': off here, so these pages stay byte for byte main's on any day
+    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-hub': false, 'bball-lineup-shotchart': false, 'bball-playoff-picture': false, 'bball-best-games': false, 'bball-nba-cup': false, 'bball-rolling-movers': false, 'bball-team-season': false, 'bball-lineups': false, 'bball-on-off': false, 'bball-situational': false, 'bball-poe': false, 'bball-impact': false, 'bball-player-on-off': false, 'bball-play-styles': false, 'bball-war': false, 'bball-compare': false, 'bball-play-types': false, ...flagOverrides } } as App.Locals }));
 }
 const snap = (name: string) => `./__byte_identity__/${name}.html`;
 const finalPage = { gameId: 401766458, gamepackageJSON: { header: proc.header } };
