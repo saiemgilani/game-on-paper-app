@@ -16,6 +16,7 @@ import PlayStyleChips from '../nba/PlayStyleChips.astro';
 import PlayerValue from '../nba/PlayerValue.astro';
 import ShotProfile from '../nba/ShotProfile.astro';
 import { playerView } from '../../utils/shotProfile';
+import PlayerGameSet from '../nba/PlayerGameSet.astro';
 import { fmtDec, fmtInt, fmtPct } from '../../nba/format';
 import { playerHref, teamHref } from '../../nba/links';
 import { placeholderNote } from '../../nba/data/placeholder';
@@ -23,11 +24,12 @@ import type { NbaPlayerParams } from '../../routes/nba/player';
 import { basketball, islandLeagueProps, seasonLabelFor } from '../../basketball/config';
 import { dashboardScope, isNcaaDashboards, NCAA_USAGE_NOTE } from '../../basketball/dashboards';
 import { LEAGUES, leaguePath } from '../../utils/league';
+import { playerGameSet } from '../../utils/bballGameSet';
 import { compareHref } from '../../utils/compare';
 import { isFeatureEnabled } from '../../utils/features';
 
 interface Props { data: NbaPlayerParams }
-const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons, min, unlocated, coverage, situations, poe, impact, onOff, playStyles, war, epv, playTypes, career, zones, zonesFt, currentImpact } = Astro.props.data;
+const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons, min, unlocated, coverage, situations, poe, impact, onOff, playStyles, war, epv, playTypes, career, zones, zonesFt, currentImpact, gameSet } = Astro.props.data;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -44,6 +46,9 @@ const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: fals
 const subject = `${player.player_name} ${label}`;
 // BB-G51: null, the read failed; [], no zone row for him
 const zonesView = zones == null ? null : ((v) => (v ? [v] : []))(playerView(zones, zonesFt ?? null));
+// BB-G14 ('bball-game-set'): the explorer starts from the ?games= set's games (absent for All, so the island's props are today's)
+const startSet = gameSet && explorer.games ? playerGameSet(explorer.games, gameSet) : null;
+const initial = startSet && startSet.set !== 'all' ? { initial: startSet.gameIds } : {};
 const sections = [...(impact !== undefined || currentImpact !== undefined ? [['#impact', 'Impact']] : []), ...(impact !== undefined ? [['#impact', 'Impact']] : []), ...(war !== undefined && impact === undefined ? [['#value', 'Value']] : []), ...(zones !== undefined ? [['#shot-profile', 'Shot profile']] : []), ...(career !== undefined ? [['#career', 'Career']] : []), ...(playTypes !== undefined ? [['#play-types', 'Play types'], ['#defense', 'Defense']] : []), ...(onOff !== undefined ? [['#on-off', 'On/Off']] : []), ['#ranks', 'League ranks'], ...(situations ? [['#situations', 'Situations']] : []), ...(explorer.games ? [['#nba-games-panel', 'Games']] : []), ['#charts', 'Shot charts'], ...(explorer.games ? [['#nba-rolling-panel', 'Rolling shooting'], ['#nba-versus-panel', 'Versus each opponent']] : [])];
 ---
 <GenericPage title={title} subtitle={description} slug={lp(`/players/${player.person_id}`)} breadcrumbs={breadcrumbs} description={description} canonicalPath={playerHref(player.person_id, q, league)}>
@@ -65,6 +70,7 @@ const sections = [...(impact !== undefined || currentImpact !== undefined ? [['#
       <span class="text-muted">On this page:</span>
       {sections.map(([href, text]) => (<a href={href} class="ms-2">{text}</a>))}
     </nav>
+    {gameSet && explorer.games && (<PlayerGameSet games={explorer.games} set={gameSet} />)}
     {(impact !== undefined || currentImpact !== undefined) && (<PlayerImpact {...(impact !== undefined ? { rows: impact } : {})} {...(currentImpact !== undefined ? { current: currentImpact } : {})} season={season} name={player.player_name} {...(impact !== undefined && war !== undefined ? { relabelWar: true } : {})}>{impact !== undefined && war !== undefined && <PlayerValue war={war} {...(epv !== undefined ? { epv } : {})} season={season} name={player.player_name} nested />}</PlayerImpact>)}
     {impact === undefined && war !== undefined && <PlayerValue war={war} {...(epv !== undefined ? { epv } : {})} season={season} name={player.player_name} />}
     {zones !== undefined && <ShotProfile views={zonesView} season={season} name={player.player_name} />}
@@ -74,7 +80,7 @@ const sections = [...(impact !== undefined || currentImpact !== undefined ? [['#
     {onOff !== undefined && <PlayerOnOff data={onOff} season={season} q={q} name={player.player_name} />}
     <NbaRankLists ranks={ranks} personId={player.person_id} seasonQuery={q} min={min} {...(scope.noun === 'regular season' ? {} : { scope: scope.noun })} />{situations && (<PlayerSituations data={situations} season={season} current={current} basePath={lp(`/players/${player.person_id}`)} playerName={player.player_name} teamTricode={player.team_tricode} />)}
     {unlocated && <p class="small text-muted">{placeholderNote(unlocated.count, unlocated.total, 'season')}</p>}
-    <PlayerExplorer client:load data={explorer} subject={subject} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} {...(scope.leagueLines === 'full regular season' ? {} : { leagueLines: scope.leagueLines })} />
+    <PlayerExplorer client:load data={explorer} subject={subject} {...initial} {...(ip.pronoun ? { pronoun: ip.pronoun } : {})} {...(scope.leagueLines === 'full regular season' ? {} : { leagueLines: scope.leagueLines })} />
     <nav aria-label={`${player.team_tricode} players`} class="d-flex justify-content-between small mt-3">
       {prev ? (<a href={playerHref(prev.person_id, q, league)}>&larr; {prev.player_name}</a>) : (<span></span>)}
       {next && (<a href={playerHref(next.person_id, q, league)}>{next.player_name} &rarr;</a>)}

@@ -30,6 +30,7 @@ import { retrieveNcaaPlayerId, retrievePlayerShotZones, retrieveSeasonFt, retrie
 import { isFeatureEnabled } from '../../utils/features';
 import { impactShown } from '../../utils/playerImpact';
 import { collegePlayerRows } from '../../utils/shotProfile';
+import { bbGameSetOf, type BbGameSet } from '../../utils/bballGameSet';
 import type { BasketballLeague } from '../../utils/league';
 import { parseSituation, situationsFor, type PlayerSituationsTab } from '../../utils/situations';
 import { espnPartners, topPartners, type PlayerOnOff } from '../../utils/playerOnOff';
@@ -84,6 +85,8 @@ export interface BasketballPlayerParams {
     /** BB-G56, only with 'bball-current-impact' on and an NBA season from 2006-07: his player_impact rows (the season
      *  rating) and his latest current_impact row; each null when its read failed */
     currentImpact?: { seasonRows: PlayerImpactRow[] | null; current: CurrentImpactRow[] | null };
+    /** BB-G14, only with 'bball-game-set' on: the `?games=` set his game-set line shows (no extra read) */
+    gameSet?: BbGameSet;
 }
 
 /** BB-G19's rows, each null when its read failed. */
@@ -250,6 +253,8 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         ...career,
         ...zones,
         ...currentImpact,
+        // off: ?games= is never read and the params are BB-G5's
+        ...(isFeatureEnabled('bball-game-set', Astro.locals) ? { gameSet: bbGameSetOf(Astro.url.searchParams.get('games')) } : {}),
     };
 }
 
