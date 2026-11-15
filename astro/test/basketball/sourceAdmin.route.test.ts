@@ -28,6 +28,8 @@ vi.mock('../../src/resources/gameFlow', async (orig) => ({ ...(await orig<typeof
 // BB-G26's EPV box likewise ('bball-epv', preview): no rows, never a read
 vi.mock('../../src/resources/epvBox', async (orig) => ({ ...(await orig<typeof import('../../src/resources/epvBox')>()), retrieveEpvBox: async () => (await orig<typeof import('../../src/resources/epvBox')>()).EMPTY_EPV }));
 // BB-G2's garbage-time log likewise ('bball-garbage-time', preview): unmapped, never a read
+// BB-G32's season team rates and a final's counted rows likewise ('bball-team-grid', preview, live or final): no rows, never a read
+vi.mock('../../src/resources/teamGrid', async (orig) => ({ ...(await orig<typeof import('../../src/resources/teamGrid')>()), retrieveTeamGridSeason: async () => ({ home: null, away: null, league: null }), retrieveTeamGridFinal: async () => ({ home: null, away: null, league: null }) }));
 vi.mock('../../src/resources/garbageTime', async (orig) => ({ ...(await orig<typeof import('../../src/resources/garbageTime')>()), retrieveGarbageTime: async () => ({ teams: null, rows: [] }) }));
 // BB-G35's season averages likewise ('bball-game-leaders', preview): none, never a read
 vi.mock('../../src/resources/seasonAverages', async (orig) => ({ ...(await orig<typeof import('../../src/resources/seasonAverages')>()), retrieveSeasonAverages: async () => [] }));

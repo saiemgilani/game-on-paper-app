@@ -26,6 +26,7 @@ import { retrieveLeagueContextRows } from '../../resources/nbaShots';
 import { leagueContextFromRows } from '../../nba/adapters';
 import { retrieveGameStints, retrieveShiftReads, type GameStints, type ShiftReads } from '../../resources/gameStints';
 import type { LeagueContext } from '../../nba/dashboard';
+import { retrieveTeamGridFinal, retrieveTeamGridSeason, type TeamGridSeason } from '../../resources/teamGrid';
 import { seasonCache, setCache, uncacheable } from './cache';
 import { retrieveGameSituational } from '../../resources/situational';
 import { parseSituation, situationsFor, type GameSituationsTab } from '../../utils/situations';
@@ -94,6 +95,8 @@ async function withSituations<T extends { game: NbaGame }>(Astro: AstroGlobal, l
 }
 
 
+season?: TeamGridSeason | null };
+
 /** BB-G2's toggle: `?garbage=out` leaves the garbage-time possessions out; read only with 'bball-garbage-time' on. */
 export const GARBAGE_PARAM = 'garbage';
 
@@ -155,39 +158,46 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     // BB-G38's shot filters draw on a live game too; only their ON/OFF filter reads, and only a final's stints
     const withStints = isFeatureEnabled('bball-shot-filters', Astro.locals);
     const live = withStints ? { shotFilters: { stints: null } } : {};
-    // read only once a final will render: a 404, 503, pregame or live page never spends the reads, and flag off is today's page.
+    // read only once a game will render: a 404, 503 or pregame page never spends the reads, and flag off is today's page.
     // The producer's tables are per season, so a game with no season has nothing to read (no panel, not "unavailable").
-    if (!r.game.status.completed || r.game.season == null) return { ...r, ...live };
-    const withImpact = isFeatureEnabled('bball-impact-box', Astro.locals);
-    const withFlow = isFeatureEnabled('bball-game-flow', Astro.locals);
-    const withEpv = isFeatureEnabled('bball-epv', Astro.locals) && hasEpv(league, r.game.season);
+    if (r.game.season == null) return { ...r, ...live };
+    // BB-G32's season context reads live too (the season table, not the game's); every other panel waits for the final
+    const withGrid = isFeatureEnabled('bball-team-grid', Astro.locals);
+    const final = r.game.status.completed;
+    const withImpact = final && isFeatureEnabled('bball-impact-box', Astro.locals);
+    const withFlow = final && isFeatureEnabled('bball-game-flow', Astro.locals);
+    const withEpv = final && isFeatureEnabled('bball-epv', Astro.locals) && hasEpv(league, r.game.season);
     // the toggle sits beside the Impact box: no box, no toggle and no read
     const withGarbage = withImpact && isFeatureEnabled('bball-garbage-time', Astro.locals);
-    const withLeaders = isFeatureEnabled('bball-game-leaders', Astro.locals);
-    const withShooting = isFeatureEnabled('bball-game-shooting', Astro.locals);
-    const withShift = isFeatureEnabled('bball-shift-chart', Astro.locals);
-    if (!withImpact && !withFlow && !withShooting && !withStints && !withShift && !withLeaders && !withEpv) return r;
-    const [impact, flow, epv, garbage, averages, shooting, stints, shift] = await Promise.all([
+    const withLeaders = final && isFeatureEnabled('bball-game-leaders', Astro.locals);
+    const withShooting = final && isFeatureEnabled('bball-game-shooting', Astro.locals);
+    const withFinalStints = final && withStints;
+    const withShift = final && isFeatureEnabled('bball-shift-chart', Astro.locals);
+    if (!withImpact && !withFlow && !withShooting && !withFinalStints && !withShift && !withLeaders && !withEpv && !withGrid) return { ...r, ...live };
+    const [impact, flow, epv, garbage, averages, shooting, stints, shift, season] = await Promise.all([
         withImpact ? readPanel('impact box', league, r.game, r.game.season, retrieveImpactBox) : undefined,
         withFlow ? readPanel('game flow', league, r.game, r.game.season, retrieveGameFlow) : undefined,
         withEpv ? readPanel('EPV box', league, r.game, r.game.season, retrieveEpvBox) : undefined,
         withGarbage ? readPanel('garbage-time log', league, r.game, r.game.season, retrieveGarbageTime) : undefined,
         withLeaders ? readPanel('season averages', league, r.game, r.game.season, retrieveSeasonAverages) : undefined,
         withShooting ? readPanel('league shot context', league, r.game, r.game.season, (lg, season) => retrieveLeagueContextRows(season, lg).then(leagueContextFromRows)) : undefined,
-        withStints ? readPanel('game stints', league, r.game, r.game.season, retrieveGameStints) : undefined,
+        withFinalStints ? readPanel('game stints', league, r.game, r.game.season, retrieveGameStints) : undefined,
         withShift ? readPanel('shift chart', league, r.game, r.game.season, retrieveShiftReads) : undefined,
+        // a final adds its counted rows (possessions and ratings), so the game row and the season row share one definition
+        withGrid ? readPanel('team grid', league, r.game, r.game.season, final ? retrieveTeamGridFinal : retrieveTeamGridSeason) : undefined,
     ]);
     // the panels are decorative: a failed read renders the rest of the page, never cached; a final the nightly products have
     // not reached yet is held for the season pages' window, not the Data API final's year
-    if (impact === null || flow === null || epv === null || garbage === null || shooting === null || stints === null || shift === null || averages === null) uncacheable(Astro);
+    if (impact === null || flow === null || epv === null || garbage === null || season === null || shooting === null || stints === null || shift === null || averages === null) uncacheable(Astro);
     // season averages move with every game (and arrive after it): a final that reads them follows the nightly ingest too
     // a season with no league curve yet (fgPct null: no total row) draws no signature: held for the season window too; so is a
     // recent final with no stints yet (the nightly build), not an old one (stints start with recent seasons: never coming)
-    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || shooting?.fgPct === null || (((stints && Object.keys(stints).length === 0) || shift?.stints.length === 0) && recentFinal(r.game)) || (stints && Object.keys(stints).length === 0 && recentFinal(r.game)) || averages !== undefined || (epv && (epv.players.length === 0 || epv.team.length < 2 || epv.plays.length === 0)))) setCache(Astro, seasonCache(league));
+    else if (r.game.source === 'data_api' && (impact?.players.length === 0 || (flow && !flow.home && !flow.away) || season !== undefined || shooting?.fgPct === null || (((stints && Object.keys(stints).length === 0) || shift?.stints.length === 0) && recentFinal(r.game)) || (stints && Object.keys(stints).length === 0 && recentFinal(r.game)) || averages !== undefined || (epv && (epv.players.length === 0 || epv.team.length < 2 || epv.plays.length === 0)))) setCache(Astro, seasonCache(league));
     return { ...r, ...(impact !== undefined ? { impact } : {}), ...(flow !== undefined ? { flow } : {}), ...(epv !== undefined ? { epv } : {}),
         ...(garbage !== undefined ? { garbage: { reads: garbage, out: Astro.url.searchParams.get(GARBAGE_PARAM) === 'out' } } : {}),
-        ...(shooting !== undefined ? { shooting } : {}), ...(withStints ? { shotFilters: { stints: stints ?? null } } : {}),
-        ...(shift !== undefined ? { shift } : {}), ...(averages !== undefined ? { averages } : {}) };
+        ...(season !== undefined ? { season } : {}), ...(shooting !== undefined ? { shooting } : {}),
+        ...(withStints ? { shotFilters: { stints: stints ?? null } } : {}), ...(shift !== undefined ? { shift } : {}),
+        ...(averages !== undefined ? { averages } : {}) };
 }
 
 /**
