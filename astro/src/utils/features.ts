@@ -153,6 +153,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // The team profile as a history hub (/team/<id> and the /nfl twin): Best Seasons, Head Coaches and,
+    // CFB only, Conference History tables under Seasons. Only this path reads the team's
+    // coach_tendencies rows; the other two pivot the team_summaries rows the page already reads.
+    'team-hub': 'preview',
     // The metric registry (roadmap F13; resources/metricRegistry.ts, generated from sdv-py) on the chart builder
     // (/charts/builder and the /nfl twin): axis and select titles take the registry's label first (Rushes/Drive,
     // Off Pass Rate, ...) and start_position flips as lower-is-better, as the producer ranks it. Off: today's
