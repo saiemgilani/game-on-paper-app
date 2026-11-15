@@ -4,6 +4,8 @@ import { espnLogoLeague, leaguePath } from '../../utils/league';
 import { SDV_TEAM_METRIC_CATEGORIES, SDV_TEAM_METRIC_FORMATTING_VALUES, SDV_TEAM_METRIC_HOVER_TEXT, SDV_TEAM_PERCENT_COLUMNS, SDV_TEAM_STYLE_COLUMNS, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
 import { roundNumber, cleanField, retrieveValue, generateColorRampValue, shouldInvertSortForMetric, STANDARD_THEME_COLOR, isTeamFavorite, formatRank, generateMarginalString  } from '../../utils/misc';
 import DarkModeLogos from '../DarkModeLogos.astro';
+import { isFeatureEnabled } from '../../utils/features';
+import { metricHelpButton, metricHelpPopovers } from '../../utils/metricHelp';
 import "bootstrap-icons/font/bootstrap-icons.css";
 
 interface Props {
@@ -15,6 +17,8 @@ interface Props {
 
 const { season, category, metric, rows } = Astro.props;
 const columns = SDV_TEAM_METRIC_CATEGORIES[category];
+// the glossary is the college one (FBS-only copy, links to the cfb boards), so the NFL twin gets no help yet
+const help = isFeatureEnabled('metric-help', Astro.locals) && Astro.locals.league !== 'nfl';
 const arrowDirection = (shouldInvertSortForMetric(category, metric)) ? "up" : "down"
 
 let content: SDVTeamSummary[] = rows ?? await retrieveTeamSummaries({ season, category, maxLookback: season, league: Astro.locals.league });
@@ -51,7 +55,7 @@ function generateMetricHead(key: string, title: string): string {
         title = `<abbr title="${abbr}">${title}</abbr>`
     }
     return `
-        <th class="text-center" colspan="1">${title} <i class="bi bi-arrow-${arrowDirection}" ${(key != metric ? 'hidden' : '')}></i></th>
+        <th class="text-center" colspan="1">${title}${help ? metricHelpButton(key) : ''} <i class="bi bi-arrow-${arrowDirection}" ${(key != metric ? 'hidden' : '')}></i></th>
     `
 }
 
@@ -106,6 +110,7 @@ const allTeamIds = content.map((c) => c.team_id);
                     </tbody>
                 </table>
             </div>
+            {help && <Fragment set:html={metricHelpPopovers(Object.keys(columns))} />}
         </div>
     </div>
 </div>
