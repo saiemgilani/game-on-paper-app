@@ -12,12 +12,14 @@ import { formatRank, generateColorRampValue, ordinal } from '../../utils/misc';
 import { basketball, seasonLabelFor } from '../../basketball/config';
 import { isNcaaDashboards } from '../../basketball/dashboards';
 
-interface Props { rows: PlayerImpactRow[] | null; season: number; name: string }
-const { rows, season, name } = Astro.props;
+// `relabelWar`: BB-G27's 'bball-war' is on, so this table's WAR reads "Impact WAR" and the Value block (the default slot,
+// player_war's WAR with its interval) closes the section
+interface Props { rows: PlayerImpactRow[] | null; season: number; name: string; relabelWar?: boolean }
+const { rows, season, name, relabelWar = false } = Astro.props;
 const league = basketball(Astro.locals.league).league;
 const college = isNcaaDashboards(league);
 const label = seasonLabelFor(league, season);
-const panel = rows ? impactPanel(rows, college) : null;
+const panel = rows ? impactPanel(rows, college, relabelWar) : null;
 const ranked = panel?.ranked ?? false;
 const sides = ['off', 'def', 'net'] as const;
 const head = { off: 'Off', def: 'Def', net: 'Net' };
@@ -60,4 +62,5 @@ const collegeSample = panel && [
   </div>
   {panel.projection && (<p class="numeral small mb-0 mt-2" id="impact-projection">BOBAN next season: <span class="fw-bold">{signed1(panel.projection.rating)}</span>{panel.projection.sd != null && (<span class="text-muted"> ± {fmtDec(panel.projection.sd, 1)}</span>)} per 100 possessions</p>)}
   </Fragment>)}
+  <slot />
 </section>

@@ -31,6 +31,8 @@ vi.mock('../src/resources/playerImpact', () => ({ retrievePlayerImpact: async ()
 vi.mock('../src/resources/playerOnOff', () => ({ retrievePlayerOnOff: async () => ({ teams: [], pairs: [] }) }));
 // BB-G17's play-style chips read the Data API with 'bball-play-styles' on (preview): never from a test (no row: no chip)
 vi.mock('../src/resources/playStyles', async (orig) => ({ ...(await orig<typeof import('../src/resources/playStyles')>()), retrievePlayerPlayStyle: async () => [], retrieveTeamPlayStyle: async () => [] }));
+// BB-G27's Value panel reads the Data API with 'bball-war' on (preview): never from a test
+vi.mock('../src/resources/playerWar', async (orig) => ({ ...(await orig<typeof import('../src/resources/playerWar')>()), retrievePlayerWar: async () => [], retrievePlayerEpv: async () => [] }));
 // the pages' other reads, as teamSeason.test.ts and byteIdentity.render.test.ts mock them
 vi.mock('../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../src/resources/teamSeason')>()),

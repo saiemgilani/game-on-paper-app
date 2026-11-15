@@ -130,6 +130,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // runner-up on /nba/team/[id]. No WNBA table and no team offense archetype. Off: no read and both pages are today's, byte
     // for byte.
     'bball-play-styles': 'preview',
+    // WAR, VORP and EPV added (BB-G27) inside each league's flag: the player page's Value block, WAR always with its 90%
+    // interval, from sdv-db's player_war (BB-D26) and, from 2021-22, epv_player_seasons (sdv-db #223); it closes the
+    // Impact panel (a section of its own with 'bball-impact' off), whose own WAR then reads "Impact WAR". Off: no read and the player page is today's, byte for byte.
+    'bball-war': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

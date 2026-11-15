@@ -10,6 +10,8 @@ vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: asy
 vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => [] }));
 // BB-G17's play-style chips read the Data API with 'bball-play-styles' on (preview): never from a test (no row: no chip)
 vi.mock('../../src/resources/playStyles', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playStyles')>()), retrievePlayerPlayStyle: async () => [], retrieveTeamPlayStyle: async () => [] }));
+// BB-G27's Value panel reads the Data API with 'bball-war' on (preview): never from a test
+vi.mock('../../src/resources/playerWar', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playerWar')>()), retrievePlayerWar: async () => [], retrievePlayerEpv: async () => [] }));
 import { BASKETBALL, courtFor } from '../../src/basketball/config';
 import { NCAA_USAGE_NOTE, defaultScatterConference, withSeasonMembers } from '../../src/basketball/dashboards';
 import { leagueContextFromRows, shotsFromRows } from '../../src/nba/adapters';

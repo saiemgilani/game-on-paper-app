@@ -21,6 +21,7 @@ import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeason
 import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/playerImpact';
 import { retrievePlayerOnOff } from '../../resources/playerOnOff';
 import { PLAYER_PLAY_STYLE_LEAGUES, retrievePlayerPlayStyle } from '../../resources/playStyles';
+import { hasEpv, retrievePlayerEpv, retrievePlayerWar, type EpvPlayerSeasonRow, type PlayerWarRow } from '../../resources/playerWar';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { isFeatureEnabled } from '../../utils/features';
 import { impactShown } from '../../utils/playerImpact';
@@ -63,6 +64,10 @@ export interface BasketballPlayerParams {
     onOff?: PlayerOnOff;
     /** BB-G17, only with 'bball-play-styles' on, NBA and college: his play-style chips; null when the read failed */
     playStyles?: PlayStyleChip[] | null;
+    /** BB-G27, only with 'bball-war' on: his player_war rows; null when the read failed */
+    war?: PlayerWarRow[] | null;
+    /** BB-G27, only with 'bball-war' on and a season from 2021-22: his epv_player_seasons row; null when the read failed */
+    epv?: EpvPlayerSeasonRow[] | null;
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -144,6 +149,10 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const onOffP = isFeatureEnabled('bball-player-on-off', Astro.locals) ? readPlayerOnOff(league, season, personId, player.team_id, rows) : undefined;
     // BB-G17: the same rule; the WNBA has no play-style table
     const stylesP = isFeatureEnabled('bball-play-styles', Astro.locals) && PLAYER_PLAY_STYLE_LEAGUES.includes(league) ? readPlayerPlayStyles(league, season, personId) : undefined;
+    // BB-G27: the same rule again, its reads started with BB-G6's
+    const withWar = isFeatureEnabled('bball-war', Astro.locals);
+    const warP = withWar ? readDecorative('WAR', league, season, personId, retrievePlayerWar) : undefined;
+    const epvP = withWar && hasEpv(league, season) ? readDecorative('EPV', league, season, personId, retrievePlayerEpv) : undefined;
     // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
     const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
     if (poe.poe === null) degraded = true;
@@ -153,6 +162,9 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     if (onOff.onOff?.teams === null) degraded = true;
     const playStyles = stylesP ? { playStyles: await stylesP } : {};
     if (playStyles.playStyles === null) degraded = true;
+    const war = warP ? { war: await warP } : {};
+    const epv = epvP ? { epv: await epvP } : {};
+    if (war.war === null || epv.epv === null) degraded = true;
 
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
@@ -182,6 +194,8 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         ...impact,
         ...onOff,
         ...playStyles,
+        ...war,
+        ...epv,
     };
 }
 
@@ -229,6 +243,17 @@ async function readPlayerOnOff(league: BasketballLeague, season: number, personI
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} on/off for player ${personId}: ${e}, ${e?.stack}`);
         return { teams: null, partners: [], names, tricodes };
+    }
+}
+
+/** BB-G27's reads (the season tables' person id, as readPlayerPoe's); null when the read failed. */
+async function readDecorative<T>(what: string, league: BasketballLeague, season: number, personId: number,
+    read: (league: BasketballLeague, season: number, personId: number) => Promise<T[]>): Promise<T[] | null> {
+    try {
+        return await read(league, season, personId);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} ${what} for player ${personId}: ${e}, ${e?.stack}`);
+        return null;
     }
 }
 
