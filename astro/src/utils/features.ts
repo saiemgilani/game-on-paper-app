@@ -335,10 +335,6 @@ export const FLAGS: Record<string, FeatureState> = {
     // (nba, wnba, mbb, wbb), the same change (window eFG% minus the season eFG%) ranked from the largest drop, and the
     // change's definition on the page. Off: the boards, the island's props and the page are today's.
     'bball-rolling-movers': 'preview',
-    // Player compare: /players/compare?ids=a,b&season=N and the /nfl twin, up to four player cards
-    // side by side, plus the Compare button on the player page's header card. Off: the page is
-    // the site's 404 and the player page has no button.
-    'player-compare': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

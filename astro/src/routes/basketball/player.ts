@@ -15,7 +15,6 @@ import { COURT } from '../../nba/data/court';
 import { placeholderSplit } from '../../nba/data/placeholder';
 import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
-import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
 import { retrievePlayerSituational } from '../../resources/situational';
 import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows, type SeasonPlayerRow } from '../../resources/nbaShots';
 import { retrievePlayerImpactCareer, retrievePlayerWarCareer } from '../../resources/playerCareer';
@@ -32,7 +31,6 @@ import { bbGameSetOf, type BbGameSet } from '../../utils/bballGameSet';
 import { isFeatureEnabled } from '../../utils/features';
 import { impactShown } from '../../utils/playerImpact';
 import { collegePlayerRows } from '../../utils/shotProfile';
-import { bbGameSetOf, type BbGameSet } from '../../utils/bballGameSet';
 import type { BasketballLeague } from '../../utils/league';
 import { parseSituation, situationsFor, type PlayerSituationsTab } from '../../utils/situations';
 import { espnPartners, topPartners, type PlayerOnOff } from '../../utils/playerOnOff';
@@ -293,6 +291,7 @@ async function readPlayerPlayStyles(league: BasketballLeague, season: number, pe
         return playerPlayStyles(await retrievePlayerPlayStyle(league, season, personId), league !== 'nba');
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} play styles for player ${personId}: ${e}, ${e?.stack}`);
+        return null;
     }
 }
 

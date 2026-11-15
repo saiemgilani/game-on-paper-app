@@ -18,11 +18,9 @@ import type { LineupShotsView } from '../../nba/lineupShots';
 import { retrieveLineups } from '../../resources/lineups';
 import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots, type SeasonPlayerRow } from '../../resources/nbaShots';
 import { retrieveBioNames, retrieveOnOff } from '../../resources/onOff';
-import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
 import { retrieveTeamPlayStyle } from '../../resources/playStyles';
 import { retrieveTeamShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { retrieveSituational } from '../../resources/situational';
-import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
 import { retrieveTeamShotZones, type TeamZoneReads } from '../../resources/shotZones';
 import { retrieveGameSetCounts, retrieveTeamSeason, type GameSetCountReads, type TeamSeasonReads } from '../../resources/teamSeason';
 import { retrieveTeamGameFlow, type FlowRow } from '../../resources/bballGameLogs';
@@ -307,6 +305,7 @@ async function readTeamShotZones(league: BasketballLeague, season: number, teamI
         return await retrieveTeamShotZones(league, season, teamId);
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} shot zones for team ${teamId}: ${e}, ${e?.stack}`);
+        return null;
     }
 }
 
