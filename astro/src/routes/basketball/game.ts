@@ -35,6 +35,8 @@ import type { GameInfoReads } from '../../utils/gameInfo';
 import type { SeasonAverage } from '../../utils/gameLeaders';
 import { retrieveGameLine, settled } from '../../resources/gameLines';
 import type { GameLine } from '../../utils/gameLines';
+import { built, retrieveWpLenses } from '../../resources/wpLenses';
+import type { WpLensRow } from '../../utils/wpLenses';
 import { seasonCache, setCache, uncacheable } from './cache';
 import { retrieveGameSituational } from '../../resources/situational';
 import { parseSituation, situationsFor, type GameSituationsTab } from '../../utils/situations';
@@ -170,9 +172,12 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     // BB-G42's Game info and BB-G43's Lines and markets, live or final (the pregame page reads its own)
     const withInfo = isFeatureEnabled('bball-game-info', Astro.locals);
     const withLines = isFeatureEnabled('bball-lines', Astro.locals);
-    if (!('game' in r) || (!withInfo && !withLines)) return finalPanels(Astro, league, r);
+    // BB-G45's WP lenses: a Data API final's play_wp variants, read beside the final's panels; flag off is today's page. Only
+    // the Data API's plays share play_wp's game_play_number (the same ingest); a processor-served game keeps our model alone.
+    const withLenses = 'game' in r && r.game.source === 'data_api' && r.game.status.completed && r.game.season != null && isFeatureEnabled('bball-wp-lenses', Astro.locals);
+    if (!('game' in r) || (!withInfo && !withLines && !withLenses)) return finalPanels(Astro, league, r);
     const game = r.game;
-    const [p, info, read] = await Promise.all([
+    const [p, info, read, rows] = await Promise.all([
         finalPanels(Astro, league, r),
         withInfo ? retrieveGameInfo(league, game).catch((e: any) => {
             console.error(`ERROR while loading the ${league} game info for game ${game.id}: ${e}, ${e?.stack}`);
@@ -182,6 +187,7 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
             console.error(`ERROR while loading the ${league} game lines for game ${game.id}: ${e}, ${e?.stack}`);
             return null;
         }) : undefined,
+        withLenses ? readWpLenses(league, game, game.season as number) : undefined,
     ]);
     // decorative like the final's panels: a failed read is never cached. An ingested final's season profiles (Game info) move
     // with the nightly products, and so does a recent final with no settled market row yet (the current season's are mostly
@@ -189,10 +195,22 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     // ponytail: "recent" is the game date within LINES_RECENT_MS, not the season; an older unmapped game keeps its year
     const failed = Object.values(p).some((x) => x === null || (x && typeof x === 'object' && 'reads' in x && x.reads === null));
     const recent = Date.now() - Date.parse(game.date) < LINES_RECENT_MS;
-    if (info === null || read === null) uncacheable(Astro);
-    else if (game.source === 'data_api' && !failed && (info !== undefined || (read !== undefined && recent && !settled(read.row)))) setCache(Astro, seasonCache(league));
+    if (info === null || read === null || rows === null) uncacheable(Astro);
+    else if (game.source === 'data_api' && !failed && (info !== undefined || (read !== undefined && recent && !settled(read.row)) || (rows !== undefined && !built(rows)))) setCache(Astro, seasonCache(league));
     const lines = read === null ? null : read?.row ?? undefined;
-    return { ...(p as Extract<BasketballGamePrep, { game: NbaGame }>), ...(info !== undefined ? { info } : {}), ...(lines !== undefined ? { lines } : {}) };
+    // BB-G45: an ingested final whose season the nightly has not rebuilt with the variants yet (sdv-db #217's backfill) waits too
+    const q = p as Extract<BasketballGamePrep, { game: NbaGame }>;
+    return { ...q, ...(rows && built(rows) ? { game: { ...q.game, wpLenses: rows } } : {}), ...(info !== undefined ? { info } : {}), ...(lines !== undefined ? { lines } : {}) };
+}
+
+/** BB-G45's variant rows; null when the read failed (the chart keeps our model alone). */
+async function readWpLenses(league: BasketballLeague, game: NbaGame, season: number): Promise<WpLensRow[] | null> {
+    try {
+        return await retrieveWpLenses(league, season, game.id);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} WP lenses for game ${game.id}: ${e}, ${e?.stack}`);
+        return null;
+    }
 }
 
 /** The final's panels (BB-G1, BB-G28, BB-G2): read only once a final will render. */

@@ -7,10 +7,81 @@ import { SPECIAL_IMAGES, SPECIAL_IMAGES_DARK } from '../../utils/constants'
 import { GradientFillLineController, chartGridLines } from '../../resources/chart'
 import { wpMarkerGate, wpMarkerTitle } from '../../basketball/periods';
 import { exportTime, wpExportFooter } from '../../utils/chartExport'
+import { momentText, stretchText } from '../../utils/wpLenses'
 
-const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, showGei = false, spanShade = null, colors = null, showOdds = true, allPeriodMarkers = false, regulationPeriods = 4, periodKind = 'quarter', season = null, exportMeta = null } = $props()
+// lenses / moments: basketball's 'bball-wp-lenses' (BB-G45) only; absent, the chart is football's and today's basketball's
+const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, showGei = false, spanShade = null, colors = null, showOdds = true, allPeriodMarkers = false, regulationPeriods = 4, periodKind = 'quarter', season = null, exportMeta = null, lenses = null, moments = null } = $props()
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
+
+// BB-G45: the lens shown (our model first), and the pinned play / dragged stretch the readout describes (chart x indices)
+let lens = $state(lenses?.[0]?.key ?? 'model');
+let readout = $state('');
+let pinned = null, stretch = null, dragFrom = null, dragTo = null;
+const lensValues = (key) => (lenses?.find((l) => l.key === key) ?? lenses?.[0])?.values ?? [];
+const momentAt = (i) => moments[Math.max(0, Math.min(i, moments.length - 1))];
+const homeWpAt = (i) => { const v = lensValues(lens); return v.length ? v[Math.max(0, Math.min(i, v.length - 1))] : plays[Math.max(0, Math.min(i, plays.length - 1))].winProbability.before; };
+function describe() {
+    const h = cleanAbbreviation(homeTeam), a = cleanAbbreviation(awayTeam);
+    if (stretch) readout = stretchText(momentAt(stretch[0]), momentAt(stretch[1]), homeWpAt(stretch[0]), homeWpAt(stretch[1]), h, a);
+    else if (pinned != null) readout = `Pinned: ${momentText(momentAt(pinned), homeWpAt(pinned), h, a)}`;
+    else readout = '';
+}
+function setLens(key) {
+    lens = key;
+    const chart = Chart.getChart("wpChart");
+    if (!chart) return;
+    const cur = chart.data.datasets[0].data;
+    // the final's settled point (1 or 0) after the last play is the same on every lens
+    chart.data.datasets[0].data = [...lensValues(key).map(translateWP), ...(cur.length > plays.length ? [cur[cur.length - 1]] : [])];
+    chart.update();
+    describe();
+}
+// the pinned play and the dragged stretch, drawn under the lines
+const marksPlugin = (isDarkMode) => ({
+    id: 'wp-marks',
+    beforeDatasetsDraw: (chart) => {
+        const xs = chart.scales.x;
+        const { top, bottom } = chart.chartArea;
+        const ctx = chart.ctx;
+        ctx.save();
+        const band = dragFrom != null && dragTo != null && dragFrom !== dragTo ? [Math.min(dragFrom, dragTo), Math.max(dragFrom, dragTo)] : stretch;
+        if (band) {
+            const x0 = xs.getPixelForValue(band[0]), x1 = xs.getPixelForValue(band[1]);
+            ctx.fillStyle = isDarkMode ? 'rgba(255, 213, 79, 0.12)' : 'rgba(255, 193, 7, 0.18)';
+            ctx.fillRect(x0, top, Math.max(2, x1 - x0), bottom - top);
+        }
+        if (pinned != null && !band) {
+            const x = xs.getPixelForValue(pinned);
+            ctx.strokeStyle = isDarkMode ? '#ffd54f' : '#b45309';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
+        }
+        ctx.restore();
+    },
+});
+// hover is the tooltip; a click pins a play, a drag reads a stretch (pointer events: mouse, pen and touch)
+function wireMarks(chart) {
+    const canvas = chart.canvas;
+    const indexAt = (e) => {
+        const r = canvas.getBoundingClientRect();
+        const v = Math.round(chart.scales.x.getValueForPixel(e.clientX - r.left));
+        return Math.max(0, Math.min(v, moments.length - 1));
+    };
+    canvas.style.touchAction = 'pan-y'; // a horizontal drag reads a stretch, a vertical one still scrolls the page
+    canvas.onpointerdown = (e) => { dragFrom = dragTo = indexAt(e); };
+    canvas.onpointermove = (e) => { if (dragFrom == null) return; dragTo = indexAt(e); chart.draw(); };
+    canvas.onpointerup = (e) => {
+        if (dragFrom == null) return;
+        const to = indexAt(e);
+        if (to === dragFrom) { pinned = pinned === to && !stretch ? null : to; stretch = null; } // a second click on the pin clears it
+        else { stretch = [Math.min(dragFrom, to), Math.max(dragFrom, to)]; pinned = null; }
+        dragFrom = dragTo = null;
+        chart.draw();
+        describe();
+    };
+    canvas.onpointerleave = () => { if (dragFrom != null) { dragFrom = dragTo = null; chart.draw(); } };
+}
 
 function createVerticalLinePlugin(id, title, value, color, lineWidth, xAxisId = 'x', yAxisId = 'y', yMin = null, yMax = null) {
     // console.log(
@@ -254,6 +325,11 @@ async function generateChart() {
             homeTeamWP.push(translateWP(0.0))
         }
     }
+    // BB-G45: the lens shown replaces the plays' WP, keeping the final's settled point
+    if (lenses) homeTeamWP = [...lensValues(lens).map(translateWP), ...homeTeamWP.slice(plays.length)];
+    // BB-G45: the home margin per play (the settled point repeats the last), drawn under the WP line on its own axis
+    const margins = moments ? timestamps.map((i) => { const m = momentAt(i); return m.h - m.a; }) : null;
+    const marginTop = margins ? Math.max(5, Math.ceil(Math.max(...margins.map(Math.abs)) / 5) * 5) : 0;
 
     var targetDataSet = {
         fill: true,
@@ -263,7 +339,9 @@ async function generateChart() {
         label: null,
         data: homeTeamWP,
         hoverBackgroundColor: JSON.stringify(awayTeamColor),
-        hoverBorderColor: JSON.stringify(homeTeamColor)
+        hoverBorderColor: JSON.stringify(homeTeamColor),
+        // with BB-G45's margin axis there are two y scales: pin the WP line to its own
+        ...(margins ? { yAxisID: 'y' } : {}),
     };
 
 
@@ -272,8 +350,10 @@ async function generateChart() {
         plugins: [
             ...(spanShade ? [createSpanShadePlugin(spanShade, isDarkMode)] : []),
             ...periodMarkers,
+            ...(moments ? [marksPlugin(isDarkMode)] : []),
             {
-                beforeDatasetDraw: (chart) => {
+                beforeDatasetDraw: (chart, args) => {
+                    if (args && args.index !== 0) return; // once, before the WP line (BB-G45's margin line is dataset 1)
                     const viewport = getCurrentViewport(document, window);
                     const sizeWidth = chart.ctx.canvas.clientWidth;
                     const sizeHeight = chart.ctx.canvas.clientHeight;
@@ -357,11 +437,22 @@ async function generateChart() {
             labels: timestamps,
             datasets: [
                 targetDataSet,
+                // order 1: drawn before (under) the WP line, which keeps order 0
+                ...(margins ? [{ type: 'line', label: 'margin', yAxisID: 'y1', order: 1, data: margins, stepped: true, fill: false, pointRadius: 0, borderWidth: 1.5,
+                    borderColor: isDarkMode ? 'rgba(232, 230, 227, 0.9)' : 'rgba(64, 64, 64, 0.9)' }] : []),
             ]
         },
         options: {
             responsive: true,
+            // BB-G45: hovering anywhere over a play reads it (WP and margin together)
+            ...(moments ? { interaction: { mode: 'index', intersect: false } } : {}),
             scales: {
+                ...(margins ? { y1: {
+                    position: 'right', min: -marginTop, max: marginTop, // symmetric, so a tie sits on the 50% line
+                    grid: { display: false },
+                    ticks: { color: (isDarkMode) ? '#e8e6e3' : '#525252', stepSize: marginTop <= 10 ? 5 : marginTop <= 30 ? 10 : 20,
+                        callback: (v) => (v === 0 ? '0' : `${v > 0 ? cleanAbbreviation(homeTeam) : cleanAbbreviation(awayTeam)} +${Math.abs(v)}`) },
+                } } : {}),
                 y: {
                     border: { color: (isDarkMode) ? "#8D8D8D" : "#AAAAAA" },
                     suggestedMax: 1.0,
@@ -414,9 +505,14 @@ async function generateChart() {
                 tooltip: {
                     callbacks: {
                         title: function(contexts) {
-                            return `Play Number: ${contexts[0].dataIndex}` 
+                            if (moments) return `Play ${contexts[0].dataIndex}: ${momentAt(contexts[0].dataIndex).at}`
+                            return `Play Number: ${contexts[0].dataIndex}`
                         },
                         label: function(context) {
+                            if (context.dataset.label === 'margin') {
+                                const m = momentAt(context.dataIndex);
+                                return `Score: ${cleanAbbreviation(awayTeam)} ${m.a}-${m.h} ${cleanAbbreviation(homeTeam)}`;
+                            }
                             // value is always from perspective of home team
                             if (context.parsed.y > 0) {
                                 let transVal = translateValue(context.parsed.y, 0.0, 1.0, 50, 100);
@@ -433,6 +529,7 @@ async function generateChart() {
             },
         }
     })
+    if (moments) wireMarks(wpChart);
 
     // a property, not a listener: a theme redraw must replace the handler bound to the old chart
     document.getElementById("wp-download").onclick = function() {
@@ -499,6 +596,17 @@ if (document.readyState !== 'loading') {
             {/if}
             {(showOdds || gameInProgress || showGei) ? '| ' : ''}<a id="wp-download" download={`game-wp-${id}.png`} href="#">Download Chart</a>
         </p>
+        {#if lenses}
+        <div class="btn-group btn-group-sm mb-2 flex-wrap" role="group" aria-label="Win probability lens">
+            {#each lenses as l (l.key)}
+            <input type="radio" class="btn-check" name={`wp-lens-${id}`} id={`wp-lens-${id}-${l.key}`} value={l.key} checked={lens === l.key} onchange={() => setLens(l.key)} />
+            <label class="btn btn-outline-secondary" for={`wp-lens-${id}-${l.key}`}>{l.label}</label>
+            {/each}
+        </div>
+        {/if}
     </div>
     <div class="w-100"  width="900" height="380" id="wp_container"><canvas id="wpChart"></canvas></div>
+    {#if moments}
+    <p class="text-small mb-0" id="wp-readout" aria-live="polite">{readout}</p>
+    {/if}
 </div>

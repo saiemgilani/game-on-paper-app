@@ -67,6 +67,8 @@ vi.mock('../src/resources/nbaGames', async (orig) => ({ ...(await orig<typeof im
 vi.mock('../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../src/resources/espn')>()), retrieveGamePageGuarded: (...a: unknown[]) => espn(...a) }));
 // BB-G43's market row ('bball-lines', preview, live or final): no row, never a read
 vi.mock('../src/resources/gameLines', async (orig) => ({ ...(await orig<typeof import('../src/resources/gameLines')>()), retrieveGameLine: async () => null }));
+// BB-G45's play_wp variants ('bball-wp-lenses', preview, a final): built, so the cache is the final's, never a read
+vi.mock('../src/resources/wpLenses', async (orig) => ({ ...(await orig<typeof import('../src/resources/wpLenses')>()), retrieveWpLenses: async () => [{ n: 1, naive: 0.5, market: null }] }));
 
 import NbaImpactBox from '../src/components/nba/game/NbaImpactBox.astro';
 import { EMPTY_IMPACT, retrieveImpactBox, TOP_UNITS, UNIT_LIMIT, type ImpactBoxReads } from '../src/resources/impactBox';
