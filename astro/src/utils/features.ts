@@ -153,6 +153,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // G9: each team's player section on the v2 game page gets the Team Stats "Show only"
+    // select (Game, quarters, halves, OT when played), each window pre-rendered from
+    // advBoxScoreSpans (game/metrics/TeamPlayerStats.astro). Off: the section is unchanged.
+    'player-quarter-filter': 'preview',
     // Method notes (IF-3): every advanced panel says its population in one voice (utils/methodNotes.ts). The
     // season team page's player tables and Profile panel carry the season note; the game page's Team Stats title
     // carries the game note as a hover. Off: today's hand-typed subtitles. Promote once the copy is reviewed.
