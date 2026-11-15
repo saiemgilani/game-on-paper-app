@@ -153,6 +153,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // The Situations head-coach board (/coaches/situations, /year/N/coaches/situations and the /nfl
+    // twins, inside the 'coaches' gate): games and win rate after a bye, in openers, in one-score
+    // games and (CFB) vs ranked, from coach_tendencies / coach_careers. Off: the board select does
+    // not list it, its routes 404 and the sitemap leaves it out (utils/coaches.ts coachBoardSlugs).
+    'coach-situations': 'preview',
     // Stat-threshold search (S15): /search/seasons and the /nfl twin, player-seasons at or above every
     // threshold from sdv-db's player_seasons_wide. Gated in middleware (utils/statSearch.ts isStatSearchPath);
     // the header's Tools entry reads the same flag. Not in the sitemap.

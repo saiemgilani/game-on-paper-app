@@ -92,6 +92,14 @@ describe('coach tendency reads', () => {
         expect(sel).not.toContain('undefined');
     });
 
+    test('no columns given, NFL: the default select leaves out the college-only vs-ranked columns', async () => {
+        const sdv = await import('../src/resources/sdv');
+        await sdv.retrieveCoachCareers({ league: 'nfl' });
+        const sel = select(only());
+        expect(sel).toContain('win_rate_after_bye');
+        expect(sel.filter((c) => c.includes('vs_ranked'))).toEqual([]);
+    });
+
     test('a good response is cached for three days under a league-namespaced key', async () => {
         const sdv = await import('../src/resources/sdv');
         await sdv.retrieveCoachTendencies({ season: 2024, league: 'nfl', columns: ['go_rate'] });
