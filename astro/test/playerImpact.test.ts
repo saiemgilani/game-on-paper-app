@@ -30,6 +30,8 @@ const impact = vi.hoisted(() => vi.fn());
 vi.mock('../src/resources/playerImpact', () => ({ retrievePlayerImpact: (...a: unknown[]) => impact(...a) }));
 // BB-G7's On/Off section reads the Data API with 'bball-player-on-off' on (preview): never from a test
 vi.mock('../src/resources/playerOnOff', () => ({ retrievePlayerOnOff: async () => ({ teams: [], pairs: [] }) }));
+// BB-G17's play-style chips read the Data API with 'bball-play-styles' on (preview): never from a test (no row: no chip)
+vi.mock('../src/resources/playStyles', async (orig) => ({ ...(await orig<typeof import('../src/resources/playStyles')>()), retrievePlayerPlayStyle: async () => [], retrieveTeamPlayStyle: async () => [] }));
 const sdv = vi.hoisted(() => ({ rows: vi.fn(), from: vi.fn() }));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),

@@ -6,6 +6,8 @@ import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/containe
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 // BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
 vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
+// BB-G17's play-style chips read the Data API with 'bball-play-styles' on (preview): never from a test (no row: no chip)
+vi.mock('../../src/resources/playStyles', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playStyles')>()), retrievePlayerPlayStyle: async () => [], retrieveTeamPlayStyle: async () => [] }));
 import { parseTable, text } from '../helpers/tables';
 import { apiSeasonPlayerRows } from './rows';
 

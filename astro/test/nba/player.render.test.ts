@@ -9,6 +9,8 @@ vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: asy
 vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => [] }));
 // BB-G7's On/Off section reads the Data API with 'bball-player-on-off' on (preview): never from a test
 vi.mock('../../src/resources/playerOnOff', () => ({ retrievePlayerOnOff: async () => ({ teams: [], pairs: [] }) }));
+// BB-G17's play-style chips read the Data API with 'bball-play-styles' on (preview): never from a test (no row: no chip)
+vi.mock('../../src/resources/playStyles', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playStyles')>()), retrievePlayerPlayStyle: async () => [], retrieveTeamPlayStyle: async () => [] }));
 import { readFileSync } from 'node:fs';
 import { text } from '../helpers/tables';
 

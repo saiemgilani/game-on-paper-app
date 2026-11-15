@@ -18,6 +18,8 @@ import type { LineupShotsView } from '../../nba/lineupShots';
 import { retrieveLineups } from '../../resources/lineups';
 import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots, type SeasonPlayerRow } from '../../resources/nbaShots';
 import { retrieveBioNames, retrieveOnOff } from '../../resources/onOff';
+import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
+import { retrieveTeamPlayStyle } from '../../resources/playStyles';
 import { retrieveTeamShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { retrieveSituational } from '../../resources/situational';
 import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
@@ -26,6 +28,7 @@ import { parseBasis, parseGate, parseLineupSort, parseUnit, playerNames, playerP
 import { parseWowy, wowyLines, type OnOffTab } from '../../utils/onOff';
 import { nameRows, parseSituation, situationsFor, type SituationsTab } from '../../utils/situations';
 import type { BasketballLeague } from '../../utils/league';
+import { teamPlayStyles, type PlayStyleChip } from '../../utils/playStyles';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readLineupShots } from './lineupShots';
 import { readCoverageNote, resolveBasketballSeason } from './season';
@@ -61,6 +64,8 @@ export interface BasketballTeamParams {
     situations?: SituationsTab;
     /** BB-G15, only with 'bball-poe' on: the team-season's shot quality rows (team and shooters); null when the read failed */
     poe?: ShotQualityRow[] | null;
+    /** BB-G17, only with 'bball-play-styles' on, NBA only: the team's defensive play-style chip; null when the read failed */
+    playStyles?: PlayStyleChip[] | null;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -128,16 +133,18 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const onOffOn = isFeatureEnabled('bball-on-off', Astro.locals);
     const situationsOn = isFeatureEnabled('bball-situational', Astro.locals);
     const poeOn = isFeatureEnabled('bball-poe', Astro.locals); // BB-G15
-    const [seasonBlock, lineups, onOff, situations, poe] = await Promise.all([
+    const stylesOn = isFeatureEnabled('bball-play-styles', Astro.locals) && league === 'nba'; // BB-G17: only the NBA has team styles
+    const [seasonBlock, lineups, onOff, situations, poe, playStyles] = await Promise.all([
         flagged ? readSeasonBlock(league, season, teamId) : undefined,
         lineupsOn ? readLineups(Astro, league, season, teamId, rows) : undefined,
         onOffOn ? readOnOff(Astro, league, season, teamId, rows) : undefined,
         situationsOn ? readSituations(Astro, league, season, teamId, rows) : undefined,
         poeOn ? readTeamPoe(league, season, teamId) : undefined,
+        stylesOn ? readTeamPlayStyles(season, teamId) : undefined,
     ]);
     // the block and the tabs are decorative: a failed read renders the rest of the page, never cached
-    if (seasonBlock === null || lineups?.units === null || onOff?.players === null || situations?.reads === null || poe === null) uncacheable(Astro);
-    const block = { ...(flagged ? { seasonBlock } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}), ...(situationsOn ? { situations } : {}), ...(poeOn ? { poe } : {}) };
+    if (seasonBlock === null || lineups?.units === null || onOff?.players === null || situations?.reads === null || poe === null || playStyles === null) uncacheable(Astro);
+    const block = { ...(flagged ? { seasonBlock } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}), ...(situationsOn ? { situations } : {}), ...(poeOn ? { poe } : {}), ...(stylesOn ? { playStyles } : {}) };
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);
@@ -235,6 +242,16 @@ async function readSituations(Astro: AstroGlobal, league: BasketballLeague, seas
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} ${situation.key} situational splits for team ${teamId}: ${e}, ${e?.stack}`);
         return { situation, options, reads: null, playerNames: [], unitLabels: [] };
+    }
+}
+
+/** BB-G17's read (the stats.nba.com team id, the page's) as the defensive chip; null when it failed. */
+async function readTeamPlayStyles(season: number, teamId: number): Promise<PlayStyleChip[] | null> {
+    try {
+        return teamPlayStyles(await retrieveTeamPlayStyle(season, teamId));
+    } catch (e: any) {
+        console.error(`ERROR while loading the nba ${season} play style for team ${teamId}: ${e}, ${e?.stack}`);
+        return null;
     }
 }
 
