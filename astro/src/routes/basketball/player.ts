@@ -25,8 +25,10 @@ import { PLAYER_PLAY_STYLE_LEAGUES, retrievePlayerPlayStyle } from '../../resour
 import { hasMatchups, hasPlayTypes, retrievePlayerHustle, retrievePlayerMatchupRollup, retrievePlayerSynergy, retrievePlayerTopMatchups, type HustleRow, type MatchupRollupRow, type MatchupRow, type SynergyRow } from '../../resources/playerPlayTypes';
 import { hasEpv, retrievePlayerEpv, retrievePlayerWar, type EpvPlayerSeasonRow, type PlayerWarRow } from '../../resources/playerWar';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
+import { retrieveNcaaPlayerId, retrievePlayerShotZones, retrieveSeasonFt, retrieveTeamPlayerShotZones, type SeasonFt, type ShotZoneRow } from '../../resources/shotZones';
 import { isFeatureEnabled } from '../../utils/features';
 import { impactShown } from '../../utils/playerImpact';
+import { collegePlayerRows } from '../../utils/shotProfile';
 import type { BasketballLeague } from '../../utils/league';
 import { parseSituation, situationsFor, type PlayerSituationsTab } from '../../utils/situations';
 import { espnPartners, topPartners, type PlayerOnOff } from '../../utils/playerOnOff';
@@ -74,6 +76,10 @@ export interface BasketballPlayerParams {
     playTypes?: PlayerPlayTypes;
     /** BB-G54, only with 'bball-career' on: every season of his player_war rows and (NBA/WNBA) player_impact rows; a failed read is null */
     career?: { war: PlayerWarRow[] | null; impact?: PlayerImpactRow[] | null };
+    /** BB-G51, only with 'bball-shot-profile' on: his player_shot_zones rows (one per team; college: by his ncaa_player_crosswalk id, none without a pair); null when a read failed */
+    zones?: ShotZoneRow[] | null;
+    /** BB-G51, with `zones`: his season FGM and FTM from player_season_stats, the split's free throws; null when there are none or a read failed */
+    zonesFt?: SeasonFt | null;
 }
 
 /** BB-G19's rows, each null when its read failed. */
@@ -177,6 +183,9 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     const careerWarP = withCareer ? readDecorative('career WAR', league, season, personId, (lg, _s, id) => retrievePlayerWarCareer(lg, first, last, id)) : undefined;
     const careerImpactP = withCareer && (league === 'nba' || league === 'wnba')
         ? readDecorative('career impact', league, season, personId, (_lg, _s, id) => retrievePlayerImpactCareer(league, first, last, id)) : undefined;
+    // BB-G51: the same rule; college reads his ESPN team's rows and picks his by his crosswalk id (utils/shotProfile.ts collegePlayerRows);
+    // his season FTM is read with them
+    const zonesP = isFeatureEnabled('bball-shot-profile', Astro.locals) ? readShotZones(league, season, personId, player.team_id) : undefined;
     // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
     const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
     if (poe.poe === null) degraded = true;
@@ -193,6 +202,9 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     if (playTypes.playTypes && Object.values(playTypes.playTypes).includes(null)) degraded = true;
     const career = careerWarP ? { career: { war: await careerWarP, ...(careerImpactP ? { impact: await careerImpactP } : {}) } } : {};
     if (career.career && (career.career.war === null || career.career.impact === null)) degraded = true;
+    const zr = zonesP ? await zonesP : undefined;
+    const zones = zonesP ? { zones: zr?.rows ?? null, zonesFt: zr?.ft ?? null } : {};
+    if (zones.zones === null) degraded = true;
 
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
@@ -226,6 +238,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         ...epv,
         ...playTypes,
         ...career,
+        ...zones,
     };
 }
 
@@ -247,6 +260,25 @@ async function readPlayerPlayStyles(league: BasketballLeague, season: number, pe
         return playerPlayStyles(await retrievePlayerPlayStyle(league, season, personId), league !== 'nba');
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} play styles for player ${personId}: ${e}, ${e?.stack}`);
+    }
+}
+
+/**
+ * BB-G51's read: the pros' rows by his stats id; college's his team's rows narrowed to him by his season's stats.ncaa.org
+ * id from ncaa_player_crosswalk (no pair, no row); and his season FGM and FTM (the split's free throws, Q13). Null when a
+ * read failed, the crosswalk's and the season stats' included: the panel says it is unavailable, never a guess.
+ */
+async function readShotZones(league: BasketballLeague, season: number, personId: number, teamId: number): Promise<{ rows: ShotZoneRow[]; ft: SeasonFt | null } | null> {
+    try {
+        const ftP = retrieveSeasonFt(league, season, personId);
+        if (!isNcaaDashboards(league)) {
+            const [rows, ft] = await Promise.all([retrievePlayerShotZones(league, season, personId), ftP]);
+            return { rows, ft };
+        }
+        const [rows, ncaaId, ft] = await Promise.all([retrieveTeamPlayerShotZones(league, season, teamId), retrieveNcaaPlayerId(league, season, personId), ftP]);
+        return { rows: collegePlayerRows(rows, ncaaId), ft };
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} shot zones for player ${personId}: ${e}, ${e?.stack}`);
         return null;
     }
 }

@@ -23,6 +23,7 @@ import { retrieveTeamPlayStyle } from '../../resources/playStyles';
 import { retrieveTeamShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { retrieveSituational } from '../../resources/situational';
 import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
+import { retrieveTeamShotZones, type TeamZoneReads } from '../../resources/shotZones';
 import { isFeatureEnabled } from '../../utils/features';
 import { parseBasis, parseGate, parseLineupSort, parseUnit, playerNames, playerPages, sortUnits, unitLabels, type LineupsTab } from '../../utils/lineups';
 import { parseWowy, wowyLines, type OnOffTab } from '../../utils/onOff';
@@ -66,6 +67,8 @@ export interface BasketballTeamParams {
     poe?: ShotQualityRow[] | null;
     /** BB-G17, only with 'bball-play-styles' on, NBA only: the team's defensive play-style chip; null when the read failed */
     playStyles?: PlayStyleChip[] | null;
+    /** BB-G51, only with 'bball-shot-profile' on: the team_shot_zones row and its season FGM/FTM (team_season_stats); null when a read failed */
+    shotZones?: TeamZoneReads | null;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -134,17 +137,19 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const situationsOn = isFeatureEnabled('bball-situational', Astro.locals);
     const poeOn = isFeatureEnabled('bball-poe', Astro.locals); // BB-G15
     const stylesOn = isFeatureEnabled('bball-play-styles', Astro.locals) && league === 'nba'; // BB-G17: only the NBA has team styles
-    const [seasonBlock, lineups, onOff, situations, poe, playStyles] = await Promise.all([
+    const zonesOn = isFeatureEnabled('bball-shot-profile', Astro.locals); // BB-G51
+    const [seasonBlock, lineups, onOff, situations, poe, shotZones, playStyles] = await Promise.all([
         flagged ? readSeasonBlock(league, season, teamId) : undefined,
         lineupsOn ? readLineups(Astro, league, season, teamId, rows) : undefined,
         onOffOn ? readOnOff(Astro, league, season, teamId, rows) : undefined,
         situationsOn ? readSituations(Astro, league, season, teamId, rows) : undefined,
         poeOn ? readTeamPoe(league, season, teamId) : undefined,
+        zonesOn ? readTeamShotZones(league, season, teamId) : undefined,
         stylesOn ? readTeamPlayStyles(season, teamId) : undefined,
     ]);
     // the block and the tabs are decorative: a failed read renders the rest of the page, never cached
-    if (seasonBlock === null || lineups?.units === null || onOff?.players === null || situations?.reads === null || poe === null || playStyles === null) uncacheable(Astro);
-    const block = { ...(flagged ? { seasonBlock } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}), ...(situationsOn ? { situations } : {}), ...(poeOn ? { poe } : {}), ...(stylesOn ? { playStyles } : {}) };
+    if (seasonBlock === null || lineups?.units === null || onOff?.players === null || situations?.reads === null || poe === null || shotZones === null || playStyles === null) uncacheable(Astro);
+    const block = { ...(flagged ? { seasonBlock } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}), ...(situationsOn ? { situations } : {}), ...(poeOn ? { poe } : {}), ...(zonesOn ? { shotZones } : {}), ...(stylesOn ? { playStyles } : {}) };
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);
@@ -261,6 +266,16 @@ async function readTeamPoe(league: BasketballLeague, season: number, teamId: num
         return await retrieveTeamShotQuality(league, season, teamId);
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} shot quality for team ${teamId}: ${e}, ${e?.stack}`);
+        return null;
+    }
+}
+
+/** BB-G51's reads, keyed like the season tables (the stats id for the NBA/WNBA, ESPN's in college); null when one failed. */
+async function readTeamShotZones(league: BasketballLeague, season: number, teamId: number): Promise<TeamZoneReads | null> {
+    try {
+        return await retrieveTeamShotZones(league, season, teamId);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} shot zones for team ${teamId}: ${e}, ${e?.stack}`);
         return null;
     }
 }
