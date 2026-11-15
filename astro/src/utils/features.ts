@@ -452,6 +452,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // the producer's ranks and percentiles, with the partial-coverage notice. College waits on an NCAA coach release.
     // Off: the pages are the site's 404 and the Header is today's.
     'bball-coaches': 'preview',
+    // League shot charts (BB-G16): /<league>/shots for the NBA, WNBA, MBB and WBB, every team's square chart as small
+    // multiples, coloured against sdv-db's exact league squares (shot_league_context kind='square', #191). College shows one
+    // conference at a time. Linked from /<league>/teams (no Header entry). Off: the page is the site's 404 and the teams
+    // index has no link.
+    'bball-league-shots': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
