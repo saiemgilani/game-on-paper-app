@@ -222,7 +222,7 @@ async function readPlayerPlayStyles(league: BasketballLeague, season: number, pe
 }
 
 /** BB-G6's read (the same person id as readPlayerPoe's); null when it failed. */
-async function readPlayerImpact(league: BasketballLeague, season: number, personId: number): Promise<PlayerImpactRow[] | null> {
+export async function readPlayerImpact(league: BasketballLeague, season: number, personId: number): Promise<PlayerImpactRow[] | null> {
     try {
         return await retrievePlayerImpact(league, season, personId);
     } catch (e: any) {
@@ -247,7 +247,7 @@ async function readPlayerOnOff(league: BasketballLeague, season: number, personI
 }
 
 /** BB-G27's reads (the season tables' person id, as readPlayerPoe's); null when the read failed. */
-async function readDecorative<T>(what: string, league: BasketballLeague, season: number, personId: number,
+export async function readDecorative<T>(what: string, league: BasketballLeague, season: number, personId: number,
     read: (league: BasketballLeague, season: number, personId: number) => Promise<T[]>): Promise<T[] | null> {
     try {
         return await read(league, season, personId);

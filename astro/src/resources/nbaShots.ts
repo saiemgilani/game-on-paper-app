@@ -70,6 +70,25 @@ export interface SeasonPlayerRow {
     fga_pg: number | null;
     min_total: number | null;
     headshot_href: string | null;
+    /**
+     * The season's shooting percentages and the producer's ranks of them (sdv-db#225): the same on every team row of a
+     * player. `<m>_n` is the attempts behind `<m>`; `<m>_rank` (fractional for ties) and `<m>_pct` are null under the
+     * producer's attempt minimum. Optional: rows read before #225 have none.
+     */
+    fg3_pct?: number | null;
+    ft_pct?: number | null;
+    fg_pct_n?: number | null;
+    efg_pct_n?: number | null;
+    fg3_pct_n?: number | null;
+    ft_pct_n?: number | null;
+    fg_pct_rank?: number | null;
+    fg_pct_pct?: number | null;
+    efg_pct_rank?: number | null;
+    efg_pct_pct?: number | null;
+    fg3_pct_rank?: number | null;
+    fg3_pct_pct?: number | null;
+    ft_pct_rank?: number | null;
+    ft_pct_pct?: number | null;
 }
 
 export interface PlayerGameRow {
