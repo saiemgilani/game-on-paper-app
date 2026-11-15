@@ -1776,3 +1776,15 @@ The NBA Impact board's Season vs Current view (#463 Q18), the `data` arrays of t
 
 **To regenerate:** rerun the three reads (season filter and limit as above, never unfiltered), write
 `{seasonRows, latest, currentRows}` as JSON and gzip.
+## BB-G10 scatter views (`nba/player_impact_2026_bkn.json`, `nba/team_strength_2026.json`)
+
+Live Data API reads, unedited apart from the column selection.
+
+- `nba/player_impact_2026_bkn.json` (2026-11-12): `GET /v1/nba/player_impact?season=2026&season_type=Regular Season&team_id=1610612751`
+  (the 20 Brooklyn rows, 2025-26) with `select=player_id,o_rapm,d_rapm,rapm,ospm,dspm,spm,off_poss`: the RAPM and SPM
+  columns the player view plots and the offensive possessions its impact bar reads.
+- `nba/team_strength_2026.json` (2026-11-05): `GET /v1/nba_stats/team_strength?season=2026` with the team view's `select` (all 30 teams).
+
+**Used by:** `test/nba/impactScatter.test.ts`.
+
+**To regenerate:** repeat the two reads (season filter, `limit=40`) and write each response's `data` array.
