@@ -4,6 +4,7 @@ import { LEAGUES, leaguePath, type League } from "../utils/league";
 import { isFeatureEnabled, isFeaturePublic } from "../utils/features";
 import { basketball } from "../basketball/config";
 import { carryAdminParams } from "../utils/adminView";
+import { isCupWindow } from "../utils/nbaCup";
 import SiteSearch from "./search/SiteSearch.svelte";
 
 const league: League = Astro.locals.league ?? 'cfb';
@@ -99,6 +100,7 @@ const switchHref = (lg: League) => carryAdminParams(leaguePath(lg, "/"), Astro.u
                             {isFeatureEnabled("bball-best-games", Astro.locals) && (<li><a href={lp("/best-games")} class="nav-link px-2 link-secondary">Best Games</a></li>)}
                             {(league === 'mbb' || league === 'wbb') && isFeatureEnabled("bball-bracketology", Astro.locals) && (<li><a href={lp("/bracketology")} class="nav-link px-2 link-secondary">Bracketology</a></li>)}
                             {(league === 'nba' || league === 'wnba') && isFeatureEnabled("bball-playoff-picture", Astro.locals) && (<li><a href={lp("/standings")} class="nav-link px-2 link-secondary">Standings</a></li>)}
+                            {league === 'nba' && isFeatureEnabled("bball-nba-cup", Astro.locals) && isCupWindow() && (<li><a href={lp("/cup")} class="nav-link px-2 link-secondary">NBA Cup</a></li>)}
                         </Fragment>
                     )}
                     <li class="nav-item dropdown">

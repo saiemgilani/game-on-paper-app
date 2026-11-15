@@ -244,6 +244,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // defense season shots with up to five of its players on or off the floor, by square or zone against the league (sdv-db's
     // shot_lineups, filtered in the route). Off: no read and the team page is today's, byte for byte.
     'bball-lineup-shotchart': 'preview',
+    // The NBA Cup (BB-G30): /nba/cup inside 'nba', linked from /nba/standings and, in the Cup window (November and
+    // December, utils/nbaCup.ts isCupWindow), from the NBA Header. sdv-db's daily Cup
+    // snapshots (cup_standings, cup_sims): the six groups in the Cup's tiebreak order, the wild-card race, the knockout
+    // on the CFP page's bracket component and the odds to advance and win. Off: the page is the site's 404, and the
+    // standings page and the Header have no link.
+    'bball-nba-cup': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

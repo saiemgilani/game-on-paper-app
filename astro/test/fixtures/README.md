@@ -910,3 +910,14 @@ match these rows cell for cell (the same 312 ids each, no differing value).
 
 **To regenerate:** re-read the two URLs above (Bearer key) and gzip `{ game_excitement, schedule }`. The test pins the
 312 games, the top game (401736289, GEI 11.18) and the 24 postseason games.
+## `nba-cup-2027.json.gz`
+The NBA Cup snapshot of 2026-11-03 (2026-27, five days into Group Play), as sdv-db's `nba_stats.cup_sims` and
+`cup_standings` routes serve it (BB-D30, sdv-db #188): `{snapshot, sims, standings}`, 30 rows each. `sims` is sdv-db's
+`tests/fixtures/season_products/nba_cup_sims_2026-11-03.parquet` (`nba_cup_sim(2027, as_of_date=2026-11-03)`, 10,000
+sims). `standings` is sdv-py `nba_cup_standings(2027, as_of_date=2026-11-03, cup_schedule=<nba_cup_schedule_2027.parquet>)`
+run offline the way sdv-db's `test_season_products.py` runs it (the release reads answered by `nba_schedule_2027/2026.parquet`
+and `nba_cup_overtime_2027.parquet`), which sdv-db pins equal to the live call. No edits.
+
+**Used by:** `test/nbaCup.test.ts`.
+
+**To regenerate:** rerun both producers on sdv-db main's fixtures, write the rows as JSON (dates as ISO strings) and gzip.
