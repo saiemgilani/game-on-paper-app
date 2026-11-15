@@ -25,7 +25,7 @@ const fakeAstro = (path: string) => ({ params: {}, url: new URL(`https://gameonp
 describe('the college leaders loader', () => {
     test('the latest date, then the 49-day read; never a season-wide read', async () => {
         const { prepareBasketballLeaders } = await import('../../src/routes/basketball/leaders');
-        const r: any = await prepareBasketballLeaders(fakeAstro('/mbb/leaders'), 'mbb');
+        const r: any = await prepareBasketballLeaders(fakeAstro('/mbb/leaders?season=2026'), 'mbb');
         expect(reads.map((x) => x.fn)).toEqual(['latest', 'games']);
         expect(reads[0].args.slice(0, 2)).toEqual([2026, 'mbb']);
         expect(since).toBe('2026-02-17'); // 2026-04-06 minus 48 days
@@ -36,7 +36,7 @@ describe('the college leaders loader', () => {
     });
     test("the loader's boards carry the season lines (Task 6 low): Most improved's season eFG is the season row's, not the read's", async () => {
         const { prepareBasketballLeaders } = await import('../../src/routes/basketball/leaders');
-        const r: any = await prepareBasketballLeaders(fakeAstro('/mbb/leaders'), 'mbb');
+        const r: any = await prepareBasketballLeaders(fakeAstro('/mbb/leaders?season=2026'), 'mbb');
         const top = r.boards[10].improved.rows[0];
         expect(top.seasonEfg).toBe(lineOf(seasonLinesFromRows(seasonPlayers(2026)).get(top.person_id)!).efgPct);
         // the same player ranked without the season lines: his "season" is then the 49-day read (the whole ranked list,
@@ -74,7 +74,7 @@ describe('the college leaders loader', () => {
         expect(new Set(all.map((r) => r.team_id)).size).toBe(339);
         expect(teamsOf(board({ activeByTeam: true }))).toBeGreaterThan(1);
         const { prepareBasketballLeaders } = await import('../../src/routes/basketball/leaders');
-        const r: any = await prepareBasketballLeaders(fakeAstro('/mbb/leaders'), 'mbb');
+        const r: any = await prepareBasketballLeaders(fakeAstro('/mbb/leaders?season=2026'), 'mbb');
         expect([r.activeByTeam, r.boards[5].efgPct.eligible]).toEqual([true, 2241]);
     });
     test('without options the boards are the NBA ones: every window, season eFG from the games', () => {
