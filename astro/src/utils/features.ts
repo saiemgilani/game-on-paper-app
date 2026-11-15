@@ -58,6 +58,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // its Header menu and league-switch entry), gated in middleware like 'nba'. Promote to 'on' when the design owner signs
     // off, in a one-line commit: the sitemap then lists /wbb, the Header's pages and the season's 363 team pages (D38).
     'wbb': 'preview',
+    // BB-G47's league hub at /nba, /wnba, /mbb and /wbb: today's games (the scoreboard's own read and cards, live first, then
+    // upcoming, then final) with the market line and win probability from `{league}.game_lines` (BB-D33) where it has the
+    // game, and an index of the league's pages. Off: the landing is today's (the NBA's featured team, the others' teams
+    // index), byte for byte, and no game_lines read is made.
+    'bball-hub': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

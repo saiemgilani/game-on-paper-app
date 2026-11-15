@@ -1,12 +1,17 @@
 ---
 import NbaHomeRoute from '../../components/routes/NbaHomeRoute.astro';
+import BasketballHubRoute from '../../components/routes/BasketballHubRoute.astro';
 import { prepareNbaHome } from '../../routes/nba/home';
+import { prepareBasketballHub } from '../../routes/basketball/hub';
 import { NBA_UNAVAILABLE } from '../../routes/nba/cache';
+import { isFeatureEnabled } from '../../utils/features';
 
-const r = await prepareNbaHome(Astro);
-if ('unavailable' in r) {
+// BB-G47: behind 'bball-hub' the landing is the league hub; off, it is the featured team's page, unchanged
+const hub = isFeatureEnabled('bball-hub', Astro.locals) ? await prepareBasketballHub(Astro, 'nba') : null;
+const r = hub ? null : await prepareNbaHome(Astro);
+if (r && 'unavailable' in r) {
     return NBA_UNAVAILABLE();
 }
 ---
 
-<NbaHomeRoute data={r} />
+{hub ? <BasketballHubRoute data={hub} /> : <NbaHomeRoute data={r!} />}
