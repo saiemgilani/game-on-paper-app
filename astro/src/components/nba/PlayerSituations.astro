@@ -1,0 +1,37 @@
+---
+// src/components/nba/PlayerSituations.astro
+// BB-G25, behind 'bball-situational': the player page's Situations section. The team page's control (SituationSelect)
+// over one table: the player's row in the situation, then his All row, with his team in the season. Every number is the
+// producer's (sdv-db situational_player: the possessions he started on the floor); a split under 10 possessions is not
+// read, so it says so.
+import SituationSelect from './SituationSelect.astro';
+import { PLAYER_MIN_POSS, SITUATION_COLS as COLS, teamRows, type PlayerSituationsTab } from '../../utils/situations';
+import { withParams } from '../../nba/links';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+
+interface Props { data: PlayerSituationsTab; season: number; current: number; basePath: string; playerName: string; teamTricode: string }
+const { data, season, current, basePath, playerName, teamTricode } = Astro.props;
+const label = seasonLabelFor(basketball(Astro.locals.league).league, season);
+const { situation, options, rows } = data;
+const href = (key: string) => `${withParams(basePath, { season: String(season), situation: key }, { season: String(current), situation: 'all' })}#situations`;
+const shown = rows ? teamRows(rows, situation) : [];
+const missing = shown.length === 1 && situation.key !== 'all';
+---
+<section id="situations" aria-label={`${playerName} ${label} situations`} class="mb-4">
+  <h2 class="h5">Situations</h2>
+  <SituationSelect options={options} situation={situation} href={href} />
+  <p class="small text-muted mb-2" id="situation-note">{situation.note} Each possession counts for the players on the floor when it starts.</p>
+  {rows === null ? (<p class="text-muted" id="situations-unavailable">The {label} situational splits are temporarily unavailable.</p>) : shown.length === 0 ? (<p class="text-muted" id="situations-empty">No {label} situational splits for {playerName} with {teamTricode} yet.</p>) : (
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0" id="situations-player">
+        <caption class="small text-muted">{playerName} with {teamTricode}, {label}{missing ? `: under ${PLAYER_MIN_POSS} possessions in the situation (${situation.label})` : ''}.</caption>
+        <thead><tr><th scope="col">Situation</th>{COLS.map((c) => (<th scope="col" class="text-end"><abbr title={c.hover}>{c.label}</abbr></th>))}</tr></thead>
+        <tbody>
+          {shown.map((r) => (
+            <tr><th scope="row" class="fw-normal text-nowrap">{r.family === 'all' ? 'All' : situation.label}</th>{COLS.map((c) => (<td class="numeral text-end">{c.cell(r)}</td>))}</tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</section>

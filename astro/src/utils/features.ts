@@ -105,6 +105,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // on and off the floor and one player's teammate pairs (sdv-db's player_on_off and player_wowy). Off: no read and the
     // team page is today's, byte for byte.
     'bball-on-off': 'preview',
+    // The Situations sections (BB-G25) on /<league>/team/[id] and /<league>/players/[id], inside each league's flag: one
+    // Situation select of URLs (All / Clutch / by period / Leading / Tied / Trailing / Home / Away / Transition / Half court /
+    // Garbage time out / vs top N) over the team, its players and its five-man units, or over the player's own rows (sdv-db's
+    // situational_team / _player / _lineup); and on /<league>/game/[id] for a final, a Situations panel over both teams' rows in
+    // the game (situational_team_games). Off: no read and the pages are today's, byte for byte.
+    'bball-situational': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
