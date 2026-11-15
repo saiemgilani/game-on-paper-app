@@ -35,6 +35,8 @@ const state = { nullDates: false };
 // BB-G25's player Situations section reads the Data API with 'bball-situational' on (preview): never from a test
 const psit = vi.hoisted(() => ({ calls: [] as unknown[][] }));
 vi.mock('../../src/resources/situational', async (orig) => ({ ...(await orig<typeof import('../../src/resources/situational')>()), retrievePlayerSituational: async (...a: unknown[]) => { psit.calls.push(a); return []; } }));
+// BB-G12's nearby ranks read the Data API with 'bball-rank-neighbors' on (preview): never from a test
+vi.mock('../../src/resources/bballNeighbors', async (orig) => ({ ...(await orig<typeof import('../../src/resources/bballNeighbors')>()), retrieveTeamRankRows: async () => [] }));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveLeagueContextRows: async () => [

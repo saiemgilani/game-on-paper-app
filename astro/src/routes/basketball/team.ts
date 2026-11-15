@@ -27,6 +27,11 @@ import { retrieveTeamGameFlow, type FlowRow } from '../../resources/bballGameLog
 import { retrieveScheduleContext, type ScheduleContextReads } from '../../resources/bballScheduleContext';
 import { scheduleRows } from '../../utils/teamSeason';
 import { bbGameSetOf, isSummedSet, type BbGameSet } from '../../utils/bballGameSet';
+import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
+import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
+import { retrieveTeamRankRows } from '../../resources/bballNeighbors';
+import { bballTeamNeighborLists } from '../../utils/bballNeighbors';
+import type { NeighborList } from '../../utils/neighbors';
 import { isFeatureEnabled } from '../../utils/features';
 import { parseBasis, parseGate, parseLineupSort, parseUnit, playerNames, playerPages, sortUnits, unitLabels, type LineupsTab } from '../../utils/lineups';
 import { parseWowy, wowyLines, type OnOffTab } from '../../utils/onOff';
@@ -80,6 +85,8 @@ export interface BasketballTeamParams {
     teamFlow?: Map<string, FlowRow> | null;
     /** BB-G53, only with 'bball-schedule-context' on too: the lines, opponent strength and player box; each null when its read failed */
     scheduleContext?: ScheduleContextReads;
+    /** BB-G12, only with 'bball-rank-neighbors' on: the nearby-rank lists; null when the read failed (the section says so) */
+    neighbors?: NeighborList[] | null;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -149,6 +156,8 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const poeOn = isFeatureEnabled('bball-poe', Astro.locals); // BB-G15
     const stylesOn = isFeatureEnabled('bball-play-styles', Astro.locals) && league === 'nba'; // BB-G17: only the NBA has team styles
     const zonesOn = isFeatureEnabled('bball-shot-profile', Astro.locals); // BB-G51
+    const nearby = isFeatureEnabled('bball-rank-neighbors', Astro.locals); // BB-G12, started with the block's reads
+    const neighborsP = nearby ? readTeamNeighbors(league, season, teamId, resolved.q) : undefined;
     const [seasonBlock, lineups, onOff, situations, poe, shotZones, playStyles] = await Promise.all([
         flagged ? readSeasonBlock(league, season, teamId) : undefined,
         lineupsOn ? readLineups(Astro, league, season, teamId, rows) : undefined,
@@ -160,6 +169,8 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     ]);
     // the block and the tabs are decorative: a failed read renders the rest of the page, never cached
     if (seasonBlock === null || lineups?.units === null || onOff?.players === null || situations?.reads === null || poe === null || shotZones === null || playStyles === null) uncacheable(Astro);
+    const neighbors = await neighborsP;
+    if (neighbors === null) uncacheable(Astro);
     // BB-G14 rides on the block's reads; a summed set (wins, losses, last N, conference) adds the per-game possessions reads. Off,
     // ?games= is never read
     const gameSet = flagged && isFeatureEnabled('bball-game-set', Astro.locals) ? bbGameSetOf(Astro.url.searchParams.get('games')) : undefined;
@@ -173,7 +184,7 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const scheduleContext = seasonBlock && seasonBlock.games.length > 0 && isFeatureEnabled('bball-schedule-context', Astro.locals)
         ? await retrieveScheduleContext(league, season, espnIdOf(league, season, teamId)) : undefined;
     if (scheduleContext && (!scheduleContext.lines || !scheduleContext.strength || !scheduleContext.box || !scheduleContext.proj)) uncacheable(Astro);
-    const block = { ...(flagged ? { seasonBlock, ...(gameSet ? { gameSet } : {}), ...(gameSetCounts !== undefined ? { gameSetCounts } : {}), ...(teamFlow !== undefined ? { teamFlow } : {}), ...(scheduleContext ? { scheduleContext } : {}), ...(gameSet ? { gameSet } : {}), ...(gameSetCounts !== undefined ? { gameSetCounts } : {}), ...(teamFlow !== undefined ? { teamFlow } : {}) } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}), ...(situationsOn ? { situations } : {}), ...(poeOn ? { poe } : {}), ...(zonesOn ? { shotZones } : {}), ...(stylesOn ? { playStyles } : {}) };
+    const block = { ...(flagged ? { seasonBlock, ...(gameSet ? { gameSet } : {}), ...(gameSetCounts !== undefined ? { gameSetCounts } : {}), ...(teamFlow !== undefined ? { teamFlow } : {}), ...(scheduleContext ? { scheduleContext } : {}) } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}), ...(situationsOn ? { situations } : {}), ...(poeOn ? { poe } : {}), ...(zonesOn ? { shotZones } : {}), ...(stylesOn ? { playStyles } : {}), ...(nearby ? { neighbors } : {}) };
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);
@@ -209,6 +220,16 @@ async function readTeamFlow(league: BasketballLeague, season: number, teamId: nu
         return await retrieveTeamGameFlow(league, season, teamId, espnId, scheduleRows(block.games, block.gameRates, espnId));
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} game flow for team ${teamId}: ${e}`);
+        return null;
+    }
+}
+
+/** BB-G12's lists from the season's one team_strength read; null when it failed. */
+async function readTeamNeighbors(league: BasketballLeague, season: number, teamId: number, q: string): Promise<NeighborList[] | null> {
+    try {
+        return bballTeamNeighborLists(await retrieveTeamRankRows(league, season), teamId, league, season, q);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} nearby ranks for team ${teamId}: ${e}, ${e?.stack}`);
         return null;
     }
 }

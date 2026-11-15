@@ -340,6 +340,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // (nba, wnba, mbb, wbb), the same change (window eFG% minus the season eFG%) ranked from the largest drop, and the
     // change's definition on the page. Off: the boards, the island's props and the page are today's.
     'bball-rolling-movers': 'preview',
+    // Nearby ranks on the basketball team pages (BB-G12, football's 'rank-neighbors'), inside each league's flag: for each
+    // of twelve measures, the teams ranked within five places, the page's own row marked, by team_strength's ranks (all four
+    // leagues). Player lists wait for a producer-ranked player table with a minimum. Off: no read, the page is today's.
+    'bball-rank-neighbors': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

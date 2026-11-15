@@ -26,6 +26,8 @@ vi.mock('../../src/resources/lineupShots', async () => {
         retrieveLineupCrosswalk: async () => [],
     };
 });
+// BB-G12's nearby ranks read the Data API with 'bball-rank-neighbors' on (preview): never from a test
+vi.mock('../../src/resources/bballNeighbors', async (orig) => ({ ...(await orig<typeof import('../../src/resources/bballNeighbors')>()), retrieveTeamRankRows: async () => [] }));
 // BB-G5's season block reads the Data API with 'bball-team-season' on (preview): never from a test
 vi.mock('../../src/resources/teamSeason', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/teamSeason')>()),
