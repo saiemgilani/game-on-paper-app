@@ -246,6 +246,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // {lg}.game_team_expected row a team. A season not built, or no cells, hides the expected columns with a note. Off: no
     // read, the game page is today's, byte for byte. Hidden beside `?garbage=out`.
     'bball-situational-box': 'preview',
+    // BB-G34's player box views on /<league>/game/[id], live or final: Basic / Advanced / Shooting / Vs average, each cell
+    // shaded against everyone who played. Advanced's possession columns and Shooting come from sdv-py's BB-D31 player
+    // splits (the processor only); Vs average reads sdv-db player_season_stats. Also the box's visual fixes (no wrapped
+    // made-attempted cells, a visible bench rule, short names on phones, the teams stacked rather than overflowing two
+    // up). Off: no read, the game page is today's, byte for byte.
+    'bball-player-box-views': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

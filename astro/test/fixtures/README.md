@@ -1547,3 +1547,15 @@ BB-G33's expected points on a Data API final (`'bball-situational-box'`): `GET /
 
 **Used by:** `test/situationalBox.test.ts`. **To regenerate:** rerun the three reads (season filter, one capped read each) and write
 `{league: data}` with `json.dumps(..., separators=(",", ":"))`.
+## `player-box-views-{nba-401585607,wnba-401736325,mbb-401820775,wbb-401805076}.json.gz`
+
+BB-G34's player box views (`'bball-player-box-views'`): the same four games as `team-grid-*`, whose payloads carry BB-D31's
+player splits. Each file is `{league, espnGameId, season, source, player_season_stats: {home, away}}`, the rows trimmed to
+`athlete_id, stat_name, value`:
+
+- nba 2024 (ORL 19, TOR 28) and wnba 2025 (ATL 20, SEA 14): the Data API's `/<league>/player_season_stats?season=<s>&
+  team_id=<id>&select=athlete_id,stat_name,value&limit=5000`, read 2026-11-10.
+- mbb 2026 and wbb 2026: the BB-G35 game-leaders capture of the same game (read 2026-11-10). The wbb rows are career lines
+  (82 to 107 games played), which the season guard leaves out; the test pins that.
+
+**Used by:** `test/playerBoxViews.test.ts`.

@@ -1,0 +1,79 @@
+---
+// BB-G34, behind 'bball-player-box-views': the Players panel as four views (Basic / Advanced / Shooting / Vs average). Each
+// has both teams one under the other (two to a row overflowed every view at xl and xxl),
+// starters then bench (a rule between) then DNPs. A cell is shaded by its rank among everyone who played in the game. The views switch with radio buttons and CSS (:has), so no script; without :has the
+// Basic view shows and stays. Shooting needs BB-D31's player splits (the processor only); Vs average needs the season read.
+import type { NbaGame, NbaSide } from '../../../resources/nbaGame';
+import type { PlayerSeasonRate } from '../../../resources/playerSeasonRates';
+import { orderPlayers } from '../../../nba/data/game';
+import { cleanAbbreviation } from '../../../utils/misc';
+import { PRO_LEAGUES, type BasketballLeague } from '../../../utils/league';
+import { VIEW_LABEL, shader, viewColumns, type BoxCtx, type PlayerBoxView } from '../../../utils/playerBoxViews';
+
+interface Props {
+    game: NbaGame; league: BasketballLeague
+    /** absent: no Vs average view; null: the read failed (the view says so) */
+    playerSeason?: PlayerSeasonRate[] | null
+}
+const { game, league, playerSeason } = Astro.props;
+const sides = [game.away, game.home];
+const split = sides.some((s) => s.players.some((p) => p.split));
+const opts = { pro: PRO_LEAGUES.includes(league), split };
+const views: PlayerBoxView[] = ['basic', 'advanced', ...(split ? ['shooting' as const] : []), ...(playerSeason !== undefined ? ['vsavg' as const] : [])];
+const avgBy = new Map((playerSeason ?? []).map((a) => [a.athleteId, a]));
+const ctx = (p: NbaSide['players'][number]): BoxCtx => ({ p, avg: avgBy.get(p.athlete_id) });
+const pool = sides.flatMap((s) => s.players.filter((p) => !p.did_not_play).map(ctx));
+const live = !game.status.completed;
+const note: Record<PlayerBoxView, string | null> = {
+    basic: null,
+    advanced: split
+        ? 'Poss is an estimate: the team\'s possessions counted from the plays, times the player\'s share of its minutes. The /100 rates are per 100 of those.'
+        : 'The possession columns are counted from the play-by-play, so they show on live games and on finals the nightly data has not reached.',
+    shooting: 'Rim: twos under 4 ft. Ast%: the share of the makes that were assisted. Live TOV: a turnover credited as a steal. Counted from the play-by-play.',
+    vsavg: playerSeason === null ? 'Season averages are unavailable right now.'
+        : `Exp: the player's season points per minute times their minutes${live ? ' so far' : ''}. A player with no season line yet shows a dash.`,
+};
+const id = (side: 'away' | 'home', v: PlayerBoxView) => (v === 'basic' ? `box-${side}` : `box-${side}-${v}`);
+---
+<div id="player-box-views">
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+    <div class="btn-group btn-group-sm" role="group" aria-label="Player box view">
+      {views.map((v) => (<Fragment><input type="radio" class="btn-check" name="pbv" id={`pbv-${v}`} value={v} autocomplete="off" checked={v === 'basic'} /><label class="btn btn-outline-secondary" for={`pbv-${v}`}>{VIEW_LABEL[v]}</label></Fragment>))}
+    </div>
+    <span class="small text-muted">Shading: the better half of everyone who played in this game, darker is better.</span>
+  </div>
+  {views.map((v) => {
+    const cols = viewColumns(v, opts);
+    const shades = cols.map((c) => shader(c, pool));
+    return (
+      <div class="pbv-view" data-view={v}>
+        {note[v] && <p class="small text-muted mb-2">{note[v]}</p>}
+        <div class="row">
+          {(['away', 'home'] as const).map((ha) => {
+            const side = game[ha];
+            const abbr = cleanAbbreviation(side.team);
+            const { starters, bench, dnp } = orderPlayers(side.players);
+            return (
+              <div class="col-12"><div class="table-responsive">
+                <table class="table table-sm numeral table-fix-first-col pbv-table" id={id(ha, v)} aria-label={`${abbr} player box score${v === 'basic' ? '' : `, ${VIEW_LABEL[v]}`}`}>
+                  <thead><tr><th scope="col" class="text-start">{abbr}</th>{cols.map((c) => <th scope="col" class="text-end" title={c.title}>{c.label}</th>)}</tr></thead>
+                  <tbody>
+                    {[...starters, ...bench].map((p, i) => (
+                      <tr class:list={[{ 'pbv-bench': i === starters.length && i > 0 }]}>
+                        <th scope="row" class="text-start fw-normal"><span class="pbv-full">{p.name}</span><span class="pbv-short">{p.short_name ?? p.name}</span>{p.position ? <span class="text-muted"> {p.position}</span> : null}{p.ejected ? <span class="text-muted" title="Ejected"> EJ</span> : null}</th>
+                        {cols.map((c, j) => { const s = shades[j](ctx(p)); return <td class:list={['text-end', { 'pbv-shade': s != null }]} style={s != null ? `--pbv-s:${s}` : undefined}>{c.text(ctx(p))}</td>; })}
+                      </tr>
+                    ))}
+                    {dnp.map((p) => (
+                      <tr class="text-muted"><th scope="row" class="text-start fw-normal"><span class="pbv-full">{p.name}</span><span class="pbv-short">{p.short_name ?? p.name}</span></th><td colspan={cols.length} class="text-start small">{p.reason ?? 'DNP'}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div></div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  })}
+</div>

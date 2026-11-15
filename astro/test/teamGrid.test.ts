@@ -249,7 +249,7 @@ describe('prepareBasketballGame', () => {
         p.header = header;
         return p;
     };
-    const flags = { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-garbage-time': false };
+    const flags = { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-garbage-time': false, 'bball-player-box-views': false };
     test.each(LEAGUES)('%s: a live game reads the season once (the season and the ESPN ids) and passes it on', async (lg) => {
         const p = live(lg);
         sched.mockResolvedValueOnce(null); espn.mockResolvedValueOnce({ page: { gameId: p.gameId, gamepackageJSON: { header: p.header } }, regressed: false, fetchFailed: false }); proc.mockResolvedValueOnce(p);
@@ -271,7 +271,7 @@ describe('prepareBasketballGame', () => {
     test('flag off: a live game reads nothing and carries no season', async () => {
         const p = live('nba');
         sched.mockResolvedValueOnce(null); espn.mockResolvedValueOnce({ page: { gameId: p.gameId, gamepackageJSON: { header: p.header } }, regressed: false, fetchFailed: false }); proc.mockResolvedValueOnce(p);
-        const r: any = await prepareBasketballGame(fakeAstro('nba', String(p.gameId), { preview: true, flagOverrides: { ...flags, 'bball-team-grid': false } }).astro, 'nba');
+        const r: any = await prepareBasketballGame(fakeAstro('nba', String(p.gameId), { preview: true, flagOverrides: { ...flags, 'bball-team-grid': false, 'bball-player-box-views': false } }).astro, 'nba');
         expect(api.calls).toEqual([]); expect(r).not.toHaveProperty('season');
     });
     test('a failed read: season null, the page uncacheable', async () => {
