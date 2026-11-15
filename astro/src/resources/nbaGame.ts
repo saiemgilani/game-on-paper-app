@@ -55,7 +55,7 @@ export interface NbaGame {
     /** regulation periods (4 quarters, 2 halves), from the game's own data, else its league's season rule */
     regulation: number
     periodKind: PeriodKind
-    /** `homeTeamSpread` is a real line only when `gameSpreadAvailable`; otherwise it is the 2.5 default and the UI hides it. */
+    /** `homeTeamSpread` is a real line only when `gameSpreadAvailable`; otherwise it is null (older sdv-py pins: a 2.5 placeholder) and the UI hides it. */
     /** null when the source has no win-probability rows to take a prior from; nothing is invented. */
     prior: { homeWinProb: number; source: PriorSource; homeTeamSpread: number | null; gameSpreadAvailable: boolean } | null
     home: NbaSide
