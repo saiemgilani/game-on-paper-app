@@ -27,6 +27,8 @@ import { hasCurrentImpact, retrieveCurrentImpact, type CurrentImpactRow } from '
 import { hasEpv, retrievePlayerEpv, retrievePlayerWar, type EpvPlayerSeasonRow, type PlayerWarRow } from '../../resources/playerWar';
 import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { retrieveNcaaPlayerId, retrievePlayerShotZones, retrieveSeasonFt, retrieveTeamPlayerShotZones, type SeasonFt, type ShotZoneRow } from '../../resources/shotZones';
+import { retrievePlayerGameLog, type PlayerLogReads } from '../../resources/bballGameLogs';
+import { bbGameSetOf, type BbGameSet } from '../../utils/bballGameSet';
 import { isFeatureEnabled } from '../../utils/features';
 import { impactShown } from '../../utils/playerImpact';
 import { collegePlayerRows } from '../../utils/shotProfile';
@@ -87,6 +89,8 @@ export interface BasketballPlayerParams {
     currentImpact?: { seasonRows: PlayerImpactRow[] | null; current: CurrentImpactRow[] | null };
     /** BB-G14, only with 'bball-game-set' on: the `?games=` set his game-set line shows (no extra read) */
     gameSet?: BbGameSet;
+    /** BB-G50, only with 'bball-game-logs' on and his per-game rows read: the log's reads; null when the box read failed */
+    gameLog?: PlayerLogReads | null;
 }
 
 /** BB-G19's rows, each null when its read failed. */
@@ -218,6 +222,18 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
     if (zones.zones === null) degraded = true;
     const currentImpact = seasonImpactP && currentP ? { currentImpact: { seasonRows: await seasonImpactP, current: await currentP } } : {};
     if (currentImpact.currentImpact && (currentImpact.currentImpact.seasonRows === null || currentImpact.currentImpact.current === null)) degraded = true;
+    // BB-G50: read only once the page will render and his games are known (the log's rows); off, nothing is read
+    let gameLog: PlayerLogReads | null | undefined;
+    if (games && isFeatureEnabled('bball-game-logs', Astro.locals)) {
+        try {
+            gameLog = await retrievePlayerGameLog(league, season, personId);
+            if (gameLog.degraded) degraded = true;
+        } catch (e) {
+            gameLog = null;
+            degraded = true;
+            console.error(`player ${personId}: the game log read failed: ${e}`);
+        }
+    }
 
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
@@ -255,6 +271,7 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         ...currentImpact,
         // off: ?games= is never read and the params are BB-G5's
         ...(isFeatureEnabled('bball-game-set', Astro.locals) ? { gameSet: bbGameSetOf(Astro.url.searchParams.get('games')) } : {}),
+        ...(gameLog !== undefined ? { gameLog } : {}),
     };
 }
 

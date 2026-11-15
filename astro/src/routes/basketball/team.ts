@@ -25,6 +25,8 @@ import { retrieveSituational } from '../../resources/situational';
 import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
 import { retrieveTeamShotZones, type TeamZoneReads } from '../../resources/shotZones';
 import { retrieveGameSetCounts, retrieveTeamSeason, type GameSetCountReads, type TeamSeasonReads } from '../../resources/teamSeason';
+import { retrieveTeamGameFlow, type FlowRow } from '../../resources/bballGameLogs';
+import { scheduleRows } from '../../utils/teamSeason';
 import { bbGameSetOf, isSummedSet, type BbGameSet } from '../../utils/bballGameSet';
 import { isFeatureEnabled } from '../../utils/features';
 import { parseBasis, parseGate, parseLineupSort, parseUnit, playerNames, playerPages, sortUnits, unitLabels, type LineupsTab } from '../../utils/lineups';
@@ -75,6 +77,8 @@ export interface BasketballTeamParams {
     gameSet?: BbGameSet;
     /** BB-G14, a summed set only: its per-game possessions reads; null when one failed (the line says so) */
     gameSetCounts?: GameSetCountReads | null;
+    /** BB-G50, only with 'bball-game-logs' on too: each game's game_flow row by ESPN game id; null when that read failed */
+    teamFlow?: Map<string, FlowRow> | null;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -160,7 +164,10 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const gameSet = flagged && isFeatureEnabled('bball-game-set', Astro.locals) ? bbGameSetOf(Astro.url.searchParams.get('games')) : undefined;
     const gameSetCounts = gameSet && seasonBlock && isSummedSet(gameSet) ? await readGameSetCounts(league, season, teamId, gameSet === 'conference') : undefined;
     if (gameSetCounts === null) uncacheable(Astro);
-    const block = { ...(flagged ? { seasonBlock, ...(gameSet ? { gameSet } : {}), ...(gameSetCounts !== undefined ? { gameSetCounts } : {}) } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}), ...(situationsOn ? { situations } : {}), ...(poeOn ? { poe } : {}), ...(zonesOn ? { shotZones } : {}), ...(stylesOn ? { playStyles } : {}) };
+    // BB-G50 rides on the block's schedule and rates, plus one game_flow read; off, nothing more is read
+    const teamFlow = seasonBlock && isFeatureEnabled('bball-game-logs', Astro.locals) ? await readTeamFlow(league, season, teamId, seasonBlock) : undefined;
+    if (teamFlow === null) uncacheable(Astro);
+    const block = { ...(flagged ? { seasonBlock, ...(gameSet ? { gameSet } : {}), ...(gameSetCounts !== undefined ? { gameSetCounts } : {}), ...(teamFlow !== undefined ? { teamFlow } : {}) } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}), ...(situationsOn ? { situations } : {}), ...(poeOn ? { poe } : {}), ...(zonesOn ? { shotZones } : {}), ...(stylesOn ? { playStyles } : {}) };
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);
@@ -185,6 +192,19 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
         ...(team ? {} : { noPlayers: true as const }),
         ...block,
     };
+}
+
+const espnIdOf = (league: BasketballLeague, season: number, teamId: number) => BASKETBALL[league].teams.inSeason(teamId, season)?.espn_id ?? (BASKETBALL[league].currentMembers ? teamId : 0);
+
+/** The team game log's game_flow rows (BB-G50); null when the read failed (the log leaves its flow columns out). */
+async function readTeamFlow(league: BasketballLeague, season: number, teamId: number, block: TeamSeasonReads): Promise<Map<string, FlowRow> | null> {
+    const espnId = espnIdOf(league, season, teamId);
+    try {
+        return await retrieveTeamGameFlow(league, season, teamId, espnId, scheduleRows(block.games, block.gameRates, espnId));
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} game flow for team ${teamId}: ${e}`);
+        return null;
+    }
 }
 
 /** The season block's reads (BB-G5); null when any failed. The NBA/WNBA season tables are keyed by the stats id, the games by ESPN's. */
@@ -289,8 +309,6 @@ async function readTeamShotZones(league: BasketballLeague, season: number, teamI
         console.error(`ERROR while loading the ${league} ${season} shot zones for team ${teamId}: ${e}, ${e?.stack}`);
     }
 }
-
-const espnIdOf = (league: BasketballLeague, season: number, teamId: number) => BASKETBALL[league].teams.inSeason(teamId, season)?.espn_id ?? (BASKETBALL[league].currentMembers ? teamId : 0);
 
 /** BB-G14's summed-set reads (the per-game possessions rows and their game-id map); null when any failed (the line says so). */
 async function readGameSetCounts(league: BasketballLeague, season: number, teamId: number, conference: boolean): Promise<GameSetCountReads | null> {
