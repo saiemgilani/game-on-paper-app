@@ -153,6 +153,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // The metric registry (roadmap F13; resources/metricRegistry.ts, generated from sdv-py) on the chart builder
+    // (/charts/builder and the /nfl twin): axis and select titles take the registry's label first (Rushes/Drive,
+    // Off Pass Rate, ...) and start_position flips as lower-is-better, as the producer ranks it. Off: today's
+    // titles and flips, byte for byte (test/metricTitles.test.ts holds them to a fixture cut from main).
+    'metric-registry': 'preview',
     // The Team Stats panel on the season team page (/year/N/team/<id> and the /nfl twin): the team's
     // EPA/Play, Success Rate and points over a subset of its games (?games=conf|nofcs|home|away|wins|
     // losses|last4), ranked against the same subset of every FBS (NFL) team's games, or the conference's
