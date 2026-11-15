@@ -7,6 +7,8 @@ import { beforeAll, describe, expect, test, vi } from 'vitest';
 vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
 // BB-G6's Impact panel reads the Data API with 'bball-impact' on (preview): never from a test
 vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => [] }));
+// BB-G7's On/Off section reads the Data API with 'bball-player-on-off' on (preview): never from a test
+vi.mock('../../src/resources/playerOnOff', () => ({ retrievePlayerOnOff: async () => ({ teams: [], pairs: [] }) }));
 import { readFileSync } from 'node:fs';
 import { text } from '../helpers/tables';
 

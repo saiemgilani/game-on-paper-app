@@ -28,6 +28,8 @@ const fx = (path: string) => JSON.parse(readFileSync(new URL(`./fixtures/${path}
 
 const impact = vi.hoisted(() => vi.fn());
 vi.mock('../src/resources/playerImpact', () => ({ retrievePlayerImpact: (...a: unknown[]) => impact(...a) }));
+// BB-G7's On/Off section reads the Data API with 'bball-player-on-off' on (preview): never from a test
+vi.mock('../src/resources/playerOnOff', () => ({ retrievePlayerOnOff: async () => ({ teams: [], pairs: [] }) }));
 const sdv = vi.hoisted(() => ({ rows: vi.fn(), from: vi.fn() }));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
@@ -65,7 +67,7 @@ import { COLLEGE_IMPACT, impactPanel, impactShown } from '../src/utils/playerImp
 import { signed1 } from '../src/utils/shotQuality';
 
 const PID = Number(Object.keys(byPlayer)[0]); // 1629008, Michael Porter Jr., a Net in seasonPlayerRows()
-const OFF = { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false };
+const OFF = { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false, 'bball-player-on-off': false };
 const locals = (on: boolean) => ({ preview: true, flagOverrides: { ...OFF, 'bball-impact': on } });
 const [NBA] = PI.nba;
 const top = (rows: Record<string, any>[]) => [...rows].sort((a, b) => b.min - a.min)[0];
