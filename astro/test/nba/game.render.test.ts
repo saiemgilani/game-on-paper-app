@@ -141,8 +141,7 @@ describe('/nba/game/[id] render', () => {
     });
     test('unavailable is a 503 with no-store; notFound rewrites to /404', async () => {
         prep.mockResolvedValueOnce({ unavailable: true });
-        const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/nba/game/401766458'), params: { id: '401766458' }, locals: { preview: true, league: 'nba', flagOverrides: { 'bball-pregame-projection': false } } as unknown as App.Locals });
-        const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/nba/game/401766458'), params: { id: '401766458' }, locals: { preview: true, league: 'nba', flagOverrides: { 'bball-team-grid': false, 'bball-player-box-views': false } } as App.Locals });
+        const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/nba/game/401766458'), params: { id: '401766458' }, locals: { preview: true, league: 'nba', flagOverrides: { 'bball-pregame-projection': false, 'bball-team-grid': false, 'bball-player-box-views': false } } as unknown as App.Locals });
         expect(res.status).toBe(503);
         expect(res.headers.get('Cache-Control')).toBe('no-store');
         const src = readFileSync(new URL('../../src/pages/nba/game/[id].astro', import.meta.url)).toString();

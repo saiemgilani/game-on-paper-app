@@ -41,6 +41,7 @@ import { retrieveGameInfo, pregameInfo } from '../src/resources/gameInfo';
 import { fromDataApi, type NbaGame } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { PREV_SEASON_UNDER, outFor, prevProfileFor, easternDate, injuriesFromSnapshot, injuriesFromSummary, injuryText, latestSnapshot, leagueAverage, officialsFromSummary, officialsFromTable, profileFor, shiftDate, type GameInfoReads, type OfficialSeason } from '../src/utils/gameInfo';
 
 const gameApi = () => JSON.parse(readFileSync(new URL('./fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
@@ -190,7 +191,7 @@ describe('retrieveGameInfo', () => {
 
 function fakeAstro(locals: Record<string, unknown>) {
     const cache: unknown[] = []; const headers = new Headers();
-    const off = { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-garbage-time': false };
+    const off = bballOnly('bball-game-info');
     return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { flagOverrides: off, ...locals }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 
@@ -223,7 +224,7 @@ describe('prepareBasketballGame with the flag', () => {
     });
     test('on, beside a final panel whose read failed: that panel\'s no-store is kept', async () => {
         ingested(); answer();
-        const { astro, cache } = fakeAstro({ preview: true, flagOverrides: { 'bball-impact-box': false, 'bball-garbage-time': false, 'bball-game-flow': true } });
+        const { astro, cache } = fakeAstro({ preview: true, flagOverrides: bballOnly('bball-game-info', 'bball-game-flow') });
         const r = await prepareBasketballGame(astro, 'nba'); // game_flow is not in the mock's answer: its read fails
         expect('flow' in r && r.flow).toBeNull();
         expect('info' in r && r.info).not.toBeNull();
@@ -352,7 +353,7 @@ describe('NbaPreGamePage', () => {
     test('on: ESPN\'s injury report and "no officials yet" from the summary the page already reads', async () => {
         espn.summary.mockResolvedValue(F.summary['nba-401909960']);
         api.answer = { official_seasons: [] };
-        const html = await container.renderToString(NbaPreGamePage, { props: { espnGame: espnPage(F.summary['nba-401909960']) }, locals: { league: 'nba', preview: true } as App.Locals });
+        const html = await container.renderToString(NbaPreGamePage, { props: { espnGame: espnPage(F.summary['nba-401909960']) }, locals: { league: 'nba', preview: true, flagOverrides: bballOnly('bball-game-info') } as App.Locals });
         expect(html).toContain('id="info"');
         expect(html).toContain('id="officials-none"');
         expect(html).toContain('id="injury-report"');
