@@ -955,6 +955,20 @@ export const SDV_TEAM_METRIC_FORMATTING_VALUES: Record<string, Record<string, nu
     }
 };
 
+/**
+ * Leaderboard metric key -> glossary term (utils/metricHelp.ts), first match wins. Covers the team keys
+ * (success_off, EPAplay_margin, ...) and the player keys (success, EPAplay). Delete once F13's metric
+ * registry carries a glossary_slug per metric.
+ */
+export const METRIC_GLOSSARY_TERMS: [RegExp, string][] = [
+    [/^success(_|$)/, "Successful play / Success Rate"],
+    [/^EPAplay(_|$)/, "EPA per play (EPA/play)"],
+    [/adj_.*epa|^net_adj_epa$/, "Adjusted EPA/Play"],
+    [/^havoc(_|$)/, "Havoc Rate"],
+    [/^explosive/, "Explosive play / Explosiveness"],
+    [/^TEPA$/, "Expected points added (EPA)"],
+];
+
 export const SDV_TEAM_METRIC_HOVER_TEXT: Record<string, Record<string, string>> = {
     "tendencies": {
         "pass_oe_off": "Pass rate over expected, in percentage points: actual pass rate minus the model's expected pass rate for the same situations.",

@@ -24,6 +24,9 @@ const JPEG = process.env.VISUAL_CHECK_FORMAT === 'jpeg';
 const THUMBS = Boolean(process.env.VISUAL_CHECK_THUMBS);
 const shotOpts = JPEG ? { type: 'jpeg', quality: 80 } : {};
 const ext = JPEG ? 'jpg' : 'png';
+// the fallback height (CSS px) for a page too tall to encode: 16,000 x deviceScaleFactor 2
+// stays under the encoder's 65,535 px limit
+const MAX_SHOT_HEIGHT = 16_000;
 // Collapsed panels (`.collapse` blocks behind a [show/hide] toggle) hide their
 // content from a full-page shot. VISUAL_CHECK_EXPAND lists the collapse ids to
 // open before the full-page capture, comma-separated; the default opens a game
@@ -89,7 +92,16 @@ try {
           await page.waitForTimeout(300); // let lazy islands inside the panel paint
         }
         const stem = join(OUT, `${slug(route)}-${device.name}-${colorScheme}`);
-        await page.screenshot({ ...shotOpts, path: `${stem}.${ext}`, fullPage: true });
+        try {
+          await page.screenshot({ ...shotOpts, path: `${stem}.${ext}`, fullPage: true });
+        } catch (e) {
+          // Chrome cannot encode an image past 65,535 px a side (a long game page at 2x does it):
+          // shoot the top MAX_SHOT_HEIGHT CSS px of the full page instead of losing the run
+          if (!/encode screenshot/i.test(e.message)) throw e;
+          const { width } = page.viewportSize();
+          await page.screenshot({ ...shotOpts, path: `${stem}.${ext}`, fullPage: true, clip: { x: 0, y: 0, width, height: MAX_SHOT_HEIGHT } });
+          console.warn(`${where}: page too tall for one image, kept the top ${MAX_SHOT_HEIGHT}px`);
+        }
         shots.push(`${stem}.${ext}`);
         if (THUMBS) {
           await page.evaluate(() => window.scrollTo(0, 0));

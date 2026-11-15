@@ -13,6 +13,12 @@ import { beforeAll, describe, expect, test, vi } from 'vitest';
 // locals.league so the shared component renders NFL links and copy.
 const fx = JSON.parse(readFileSync(new URL('./fixtures/nfl-summaries-2025.json', import.meta.url)).toString());
 
+// No live Data API (test/helpers/networkGuard.ts): the reads left unmocked, the /v1/meta
+// ingest stamp among them, get an empty answer and stay on their unversioned keys.
+vi.mock('../src/utils/telemetry', async (orig) => ({
+    ...(await orig<typeof import('../src/utils/telemetry')>()),
+    wrappedFetch: async () => new Response('{"data":[]}', { status: 200 }),
+}));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     retrieveTeamSummaries: async () => fx.team_summaries,
@@ -34,7 +40,7 @@ describe('explicit /nfl pages', () => {
         // pages with no league: admin/api/health/404/sitemap/glossary/changelog,
         // plus the standing explainer pages, which sit alongside the glossary
         // and describe the site rather than a league's slate
-        const leagueless = /^(admin|api|changelog|data-sources|glossary|health|methodology|pricing|404|sitemap|nfl|nba|wnba|mbb|wbb)(\/|\.)/;
+        const leagueless = /^(about|admin|api|changelog|data-sources|glossary|health|methodology|pricing|404|sitemap|nfl|nba|wnba|mbb|wbb)(\/|\.)/;
         // CFB-only, and not the same thing as leagueless: this page IS league
         // -specific, it just has no NFL counterpart -- the AP and Coaches polls
         // have no professional equivalent, and the CFP projection has no NFL
