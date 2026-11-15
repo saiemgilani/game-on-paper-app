@@ -1,0 +1,20 @@
+{
+ "season": 2026,
+ "week": 10,
+ "snapshot": "20261106T000000Z",
+ "rendered": "2026-11-05",
+ "teams": [
+  {
+   "team_id": 1,
+   "team": "Fixture State",
+   "opponent_id": 2,
+   "opponent": "Fixture Tech"
+  },
+  {
+   "team_id": 2,
+   "team": "Fixture Tech",
+   "opponent_id": null,
+   "opponent": null
+  }
+ ]
+}

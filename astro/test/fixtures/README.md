@@ -176,6 +176,44 @@ The college twin of `nfl-summaries-2025.json`.
 board from these rows and reconciles each season row against the parts it is
 summed from.
 
+## `coach-situations.json`
+Real rows from the live Data API, captured 2026-11-02: head-coach (`role=HC`) `coach_tendencies` for CFB 2025
+(125) and NFL 2024 (32), and `coach_careers` for CFB (447) and NFL (165), each trimmed by `select` to the key
+columns plus the game-context columns the Situations board reads (`games_` / `wins_` / `win_rate_` for
+`after_bye`, `opener`, `one_score_game`, and in CFB `vs_ranked` with `epa_per_play_vs_ranked` /
+`def_epa_per_play_vs_ranked`). No hand edits. The NFL careers hold Bill Callahan (2,785 plays, 0 openers,
+`win_rate_opener` null), which is what the zero-openers test needs; the NFL tables carry no `*_vs_ranked` column
+(asking for one is a 400).
+
+**Used by:** `test/coaches.test.ts` (situations block) and `test/coachLeaderboards.render.test.ts`.
+
+**To regenerate**, from `astro/`, in one shell call so `SDV_AUTH_TOKEN` never leaves it:
+
+```bash
+SDV_AUTH_TOKEN="$(grep -E '^SDV_AUTH_TOKEN=' .dev.vars | head -1 | cut -d= -f2- | tr -d "\"'")" \
+node --input-type=module -e '
+const base = "https://data.sportsdataverse.org/v1";
+const get = async (p) => {
+  const r = await fetch(`${base}/${p}`, { headers: { Authorization: `Bearer ${process.env.SDV_AUTH_TOKEN}` } });
+  if (!r.ok) throw new Error(`${p}: ${r.status}`);
+  return (await r.json()).data;
+};
+const ctx = (l) => (l === "cfb" ? ["after_bye", "opener", "one_score_game", "vs_ranked"] : ["after_bye", "opener", "one_score_game"]);
+const metrics = (l) => [...ctx(l).flatMap((c) => [`games_${c}`, `wins_${c}`, `win_rate_${c}`]), ...(l === "cfb" ? ["epa_per_play_vs_ranked", "def_epa_per_play_vs_ranked"] : [])];
+const season = ["season", "pos_team_id", "pos_team", "coach", "role", "games", "plays", "drives"];
+const career = ["coach", "role", "teams", "seasons", "first_season", "last_season", "games", "plays", "drives"];
+const sel = (keys, l) => [...keys, ...metrics(l)].join(",");
+const out = {
+  cfb_coach_tendencies_2025: await get(`cfb/coach_tendencies?season=2025&role=HC&select=${sel(season, "cfb")}&limit=500`),
+  cfb_coach_careers: await get(`cfb/coach_careers?role=HC&select=${sel(career, "cfb")}&limit=2000`),
+  nfl_coach_tendencies_2024: await get(`nfl/coach_tendencies?season=2024&role=HC&select=${sel(season, "nfl")}&limit=500`),
+  nfl_coach_careers: await get(`nfl/coach_careers?role=HC&select=${sel(career, "nfl")}&limit=2000`),
+};
+(await import("node:fs")).writeFileSync("test/fixtures/coach-situations.json", JSON.stringify(out, null, 1) + "\n");
+for (const [k, v] of Object.entries(out)) console.log(k, v.length);
+'
+```
+
 ## `neighbors-ranked-rows.json`
 Real rows from the live Data API, captured 2026-09-26: every team's six
 nearby-rank metrics and ranks (NFL 2025, CFB 2024) and every ranked row of NFL 2024 receiving and CFB 2024 passing
@@ -789,3 +827,49 @@ Real Data API rows for the league hub's "Tonight" (BB-G48), captured 2026-11-10 
 **Used by:** `test/basketball/hubTonight.test.ts` (BB-G48).
 
 **To regenerate:** re-run the reads above with a read key; finals do not change.
+## `team-hub-cfb.json`, `team-hub-nfl.json`
+Real Data API rows for the team profile's history tables (`'team-hub'`), per team id:
+`team_summaries` from `/v1/<league>/team_summaries?team_id=<id>` (select trimmed to `season, team_id, pos_team,
+conference, division` and the six Seasons-table metrics with their `_rank`s) and `coach_tendencies` from
+`/v1/<league>/coach_tendencies?pos_team_id=<id>&role=HC` (`season, pos_team_id, pos_team, coach, role, games, plays`).
+CFB: Texas A&M (245, Big 12 to SEC in 2012, no 2023 coach row) and Kansas State (2306, Bill Snyder leaves after
+2005 and returns in 2009). NFL: Kansas City (12, two head coaches in 2011). Captured 2026-11-01; rows sorted, not
+edited. NFL rows carry today's conference and division on every season, which is why the NFL page has no
+Conference History.
+
+**Used by:** `test/teamHub.test.ts`.
+
+**To regenerate:** re-fetch both routes per team with the same `select`; 2026 rows grow during the season, so the
+2026 era and span counts in the test move with them.
+## `team-game-sets-cfb-2025.json.gz` / `team-game-sets-nfl-2025.json.gz`
+The two Data API bodies the season team page's Team Stats game-set panel
+('game-set-filter') reads, as `{ splits, summaries }`: `splits` is
+`GET /v1/{league}/team_opponent_splits?season=2025&select=<SEASON_SPLIT_COLUMNS>&limit=5000`
+(every team-game of the season: 1,912 CFB rows over 232 teams, 544 NFL), and
+`summaries` the `team_summaries` read `retrieveTeamSummaries` makes with
+`columns: TEAM_NEIGHBOR_METRICS` (136 FBS teams, 32 NFL), whose `conference`
+is the panel's membership. Alabama (cfb 333) has an FCS opponent (2197), a
+neutral-site SEC title game and two CFP games, one against an SEC member (201).
+
+**Provenance (2026-11-01):** captured verbatim from the live API; no edits.
+
+**Used by:** `test/gameSetFilter.test.ts` (each derivation from the live
+columns, the subsets, the rank population and its size) and
+`test/gameSetFilter.render.test.ts` (the panel on `/year/2025/team/333` and
+`/nfl/year/2025/team/12`, `?games=`, the flag gate).
+
+**To regenerate:** repeat the two reads per league for 2025 and gzip
+`{ splits, summaries }`; the tests assert on Alabama's 15 games and the 136 / 32 team counts.
+## `lineup-shots.json.gz`
+The lineup shot chart's reads (BB-G52, `resources/lineupShots.ts`), captured live from the Data API on 2026-11-12, nothing
+edited. `nba`: every `nba_stats/shot_lineups` row of three 2025-26 Nets games (`season=2026&game_id=` 0022500031,
+0022500040, 0022500049; both teams' shots, 504 rows: 251 Nets attempts, 253 against). `wbb`: every `wbb/shot_lineups` row of
+one 2026-27 Colorado State game (`season=2027&game_id=6607281`, 112 rows), Colorado State's (ESPN 36)
+`ncaa_player_crosswalk?season=2027&espn_team_id=36` rows and its `shot_season_players?season=2027&team_id=36` rows. Columns:
+`game_id, team_id, opp_team_id, x_legacy, y_legacy, shot_value, made, off_player_1..5, def_player_1..5` (the crosswalk:
+`ncaa_player_id, espn_athlete_id`; the season players: `person_id, player_name, team_id`).
+
+**Used by:** `test/lineupShots.test.ts`, `test/nba/team.render.test.ts`.
+
+**To regenerate:** the same reads with `select=` the columns above and `limit=1000` (never unfiltered), JSON-joined as
+`{nba: {season, team_id, rows}, wbb: {season, team_id, rows, crosswalk, season_players}}` and gzipped.

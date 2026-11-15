@@ -1,0 +1,31 @@
+---
+// The public data-status table (/data-sources, flag 'data-status'). A component, not inline
+// markup, so its time-zone script ships only when the table renders: with the flag off the
+// page's HTML is unchanged. No colour ramp: a time is not good or bad.
+import type { FreshnessStamp } from "../utils/freshness";
+interface Props { rows: { label: string; live: boolean; stamp: FreshnessStamp | null }[] }
+const { rows } = Astro.props;
+---
+<table class="table table-sm table-responsive">
+    <caption class="text-small text-muted">When each surface last refreshed from SportsDataverse.</caption>
+    <thead>
+        <tr>
+            <th scope="col" class="text-left">Surface</th>
+            <th scope="col" class="text-center">Last updated</th>
+        </tr>
+    </thead>
+    <tbody>
+        {rows.map((r) => (
+            <tr>
+                <td class="text-left">{r.label}</td>
+                <td class="text-center">{r.live ? 'Live from ESPN' : r.stamp ? <time datetime={r.stamp.iso} data-freshness>{r.stamp.text}</time> : 'Unknown'}</td>
+            </tr>
+        ))}
+    </tbody>
+</table>
+<script>
+    // The server wrote each time in UTC (what a viewer without JS reads); this rewrites it into
+    // the viewer's own zone, as FreshnessStamp.astro does.
+    import { localizeFreshness } from "../utils/freshness";
+    localizeFreshness(document);
+</script>
