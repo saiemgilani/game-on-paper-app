@@ -20,8 +20,8 @@ describe('sitemap.xml with mbb public', async () => {
         const ids = [...xml.matchAll(/gameonpaper\.com\/mbb\/team\/(\d+)</g)].map((m) => Number(m[1]));
         expect(ids.length).toBe(365);
         expect(new Set(ids)).toEqual(new Set(BASKETBALL.mbb.currentMembers!.ids));
-        for (const id of [88, 2511, 2598, 2815]) expect(ids, String(id)).toContain(id); // the four D34 programs, members in 2026
-        expect(ids).not.toContain(42); // D43: every listed URL answers 200
+        for (const id of [88, 2511, 2815, 2697]) expect(ids, String(id)).toContain(id); // three D34 programs and West Florida, members in 2027
+        for (const id of [42, 2598]) expect(ids, String(id)).not.toContain(id); // D43: every listed URL answers 200 (Saint Francis left D-I after 2026)
         expect(xml).not.toContain('/mbb/players/');
     });
     test('inside the protocol limits', () => {
