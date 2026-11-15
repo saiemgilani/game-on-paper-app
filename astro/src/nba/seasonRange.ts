@@ -54,9 +54,9 @@ export function wnbaLeaderBars(_season: number): LeaderBars {
   return { fga: 4, fg3a: 2 }; // ponytail: one value for every measured season; a season that rounds differently gets a table
 }
 
-/** ESPN's men's college scoreboard has finals from 2002-11-14 (season 2003); the last season the releases hold (2026-10-18). */
+/** ESPN's men's college scoreboard has finals from 2002-11-14 (season 2003). The last season listed: 2026-27 since BB-D29, once its stats.ncaa.org shots landed (2026-11-12: shot_coverage 2027 attributed_share 0.975, meets_floor). */
 export const MBB_FIRST_SEASON = 2003;
-export const MBB_LAST_KNOWN_SEASON = 2026;
+export const MBB_LAST_KNOWN_SEASON = 2027;
 /**
  * Median completed regular-season games (ESPN season_type 2, conference tournaments included) of a D-I team, [first season,
  * games] ascending. Measured 2026-10-18 over hoopR-mbb-data schedules 2003-2026 (test/fixtures/mbb/season_games.json); teams
@@ -89,9 +89,9 @@ export function mbbGamesInScope(season: number): number {
   return [...MBB_GAMES_IN_SCOPE].reverse().find(([from]) => season >= from)?.[1] ?? MBB_GAMES_IN_SCOPE[0][1];
 }
 
-/** ESPN's women's college scoreboard has finals from 2002-11-10 (season 2003); the last season the releases hold (2026-10-19). */
+/** ESPN's women's college scoreboard has finals from 2002-11-10 (season 2003). The last season listed: 2026-27 since BB-D29, once its stats.ncaa.org shots landed (2026-11-12: shot_coverage 2027 attributed_share 0.976, meets_floor). */
 export const WBB_FIRST_SEASON = 2003;
-export const WBB_LAST_KNOWN_SEASON = 2026;
+export const WBB_LAST_KNOWN_SEASON = 2027;
 /**
  * Median completed regular-season games (ESPN season_type 2, conference tournaments included) of a D-I women's team, [first
  * season, games] ascending. Measured 2026-10-19 over wehoop-wbb-data schedules 2003-2026 (test/fixtures/wbb/season_games.json);

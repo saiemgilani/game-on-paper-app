@@ -63,6 +63,9 @@ export const FLAGS: Record<string, FeatureState> = {
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
     // isCoachBoardPath). Promote to 'on' once the coach attribution is trusted.
     'coaches': 'on',
+    // The About page (/about): who builds the site, with each person's bio. Stays in preview
+    // until all three bios are in; promote to 'on' to publish the URL and the footer link.
+    'about-page': 'preview',
     // The CFP projection page (/playoff): sportsdataverse-py's season sims + cfbseedR tiebreakers
     // through the API (python/playoff_projection.py), the 2026 selection rules and the fixed
     // bracket, plus the committee's field from the CFP rankings. Public since #389: linked
@@ -104,9 +107,14 @@ export const FLAGS: Record<string, FeatureState> = {
     // GET /api/search proxy it calls, which 404s for every other viewer. Hits
     // into a gated namespace are dropped per viewer: players while
     // 'player-pages' is off, NFL rows while 'nfl' is off. Prerendered pages
-    // (glossary, data-sources, changelog) resolve the flag at build time, so
+    // (glossary, changelog) resolve the flag at build time, so
     // they show no box while this is 'preview'.
     'site-search': 'on',
+    // The data-status table in /data-sources' Freshness section: when each season surface
+    // last refreshed (its table's /v1/meta stamp, the one that stamps and keys the surface
+    // itself; utils/freshness.ts STATUS_SURFACES), plus one "Live from ESPN" row. The page is
+    // SSR for this (5 min edge cache); off, its HTML is unchanged and it reads nothing.
+    'data-status': 'preview',
 
     // Game link previews: og:image becomes the API's 1200x630 card for the
     // game's state (utils/shareTags.ts), ?spoilers=off previews without the
@@ -151,6 +159,35 @@ export const FLAGS: Record<string, FeatureState> = {
     // for conference games. Only this path makes the season-wide team_opponent_splits read; off, the
     // page and its requests are unchanged and ?games= is never read.
     'game-set-filter': 'preview',
+    // The Situations head-coach board (/coaches/situations, /year/N/coaches/situations and the /nfl
+    // twins, inside the 'coaches' gate): games and win rate after a bye, in openers, in one-score
+    // games and (CFB) vs ranked, from coach_tendencies / coach_careers. Off: the board select does
+    // not list it, its routes 404 and the sitemap leaves it out (utils/coaches.ts coachBoardSlugs).
+    'coach-situations': 'preview',
+    // Stat-threshold search (S15): /search/seasons and the /nfl twin, player-seasons at or above every
+    // threshold from sdv-db's player_seasons_wide. Gated in middleware (utils/statSearch.ts isStatSearchPath);
+    // the header's Tools entry reads the same flag. Not in the sitemap.
+    'stat-search': 'preview',
+    // IF-6: on a final game, GameHeader shows "First <W>-<L> final (<span>)" when no earlier
+    // completed game in the Data API schedule table ended with that score (CFB: FBS vs FBS
+    // since 2001; NFL: since 1999). utils/finalScore.ts. Off: no read, the header is unchanged.
+    'final-score-first': 'preview',
+    // G9: each team's player section on the v2 game page gets the Team Stats "Show only"
+    // select (Game, quarters, halves, OT when played), each window pre-rendered from
+    // advBoxScoreSpans (game/metrics/TeamPlayerStats.astro). Off: the section is unchanged.
+    'player-quarter-filter': 'preview',
+    // Method notes (IF-3): every advanced panel says its population in one voice (utils/methodNotes.ts). The
+    // season team page's player tables and Profile panel carry the season note; the game page's Team Stats title
+    // carries the game note as a hover. Off: today's hand-typed subtitles. Promote once the copy is reviewed.
+    'method-notes': 'preview',
+    // Player compare: /players/compare?ids=a,b&season=N and the /nfl twin, up to four player cards
+    // side by side, plus the Compare button on the player page's header card. Off: the page is
+    // the site's 404 and the player page has no button.
+    'player-compare': 'preview',
+    // Metric help on tap (N6): a "?" button beside a leaderboard column header opens that metric's glossary
+    // definition in a native popover (utils/metricHelp.ts), linked to its /glossary/ anchor. Works on touch,
+    // where the <abbr title> hover never shows. Off: the headers are exactly today's. Promote once reviewed.
+    'metric-help': 'preview',
     // Game on Paper Pro: /pro/** (the paid player profiles, portal board and their
     // files), /pricing, the "Pro profile" link on the free player page and the
     // header's Pro entry. Gated in middleware like 'nfl': without the preview cookie
@@ -158,6 +195,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // needs a live entitlement (utils/pro.ts, resources/pro.ts) except login,
     // auth, logout and methodology. Promote to 'on' at launch.
     'pro': 'preview',
+    // The team page's lineup shot chart (BB-G52) on /<league>/team/[id], inside each league's flag: the team's offense or
+    // defense season shots with up to five of its players on or off the floor, by square or zone against the league (sdv-db's
+    // shot_lineups, filtered in the route). Off: no read and the team page is today's, byte for byte.
+    'bball-lineup-shotchart': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
@@ -180,7 +221,8 @@ export function isFeatureEnabled(
 /**
  * Is the flag public for this request: 'on', or an admin's per-request override. Unlike
  * isFeatureEnabled it is NOT true for a preview-cookie holder, so a 'preview' flag adds nothing to a
- * public-facing surface (the football Header's league menu) for them.
+ * public-facing surface (the Header's Tools menu) for them. The football Header's league switch asks
+ * Astro.locals.preview itself, so a preview viewer sees the preview leagues there (BB-G31).
  */
 export function isFeaturePublic(name: string, locals: { flagOverrides?: Record<string, boolean> } | undefined): boolean {
     const override = locals?.flagOverrides?.[name];

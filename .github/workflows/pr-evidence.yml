@@ -131,10 +131,13 @@ jobs:
           # ROUTES is validated above; word splitting into separate args is intended, and
           # set -f keeps a route's `?` from globbing against the working directory
           set -f
+          # the processor tracks sportsdataverse-py main the way python/Dockerfile does (re-resolve
+          # that one package, everything else stays on the lock), so evidence renders what production
+          # would; the resolved SHA lands in logs/<base|head>.log. CI's pytest job stays on the lock.
           node scripts/lighthouse-compare.mjs --base HEAD^1 --head HEAD --runs 3 --shots \
             --walkthrough --steps "$STEPS" \
             --python-url http://127.0.0.1:5177 \
-            --backend-cmd 'uv sync --locked --quiet && uv run gunicorn app:app -c gunicorn.conf.py -b 127.0.0.1:5177' \
+            --backend-cmd 'uv lock --upgrade-package sportsdataverse && uv sync --locked --quiet && echo "sportsdataverse-py main @ $(grep -A2 '"'"'name = "sportsdataverse"'"'"' uv.lock | grep -oE '"'"'#[0-9a-f]{40}'"'"' | tr -d "#")" && uv run gunicorn app:app -c gunicorn.conf.py -b 127.0.0.1:5177' \
             --out "$EVIDENCE_DIR" $ROUTES
           echo "exit=$?" >> "$GITHUB_OUTPUT"
 
