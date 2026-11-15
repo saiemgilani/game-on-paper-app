@@ -7,7 +7,8 @@
  */
 import type { AstroGlobal } from 'astro';
 import { BOARD_CAP, retrieveBoard, type BoardRow } from '../../resources/leaderboards';
-import { boardSpec, hasPercentiles, isQualified, parseControls, sortRows, type BoardSpec, type Controls } from '../../utils/leaderboards';
+import { boardsFor, boardSpec, hasPercentiles, isQualified, parseControls, sortRows, type Board, type BoardSpec, type Controls } from '../../utils/leaderboards';
+import { isFeatureEnabled } from '../../utils/features';
 import type { BasketballLeague } from '../../utils/league';
 import { seasonCache, setCache, uncacheable } from './cache';
 import { resolveBasketballSeason } from './season';
@@ -27,6 +28,8 @@ export interface LeaderboardsParams {
     capped: boolean;
     pctAvailable: boolean;
     names: Map<string, string>;
+    /** the boards the select offers: BB-G27's two join BB-G8's three with 'bball-war-boards' on */
+    boards: Board[];
     /** Season vs Current: the current_impact rows' date (null: none this season); undefined on the other views */
     asOf?: string | null;
 }
@@ -36,7 +39,8 @@ export async function prepareLeaderboards(Astro: AstroGlobal, league: Basketball
     const { season, seasons, current } = resolveBasketballSeason(Astro, league);
     const sp = Astro.url.searchParams;
     // the board, group and unit settle the read; the view needs the rows, so it is resolved again after
-    const asked = parseControls(sp, league, () => true);
+    const war = isFeatureEnabled('bball-war-boards', Astro.locals);
+    const asked = parseControls(sp, league, () => true, war);
     let rows: BoardRow[] | null = null;
     let names = new Map<string, string>();
     let asOf: string | null | undefined;
@@ -47,7 +51,7 @@ export async function prepareLeaderboards(Astro: AstroGlobal, league: Basketball
     }
     const all = rows ?? [];
     // a failed read keeps every basis: the page says the board is unavailable, not that a basis is
-    const controls = parseControls(sp, league, (spec, basis) => hasPercentiles(all, spec, basis), rows ?? undefined);
+    const controls = parseControls(sp, league, (spec, basis) => hasPercentiles(all, spec, basis), war, rows ?? undefined);
     const spec = boardSpec(controls.board, league, controls.group, controls.impact);
     const sortCol = spec.cols.find((c) => c.key === controls.sort)!;
     const kept = controls.qualified ? all.filter((r) => isQualified(r, spec, league)) : all;
@@ -60,6 +64,7 @@ export async function prepareLeaderboards(Astro: AstroGlobal, league: Basketball
         capped: controls.board !== 'teams' && all.length >= BOARD_CAP,
         pctAvailable: hasPercentiles(all, spec, controls.basis),
         names,
+        boards: boardsFor(war),
         ...(asOf !== undefined ? { asOf } : {}),
     };
 }
