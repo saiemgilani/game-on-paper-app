@@ -9,11 +9,13 @@ import { hubTags } from '../../basketball/hub';
 import { gameHref } from '../../nba/links';
 import { cleanAbbreviation } from '../../utils/misc';
 import type { BasketballHubParams } from '../../routes/basketball/hub';
-import { basketball } from '../../basketball/config';
+import { basketball, seasonLabelFor } from '../../basketball/config';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
 interface Props { data: BasketballHubParams }
-const { board, lines, index, tonight } = Astro.props.data;
+const { board, lines, index, tonight, dashboards } = Astro.props.data;
+// BB-G49: the follow picker's data, safe inside a <script> element (no "</" can close it)
+const followJson = dashboards ? JSON.stringify(dashboards.follow).replace(/</g, '\\u003c') : '';
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -27,6 +29,59 @@ const subtitle = `${name} games today with the market line and win probability, 
 ---
 <GenericPage title={`${name} | Game on Paper`} subtitle={subtitle} slug={lp('/')} breadcrumbs={breadcrumbs} description={subtitle} canonicalPath={lp('/')}>
   <div class="container">
+    {dashboards && dashboards.follow.length > 0 && (
+      <section aria-labelledby="hub-follow-heading" id="hub-follow" class="mb-3" data-league={league}>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <h2 id="hub-follow-heading" class="h5 mb-0">Your team</h2>
+          <select id="hub-follow-pick" class="form-select form-select-sm w-auto" aria-label={`Follow a ${name} team`}>
+            <option value="">Pick a team to follow</option>
+            {dashboards.follow.map((t) => <option value={t.id}>{t.name}</option>)}
+          </select>
+          <span class="small text-muted">Kept in this browser only.</span>
+        </div>
+        <div id="hub-follow-card" class="mt-2" hidden></div>
+        <script type="application/json" id="hub-follow-data" set:html={followJson}></script>
+        <script is:inline>
+          (() => {
+            try {
+              const sec = document.getElementById('hub-follow');
+              const pick = document.getElementById('hub-follow-pick');
+              const card = document.getElementById('hub-follow-card');
+              const teams = new Map(JSON.parse(document.getElementById('hub-follow-data').textContent).map((t) => [t.id, t]));
+              const key = 'gop-follow-' + sec.dataset.league;
+              const store = (fn) => { try { return fn(window.localStorage); } catch { return null; } };
+              const day = (d) => new Intl.DateTimeFormat([], { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(d + 'T12:00:00Z'));
+              const el = (tag, text, attrs) => { const e = document.createElement(tag); if (text) e.textContent = text; Object.assign(e, attrs || {}); return e; };
+              const game = (label, g) => {
+                const p = el('p', null, { className: 'mb-1 small' });
+                p.append(el('span', label + ': ', { className: 'text-muted' }));
+                if (!g) { p.append('none on the schedule'); return p; }
+                p.append(el('a', (g.result ? g.result + ' ' : '') + (g.home ? 'vs ' : 'at ') + g.opp, { href: '/' + sec.dataset.league + '/game/' + g.id }), ', ' + day(g.date));
+                return p;
+              };
+              const show = (id) => {
+                const t = teams.get(id);
+                card.replaceChildren();
+                card.hidden = !t;
+                if (!t) return;
+                const head = el('p', null, { className: 'mb-1' });
+                head.append(t.href ? el('a', t.name, { href: t.href, className: 'fw-semibold' }) : el('span', t.name, { className: 'fw-semibold' }));
+                const facts = [t.record, t.rank, t.rating].filter(Boolean).join(', ');
+                if (facts) head.append(' ', el('span', facts, { className: 'text-muted' }));
+                card.append(head, game('Last game', t.last), game('Next game', t.next));
+              };
+              // ?follow=<id> shows a team for this visit (a shared link) without changing the saved pick
+              const saved = new URLSearchParams(location.search).get('follow') || store((s) => s.getItem(key));
+              if (saved && teams.has(saved)) { pick.value = saved; show(saved); }
+              pick.addEventListener('change', () => {
+                store((s) => (pick.value ? s.setItem(key, pick.value) : s.removeItem(key)));
+                show(pick.value);
+              });
+            } catch { /* no script, no storage or no data: the picker stands without a card */ }
+          })();
+        </script>
+      </section>
+    )}
     <section aria-labelledby="hub-games-heading" id="hub-games">
       <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-2">
         <h1 id="hub-games-heading" class="h3 mb-0">{heading}</h1>
@@ -79,6 +134,27 @@ const subtitle = `${name} games today with the market line and win probability, 
             </li>
           ))}
         </ol>
+      </section>
+    )}
+    {dashboards && dashboards.war.length > 0 && (
+      <section aria-labelledby="hub-war-heading" id="hub-war" class="mt-4">
+        <h2 id="hub-war-heading" class="h4">WAR leaders, {seasonLabelFor(league, dashboards.warSeason)}</h2>
+        <p class="text-muted small mb-2">The season's top {dashboards.war.length} players by wins above replacement.</p>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Team</th><th scope="col" class="text-end">WAR</th></tr></thead>
+            <tbody>
+              {dashboards.war.map((p, i) => (
+                <tr>
+                  <td>{i + 1}</td>
+                  <td>{p.href ? <a href={p.href}>{p.name}</a> : p.name}</td>
+                  <td>{p.team}</td>
+                  <td class="text-end">{p.war.toFixed(1)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
     )}
     <section aria-labelledby="hub-index-heading" id="hub-index" class="mt-4">
