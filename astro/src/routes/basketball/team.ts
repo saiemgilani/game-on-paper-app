@@ -16,9 +16,10 @@ import type { SortDir } from '../../nba/table';
 import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterRows, teamsFromSeasonRows, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
 import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
 import type { LineupShotsView } from '../../nba/lineupShots';
-import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots, type SeasonPlayerRow } from '../../resources/nbaShots';
 import { retrieveLineups } from '../../resources/lineups';
+import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots, type SeasonPlayerRow } from '../../resources/nbaShots';
 import { retrieveBioNames, retrieveOnOff } from '../../resources/onOff';
+import { retrieveTeamShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { retrieveSituational } from '../../resources/situational';
 import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
 import { isFeatureEnabled } from '../../utils/features';
@@ -59,6 +60,8 @@ export interface BasketballTeamParams {
     onOff?: OnOffTab;
     /** BB-G25, only with 'bball-situational' on: the Situations section's control and rows; `reads` null when a read failed */
     situations?: SituationsTab;
+    /** BB-G15, only with 'bball-poe' on: the team-season's shot quality rows (team and shooters); null when the read failed */
+    poe?: ShotQualityRow[] | null;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -125,15 +128,17 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const lineupsOn = isFeatureEnabled('bball-lineups', Astro.locals);
     const onOffOn = isFeatureEnabled('bball-on-off', Astro.locals);
     const situationsOn = isFeatureEnabled('bball-situational', Astro.locals);
-    const [seasonBlock, lineups, onOff, situations] = await Promise.all([
+    const poeOn = isFeatureEnabled('bball-poe', Astro.locals); // BB-G15
+    const [seasonBlock, lineups, onOff, situations, poe] = await Promise.all([
         flagged ? readSeasonBlock(league, season, teamId) : undefined,
         lineupsOn ? readLineups(Astro, league, season, teamId, rows) : undefined,
         onOffOn ? readOnOff(Astro, league, season, teamId, rows) : undefined,
         situationsOn ? readSituations(Astro, league, season, teamId, rows) : undefined,
+        poeOn ? readTeamPoe(league, season, teamId) : undefined,
     ]);
     // the block and the tabs are decorative: a failed read renders the rest of the page, never cached
-    if (seasonBlock === null || lineups?.units === null || onOff?.players === null || situations?.reads === null) uncacheable(Astro);
-    const block = { ...(flagged ? { seasonBlock } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}), ...(situationsOn ? { situations } : {}) };
+    if (seasonBlock === null || lineups?.units === null || onOff?.players === null || situations?.reads === null || poe === null) uncacheable(Astro);
+    const block = { ...(flagged ? { seasonBlock } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}), ...(situationsOn ? { situations } : {}), ...(poeOn ? { poe } : {}) };
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);
@@ -231,5 +236,15 @@ async function readSituations(Astro: AstroGlobal, league: BasketballLeague, seas
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} ${situation.key} situational splits for team ${teamId}: ${e}, ${e?.stack}`);
         return { situation, options, reads: null, playerNames: [], unitLabels: [] };
+    }
+}
+
+/** BB-G15's read, keyed like the season tables (the stats id for the NBA/WNBA, ESPN's in college); null when it failed. */
+async function readTeamPoe(league: BasketballLeague, season: number, teamId: number): Promise<ShotQualityRow[] | null> {
+    try {
+        return await retrieveTeamShotQuality(league, season, teamId);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} shot quality for team ${teamId}: ${e}, ${e?.stack}`);
+        return null;
     }
 }
