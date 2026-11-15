@@ -198,6 +198,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // the row is missing or its prediction is null. The bracketology bracket keeps its bid chances. Off: no read, and the
     // pregame page is today's, byte for byte.
     'bball-pregame-projection': 'preview',
+    // BB-G2's garbage-time toggle on /<league>/game/[id] for a final, beside the Impact box (so only with 'bball-impact-box'
+    // on too): `?garbage=out` re-shows the four factors, the pros' team box rows and the Impact box from the game's
+    // possession log without the producer's garbage-time possessions (BB-D7's is_garbage_time; bigballR's in college).
+    // No toggle when the log has no flag (a release from before BB-D7) or no garbage time. Off: no read, `?garbage=` is
+    // ignored, and the game page is today's, byte for byte.
+    'bball-garbage-time': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

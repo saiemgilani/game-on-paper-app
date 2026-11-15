@@ -13,8 +13,9 @@ import { playerHref, seasonQuery } from '../../../nba/links';
 import { LEAGUES } from '../../../utils/league';
 import { basketball } from '../../../basketball/config';
 
-interface Props { game: NbaGame; impact: ImpactBoxReads | null }
-const { game, impact } = Astro.props;
+/** `fromLog`: the rows are BB-G2's garbage-time split, summed from the possession log rather than read from the producer */
+interface Props { game: NbaGame; impact: ImpactBoxReads | null; fromLog?: boolean }
+const { game, impact, fromLog = false } = Astro.props;
 const dash = '—';
 const minus = '−';
 const signed = (v: number | null | undefined, digits = 0) => (v == null ? dash : v > 0 ? `+${v.toFixed(digits)}` : v < 0 ? `${minus}${Math.abs(v).toFixed(digits)}` : (0).toFixed(digits));
@@ -93,6 +94,6 @@ const sides: { key: 'away' | 'home'; abbr: string; name: string; rows: ImpactSid
     </div>
   ))}
 </div>
-<p class="small text-muted mb-0">From the play-by-play's substitutions: the points scored and allowed while each player or unit was on the floor, and the ratings per 100 of those possessions. A rating over fewer than {MIN_POSS} possessions is shown as a dash.</p>
+{fromLog ? (<p class="small text-muted mb-0" id="impact-source-log">From the possession log, garbage time out: the points scored and allowed on the possessions each player or unit started on the floor, and the ratings per 100 of those possessions. A rating over fewer than {MIN_POSS} possessions is shown as a dash.</p>) : (<p class="small text-muted mb-0">From the play-by-play's substitutions: the points scored and allowed while each player or unit was on the floor, and the ratings per 100 of those possessions. A rating over fewer than {MIN_POSS} possessions is shown as a dash.</p>)}
 </Fragment>
 )}
