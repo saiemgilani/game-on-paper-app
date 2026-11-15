@@ -29,8 +29,7 @@ import { retrieveLeagueContextRows } from '../../resources/nbaShots';
 import { PROPS_LEAGUES, retrievePlayerProps, type PropRow } from '../../resources/playerProps';
 import { retrievePlayerSeasonRates, type PlayerSeasonRate } from '../../resources/playerSeasonRates';
 import { retrieveSeasonAverages } from '../../resources/seasonAverages';
-import { retrieveTeamGridFinal, retrieveTeamGridSeason, type TeamGridSeason } from '../../resources/teamGrid';
-import { retrieveTeamGridFinal, retrieveTeamGridGame, retrieveTeamGridSeason, type TeamGridSeason } from '../../resources/teamGrid';
+import { retrieveTeamGridFinal, retrieveTeamGridSeason, type TeamGridSeason, retrieveTeamGridGame } from '../../resources/teamGrid';
 import type { GameInfoReads } from '../../utils/gameInfo';
 import type { SeasonAverage } from '../../utils/gameLeaders';
 import { retrieveGameLine, settled } from '../../resources/gameLines';
@@ -40,7 +39,6 @@ import type { WpLensRow } from '../../utils/wpLenses';
 import { seasonCache, setCache, uncacheable } from './cache';
 import { retrieveGameSituational } from '../../resources/situational';
 import { parseSituation, situationsFor, type GameSituationsTab } from '../../utils/situations';
-import { retrieveImpactBox, type ImpactBoxReads } from '../../resources/impactBox';
 
 /** BB-G18's pregame card: the game's `rated_priors` row as published, with its prediction present. */
 export type PregameProjection = RatedPrior & { exp_home_margin: number; rated_home_prob: number };

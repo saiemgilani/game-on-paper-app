@@ -27,8 +27,6 @@ import { retrieveTeamGameFlow, type FlowRow } from '../../resources/bballGameLog
 import { retrieveScheduleContext, type ScheduleContextReads } from '../../resources/bballScheduleContext';
 import { scheduleRows } from '../../utils/teamSeason';
 import { bbGameSetOf, isSummedSet, type BbGameSet } from '../../utils/bballGameSet';
-import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots } from '../../resources/nbaShots';
-import { retrieveTeamSeason, type TeamSeasonReads } from '../../resources/teamSeason';
 import { retrieveTeamRankRows } from '../../resources/bballNeighbors';
 import { bballTeamNeighborLists } from '../../utils/bballNeighbors';
 import type { NeighborList } from '../../utils/neighbors';

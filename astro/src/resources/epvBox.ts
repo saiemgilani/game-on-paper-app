@@ -59,7 +59,6 @@ export interface EpvTeamRow {
 }
 const TEAM_SELECT = 'team_id,off_epv,def_epv,net_epv,poss,opp_poss,off_epv_per_poss,def_epv_per_poss';
 
-/** One scored play (sdv-db epv_plays, GOP Q35): the producer's EPV before and after it, and the EPV it added. */
 export interface EpvPlayRow {
     /** 1-4, and 5 for any overtime (the booster's state: 2OT reads as OT) */
     period: number;
@@ -87,36 +86,15 @@ export interface EpvBoxReads {
     players: EpvPlayerRow[];
     team: EpvTeamRow[];
     names: ImpactName[];
-    /** the game's plays by EPV added, most first (the producer's order) */
-    plays: EpvPlayRow[];
-}
-/** No producer rows for the game (not mapped, or not built yet). */
-export const EMPTY_EPV: EpvBoxReads = { gameId: null, teams: null, players: [], team: [], names: [], plays: [] };
-
-/** One ESPN game's reads, strict: the crosswalk, then the players, the two team rows, the names and the biggest plays. Call only when hasEpv. */
-export async function retrieveEpvBox(league: BasketballLeague, season: number, espnGameId: string): Promise<EpvBoxReads> {
-    const x = await retrieveProGame(league, season, espnGameId);
-    if (!x) return EMPTY_EPV;
-    const { gameId, teams } = x;
-    const read = <T>(table: string, select: string, limit: string, extra: Record<string, string> = {}) =>
-        retrieveRowsFrom<T>(leagueSource(league), table, { season: String(season), game_id: gameId, select, ...extra, limit }, TTL, true, NBA_READ_TIMEOUT_MS);
-    const [players, team, names, plays] = await Promise.all([
-        read<EpvPlayerRow>('epv_player_games', PLAYER_SELECT, PLAYER_LIMIT),
-        read<EpvTeamRow>('epv_team_games', TEAM_SELECT, '2'),
-        retrieveProNames(league, season, gameId),
-        read<EpvPlayRow>('epv_plays', PLAY_SELECT, PLAY_LIMIT, { order: '-epv_added' }),
-    ]);
-    return { gameId, teams, players, team, names, plays };
-    }
-}
-
     /** college: stats.ncaa.org player id to ESPN athlete id (the page's id); null for the pros, whose stats id is the page's */
     pageIds: Map<string, string> | null;
     /** the page ids the season has a player page for (shot_season_players' person ids) */
     pages: Set<string>;
+    /** the game's plays by EPV added, most first (the producer's order); the NBA only (epv_plays, sdv-db #223) */
+    plays: EpvPlayRow[];
 }
 /** No producer rows for the game (not mapped, or not built yet). */
-export const EMPTY_EPV: EpvBoxReads = { gameId: null, teams: null, players: [], team: [], names: [], pageIds: null, pages: new Set() };
+export const EMPTY_EPV: EpvBoxReads = { gameId: null, teams: null, players: [], team: [], names: [], pageIds: null, pages: new Set(), plays: [] };
 
 interface NcaaName { contest_id: string; player_id: string | null; clean_name: string | null; player: string | null }
 interface NcaaPair { ncaa_player_id: string | null; espn_athlete_id: number | string | null }
@@ -164,16 +142,18 @@ export async function retrieveEpvBox(league: BasketballLeague, season: number, e
         if (rows.length >= Number(PAGE_LIMIT)) throw new Error(`shot_season_players reached the ${PAGE_LIMIT}-row cap: the read is truncated`);
         return new Set(rows.map((r) => String(r.person_id)));
     });
-    const read = <T>(table: string, select: string, limit: string) =>
-        retrieveRowsFrom<T>(leagueSource(league), table, { season: s, game_id: gameId, select, limit }, TTL, true, NBA_READ_TIMEOUT_MS);
-    const [players, team, names, pageIds, pages] = await Promise.all([
+    const read = <T>(table: string, select: string, limit: string, extra: Record<string, string> = {}) =>
+        retrieveRowsFrom<T>(leagueSource(league), table, { season: s, game_id: gameId, select, ...extra, limit }, TTL, true, NBA_READ_TIMEOUT_MS);
+    const [players, team, names, pageIds, pages, plays] = await Promise.all([
         read<EpvPlayerRow>('epv_player_games', PLAYER_SELECT, PLAYER_LIMIT),
         read<EpvTeamRow>('epv_team_games', TEAM_SELECT, '2'),
         namesRead,
         pageIdsRead,
         pagesRead,
+        // ponytail: the biggest plays (GOP Q35) come from nba_stats.epv_plays only; add a league once its table is built
+        league === 'nba' ? read<EpvPlayRow>('epv_plays', PLAY_SELECT, PLAY_LIMIT, { order: '-epv_added' }) : Promise.resolve([] as EpvPlayRow[]),
     ]);
-    return { gameId, teams, players, team, names, pageIds, pages };
+    return { gameId, teams, players, team, names, pageIds, pages, plays };
 }
 
 export interface EpvSide {
@@ -192,17 +172,16 @@ export function epvSide(reads: EpvBoxReads, side: 'home' | 'away'): EpvSide {
     return { team: reads.team.find((t) => Number(t.team_id) === teamId) ?? null, players };
 }
 
+/** The Impact box's link rule (utils/impactBox.ts): the page id (the stats id, or college's crosswalk pair), if the season has that page. */
+export function epvPageId(reads: Pick<EpvBoxReads, 'pageIds' | 'pages'>, id: number | string): string | null {
+    const page = reads.pageIds ? reads.pageIds.get(String(id)) ?? null : String(id);
+    return page !== null && reads.pages.has(page) ? page : null;
+}
+
 /** A play's moment: the quarter (OT for any overtime: the table has one OT state) and the period clock, m:ss. */
 export function playClock(p: Pick<EpvPlayRow, 'period' | 'seconds_remaining'>): string {
     const q = Number(p.period) >= 5 ? 'OT' : `Q${p.period}`;
     if (p.seconds_remaining == null) return q;
     const s = Math.max(0, Math.floor(Number(p.seconds_remaining)));
     return `${q} ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-    }
-}
-
-/** The Impact box's link rule (utils/impactBox.ts): the page id (the stats id, or college's crosswalk pair), if the season has that page. */
-export function epvPageId(reads: Pick<EpvBoxReads, 'pageIds' | 'pages'>, id: number | string): string | null {
-    const page = reads.pageIds ? reads.pageIds.get(String(id)) ?? null : String(id);
-    return page !== null && reads.pages.has(page) ? page : null;
 }

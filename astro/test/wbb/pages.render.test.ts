@@ -17,7 +17,7 @@ vi.mock('../../src/resources/playerWar', async (orig) => ({ ...(await orig<typeo
 // BB-G54's Career panel reads the Data API with 'bball-career' on (preview): never from a test
 vi.mock('../../src/resources/playerCareer', () => ({ retrievePlayerWarCareer: async () => [], retrievePlayerImpactCareer: async () => [] }));
 import { BASKETBALL, courtFor, rankMins } from '../../src/basketball/config';
-import { NCAA_USAGE_NOTE } from '../../src/basketball/dashboards';
+import { NCAA_USAGE_NOTE, defaultScatterConference } from '../../src/basketball/dashboards';
 import { leagueContextFromRows, shotsFromRows } from '../../src/nba/adapters';
 import { describeHex } from '../../src/nba/charts/hexShotChart';
 import { buildDashboard } from '../../src/nba/dashboard';
@@ -25,7 +25,6 @@ import {
     NOLA, SC, conferenceNames, conferences, coverage, leadersGames2026, leadersLatest2026, leagueContext, p26, player2019Games, player2026Games,
     nolaShots2026, player2026Seasons, player2026Shots, scShots, scheduleTeams, seasonPlayers, type Season,
 } from './dashboardFixtures';
-import { defaultScatterConference } from '../../src/basketball/dashboards';
 
 const CAPTURED = [2019, 2022, 2026];
 const lite = ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result }: any) => ({ game_id, x_legacy, y_legacy, shot_distance, shot_value, shot_result });

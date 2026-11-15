@@ -8,14 +8,13 @@
 // unshaded (the season line, Tempo, the splits' Pace) carries its rank and the producer's percentile in text instead.
 // BB-G24, behind 'bball-team-strength' too: a team strength table (adjusted net, SOS, SOV, pace) under the season line.
 import { DateTime } from 'luxon';
-import type { TeamSeasonRateRow, TeamSeasonReads } from '../../resources/teamSeason';
+import type { TeamSeasonRateRow, TeamSeasonReads, GameSetCountReads } from '../../resources/teamSeason';
 import { SPLIT_LABEL, scheduleRows, splitRows } from '../../utils/teamSeason';
 import { fmtDate, fmtDec, fmtInt, fmtPct } from '../../nba/format';
 import { gameHref, teamHrefFromEspn } from '../../nba/links';
 import { formatRank, generateColorRampValue, generateMarginalString, ordinal } from '../../utils/misc';
 import { basketball, regulationFor, seasonLabelFor } from '../../basketball/config';
 import { GAME_SET_NAV, bbGameSetLabel, gameSetHref, teamGameSet, type BbGameSet } from '../../utils/bballGameSet';
-import type { GameSetCountReads } from '../../resources/teamSeason';
 import { isNcaaDashboards } from '../../basketball/dashboards';
 import { isFeatureEnabled } from '../../utils/features';
 import type { ScheduleContextReads } from '../../resources/bballScheduleContext';
