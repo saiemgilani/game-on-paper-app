@@ -53,7 +53,9 @@ export interface BasketballSourceTools {
     espn: NbaGame | null
 }
 
-export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { pregame: true; espnGame: ESPNPlayByPlayResponse } | {
+export type BasketballGamePrep = { notFound: true } | { unavailable: true }
+    /** `projection`: BB-G18, only with 'bball-pregame-projection' on; null when the read failed or a side has no rating (no card) */
+    | { pregame: true; espnGame: ESPNPlayByPlayResponse; projection?: PregameProjection | null } | {
     game: NbaGame;
     sourceTools?: BasketballSourceTools;
     /** BB-G25, only with 'bball-situational' on and a final: the Situations panel; `reads` null when a read failed */
@@ -66,8 +68,6 @@ export type BasketballGamePrep = { notFound: true } | { unavailable: true } | { 
     flow?: GameFlowReads | null;
     /** BB-G26, only with 'bball-epv' on and an NBA final from 2021-22; null when a read failed (the panel says so) */
     epv?: EpvBoxReads | null;
-    /** BB-G18, only with 'bball-pregame-projection' on; null when the read failed or a side has no rating (no card) */
-    projection?: PregameProjection | null;
     /** BB-G2, only with 'bball-garbage-time' and 'bball-impact-box' on and a final; `reads` null when the log's read failed */
     garbage?: { reads: GarbageReads | null; out: boolean };
     /** BB-G35, only with 'bball-game-leaders' on and a final; null when the read failed (the panel says so) */
