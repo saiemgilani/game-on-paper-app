@@ -12,6 +12,8 @@
 // 2026-27, so each season picker gains it and the 2025-26 pages these captures load carry ?season=2026 in canonical and links.
 // Every capture was re-captured on feat/about-page: the shared footer gains "Meet the team on our About page." behind the
 // 'about-page' preview flag (these renders hold the preview cookie). That one footer line is the whole diff.
+// pregame.html was re-captured on feat/basketball-playoff-picture: its watch card's two dark logos move from nba/500-dark/<id>.png
+// (a 404 for every NBA team) to ESPN's abbreviation (utils/league.ts NBA_LOGO_ABBR), nothing else.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
@@ -88,7 +90,8 @@ beforeEach(() => { for (const m of [...Object.values(games), ...Object.values(es
 // 'bball-hub' (BB-G47) and BB-G52's lineup shot chart ('bball-lineup-shotchart') are off here, so these pages stay byte for byte main's; a test can turn more flags on or off
 async function page(path: string, url: string, params: Record<string, string> = {}, flagOverrides?: Record<string, boolean>) {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/nba/${path}`);
-    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-hub': false, 'bball-lineup-shotchart': false, ...flagOverrides } } as App.Locals }));
+    // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture': off here too
+    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-hub': false, 'bball-lineup-shotchart': false, 'bball-playoff-picture': false, ...flagOverrides } } as App.Locals }));
 }
 const snap = (name: string) => `./__byte_identity__/${name}.html`;
 const finalPage = { gameId: 401766458, gamepackageJSON: { header: proc.header } };
