@@ -153,6 +153,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // Player compare: /players/compare?ids=a,b&season=N and the /nfl twin, up to four player cards
+    // side by side, plus the Compare button on the player page's header card. Off: the page is
+    // the site's 404 and the player page has no button.
+    'player-compare': 'preview',
     // Metric help on tap (N6): a "?" button beside a leaderboard column header opens that metric's glossary
     // definition in a native popover (utils/metricHelp.ts), linked to its /glossary/ anchor. Works on touch,
     // where the <abbr title> hover never shows. Off: the headers are exactly today's. Promote once reviewed.
