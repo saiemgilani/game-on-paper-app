@@ -69,6 +69,19 @@ export interface NbaGame {
     away: NbaSide
     plays: NbaPlay[]
     hasOvertime: boolean
+    /** sdv-py's game_excitement (BB-D28) on the game's WP series, from the processor only; absent otherwise (see fromDataApi) */
+    excitement?: NbaExcitement
+}
+
+/** How exciting the game was, with no direction: python/nba_game.py passes sdv-py's `game_excitement` through as is. */
+export interface NbaExcitement {
+    /** null with no plays */
+    gei: number | null
+    leadChanges: number
+    /** the biggest single WP swing, in percentage points */
+    maxSwingPts: number | null
+    /** the last play was taken to the result (a final) */
+    completed: boolean
 }
 
 /** What /nba/<id>/process returns (python/nba_game.py build_payload). */
@@ -87,6 +100,8 @@ export interface NbaProcessorPayload {
     teams: Record<'home' | 'away', { team_id: number; box: Record<string, any> | null; rates: Record<string, any> | null; linescores: (number | null)[] }>
     players: Record<'home' | 'away', Record<string, any>[]>
     plays: Record<string, any>[]
+    /** BB-G29; absent from a payload cached before it */
+    excitement?: { gei: number | null; lead_changes: number; max_swing_pts: number | null; completed: boolean }
 }
 
 /** sdv-py's prior source: a real line ('spread'), a lineless neutral site ('neutral', prior 0.5) or the league's home-court edge ('hfa'). */
@@ -234,9 +249,13 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague):
         date: comp.date, venue: j.venue ?? null, periods: j.periods, season, regulation: reg.periods, periodKind: reg.kind,
         prior: { homeWinProb: j.prior.home_win_prob, source: priorSource(j.prior.source), homeTeamSpread: j.prior.home_team_spread, gameSpreadAvailable: j.prior.game_spread_available },
         home: side('home'), away: side('away'), plays: j.plays.map((r) => play(r)), hasOvertime: j.periods > reg.periods,
+        ...(j.excitement ? { excitement: { gei: num(j.excitement.gei), leadChanges: j.excitement.lead_changes, maxSwingPts: num(j.excitement.max_swing_pts), completed: j.excitement.completed === true } } : {}),
     })
 }
 
+// TODO(BB-G29): no `excitement` on this path until the Data API serves sdv-db's `{lg}.game_excitement` (sdv-py
+// season_game_excitement: gei, lead_changes, max_swing_pts, completed, gei_rank, gei_pct, gei_n). Read it here per game, and
+// per season for the Best Games board (season, team), which waits on the same table.
 export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague): NbaGame {
     const s = rows.schedule[0]
     const wpByN = new Map(rows.play_wp.map((w) => [num(w.game_play_number), w]))

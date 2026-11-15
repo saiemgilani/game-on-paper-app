@@ -73,6 +73,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // route) and whose card is the team's last and next game, record and rank from `{league}.schedule`. Off: no such section,
     // byte for byte, and no player_war or schedule read.
     'bball-hub-dashboards': 'preview',
+    // The game excitement index on the basketball game pages (nba/wnba/mbb/wbb, so inside each league's flag): the
+    // processor's GEI (python/nba_game.py, sdv-py game_excitement) on the WP chart's line, as football prints it
+    // for a final. Off: the chart island's props are today's. A Data API-served game has no GEI until the Data API
+    // serves `{lg}.game_excitement` (resources/nbaGame.ts fromDataApi), and the Best Games board waits on it too.
+    'bball-gei': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

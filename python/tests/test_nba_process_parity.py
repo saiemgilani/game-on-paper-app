@@ -1,5 +1,5 @@
 # python/tests/test_nba_process_parity.py
-"""Compare the full NBA process response with the captured baseline, excluding regulation_periods.
+"""Compare the full NBA process response with the captured baseline, excluding the additive regulation_periods and excitement keys.
 
 The baseline is from 81dbaf1e. Only prior.home_team_spread was refreshed from
 06d88c0c, using the same ESPN capture and the locked SportsDataverse dependency.
@@ -16,7 +16,7 @@ import pathlib
 FIX = pathlib.Path(__file__).parent / "fixtures"
 SUMMARY = FIX / "nba_summary_401585607.json.gz"
 SNAP = FIX / "nba_process_401585607.payload.json"
-ADDED_IN_PR0 = {"regulation_periods"}
+ADDED_IN_PR0 = {"regulation_periods", "excitement"}  # excitement: BB-G29, checked in test_basketball_route
 
 
 class _Resp:

@@ -263,19 +263,21 @@ def test_sources_route_is_authenticated_like_process(monkeypatch, league):
 def test_sources_route_answers_the_registry_and_picks_up_a_new_source(monkeypatch):
     app_mod = _app(monkeypatch, _summary())
     client = app_mod.app.test_client()
-    assert client.get(f"{GAME}/sources", headers=AUTH).get_json()["sources"] == ["espn"]
-    _register_live(monkeypatch)
+    # sdv-py BB-D15 (#1070) put `live` in the NBA and WNBA registry; whatever the pin carries is what is offered
+    before = client.get(f"{GAME}/sources", headers=AUTH).get_json()["sources"]
+    assert before == list(dispatch.SOURCE_ORDER["nba"]) and before[0] == "espn"
+    monkeypatch.setitem(dispatch.SOURCE_ORDER, "nba", (*dispatch.SOURCE_ORDER["nba"], "next"))
     body = client.get(f"{GAME}/sources", headers=AUTH).get_json()
     assert body == {
         "league": "nba",
         "game_id": 401585607,
-        "sources": ["espn", "live"],
+        "sources": [*before, "next"],
         "contract_version": app_mod._SDV_VERSION,
         "contract_sha": app_mod._SDV_SHA,
     }
     assert client.get("/wnba/401585607/sources", headers=AUTH).get_json()[
         "sources"
-    ] == ["espn"]
+    ] == list(dispatch.SOURCE_ORDER["wnba"])
 
 
 def test_sources_route_without_the_contract_offers_espn_alone(monkeypatch):
