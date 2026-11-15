@@ -12,6 +12,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { bballOnly } from './helpers/flags';
 import { seasonPlayerRows } from './nba/rows';
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
@@ -84,7 +85,7 @@ const [DUKE] = SZ.mbbTeam;
 const MPJ_FT = { fgm: FT.nba[0].fgm, ftm: FT.nba[0].ftm }; // 444 and 195, his regular-season totals
 const BKN_READS = { zones: BKN, ft: { fgm: 3071, ftm: 1471 }, oppFt: { fgm: 3457, ftm: 1564 } }; // FT.nbaTeam / FT.nbaTeamOpp
 const DUKE_READS = { zones: DUKE, ft: { fgm: 973, ftm: 543 }, oppFt: null }; // FT.mbbTeam: ESPN's totals, 34 of the 38 games
-const OFF = { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false, 'bball-war': false, 'bball-career': false, 'bball-shot-profile': false };
+const OFF = bballOnly();
 const locals = (on: boolean) => ({ preview: true, flagOverrides: { ...OFF, 'bball-shot-profile': on } });
 const zoneSum = (r: Row, p = '') => ZONE_KEYS.reduce((a, z) => a + r[`${p}${z}_fga`], 0) + r[`${p}unlocated_fga`];
 

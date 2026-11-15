@@ -34,6 +34,7 @@ import { fromDataApi, fromProcessor, type NbaGame } from '../src/resources/nbaGa
 import { retrievePlayerProps, type PropRow } from '../src/resources/playerProps';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { actualStat, propResult, propsView } from '../src/utils/playerProps';
 
 const PROPS = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/player-props.json.gz', import.meta.url))).toString()) as Record<string, { league: string; season: number; rows: PropRow[] }>;
@@ -125,7 +126,7 @@ describe('propsView on real lines and the same games\' box scores', () => {
 
 function fakeAstro(locals: Record<string, unknown>) {
     const cache: unknown[] = []; const headers = new Headers();
-    const flagOverrides = { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-garbage-time': false, ...(locals.flagOverrides as object) };
+    const flagOverrides = { ...bballOnly('bball-props'), ...(locals.flagOverrides as object) };
     return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { ...locals, flagOverrides }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 const gameApi = () => json('nba/game_401766458_api'); // MIL-CHI, a 2024-25 final, ingested

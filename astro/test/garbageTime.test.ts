@@ -63,6 +63,7 @@ import { retrieveGarbageTime, type GarbageReads } from '../src/resources/garbage
 import { fromDataApi, type NbaGame } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { garbageView, hasGarbageFlag, isOut, ncaaPossessions, proPossessions, splitTotals, type SplitPossession } from '../src/utils/garbageTime';
 
 const log = (c: Capture): SplitPossession[] => (c.league === 'wbb' ? ncaaPossessions(c.possessions) : proPossessions(c.possessions, 4, c.league === 'nba' ? 720 : 600));
@@ -238,7 +239,7 @@ describe('retrieveGarbageTime', () => {
 const gameApi = () => JSON.parse(readFileSync(new URL('./fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
 function fakeAstro(locals: Record<string, unknown>, search = '') {
     const cache: unknown[] = []; const headers = new Headers();
-    return { astro: { params: { id: '401766458' }, url: new URL(`https://gameonpaper.com/nba/game/401766458${search}`), locals: { ...locals, flagOverrides: { 'bball-game-flow': false, 'bball-props': false, 'bball-game-info': false, 'bball-team-grid': false, 'bball-player-box-views': false, 'bball-situational-box': false, 'bball-game-shooting': false, 'bball-shot-filters': false, 'bball-shift-chart': false, 'bball-game-leaders': false, ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id: '401766458' }, url: new URL(`https://gameonpaper.com/nba/game/401766458${search}`), locals: { ...locals, flagOverrides: { ...bballOnly('bball-garbage-time', 'bball-impact-box'), ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 
 describe('prepareBasketballGame', () => {

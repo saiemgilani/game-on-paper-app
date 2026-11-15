@@ -34,6 +34,7 @@ import { pivotPlayerSeasonRates, retrievePlayerSeasonRates, type PlayerSeasonRat
 import { efgPct, expectedPoints, madeAttempted, shader, viewColumns, type BoxCtx } from '../src/utils/playerBoxViews';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import type { BasketballLeague } from '../src/utils/league';
+import { bballOnly } from './helpers/flags';
 
 const gz = (name: string) => JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/${name}.json.gz`, import.meta.url))).toString());
 const ID: Record<BasketballLeague, string> = { nba: '401585607', wnba: '401736325', mbb: '401820775', wbb: '401805076' };
@@ -133,7 +134,7 @@ describe('the page', () => {
     let container: AstroContainer;
     beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
     const render = (lg: BasketballLeague, props: { game: NbaGame; playerSeason?: PlayerSeasonRate[] | null }, flag = true) =>
-        container.renderToString(NbaGamePage, { props, request: new Request(`https://gameonpaper.com/${lg}/game/${props.game.id}`), locals: { league: lg, preview: true, flagOverrides: { 'bball-player-box-views': flag } } as unknown as App.Locals });
+        container.renderToString(NbaGamePage, { props, request: new Request(`https://gameonpaper.com/${lg}/game/${props.game.id}`), locals: { league: lg, preview: true, flagOverrides: { ...bballOnly('bball-player-box-views'), 'bball-player-box-views': flag } } as unknown as App.Locals });
     const views = (html: string) => [...html.matchAll(/class="pbv-view" data-view="(\w+)"/g)].map((m) => m[1]);
 
     test.each(LEAGUES)('%s: four views, Basic checked, both teams in each; starters, a bench rule, then DNPs', async (lg) => {
@@ -173,7 +174,7 @@ describe('prepareBasketballGame', () => {
         (p.header.competitions[0] as any).status = { type: { name: 'STATUS_IN_PROGRESS', completed: false, detail: '2nd Quarter' }, period: 2, displayClock: '5:00' };
         return p;
     };
-    const flags = { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-garbage-time': false, 'bball-team-grid': false };
+    const flags = bballOnly('bball-player-box-views');
     const arrange = (p: NbaProcessorPayload) => { sched.mockResolvedValueOnce(null); espn.mockResolvedValueOnce({ page: { gameId: p.gameId, gamepackageJSON: { header: p.header } }, regressed: false, fetchFailed: false }); proc.mockResolvedValueOnce(p); };
     test.each(LEAGUES)('%s: a live game reads both sides\' season lines and passes them on', async (lg) => {
         const p = live(lg); arrange(p);

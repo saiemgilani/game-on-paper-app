@@ -11,6 +11,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { bballOnly } from './helpers/flags';
 import { apiSeasonPlayerRows, seasonPlayerRows } from './nba/rows';
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
@@ -77,7 +78,7 @@ import { playerPlayStyles, RUNNER_UP_INLINE, teamPlayStyles } from '../src/utils
 
 const PID = Number(Object.keys(byPlayer)[0]); // 1629008, Michael Porter Jr., a Net in seasonPlayerRows()
 const NETS = 1610612751;
-const OFF = { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false, 'bball-play-styles': false };
+const OFF = bballOnly();
 const locals = (on: boolean) => ({ preview: true, flagOverrides: { ...OFF, 'bball-play-styles': on } });
 // the fixtures are 2024-25 (NBA) and 2025-26 (MBB); the page fixtures are 2025-26, so the page tests show his 2024-25 row
 const PORTER = PS.nbaPlayers.find((r) => r.player_id === PID)!;

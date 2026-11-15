@@ -54,6 +54,7 @@ import { prepareBasketballGame, type PregameProjection } from '../src/routes/bas
 import { prepareBracketology } from '../src/routes/basketball/bracketology';
 import { retrieveRatedPrior } from '../src/resources/pregameProjection';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 
 const RP: Record<string, any[]> = FX.rated_priors;
 beforeEach(() => { api.rows = { ...RP }; api.calls = []; api.fail = false; espn.page = null; });
@@ -83,8 +84,8 @@ function fakeAstro(league: string, id: string, locals: Record<string, unknown>, 
     const astro = { params: { id }, url: new URL(`https://gameonpaper.com/${league}/game/${id}${search}`), locals: { ...locals }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any;
     return { astro, cache, headers };
 }
-const ON = { preview: true };
-const OFF = { preview: true, flagOverrides: { 'bball-pregame-projection': false } };
+const ON = { preview: true, flagOverrides: bballOnly('bball-pregame-projection', 'bball-bracketology') };
+const OFF = { preview: true, flagOverrides: { ...ON.flagOverrides, 'bball-pregame-projection': false } };
 const prep = async (league: 'mbb' | 'wbb' | 'nba', id: string, page: any, locals = ON) => {
     espn.page = page;
     const f = fakeAstro(league, id, locals);

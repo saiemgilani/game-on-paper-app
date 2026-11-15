@@ -14,6 +14,7 @@ afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 
 import TeamSeasonBlock from '../src/components/nba/TeamSeasonBlock.astro';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 
 const capture = (name: string) => JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/${name}.json.gz`, import.meta.url))).toString());
 const NBA = capture('team-season-nba-2026'); // Brooklyn Nets 2025-26 (stats id 1610612751, ESPN 17)
@@ -28,7 +29,7 @@ const normalize = (html: string) => html.replace(/data-astro-cid-[a-z0-9]+/g, 'd
 // `on`: an admin's per-request override; { preview }: no override, the flag's own state for a (non-)preview viewer
 const render = async (data: unknown, league: string, espnId: number, on: boolean | { preview: boolean }) => normalize(await container.renderToString(TeamSeasonBlock, {
     props: { data, season: 2026, espnId, teamName: 'Team' },
-    locals: (typeof on === 'boolean' ? { league, preview: true, flagOverrides: { 'bball-team-strength': on } } : { league, ...on }) as unknown as App.Locals,
+    locals: (typeof on === 'boolean' ? { league, preview: true, flagOverrides: { ...bballOnly('bball-team-season'), 'bball-team-strength': on } } : { league, ...on, flagOverrides: bballOnly('bball-team-season', 'bball-team-strength') }) as unknown as App.Locals,
 }));
 const table = (html: string) => html.split('id="season-strength"')[1].split('</table>')[0];
 const cells = (row: string) => [...row.matchAll(/<td[^>]*>([^<]*)<\/td>/g)].map((m) => m[1]);

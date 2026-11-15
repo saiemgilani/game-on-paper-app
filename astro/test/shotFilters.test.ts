@@ -62,6 +62,7 @@ import { clockSeconds, filterShot, isAssisted, matches, movesOf, NO_FILTERS, onF
 import { courtFor } from '../src/basketball/config';
 import { leagueContextFromRows } from '../src/nba/adapters';
 import type { BasketballLeague } from '../src/utils/league';
+import { bballOnly } from './helpers/flags';
 
 const json = (path: string) => JSON.parse(readFileSync(new URL(`./fixtures/${path}`, import.meta.url)).toString());
 /** The real ingested finals: the stints ones (college) and the BB-G39 pro ones (2025, before the pro stints). */
@@ -241,7 +242,7 @@ describe('the ON/OFF filter on the real college final', () => {
 
 function fakeAstro(locals: Record<string, unknown>) {
     const cache: unknown[] = []; const headers = new Headers();
-    return { astro: { params: { id: GAMES.nba }, url: new URL(`https://gameonpaper.com/nba/game/${GAMES.nba}`), locals: { ...locals, flagOverrides: { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-game-shooting': false, 'bball-shift-chart': false, ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id: GAMES.nba }, url: new URL(`https://gameonpaper.com/nba/game/${GAMES.nba}`), locals: { ...locals, flagOverrides: { ...bballOnly('bball-shot-filters'), ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 const espnPage = (name: string, completed: boolean) => ({ page: { gameId: 401766458, gamepackageJSON: { header: { competitions: [{ date: '2025-04-15T23:30Z', status: { type: { name, completed } }, competitors: [] }] } } }, regressed: false });
 

@@ -50,6 +50,7 @@ import { NETS_TEAM_ID } from '../src/nba/data/teams';
 import { UNIT_LIMIT, type SituationalReads } from '../src/resources/situational';
 import { prepareNbaTeam } from '../src/routes/nba/team';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { playerNames, unitLabels } from '../src/utils/lineups';
 import { nameRows, parseSituation, PLAYER_MIN_POSS, situationsFor, teamRows, UNIT_MIN_POSS, type Situation } from '../src/utils/situations';
 
@@ -196,7 +197,7 @@ function fakeAstro(locals: Record<string, unknown>, search = '?season=2026', id 
     const cache: unknown[] = [];
     const headers = new Headers();
     const url = new URL(`https://gameonpaper.com/nba/team/${id}${search}`);
-    return { astro: { params: { id }, url, locals, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id }, url, locals: { ...locals, flagOverrides: { ...bballOnly('bball-situational'), ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 const ok = (r: Awaited<ReturnType<typeof prepareNbaTeam>>) => { if ('notFound' in r || 'unavailable' in r) throw new Error(JSON.stringify(r)); return r; };
 

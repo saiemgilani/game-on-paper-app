@@ -59,6 +59,7 @@ import { EMPTY_EPV, EPV_FIRST_SEASON, epvSide, hasEpv, playClock, retrieveEpvBox
 import { fromDataApi } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 
 /** Q31's link reads, the Impact box's (left out of the game-read checks below) */
 const LINKS = new Set(['shot_season_players', 'ncaa_player_crosswalk']);
@@ -291,7 +292,7 @@ describe('BB-G46: the WNBA and college', () => {
 function fakeAstro(locals: Record<string, unknown>) {
     const cache: unknown[] = []; const headers = new Headers();
     // the sibling panels share the gate: off here, so these cases are the EPV box's alone
-    return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { flagOverrides: { 'bball-impact-box': false, 'bball-game-flow': false }, ...locals }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { flagOverrides: bballOnly('bball-epv'), ...locals }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 
 describe('prepareBasketballGame with the flag', () => {

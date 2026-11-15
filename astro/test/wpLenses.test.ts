@@ -35,6 +35,7 @@ import { retrieveWpLenses } from '../src/resources/wpLenses';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { seasonCache } from '../src/routes/basketball/cache';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { clockSeconds } from '../src/utils/gameFlow';
 import { chartPlays, flowExtras, momentText, moments, stampAt, stretchText, wpLenses, type WpLensRow } from '../src/utils/wpLenses';
 
@@ -163,7 +164,7 @@ describe('the read', () => {
 function fakeAstro(locals: Record<string, unknown>) {
     const cache: unknown[] = []; const headers = new Headers();
     // the final's other panels off: only this read is under test
-    const flagOverrides = { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-garbage-time': false, ...(locals.flagOverrides as object) };
+    const flagOverrides = { ...bballOnly('bball-wp-lenses'), ...(locals.flagOverrides as object) };
     return { astro: { params: { id: LINE }, url: new URL(`https://gameonpaper.com/nba/game/${LINE}`), locals: { ...locals, flagOverrides }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 

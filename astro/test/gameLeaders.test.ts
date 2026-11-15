@@ -39,6 +39,7 @@ import { fromDataApi, type NbaGame } from '../src/resources/nbaGame';
 import { pivotSeasonAverages, retrieveSeasonAverages } from '../src/resources/seasonAverages';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { assistWeb, leaderOf, leaderRows, overUnder, statOf, TS_MIN_ATTEMPTS, zoneOf, type SeasonAverage } from '../src/utils/gameLeaders';
 import type { BasketballLeague } from '../src/utils/league';
 
@@ -243,7 +244,7 @@ describe('retrieveSeasonAverages', () => {
 
 function fakeAstro(locals: Record<string, unknown>, lg: Lg = 'nba', id = '401766458') {
     const cache: unknown[] = []; const headers = new Headers();
-    const off = { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-garbage-time': false };
+    const off = bballOnly('bball-game-leaders');
     return { astro: { params: { id }, url: new URL(`https://gameonpaper.com/${lg}/game/${id}`), locals: { ...locals, flagOverrides: { ...off, ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 
@@ -298,7 +299,7 @@ beforeAll(async () => { container = await AstroContainer.create({ renderers: awa
 const normalize = (html: string) => html.replace(/ uid="[^"]*"/g, ' uid=""').replace(/data-astro-cid-[a-z0-9]+/g, 'data-astro-cid-x');
 const page = async (lg: BasketballLeague, game: NbaGame, on: boolean, averages?: SeasonAverage[] | null) => normalize(await container.renderToString(NbaGamePage, {
     props: { game, ...(averages !== undefined ? { averages } : {}) },
-    locals: { league: lg, preview: true, flagOverrides: { 'bball-game-leaders': on } } as unknown as App.Locals,
+    locals: { league: lg, preview: true, flagOverrides: { ...bballOnly('bball-game-leaders'), 'bball-game-leaders': on } } as unknown as App.Locals,
 }));
 const table = (html: string, label: string) => html.split(`aria-label="${label}"`)[1].split('</table>')[0];
 

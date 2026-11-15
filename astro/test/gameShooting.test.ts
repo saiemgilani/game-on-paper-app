@@ -30,6 +30,7 @@ import type { LeagueContextRow } from '../src/resources/nbaShots';
 import { fromDataApi, type NbaGame } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { placeholderFor } from '../src/basketball/config';
 import type { BasketballLeague } from '../src/utils/league';
 
@@ -104,7 +105,7 @@ describe('the game\'s shots binned like the league\'s', () => {
 
 function fakeAstro(locals: Record<string, unknown>) {
     const cache: unknown[] = []; const headers = new Headers();
-    return { astro: { params: { id: GAMES.nba }, url: new URL(`https://gameonpaper.com/nba/game/${GAMES.nba}`), locals: { ...locals, flagOverrides: { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-shot-filters': false, 'bball-shift-chart': false, ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id: GAMES.nba }, url: new URL(`https://gameonpaper.com/nba/game/${GAMES.nba}`), locals: { ...locals, flagOverrides: { ...bballOnly('bball-game-shooting'), ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 
 describe('prepareBasketballGame', () => {

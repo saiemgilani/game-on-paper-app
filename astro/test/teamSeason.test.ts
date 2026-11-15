@@ -64,6 +64,7 @@ import TeamSeasonBlock from '../src/components/nba/TeamSeasonBlock.astro';
 import { NETS_TEAM_ID } from '../src/nba/data/teams';
 import { prepareNbaTeam } from '../src/routes/nba/team';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { scheduleRows, splitRows } from '../src/utils/teamSeason';
 import { ordinal } from '../src/utils/misc';
 
@@ -77,7 +78,7 @@ function fakeAstro(locals: Record<string, unknown>, id = String(NETS_TEAM_ID)) {
     const cache: unknown[] = [];
     const headers = new Headers();
     const url = new URL(`https://gameonpaper.com/nba/team/${id}?season=2026`);
-    return { astro: { params: { id }, url, locals, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id }, url, locals: { ...locals, flagOverrides: { ...bballOnly('bball-team-season'), ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 const ok = (r: Awaited<ReturnType<typeof prepareNbaTeam>>) => { if ('notFound' in r || 'unavailable' in r) throw new Error(JSON.stringify(r)); return r; };
 

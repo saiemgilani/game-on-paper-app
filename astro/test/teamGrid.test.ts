@@ -35,6 +35,7 @@ import { retrieveTeamGridGame, retrieveTeamGridSeason, seasonTeamId, teamGridSea
 import { accounting, edge } from '../src/utils/teamGrid';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import type { BasketballLeague } from '../src/utils/league';
+import { bballOnly } from './helpers/flags';
 
 interface Capture {
     league: BasketballLeague; season: number; payload: NbaProcessorPayload; team_season_rates: Record<string, any>[]
@@ -171,7 +172,7 @@ describe('the page', () => {
     let container: AstroContainer;
     beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
     const render = (lg: BasketballLeague, props: { game: NbaGame; season?: TeamGridSeason | null }, flag = true) =>
-        container.renderToString(NbaGamePage, { props, request: new Request(`https://gameonpaper.com/${lg}/game/${props.game.id}`), locals: { league: lg, preview: true, flagOverrides: { 'bball-team-grid': flag } } as unknown as App.Locals });
+        container.renderToString(NbaGamePage, { props, request: new Request(`https://gameonpaper.com/${lg}/game/${props.game.id}`), locals: { league: lg, preview: true, flagOverrides: { ...bballOnly('bball-team-grid'), 'bball-team-grid': flag } } as unknown as App.Locals });
     const plain = (h: string) => h.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ');
 
     test.each(LEAGUES)('%s: one Team stats panel, both tables side by side at lg, counted possessions, season rows, the accounting', async (lg) => {
@@ -249,7 +250,7 @@ describe('prepareBasketballGame', () => {
         p.header = header;
         return p;
     };
-    const flags = { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-garbage-time': false, 'bball-player-box-views': false };
+    const flags = bballOnly('bball-team-grid');
     test.each(LEAGUES)('%s: a live game reads the season once (the season and the ESPN ids) and passes it on', async (lg) => {
         const p = live(lg);
         sched.mockResolvedValueOnce(null); espn.mockResolvedValueOnce({ page: { gameId: p.gameId, gamepackageJSON: { header: p.header } }, regressed: false, fetchFailed: false }); proc.mockResolvedValueOnce(p);

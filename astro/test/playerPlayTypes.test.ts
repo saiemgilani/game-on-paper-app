@@ -12,6 +12,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { bballOnly } from './helpers/flags';
 import { seasonPlayerRows } from './nba/rows';
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
@@ -74,7 +75,7 @@ import { matchupRollup, PLAY_TYPE_LABELS, playTypesPanel, topMatchups } from '..
 
 const PID = Number(Object.keys(byPlayer)[0]); // 1629008, Michael Porter Jr., a Net in seasonPlayerRows()
 const ZUBAC = 1627826; // traded LAC to IND in 2025-26: Synergy rows for both teams
-const OFF = { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false, 'bball-war': false, 'bball-play-types': false };
+const OFF = bballOnly();
 const locals = (on: boolean) => ({ preview: true, flagOverrides: { ...OFF, 'bball-play-types': on } });
 const { porter: MPJ, zubac: ZU } = PT;
 

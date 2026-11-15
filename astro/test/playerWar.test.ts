@@ -11,6 +11,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { bballOnly } from './helpers/flags';
 import { seasonPlayerRows } from './nba/rows';
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
@@ -73,7 +74,7 @@ import { warPanel } from '../src/utils/playerWar';
 import { signed1 } from '../src/utils/shotQuality';
 
 const PID = Number(Object.keys(byPlayer)[0]); // 1629008, Michael Porter Jr., a Net in seasonPlayerRows()
-const OFF = { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false, 'bball-war': false, 'bball-current-impact': false, 'bball-shot-profile': false, 'bball-career': false, 'bball-play-types': false, 'bball-compare': false };
+const OFF = bballOnly();
 const locals = (war: boolean, impact = false) => ({ preview: true, flagOverrides: { ...OFF, 'bball-war': war, 'bball-impact': impact } });
 const [NBA] = PW.nba;
 const [WNBA] = PW.wnba;

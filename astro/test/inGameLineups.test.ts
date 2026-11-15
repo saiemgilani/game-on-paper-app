@@ -59,6 +59,7 @@ import { retrieveImpactBox, retrieveInGameLineups, GAME_UNIT_LIMIT, type ImpactB
 import { fromDataApi } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { allCombos, bigSample, inGameSide, pickSplit, unitKey } from '../src/utils/inGameLineups';
 
 type L = keyof typeof LEAGUES;
@@ -207,7 +208,7 @@ describe('the reads', () => {
 
 function fakeAstro(locals: Record<string, unknown>) {
     const cache: unknown[] = []; const headers = new Headers();
-    return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { flagOverrides: { 'bball-game-flow': false, 'bball-garbage-time': false }, ...locals }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { flagOverrides: bballOnly('bball-impact-box', 'bball-ingame-lineups'), ...locals }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 const read = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/nba/${name}.json`, import.meta.url)).toString());
 const gameApi = () => read('game_401766458_api');

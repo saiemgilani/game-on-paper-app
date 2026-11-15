@@ -29,6 +29,7 @@ vi.mock('../src/resources/espn', async (orig) => ({ ...(await orig<typeof import
 import GameSituations from '../src/components/nba/game/GameSituations.astro';
 import { retrieveGameSituational } from '../src/resources/situational';
 import { prepareNbaGame } from '../src/routes/nba/game';
+import { bballOnly } from './helpers/flags';
 import { parseSituation, SITUATION_COLS, situationsFor, type GameSituationsTab } from '../src/utils/situations';
 
 const NETS = '1610612751';
@@ -77,7 +78,7 @@ describe('retrieveGameSituational', () => {
 
 describe('the route', () => {
     const api = () => read('game_401766458_api');
-    const astro = (locals: any, q = '') => ({ params: { id: '401766458' }, url: new URL(`https://gameonpaper.com/nba/game/401766458${q}`), locals, cache: { set: vi.fn() }, response: { headers: new Headers() } }) as any;
+    const astro = (locals: any, q = '') => ({ params: { id: '401766458' }, url: new URL(`https://gameonpaper.com/nba/game/401766458${q}`), locals: { flagOverrides: bballOnly('bball-situational'), ...locals }, cache: { set: vi.fn() }, response: { headers: new Headers() } }) as any;
     const final = () => { g.sched.mockResolvedValueOnce(api().schedule[0]); g.rows.mockResolvedValueOnce(api()); };
     test('off: no situational read and no situations key (the prep is today\'s)', async () => {
         final();

@@ -12,6 +12,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { bballOnly } from './helpers/flags';
 import { seasonPlayerRows } from './nba/rows';
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
@@ -72,7 +73,7 @@ import { fmtDate } from '../src/nba/format';
 const esc = (t: string) => t.replace(/[+.]/g, (c) => `\\${c}`);
 
 const PID = Number(Object.keys(byPlayer)[0]); // 1629008, Michael Porter Jr., a Net in seasonPlayerRows()
-const OFF = { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false, 'bball-war': false, 'bball-current-impact': false };
+const OFF = bballOnly();
 const locals = (on: boolean, impact = false) => ({ preview: true, flagOverrides: { ...OFF, 'bball-current-impact': on, 'bball-impact': impact } });
 const [S] = CI.season;
 const [NOW] = CI.latest;

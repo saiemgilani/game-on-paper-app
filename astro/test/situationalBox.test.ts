@@ -35,6 +35,7 @@ import { TEAM_EXPECTED_KEYS, TEAM_SPLIT_KEYS, fromProcessor, type NbaGame, type 
 import { gameExpected, retrieveGameExpected } from '../src/resources/gameExpected';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import type { BasketballLeague } from '../src/utils/league';
+import { bballOnly } from './helpers/flags';
 
 const gz = (name: string): { payload: NbaProcessorPayload; game_map: Record<string, any>[]; situational_team_games: Record<string, any>[] } => JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/${name}.json.gz`, import.meta.url))).toString());
 const FX = {
@@ -107,7 +108,7 @@ describe('the page', () => {
     let container: AstroContainer;
     beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
     const render = (lg: BasketballLeague, g: NbaGame, flag = true) =>
-        container.renderToString(NbaGamePage, { props: { game: g }, request: new Request(`https://gameonpaper.com/${lg}/game/${g.id}`), locals: { league: lg, preview: true, flagOverrides: { 'bball-situational-box': flag, 'bball-team-grid': false } } as unknown as App.Locals });
+        container.renderToString(NbaGamePage, { props: { game: g }, request: new Request(`https://gameonpaper.com/${lg}/game/${g.id}`), locals: { league: lg, preview: true, flagOverrides: { ...bballOnly('bball-situational-box'), 'bball-situational-box': flag } } as unknown as App.Locals });
     const plain = (h: string) => h.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ');
     const row = (html: string, label: string) => html.match(new RegExp(`<tr[^>]*>\\s*<th[^>]*>${label}</th>[\\s\\S]*?</tr>`))![0];
     const hasRow = (html: string, label: string) => new RegExp(`<th[^>]*>${label}</th>`).test(html);
@@ -258,7 +259,7 @@ describe('prepareBasketballGame', () => {
     const ingested = () => { sched.mockResolvedValueOnce(gameApi().schedule[0]); rows.mockResolvedValueOnce(gameApi()); };
     const fakeAstro = (flags: Record<string, boolean>) => {
         const cache: unknown[] = []; const headers = new Headers();
-        const others = { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-garbage-time': false, 'bball-team-grid': false };
+        const others = bballOnly('bball-situational-box');
         return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { preview: true, flagOverrides: { ...others, ...flags } } as any, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
     };
     test('a Data API final reads game_team_expected once, and a season not built is held for the season window', async () => {

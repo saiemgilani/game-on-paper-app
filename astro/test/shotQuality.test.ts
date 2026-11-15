@@ -77,12 +77,13 @@ import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { prepareNbaPlayer } from '../src/routes/nba/player';
 import { prepareNbaTeam } from '../src/routes/nba/team';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { gameTeams, signed1, teamShooters } from '../src/utils/shotQuality';
 
 const PID = Number(Object.keys(byPlayer)[0]); // 1629008, a Net in apiSeasonPlayerRows()
 const WNBA_ID = '401736289'; // LA at SEA, 2025-08-02T02:00Z: a 7 pm PT tip, Aug 1 on the scoreboard (ET) and in stats.wnba.com
 const MBB_ID = '401808271'; // Alabama at Tennessee, 2026-02-28
-const ON = { preview: true, flagOverrides: { 'bball-team-season': false } };
+const ON = { preview: true, flagOverrides: bballOnly('bball-poe') };
 
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
@@ -223,7 +224,9 @@ describe('the game page', () => {
         expect(html).toContain('id="poe-panel"');
         expect(html).toContain('href="#poe"');
         expect(html.indexOf('id="factors-panel"')).toBeLessThan(html.indexOf('id="poe-panel"'));
-        expect(html.indexOf('id="poe-panel"')).toBeLessThan(html.indexOf('id="teambox-panel"'));
+        // fb4ec57a: the panel sits after the Team stats switch (BB-G32: Four factors + Team box, or the one grid panel)
+        expect(html.indexOf('id="teambox-panel"')).toBeLessThan(html.indexOf('id="poe-panel"'));
+        expect(html.indexOf('id="poe-panel"')).toBeLessThan(html.indexOf('id="players-panel"'));
         expect(html.split('id="factors-panel"')[1].split('id="poe-panel"')[0]).not.toContain('poe-table');
         for (const none of [{}, undefined]) {
             const h = await page(none);

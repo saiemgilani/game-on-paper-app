@@ -56,6 +56,7 @@ import { retrieveImpactBox } from '../src/resources/impactBox';
 import { fromDataApi, type NbaGame } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { intersect, mmss, parseShiftOn, pmClass, shiftHref, shiftView } from '../src/basketball/shiftChart';
 import { regulationFor } from '../src/basketball/config';
 import type { BasketballLeague } from '../src/utils/league';
@@ -206,7 +207,7 @@ describe('the highlight hook (BB-G37 links here)', () => {
 
 function fakeAstro(locals: Record<string, unknown>) {
     const cache: unknown[] = []; const headers = new Headers();
-    return { astro: { params: { id: GAMES.nba }, url: new URL(`https://gameonpaper.com/nba/game/${GAMES.nba}`), locals: { ...locals, flagOverrides: { 'bball-impact-box': false, 'bball-game-flow': false, 'bball-game-shooting': false, 'bball-shot-filters': false, ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id: GAMES.nba }, url: new URL(`https://gameonpaper.com/nba/game/${GAMES.nba}`), locals: { ...locals, flagOverrides: { ...bballOnly('bball-shift-chart'), ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 const espnPage = (name: string, completed: boolean) => ({ page: { gameId: 401766458, gamepackageJSON: { header: { competitions: [{ date: '2025-04-15T23:30Z', status: { type: { name, completed } }, competitors: [] }] } } }, regressed: false });
 

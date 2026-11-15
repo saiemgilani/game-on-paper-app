@@ -9,6 +9,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { bballOnly } from './helpers/flags';
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 
@@ -73,7 +74,7 @@ import { generateColorRampValue } from '../src/utils/misc';
 import { playerSeasonsFromRows } from '../src/nba/adapters';
 
 const LEAGUES = ['nba', 'wnba', 'mbb', 'wbb'] as const;
-const OFF = { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false };
+const OFF = bballOnly('bball-compare', 'bball-impact', 'bball-war');
 const on = (extra: Record<string, boolean> = {}) => ({ preview: true, flagOverrides: { ...OFF, ...extra } });
 const astroAt = (path: string, locals: Record<string, unknown>) => {
     const set = vi.fn();
@@ -259,7 +260,7 @@ describe('the page', () => {
         const page = await render('mbb', `?ids=${SWAIN},${MARK}`);
         expect(page).toMatch(/<option value="\/mbb\/players\/compare\?ids=4848625,4432243" selected[^>]*>Latest<\/option>/);
         expect(card(page, SWAIN)).toContain('data-compare-season>2025-26</p>');
-        expect(card(page, SWAIN)).toContain(`href="/mbb/players/${SWAIN}"`); // 2025-26 is the MBB current season: his canonical page
+        expect(card(page, SWAIN)).toContain(`href="/mbb/players/${SWAIN}?season=2026"`); // main rolled college to 2026-27 (BB-D29, #464): 2025-26 is a past season, so his page pinned to it
         expect(page).toContain('each player’s latest season.');
         const swain = card(page, SWAIN);
         expect(swain).toContain('Dailyn Swain');

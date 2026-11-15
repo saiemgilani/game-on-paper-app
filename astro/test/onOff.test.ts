@@ -52,6 +52,7 @@ import { NETS_TEAM_ID } from '../src/nba/data/teams';
 import { BIO_LIMIT, PAIR_LIMIT, PLAYER_LIMIT, RATINGS } from '../src/resources/onOff';
 import { prepareNbaTeam } from '../src/routes/nba/team';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { playerNames } from '../src/utils/lineups';
 import { generateColorRampValue } from '../src/utils/misc';
 import { isShortTenure, ON_OFF_MIN_MINUTES, parseWowy, shownLines, shownPlayers, sideValue, usesSpan, WOWY_MIN_MINUTES, wowyLines, type OnOffTab as Tab } from '../src/utils/onOff';
@@ -146,7 +147,7 @@ function fakeAstro(locals: Record<string, unknown>, search = '?season=2026', id 
     const cache: unknown[] = [];
     const headers = new Headers();
     const url = new URL(`https://gameonpaper.com/nba/team/${id}${search}`);
-    return { astro: { params: { id }, url, locals, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id }, url, locals: { ...locals, flagOverrides: { ...bballOnly('bball-on-off'), ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 const ok = (r: Awaited<ReturnType<typeof prepareNbaTeam>>) => { if ('notFound' in r || 'unavailable' in r) throw new Error(JSON.stringify(r)); return r; };
 

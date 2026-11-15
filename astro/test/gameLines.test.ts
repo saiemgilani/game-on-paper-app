@@ -36,6 +36,7 @@ import { fromDataApi, type NbaGame } from '../src/resources/nbaGame';
 import { retrieveGameLine } from '../src/resources/gameLines';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { LINES_FROM, UPSET_WP, cover, lineSpread, lineTotal, moneylineText, overUnder, pace, spreadText, upset, type GameLine } from '../src/utils/gameLines';
 
 const FX = JSON.parse(readFileSync(new URL('./fixtures/game-lines.json', import.meta.url)).toString()) as { game_lines: GameLine[]; schedule: { league: string; id: number; home_score: number; away_score: number; home_abbreviation: string; away_abbreviation: string }[] };
@@ -131,7 +132,7 @@ describe('retrieveGameLine', () => {
 
 function fakeAstro(locals: Record<string, unknown>) {
     const cache: unknown[] = []; const headers = new Headers();
-    return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { ...locals, flagOverrides: { 'bball-impact-box': false, 'bball-game-flow': false, ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { ...locals, flagOverrides: { ...bballOnly('bball-lines'), ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 
 describe('prepareBasketballGame', () => {

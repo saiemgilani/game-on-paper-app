@@ -11,6 +11,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { bballOnly } from './helpers/flags';
 import { seasonPlayerRows } from './nba/rows';
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
@@ -71,7 +72,7 @@ import { COLLEGE_IMPACT, impactPanel, impactShown } from '../src/utils/playerImp
 import { signed1 } from '../src/utils/shotQuality';
 
 const PID = Number(Object.keys(byPlayer)[0]); // 1629008, Michael Porter Jr., a Net in seasonPlayerRows()
-const OFF = { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false, 'bball-war': false, 'bball-current-impact': false, 'bball-shot-profile': false, 'bball-career': false, 'bball-play-types': false, 'bball-compare': false, 'bball-player-on-off': false };
+const OFF = bballOnly();
 const locals = (on: boolean) => ({ preview: true, flagOverrides: { ...OFF, 'bball-impact': on } });
 const [NBA] = PI.nba;
 const top = (rows: Record<string, any>[]) => [...rows].sort((a, b) => b.min - a.min)[0];

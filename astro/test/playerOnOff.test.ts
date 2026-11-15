@@ -11,6 +11,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { bballOnly } from './helpers/flags';
 import { seasonPlayerRows } from './nba/rows';
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
@@ -80,7 +81,7 @@ import { generateColorRampValue } from '../src/utils/misc';
 import { espnPartners, TOP_PARTNERS, topPartners, type PlayerOnOff as Data } from '../src/utils/playerOnOff';
 
 const PID = Number(Object.keys(byPlayer)[0]); // 1629008, Michael Porter Jr., a Net in seasonPlayerRows() (the page tests' player)
-const OFF = { 'bball-playoff-picture': false, 'bball-team-season': false, 'bball-poe': false, 'bball-impact': false, 'bball-player-on-off': false };
+const OFF = bballOnly();
 const locals = (on: boolean) => ({ preview: true, flagOverrides: { ...OFF, 'bball-player-on-off': on } });
 const byId = new Map(PLAYERS.map((p) => [String(p.player_id), p]));
 const teamMinutes = (p: any) => p.minutes_on + p.minutes_off;

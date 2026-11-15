@@ -52,6 +52,7 @@ import { NETS_TEAM_ID } from '../src/nba/data/teams';
 import { DEFAULT_GATE, RATED, UNIT_LIMIT, ZONES, type Gate, type LineupRow } from '../src/resources/lineups';
 import { prepareNbaTeam } from '../src/routes/nba/team';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { generateColorRampValue } from '../src/utils/misc';
 import { parseBasis, parseGate, parseLineupSort, parseUnit, playerNames, playerPages, sortUnits, unitLabels } from '../src/utils/lineups';
 import { dotLabels } from '../src/nba/scatterMetrics';
@@ -192,7 +193,7 @@ function fakeAstro(locals: Record<string, unknown>, search = '?season=2026', id 
     const cache: unknown[] = [];
     const headers = new Headers();
     const url = new URL(`https://gameonpaper.com/nba/team/${id}${search}`);
-    return { astro: { params: { id }, url, locals, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id }, url, locals: { ...locals, flagOverrides: { ...bballOnly('bball-lineups'), ...(locals.flagOverrides as object) } }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 const ok = (r: Awaited<ReturnType<typeof prepareNbaTeam>>) => { if ('notFound' in r || 'unavailable' in r) throw new Error(JSON.stringify(r)); return r; };
 

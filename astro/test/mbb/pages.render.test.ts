@@ -124,7 +124,7 @@ describe('the MBB dashboard pages', () => {
         const [p1, p2] = seasonPlayers(2026).filter((r) => r.team_id === TEX);
         lineupsRead.value = { units: [{ lineup_id: `${p1.person_id}-${p2.person_id}`, n_players: 2, player_1: String(p1.person_id), player_2: String(p2.person_id), player_3: null, player_4: null, player_5: null, minutes: 10, poss: 60, opp_poss: 60, pts: 60, opp_pts: 60, plus_minus: 0 }], names: [], pairs: [] };
         try {
-            const tab = (await page('team/[id].astro', `/mbb/team/${TEX}?unit=2`, { id: String(TEX) })).split('id="lineups"')[1].split('</section>')[0];
+            const tab = (await page('team/[id].astro', `/mbb/team/${TEX}?season=2026&unit=2`, { id: String(TEX) })).split('id="lineups"')[1].split('</section>')[0];
             expect(tab.replace(/<[^>]+>/g, '')).toContain(`#${p1.person_id} · #${p2.person_id}`);
             expect(tab).not.toContain(`/mbb/players/${p1.person_id}`); // no crosswalk pair: no link
             expect(tab).not.toContain(p1.player_name);

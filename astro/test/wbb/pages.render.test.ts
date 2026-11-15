@@ -212,7 +212,7 @@ describe('the WBB dashboard pages', () => {
         expect(await prepareBasketballPlayer(fake('/wbb/players/123?season=2026', '123'), 'wbb')).toEqual({ notFound: true });
     });
     test('HTML budgets (measured on these captures x 1.2)', () => {
-        const BUDGET: Record<string, number> = { '/wbb': 242253, '/wbb/team/2579': 144102, '/wbb/players/[p26]': 304592, '/wbb/scatter': 123536, '/wbb/scatter all': 2029853, '/wbb/leaders': 105629 };
+        const BUDGET: Record<string, number> = { '/wbb': 242253, '/wbb/team/2579': 144102, '/wbb/players/[p26]': 304592, '/wbb/scatter': 123536, '/wbb/scatter all': 2029853, '/wbb/leaders': 127402 }; // /wbb/leaders: BB-G11's Most declined boards (preview), 106,168 bytes x 1.2
         for (const [k, b] of Object.entries(BUDGET)) expect(sizes[k], k).toBeLessThanOrEqual(b);
     });
 });

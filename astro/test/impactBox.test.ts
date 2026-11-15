@@ -75,6 +75,7 @@ import { EMPTY_IMPACT, retrieveImpactBox, TOP_UNITS, UNIT_LIMIT, type ImpactBoxR
 import { fromDataApi } from '../src/resources/nbaGame';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { impactSide, shortName } from '../src/utils/impactBox';
 
 const reads = async (c: Capture): Promise<ImpactBoxReads> => {
@@ -238,7 +239,7 @@ describe('impactSide', () => {
 // Impact box's alone (test/gameFlow.test.ts and test/garbageTime.test.ts have them)
 function fakeAstro(locals: Record<string, unknown>) {
     const cache: unknown[] = []; const headers = new Headers();
-    return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { flagOverrides: { 'bball-game-flow': false, 'bball-garbage-time': false, 'bball-props': false, 'bball-game-info': false, 'bball-team-grid': false, 'bball-player-box-views': false, 'bball-situational-box': false, 'bball-game-shooting': false, 'bball-shot-filters': false, 'bball-shift-chart': false, 'bball-game-leaders': false, 'bball-pregame-projection': false, 'bball-epv': false }, ...locals }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
+    return { astro: { params: { id: '401766458' }, url: new URL('https://gameonpaper.com/nba/game/401766458'), locals: { flagOverrides: bballOnly('bball-impact-box', 'bball-ingame-lineups'), ...locals }, cache: { set: (v: unknown) => cache.push(v) }, response: { headers } } as any, cache, headers };
 }
 const procJson = () => read('game_401766458_processor');
 const espnPage = (name: string, completed: boolean) => ({ page: { gameId: 401766458, gamepackageJSON: { header: { competitions: [{ date: '2025-04-15T23:30Z', status: { type: { name, completed } }, competitors: [] }] } } }, regressed: false });

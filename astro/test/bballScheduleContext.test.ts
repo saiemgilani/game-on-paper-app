@@ -72,6 +72,7 @@ import { retrieveScheduleContext } from '../src/resources/bballScheduleContext';
 import { prepareNbaTeam } from '../src/routes/nba/team';
 import { REST_CAP, atsRecord, b2bRecord, rotation, scheduleContext, teamAts, teamProj } from '../src/utils/bballScheduleContext';
 import { FLAGS } from '../src/utils/features';
+import { bballOnly } from './helpers/flags';
 import { scheduleRows } from '../src/utils/teamSeason';
 
 let container: AstroContainer;
@@ -219,7 +220,7 @@ for (const [lg, c, x, espnId, regulation] of [['nba', NETS_BLOCK, NETS_CTX, NETS
 
 const fakeAstro = (path: string, id: string, locals: Record<string, unknown>) => {
     const cache = { set: vi.fn() };
-    return { astro: { params: { id }, url: new URL(`https://gameonpaper.com${path}`), locals, cache, response: { headers: new Headers() } } as any, cache };
+    return { astro: { params: { id }, url: new URL(`https://gameonpaper.com${path}`), locals: { ...locals, flagOverrides: { ...bballOnly('bball-schedule-context', 'bball-team-season'), ...(locals.flagOverrides as object) } }, cache, response: { headers: new Headers() } } as any, cache };
 };
 const ok = <T,>(r: T) => { if (r && typeof r === 'object' && ('notFound' in r || 'unavailable' in r)) throw new Error(JSON.stringify(r)); return r as Exclude<T, { notFound: true } | { unavailable: true }>; };
 const TEAM = `/nba/team/${NETS}?season=2026`;

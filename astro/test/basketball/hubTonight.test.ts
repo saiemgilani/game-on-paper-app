@@ -12,6 +12,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vit
 import { gameScore, sparkline, standouts } from '../../src/basketball/hub';
 import { MAX_LINE_READS } from '../../src/resources/gameLines';
 import type { BasketballLeague } from '../../src/utils/league';
+import { bballOnly } from '../helpers/flags';
 
 const fetched: string[] = [];
 vi.stubGlobal('fetch', async (u: unknown) => { fetched.push(String(u)); throw new Error(`network: ${String(u)}`); });
@@ -60,8 +61,8 @@ beforeAll(async () => {
 afterAll(() => { vi.useRealTimers(); });
 const render = async (lg: BasketballLeague, locals: Partial<App.Locals> = { preview: true }) => {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/${lg}/index.astro`);
-    // BB-G49's 'bball-hub-dashboards' is off here: its reads and sections are hubDashboards.test.ts's
-    const l = { ...locals, flagOverrides: { 'bball-hub-dashboards': false, ...locals.flagOverrides } };
+    // every other basketball feature (BB-G49's 'bball-hub-dashboards' among them) is off here: their reads and sections are their own tests'
+    const l = { ...locals, flagOverrides: { ...bballOnly('bball-hub', 'bball-hub-tonight'), ...locals.flagOverrides } };
     return container.renderToString(Page, { request: new Request(`https://gameonpaper.com/${lg}`), locals: l as App.Locals });
 };
 
