@@ -122,7 +122,7 @@ describe('team profile route', () => {
         const [read] = coachReads();
         const q = new URL(read).searchParams;
         expect(new URL(read).pathname).toBe('/v1/cfb/coach_tendencies');
-        expect([q.get('pos_team_id'), q.get('role'), q.get('limit')]).toEqual(['245', 'HC', '400']);
+        expect([q.get('pos_team_id'), q.get('role'), q.get('limit')]).toEqual(['245', 'HC', '2000']);
         expect(q.get('select')!.split(',').sort()).toEqual(['coach', 'drives', 'games', 'plays', 'pos_team', 'pos_team_id', 'role', 'season']);
 
         const best = panel(html, 'best-seasons')!;
