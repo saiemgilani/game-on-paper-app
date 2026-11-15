@@ -14,8 +14,22 @@ import { GAME_PERCENTILE_MIN_PLAYS, NO_COHORT, seasonGamePercentileGroup, isEspn
 import {
     resolveEspnAthleteId, retrievePlayer, retrievePlayerSeasons, retrievePlayerGames, retrievePlayerSplits,
     retrieveNflEspnGameIds, retrievePlayerGamePercentiles, retrievePlayerSplitPercentiles, retrieveTeamSummaries, retrieveRankedRows,
-    type SDVPlayer, type SDVPlayerSplit, type SDVTeamSummary,
+    PLAYER_READ_TIMEOUT_MS, type SDVPlayer, type SDVPlayerSplit, type SDVTeamSummary,
 } from '../resources/sdv';
+
+/**
+ * A section read that hasn't settled after PLAYER_READ_TIMEOUT_MS counts as failed, so the
+ * page degrades instead of waiting. Several section reads (team summaries, the ladders, the
+ * NFL id map, nearby ranks) go through shared helpers that take no signal; this bounds them
+ * all at the one place the page waits on them, without changing those helpers' other callers.
+ */
+export function withDeadline<T>(read: Promise<T>, ms = PLAYER_READ_TIMEOUT_MS): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`player section read timed out after ${ms}ms`)), ms);
+    });
+    return Promise.race([read, deadline]).finally(() => clearTimeout(timer));
+}
 import { isFeatureEnabled } from '../utils/features';
 import { neighborSelfRow, PLAYER_NEIGHBOR_METRICS, playerKey, playerNeighborLists, type NeighborList } from '../utils/neighbors';
 
@@ -241,7 +255,7 @@ export async function loadPlayerSections(player: SDVPlayer, season: number | nul
     locals: { preview?: boolean; flagOverrides?: Record<string, boolean> } = {}):
     Promise<{ sections: PlayerSections, degraded: boolean }> {
     const seasons = retrievePlayerSeasons(player.espn_id, league);
-    const reads = await Promise.allSettled([
+    const reads = await Promise.allSettled(([
         seasons,
         season === null ? Promise.resolve([]) : retrievePlayerGames(player.espn_id, season, league),
         season === null ? Promise.resolve([]) : retrievePlayerSplits(player.espn_id, season, league),
@@ -256,7 +270,7 @@ export async function loadPlayerSections(player: SDVPlayer, season: number | nul
         // the splits table's cohort is the same roster group, so it waits on the seasons read too
         season === null ? Promise.resolve(null) : seasons.catch((): SeasonRow[] => [])
             .then((rows) => loadSplitBreaks(season, league, seasonGamePercentileGroup(rows, season, player.position))),
-    ]);
+    ] as Promise<unknown>[]).map((read) => withDeadline(read)));
     const value = (i: number, empty: any): any => {
         const r = reads[i];
         if (r.status === 'fulfilled') return r.value;
@@ -273,8 +287,8 @@ export async function loadPlayerSections(player: SDVPlayer, season: number | nul
     if (own && season !== null) {
         const category = own.category as PlayerCategory;
         try {
-            const rows = await retrieveRankedRows({ table: category, season, metrics: PLAYER_NEIGHBOR_METRICS[category],
-                idColumns: ['player_id', PLAYER_NAME_FIELD[category], 'team_id', 'pos_team'], league });
+            const rows = await withDeadline(retrieveRankedRows({ table: category, season, metrics: PLAYER_NEIGHBOR_METRICS[category],
+                idColumns: ['player_id', PLAYER_NAME_FIELD[category], 'team_id', 'pos_team'], league }));
             neighborLists = playerNeighborLists(rows, playerKey(own), category, { ...locals, league }, season);
         } catch (e) {
             console.error(`player page: the nearby-ranks read failed: ${e}`);
