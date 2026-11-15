@@ -36,6 +36,8 @@ const events = (lg: BasketballLeague) => JSON.parse(fix(BOARDS[lg]).toString()).
 const DAYS: Record<BasketballLeague, string> = { nba: '2025-01-15', wnba: '2025-08-01', mbb: '2025-02-22', wbb: '2026-02-07' };
 const LEAGUES = ['nba', 'wnba', 'mbb', 'wbb'] as const;
 const warSeason = (lg: BasketballLeague) => LEAGUE_CONFIG[lg].seasons[LEAGUE_CONFIG[lg].seasons.length - 1];
+/** the season each league's captured top 25 is for; the college 2026-27 player_war answer is empty (Nov 14), as dataFrom's `?? []` returns */
+const capturedWarSeason = (lg: BasketballLeague) => Number(Object.keys(WAR).find((k) => k.startsWith(`${lg}:`))!.split(':')[1]);
 const boardSeason = (lg: BasketballLeague) => events(lg)[0].season.year as number;
 const producer = (lg: BasketballLeague, season = boardSeason(lg)) => ({ standings: SS.season_standings[`${lg}:${season}`] ?? [], strength: SS.team_strength[`${lg}:${season}`] ?? [] });
 
@@ -93,7 +95,7 @@ describe("flag off: BB-G48's hub, byte for byte, and no new read", () => {
 describe('warLeaders', () => {
     for (const lg of LEAGUES) {
         test(`${lg}: the real top 25, best first, every team resolved, linked to the player pages`, () => {
-            const raw = WAR[`${lg}:${warSeason(lg)}`];
+            const raw = WAR[`${lg}:${capturedWarSeason(lg)}`];
             expect(raw).toHaveLength(25);
             const w = warLeaders(lg, raw);
             expect(w).toHaveLength(25);
@@ -191,12 +193,19 @@ describe('/<league> behind bball-hub-dashboards', () => {
             expect((html.match(/<option value="\d+">/g) ?? []).length).toBe(f.length);
             const data = JSON.parse(new JSDOM(html).window.document.getElementById('hub-follow-data')!.textContent!);
             expect(data).toEqual(JSON.parse(JSON.stringify(f)));
-            expect((html.match(/<tr><td>\d+<\/td>/g) ?? []).length).toBe(25);
             const at = (id: string) => html.indexOf(`id="${id}"`);
             expect(at('hub-follow')).toBeLessThan(at('hub-games'));
-            expect(at('hub-standouts')).toBeLessThan(at('hub-war'));
-            expect(at('hub-war')).toBeLessThan(at('hub-index'));
-            expect(html).toContain(`WAR leaders, ${lg === 'nba' ? '2026-27' : lg === 'wnba' ? '2026' : '2025-26'}`);
+            if (WAR[`${lg}:${warSeason(lg)}`]?.length) {
+                expect((html.match(/<tr><td>\d+<\/td>/g) ?? []).length).toBe(25);
+                expect(at('hub-standouts')).toBeLessThan(at('hub-war'));
+                expect(at('hub-war')).toBeLessThan(at('hub-index'));
+                expect(html).toContain(`WAR leaders, ${lg === 'nba' ? '2026-27' : '2026'}`);
+            } else {
+                // no WAR rows for the current season yet (college 2026-27): the table stays hidden, never an older season's
+                expect(html).not.toContain('id="hub-war"');
+                expect((html.match(/<tr><td>\d+<\/td>/g) ?? []).length).toBe(0);
+                expect(at('hub-standouts')).toBeLessThan(at('hub-index'));
+            }
             for (const bad of ['NaN', 'undefined', 'null']) expect(noScripts(html)).not.toContain(bad);
         });
     }
