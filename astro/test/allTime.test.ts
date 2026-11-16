@@ -28,6 +28,7 @@ import { FLAGS } from '../src/utils/features';
 import { ALL_TIME_CACHE, ALL_TIME_SPAN, loadAllTime, prepareAllTime } from '../src/routes/allTime';
 import { isAllTimePath } from '../src/utils/players';
 import { allTimePlayerQuery, retrieveAllTimePlayerSeasons, SummaryType } from '../src/resources/sdv';
+import { LEAGUES } from '../src/utils/league';
 import { GET as sitemap } from '../src/pages/sitemap.xml';
 import Header from '../src/components/Header.astro';
 
@@ -75,6 +76,18 @@ describe('the all-time read', () => {
     test('every category in both leagues has a recorded span', () => {
         for (const lg of ['cfb', 'nfl'] as const) {
             for (const c of ['passing', 'rushing', 'receiving']) expect(ALL_TIME_SPAN[lg][c], `${lg} ${c}`).toBeGreaterThan(1990);
+        }
+    });
+
+    // Sourcery on #361: the NFL tables hold qualified rows from 1999, but the site's NFL
+    // seasons start in 2002, so 1999-2001 rows linked to season/team pages it does not serve.
+    test('no season before the league\'s first site season is read or stated', async () => {
+        expect(allTimePlayerQuery('passing', 'TEPA', 'nfl').get('season__gte')).toBe(String(LEAGUES.nfl.seasons[0]));
+        expect(allTimePlayerQuery('passing', 'TEPA', 'cfb').get('season__gte')).toBe(String(LEAGUES.cfb.seasons[0]));
+        await retrieveAllTimePlayerSeasons({ category: SummaryType.PASSING, metric: 'TEPA', league: 'nfl' });
+        expect(new URL(seen[0]).searchParams.get('season__gte')).toBe('2002');
+        for (const lg of ['cfb', 'nfl'] as const) {
+            for (const c of ['passing', 'rushing', 'receiving']) expect(ALL_TIME_SPAN[lg][c], `${lg} ${c}`).toBeGreaterThanOrEqual(LEAGUES[lg].seasons[0]);
         }
     });
 });

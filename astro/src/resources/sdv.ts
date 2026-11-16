@@ -1061,10 +1061,13 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
  * season (`<metric>_rank__gte=1`; the producer leaves a non-qualifier's ranks null).
  * A counting metric (dropbacks, carries, catches, targets) has no `_rank` column,
  * so its qualifier is the board's default ranked column, `TEPA_rank`.
+ * Seasons before the league's first site season are left out (the NFL tables hold
+ * qualified rows from 1999, the site's NFL seasons start in 2002): their season and
+ * team links would land on pages the site does not serve, and they would take top-100 places.
  */
-export function allTimePlayerQuery(category: string, metric: string): URLSearchParams {
+export function allTimePlayerQuery(category: string, metric: string, league: League = 'cfb'): URLSearchParams {
     const qualifier = playerBoardSort(category, metric).ranked ? metric : 'TEPA';
-    return new URLSearchParams({ order: `-${metric}`, [`${qualifier}_rank__gte`]: '1', limit: '100' });
+    return new URLSearchParams({ order: `-${metric}`, [`${qualifier}_rank__gte`]: '1', season__gte: String(LEAGUES[league].seasons[0]), limit: '100' });
 }
 
 /** A cold all-time read sorts the whole table; past this the page says the board is unavailable instead of hanging. */
@@ -1080,7 +1083,7 @@ export async function retrieveAllTimePlayerSeasons({ category, metric, league = 
     if (!LEAGUES[league].sdvEnabled) return [];
     try {
         // cached 3 days like the season boards: the read sorts the whole table
-        const content = await requestSDV(category, allTimePlayerQuery(category, metric), undefined, 60 * 60 * 24 * 3, true, leagueSource(league), true, ALL_TIME_TIMEOUT_MS, pin);
+        const content = await requestSDV(category, allTimePlayerQuery(category, metric, league), undefined, 60 * 60 * 24 * 3, true, leagueSource(league), true, ALL_TIME_TIMEOUT_MS, pin);
         return Array.isArray(content?.data) ? content.data : null;
     } catch (err) {
         console.error(`ERROR while loading all-time ${league} ${category} by ${metric} from SDV: ${err}`);

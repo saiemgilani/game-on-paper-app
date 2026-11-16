@@ -18,11 +18,13 @@ import { freshnessStamp } from '../utils/freshness';
  * 2026-11-01 against the Data API, the same answer for every category:
  *   curl -H "Authorization: Bearer $KEY" \
  *     "https://data.sportsdataverse.org/v1/<cfb|nfl>/<passing|rushing|receiving>?select=season&order=season&TEPA_rank__gte=1&limit=1"
- * The last season is METRIC_YEAR, the newest season the site ranks.
+ * The last season is METRIC_YEAR, the newest season the site ranks. The NFL tables go
+ * back to 1999, but the board starts at the site's first NFL season (LEAGUES.nfl.seasons,
+ * 2002): allTimePlayerQuery reads `season__gte` that season, so 1999-2001 never show.
  */
 export const ALL_TIME_SPAN: Record<'cfb' | 'nfl', Record<string, number>> = {
     cfb: { passing: 2004, rushing: 2004, receiving: 2004 },
-    nfl: { passing: 1999, rushing: 1999, receiving: 1999 },
+    nfl: { passing: 2002, rushing: 2002, receiving: 2002 },
 };
 
 export const ALL_TIME_DEFAULT_METRIC = 'TEPA';

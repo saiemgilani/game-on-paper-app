@@ -119,7 +119,7 @@ describe('the season board', () => {
 describe('all-time passing, nfl', () => {
     test('the nfl span and per-season links, the same player twice', async () => {
         const html = await render('nfl');
-        expect(html).toContain(`<strong>Seasons covered:</strong> 1999 to ${METRIC_YEAR}`);
+        expect(html).toContain(`<strong>Seasons covered:</strong> 2002 to ${METRIC_YEAR}`);
         expect(html).toContain('href="/nfl/players/00-0010346?season=2013"');
         expect(html).toContain('href="/nfl/players/00-0010346?season=2004"');
         expect(html).toContain('href="/nfl/year/2004/team/11"');
