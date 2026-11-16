@@ -1,0 +1,41 @@
+---
+// BB-G45, behind 'bball-wp-lenses': the game-flow extras under the WP chart, from the plays the page already has
+// (utils/wpLenses.ts flowExtras). Our model's WP throughout; the lenses only move the chart.
+import type { NbaGame } from '../../../resources/nbaGame';
+import { flowExtras, stampAt, stampOf, LENS_NOTES, RUN_LIST_MIN, type LensKey, type Peak } from '../../../utils/wpLenses';
+import { fmtClock } from '../../../utils/gameFlow';
+import { basketball, pickRegulation } from '../../../basketball/config';
+import { cleanAbbreviation } from '../../../utils/misc';
+import { fmtPct, fmtPts } from '../../../nba/format';
+
+interface Props { game: NbaGame; lenses: LensKey[] }
+const { game, lenses } = Astro.props;
+const cfg = basketball(Astro.locals.league);
+const periodSeconds = pickRegulation(cfg.regulation, game.season, game.regulation).periodMinutes * 60;
+const x = flowExtras(game, periodSeconds);
+const abbr = { home: cleanAbbreviation(game.home.team), away: cleanAbbreviation(game.away.team) };
+const at = (t: number) => stampAt(t, game.periods, game.regulation, periodSeconds, game.periodKind);
+const peak = (side: 'home' | 'away', p: Peak | null) => (p == null ? null : `${abbr[side]} ${fmtPct(p.wp, 1)} (${stampOf(p.play, game.regulation, game.periodKind)})`);
+const peaks = [peak('away', x.peak.away), peak('home', x.peak.home)].filter((v) => v != null).join(', ');
+const swingSide = x.swing && x.swing.wpDelta! >= 0 ? 'home' : 'away';
+const rows: { label: string; title: string; value: string }[] = [
+    ...(x.drought ? [{ label: 'Longest drought', title: "The longest stretch of game clock between two of one team's scores", value: `${abbr[x.drought.side]} ${fmtClock(x.drought.seconds)} (${at(x.drought.from)} to ${at(x.drought.to)})` }] : []),
+    ...(x.last5 ? [{ label: game.hasOvertime ? 'Last 5:00 and OT' : 'Last 5:00', title: 'Points each team scored in the clutch window: the last five minutes of regulation plus every overtime', value: `${abbr.away} ${x.last5.away}, ${abbr.home} ${x.last5.home}` }] : []),
+    ...(peaks ? [{ label: 'Peak win prob.', title: "Each team's highest win probability before the game was decided", value: peaks }] : []),
+    ...(x.swing ? [{ label: 'Largest swing', title: 'The single play that moved the win probability the most', value: `${fmtPts(Math.abs(x.swing.wpDelta!))} pts toward ${abbr[swingSide]} (${stampOf(x.swing, game.regulation, game.periodKind)}): ${x.swing.text}` }] : []),
+    ...(x.comeback ? [{ label: 'Comeback', title: "The winner's lowest win probability before the game was decided, read from this page's win-probability line", value: `${abbr[x.comeback.side]} low: ${fmtPct(x.comeback.wp, 1)} (${stampOf(x.comeback.play, game.regulation, game.periodKind)}), on this page's WP line` }] : []),
+];
+const notes = lenses.map((k) => LENS_NOTES[k]);
+---
+<div id="wp-extras" class="mb-3">
+  <p class="small text-muted" id="wp-lens-note">{notes.length > 1 && `Lenses: ${notes.join('; ')}. `}The grey line under the win probability is the score margin; hover reads a play, click pins it, drag reads a stretch.</p>
+  <h3 class="h6">Scoring runs ({RUN_LIST_MIN}-0 or better)</h3>
+  {x.runs.length === 0 ? <p class="text-muted small" id="wp-runs-empty">No {RUN_LIST_MIN}-0 runs.</p> : (
+  <ul class="small numeral" id="wp-runs">
+    {x.runs.map((r) => <li>{`${abbr[r.side]} ${r.points}-0, ${at(r.from)} to ${at(r.to)} (to ${abbr.away} ${r.away}-${r.home} ${abbr.home})`}</li>)}
+  </ul>)}
+  {rows.length > 0 && (
+  <div class="table-responsive"><table class="table table-sm numeral align-middle" aria-label="Game flow extras">
+    <tbody>{rows.map((r) => <tr><th scope="row" class="fw-normal"><abbr title={r.title}>{r.label}</abbr></th><td>{r.value}</td></tr>)}</tbody>
+  </table></div>)}
+</div>

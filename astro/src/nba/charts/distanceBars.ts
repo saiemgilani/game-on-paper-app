@@ -20,6 +20,8 @@ const H = 250;
 const M = { top: 26, right: 8, bottom: 38, left: 40 };
 
 export const DISTANCE_BARS_VIEWBOX = { width: DEFAULT_WIDTH, height: H };
+/** BB-G39: the bin (its first foot) a `pinnable` chart holds, so a redraw (a resize) keeps it. */
+const pins = new WeakMap<SVGSVGElement, number>();
 
 export interface Bar {
   who: "player" | "league";
@@ -79,7 +81,7 @@ export function barLayout(data: DistanceBarsData, metric: BarMetric, width: numb
 export function renderDistanceBars(
   svg: SVGSVGElement,
   data: DistanceBarsData,
-  { metric, width: W, subjectLabel = "Player", animate = true }: { metric: BarMetric; width: number; subjectLabel?: string; animate?: boolean },
+  { metric, width: W, subjectLabel = "Player", animate = true, pinnable = false }: { metric: BarMetric; width: number; subjectLabel?: string; animate?: boolean; pinnable?: boolean },
 ): () => void {
   const root = select(svg).append("g");
   const { groups, yMax } = barLayout(data, metric, W);
@@ -149,6 +151,15 @@ export function renderDistanceBars(
   if (ms) bars.transition().duration(ms).attr("y", (b) => b.y).attr("height", (b) => b.height);
 
   const tip = tooltip(root, W, H);
+  const linked = root.append("rect").attr("y", M.top).attr("height", H - M.top - M.bottom).attr("pointer-events", "none")
+    .style("fill", "none").style("stroke", TOKENS.fg).style("stroke-width", 1.5).style("display", "none");
+  const mark = (g: BarGroup | undefined) => linked.style("display", g ? "inline" : "none").attr("x", g?.x ?? 0).attr("width", g?.width ?? 0);
+  // BB-G39 (`pinnable`, the game page): a click holds the bin on every linked chart until the next click
+  let pinned = pinnable ? groups.find((g) => g.player.distance === pins.get(svg)) : undefined;
+  if (pinned) {
+    mark(pinned);
+    emitDistance(svg, binCursor(pinned.player.distance, data.binFt), { pin: true });
+  }
   root
     .append("g")
     .selectAll("rect")
@@ -159,21 +170,28 @@ export function renderDistanceBars(
     .attr("y", M.top)
     .attr("height", H - M.top - M.bottom)
     .style("fill", "transparent")
+    .style("cursor", pinnable ? "pointer" : "")
     .on("pointerenter", (_, g) => {
       const line = (who: string, b: DistanceBin) =>
         metric === "share" ? `${who}: ${fmtPct(b.share)} of shots (${b.attempts})` : `${who}: ${fmtPct(b.fgPct)} (${b.makes}/${b.attempts})`;
       tip.show(g.x + g.width / 2, M.top + 40, [`${g.label} ft`, line(subjectLabel, g.player), line("League", g.league)]);
-      emitDistance(svg, binCursor(g.player.distance, data.binFt));
+      if (!pinned) emitDistance(svg, binCursor(g.player.distance, data.binFt));
     })
     .on("pointerleave", () => {
       tip.hide();
-      emitDistance(svg, { ft: null });
+      if (!pinned) emitDistance(svg, { ft: null });
+    })
+    .on("click", (_, g) => {
+      if (!pinnable) return;
+      pinned = pinned === g ? undefined : g;
+      if (pinned) pins.set(svg, g.player.distance);
+      else pins.delete(svg);
+      mark(pinned);
+      // unpinning leaves the pointer on `g`: it goes on marking it as a hover
+      emitDistance(svg, binCursor(g.player.distance, data.binFt), { pin: pinned !== undefined });
     });
-  const linked = root.append("rect").attr("y", M.top).attr("height", H - M.top - M.bottom).attr("pointer-events", "none")
-    .style("fill", "none").style("stroke", TOKENS.fg).style("stroke-width", 1.5).style("display", "none");
   const unlink = onDistance(svg, ({ ft }) => {
-    const g = ft === null ? undefined : groups.find((x) => inBin(ft, x.player.distance, data.binFt));
-    linked.style("display", g ? "inline" : "none").attr("x", g?.x ?? 0).attr("width", g?.width ?? 0);
+    if (!pinned) mark(ft === null ? undefined : groups.find((x) => inBin(ft, x.player.distance, data.binFt)));
   });
 
   setViewBox(svg, W, H);

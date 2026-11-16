@@ -11,6 +11,12 @@ A third league, `nba` (`astro/src/pages/nba/**`, behind the `'nba'` flag), rende
 - Astro needs Node >= 22.23.4 (`astro/package.json` engines). Node here is often older, so `astro check` / `astro build` / `astro dev`
   can't run locally — **CI covers the templates**. What runs locally:
   `cd astro && npx vitest run` and `cd python && pytest`. Run both before a PR.
+- Vitest never reaches the network: `astro/test/helpers/networkGuard.ts` (a
+  `setupFiles` entry) replaces the global `fetch` and fails the test, naming the URL,
+  on any non-localhost read, even one the code under test catches. A partial
+  `vi.mock` of `src/resources/sdv` that spreads the real module still reads
+  `/v1/meta` and every function it doesn't override: stub `wrappedFetch` in
+  `src/utils/telemetry` too (the `{"data":[]}` mock in `explicitRoutes.test.ts`).
 - Never claim a rendered change works from the code alone. Exercise it: vitest
   for logic, and a **visual check** (below) for anything a person sees.
 
@@ -206,6 +212,15 @@ use `preview`) to get the preview surface back.
 The controls render from `astro/src/components/game/AdminGameTools.astro`,
 mounted in `GameHeader.astro` — the one file both game-page twins import, so
 they are written once and an admin can flip between the twins from either side.
+
+The basketball game pages (nba/wnba/mbb/wbb) have the Source control only, under
+the same flag and admin session: `routes/basketball/game.ts` reads `?source=`,
+skips the Data API for that render (the warehouse is ESPN's play-by-play) and
+hands `components/nba/game/NbaAdminSourceTools.astro` the registry (its select adds a
+`default` option that clears `?source=`, the public render) plus, for a non-ESPN
+source, the ESPN processor payload; a source request is held a minute at most; `compareBasketballSources`
+(`utils/sourceCompare.ts`) sets them side by side on score, team box, four-factor
+rates and play count.
 
 ## Guardrails
 - Branch + PR, never push `main`. Stage explicit paths. One logical change per PR.

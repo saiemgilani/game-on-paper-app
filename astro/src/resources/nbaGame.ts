@@ -1,7 +1,10 @@
 // One game, one shape, two sources. The adapters rename and group; the numbers are Python's
 // (sportsdataverse.nba.nba_game_page), live through the processor or nightly through sdv-db.
 import type { ESPNGameHeader } from './espn';
+import type { GameSituationalRow } from './teamGrid';
+import type { ProcessedGame } from './python';
 import { regulationFor, type PeriodKind, type Regulation } from '../basketball/config';
+import type { WpLensRow } from '../utils/wpLenses';
 import type { BasketballLeague } from '../utils/league';
 import { wnbaEraTricode } from '../nba/data/wnbaTeams';
 
@@ -28,12 +31,27 @@ export interface NbaPlayerRow {
     minutes: number | null; points: number | null; rebounds: number | null; assists: number | null
     steals: number | null; blocks: number | null; turnovers: number | null
     fg: string; fg3: string; ft: string; plus_minus: string | null; ts_pct: number | null; usg_pct: number | null
+    /** sdv-py's BB-D31 player splits, counted from the plays: the processor only (live or un-ingested), as NbaSide.splits */
+    split?: NbaPlayerSplit
 }
+
+/** The BB-D31 player split columns BB-G34's views read. `est_possessions` is a minutes-share estimate, not an on-court count. */
+export interface NbaPlayerSplit {
+    est_possessions: number | null; fgm: number | null; assisted_share: number | null
+    rim_fga: number | null; rim_fgm: number | null; rim_assisted_share: number | null
+    fg3a: number | null; fg3m: number | null; fg3_assisted_share: number | null
+    tov: number | null; live_tov: number | null
+    pts_per100: number | null; ast_per100: number | null; reb_per100: number | null; tov_per100: number | null
+}
+const SPLIT_KEYS = ['est_possessions', 'fgm', 'assisted_share', 'rim_fga', 'rim_fgm', 'rim_assisted_share', 'fg3a', 'fg3m', 'fg3_assisted_share',
+    'tov', 'live_tov', 'pts_per100', 'ast_per100', 'reb_per100', 'tov_per100'] as const satisfies readonly (keyof NbaPlayerSplit)[]
 
 export interface NbaPlay {
     id: string; n: number; period: number; clock: string; secondsRemaining: number | null
     homeScore: number; awayScore: number; teamId: number | null; text: string; typeText: string | null
     scoringPlay: boolean; scoreValue: number; shootingPlay: boolean; athleteId: number | null
+    /** the play's second athlete: on a made field goal, the assister (BB-G35's assist web); null when the feed sends none */
+    athleteId2: number | null
     homeWinProb: number | null; wpDelta: number | null; wpRegime: 'reg' | 'ot'; xLegacy: number | null; yLegacy: number | null
 }
 
@@ -41,11 +59,57 @@ export interface NbaSide {
     team: { id: string; abbreviation: string; displayName: string; location: string; name: string; color?: string | null; alternateColor?: string | null; logo?: string | null }
     score: number | null; winner: boolean; records: string | null; linescores: (number | null)[]
     box: NbaTeamBox | null; rates: NbaTeamRates | null; players: NbaPlayerRow[]
+    /** sdv-py's BB-D31 team splits, counted from the plays: the processor only (live or un-ingested), absent otherwise and in a payload cached before them */
+    splits?: NbaTeamSplits
+    /** sdv-py's BB-D40 expected points (team_game_expected): the processor's (live or un-ingested) or a Data API final's
+     *  {lg}.game_team_expected row (routes/basketball/game.ts); absent before the tip, in an older payload and for a season
+     *  not built. Its expected columns are null when the processor could not read the league's shot cells. */
+    expected?: NbaTeamExpected
+    /** a Data API final with no splits (BB-G33 review Q23): sdv-db's situational_team_games rows of the side, every family
+     *  (routes/basketball/game.ts); absent otherwise and when the producer has no row */
+    situational?: GameSituationalRow[]
 }
+
+/** The BB-D31 team split columns the page reads: BB-G32's counted possessions and BB-G33's possession factors. */
+export const TEAM_SPLIT_KEYS = [
+    'points', 'possessions', 'ppp', 'avg_possession_seconds',
+    'transition_poss', 'transition_pts', 'transition_ppp', 'half_court_poss', 'half_court_pts', 'half_court_ppp',
+    'second_chance_poss', 'second_chance_pts', 'second_chance_ppp', 'first_chance_poss', 'first_chance_pts', 'first_chance_ppp',
+    'tov', 'live_tov', 'dead_tov', 'tov_pct', 'pts_off_live_tov', 'pts_off_dead_tov',
+    'fga', 'fgm', 'rim_fga', 'rim_fgm', 'mid_fga', 'mid_fgm', 'fg2_unlocated_fga', 'fg2_unlocated_fgm',
+    'fg3_fga', 'fg3_fgm', 'corner3_fga', 'corner3_fgm', 'above_break3_fga', 'above_break3_fgm', 'fg3_unlocated_fga', 'fg3_unlocated_fgm',
+    'layup_dunk_fga', 'layup_dunk_fgm', 'rim_rate', 'fg3a_rate', 'avg_fg2_distance', 'assisted_fgm', 'assisted_share',
+    'bench_points', 'largest_lead', 'max_run',
+] as const;
+/** One side's BB-D31 team split row; a rate with a zero denominator (and every column before the tip) is null. */
+export type NbaTeamSplits = Record<(typeof TEAM_SPLIT_KEYS)[number], number | null>;
+
+/** BB-D40's situations and zones (sdv-py nba_game_expected SITUATIONS / ZONES). */
+export const EXPECTED_SITUATIONS = ['fast_break', 'second_chance', 'off_turnover', 'paint'] as const;
+export const EXPECTED_ZONES = ['rim', 'short_mid', 'midrange', 'corner3', 'above_break3'] as const;
+type Cols<P extends string, M extends string> = `${P}_${M}`;
+/** The BB-D40 team_game_expected columns the page reads (BB-G33's expected points). */
+export const TEAM_EXPECTED_KEYS = [
+    'possessions', 'points', 'fga', 'fgm', 'xfg_pts', 'poe', 'ts_pct', 'xts_pct', 'drtg', 'xdrtg', 'unlocated_fga', 'unlocated_fgm',
+    ...EXPECTED_SITUATIONS.flatMap((s) => (['poss', 'rate', 'pts', 'ppp', 'poe'] as const).map((m) => `${s}_${m}` as Cols<typeof s, typeof m>)),
+    ...EXPECTED_ZONES.flatMap((z) => (['fga', 'fgm', 'efg_pct', 'xppp', 'poe'] as const).map((m) => `${z}_${m}` as Cols<typeof z, typeof m>)),
+] as const;
+/** One side's BB-D40 row; every expected column (x*, *_poe, *_xppp) is null without the league's shot cells. */
+export type NbaTeamExpected = Record<(typeof TEAM_EXPECTED_KEYS)[number], number | null>;
+/** A team_game_expected row (the processor payload's or the Data API's) as the page reads it. */
+export function teamExpected(r: Record<string, any>): NbaTeamExpected {
+    return Object.fromEntries(TEAM_EXPECTED_KEYS.map((k) => [k, num(r[k])])) as NbaTeamExpected
+}
+
+/** Which feed produced a `?source=` response: the football payload's block, emitted by the same app.py helper. */
+export type SourceProvenance = NonNullable<ProcessedGame['provenance']>
 
 export interface NbaGame {
     id: string
+    /** the render path (the Data API or the processor); noLineText keys its wording on it */
     source: 'processor' | 'data_api'
+    /** the feed the processor read, present only on an admin's `?source=` render ('source-switch'); absent on every public payload */
+    provenance?: SourceProvenance
     status: { name: string; completed: boolean; period: number | null; displayClock: string | null; detail: string | null }
     date: string
     venue: string | null
@@ -55,19 +119,36 @@ export interface NbaGame {
     /** regulation periods (4 quarters, 2 halves), from the game's own data, else its league's season rule */
     regulation: number
     periodKind: PeriodKind
-    /** `homeTeamSpread` is a real line only when `gameSpreadAvailable`; otherwise it is the 2.5 default and the UI hides it. */
+    /** `homeTeamSpread` is a real line only when `gameSpreadAvailable`; otherwise it is null (older sdv-py pins: a 2.5 placeholder) and the UI hides it. */
     /** null when the source has no win-probability rows to take a prior from; nothing is invented. */
     prior: { homeWinProb: number; source: PriorSource; homeTeamSpread: number | null; gameSpreadAvailable: boolean } | null
     home: NbaSide
     away: NbaSide
     plays: NbaPlay[]
     hasOvertime: boolean
+    /** sdv-py's game_excitement (BB-D28) on the game's WP series, from the processor only; absent otherwise (see fromDataApi) */
+    excitement?: NbaExcitement
+    /** BB-G45 ('bball-wp-lenses'): a Data API final's play_wp variants (routes/basketball/game.ts); absent otherwise */
+    wpLenses?: WpLensRow[]
+}
+
+/** How exciting the game was, with no direction: python/nba_game.py passes sdv-py's `game_excitement` through as is. */
+export interface NbaExcitement {
+    /** null with no plays */
+    gei: number | null
+    leadChanges: number
+    /** the biggest single WP swing, in percentage points */
+    maxSwingPts: number | null
+    /** the last play was taken to the result (a final) */
+    completed: boolean
 }
 
 /** What /nba/<id>/process returns (python/nba_game.py build_payload). */
 export interface NbaProcessorPayload {
     gameId: number
     source: 'processor'
+    /** only when the request carried `?source=` (python/app.py `_provenance`) */
+    provenance?: SourceProvenance
     header: ESPNGameHeader
     venue?: string | null
     teamInfo: { home: Record<string, any>; away: Record<string, any> }
@@ -78,6 +159,12 @@ export interface NbaProcessorPayload {
     teams: Record<'home' | 'away', { team_id: number; box: Record<string, any> | null; rates: Record<string, any> | null; linescores: (number | null)[] }>
     players: Record<'home' | 'away', Record<string, any>[]>
     plays: Record<string, any>[]
+    /** BB-G29; absent from a payload cached before it */
+    excitement?: { gei: number | null; lead_changes: number; max_swing_pts: number | null; completed: boolean }
+    /** BB-D31's game splits (python/nba_game.py); absent from a payload cached before them. The team rows feed BB-G32, the player rows BB-G34. */
+    splits?: Record<'home' | 'away', { team: Record<string, any> | null; players: Record<string, any>[] }>
+    /** BB-D40's team_game_expected rows (python/nba_game.py); absent from a payload cached before them. */
+    expected?: Record<'home' | 'away', Record<string, any> | null>
 }
 
 /** sdv-py's prior source: a real line ('spread'), a lineless neutral site ('neutral', prior 0.5) or the league's home-court edge ('hfa'). */
@@ -160,6 +247,10 @@ function teamRates(r: Record<string, any> | null | undefined): NbaTeamRates | nu
     }
 }
 
+function teamSplits(r: Record<string, any>): NbaTeamSplits {
+    return Object.fromEntries(TEAM_SPLIT_KEYS.map((k) => [k, num(r[k])])) as NbaTeamSplits
+}
+
 function playerRow(r: Record<string, any>): NbaPlayerRow {
     return {
         athlete_id: num(r.athlete_id) ?? 0, name: r.athlete_display_name ?? '', short_name: r.athlete_short_name ?? null, headshot: r.athlete_headshot_href ?? null,
@@ -177,7 +268,7 @@ function play(r: Record<string, any>, wp: Record<string, any> | undefined = r): 
         id: String(r.id), n: num(r.game_play_number) ?? 0, period: num(r.period_number) ?? 0, clock: r.clock_display_value ?? '',
         secondsRemaining: num(r.start_game_seconds_remaining), homeScore: num(r.home_score) ?? 0, awayScore: num(r.away_score) ?? 0, teamId: num(r.team_id),
         text: r.text ?? '', typeText: r.type_text ?? null, scoringPlay: isTrue(r.scoring_play), scoreValue: num(r.score_value) ?? 0, shootingPlay: isTrue(r.shooting_play),
-        athleteId: num(r.athlete_id_1), homeWinProb: num(wp?.home_win_prob), wpDelta: num(wp?.wp_delta), wpRegime: wp?.wp_regime === 'ot' ? 'ot' : 'reg',
+        athleteId: num(r.athlete_id_1), athleteId2: num(r.athlete_id_2), homeWinProb: num(wp?.home_win_prob), wpDelta: num(wp?.wp_delta), wpRegime: wp?.wp_regime === 'ot' ? 'ot' : 'reg',
         xLegacy: num(wp?.x_legacy), yLegacy: num(wp?.y_legacy),
     }
 }
@@ -212,22 +303,30 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague):
         const t = j.teams[ha]
         const ti = j.teamInfo[ha]
         const record = c.record?.find((x) => x.type === 'total') ?? c.record?.[0]
+        const splitBy = new Map((j.splits?.[ha]?.players ?? []).map((r) => [num(r.athlete_id), Object.fromEntries(SPLIT_KEYS.map((k) => [k, num(r[k])])) as unknown as NbaPlayerSplit]))
+        const withSplit = (p: NbaPlayerRow): NbaPlayerRow => { const s = splitBy.get(p.athlete_id); return s ? { ...p, split: s } : p }
         return {
             team: { id: String(ti.id), abbreviation: eraAbbreviation(league, ti.id, season, ti.abbreviation), displayName: ti.displayName, location: ti.location, name: ti.name, color: ti.color ?? null, alternateColor: ti.alternateColor ?? null, logo: ti.logos?.[0]?.href ?? null },
             score: num(c.score), winner: c.winner === true, records: record?.summary ?? null,
-            linescores: t.linescores, box: teamBox(t.box), rates: teamRates(t.rates), players: j.players[ha].map(playerRow),
+            linescores: t.linescores, box: teamBox(t.box), rates: teamRates(t.rates), players: j.players[ha].map((r) => withSplit(playerRow(r))),
+            ...(j.splits?.[ha]?.team ? { splits: teamSplits(j.splits[ha].team!) } : {}),
+            ...(j.expected?.[ha] ? { expected: teamExpected(j.expected[ha]!) } : {}),
         }
     }
     const reg = regulationFor(league, season, j.regulation_periods)
     return blankUnrecorded({
-        id: String(j.gameId), source: 'processor',
+        id: String(j.gameId), source: 'processor', ...(j.provenance ? { provenance: j.provenance } : {}),
         status: { name: j.status.name, completed: j.status.completed, period: j.status.period, displayClock: j.status.display_clock, detail: j.status.detail },
         date: comp.date, venue: j.venue ?? null, periods: j.periods, season, regulation: reg.periods, periodKind: reg.kind,
         prior: { homeWinProb: j.prior.home_win_prob, source: priorSource(j.prior.source), homeTeamSpread: j.prior.home_team_spread, gameSpreadAvailable: j.prior.game_spread_available },
         home: side('home'), away: side('away'), plays: j.plays.map((r) => play(r)), hasOvertime: j.periods > reg.periods,
+        ...(j.excitement ? { excitement: { gei: num(j.excitement.gei), leadChanges: j.excitement.lead_changes, maxSwingPts: num(j.excitement.max_swing_pts), completed: j.excitement.completed === true } } : {}),
     })
 }
 
+// TODO(BB-G29): no `excitement` on this path yet. The Data API serves sdv-db's `{lg}.game_excitement` (sdv-py
+// season_game_excitement: gei, lead_changes, max_swing_pts, completed, gei_rank, gei_pct, gei_n), which the Best Games
+// board reads per season (resources/bestGames.ts); read it here per game too.
 export function fromDataApi(rows: DataApiGameRows, league: BasketballLeague): NbaGame {
     const s = rows.schedule[0]
     const wpByN = new Map(rows.play_wp.map((w) => [num(w.game_play_number), w]))

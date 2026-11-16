@@ -8,7 +8,7 @@ vi.mock('../src/utils/features', async (orig) => {
 });
 
 import { GET } from '../src/pages/sitemap.xml';
-import { WBB_MEMBERS_2026 } from '../src/nba/data/wbbMembers';
+import { WBB_MEMBERS_2027 } from '../src/nba/data/wbbMembers';
 
 describe('sitemap.xml with wbb public', async () => {
     const xml = await ((GET as any)({} as any) as Response).text();
@@ -16,12 +16,12 @@ describe('sitemap.xml with wbb public', async () => {
         for (const p of ['/wbb', '/wbb/scoreboard', '/wbb/players', '/wbb/teams', '/wbb/scatter', '/wbb/leaders']) expect(xml).toContain(`<loc>https://gameonpaper.com${p}</loc>`);
         expect(xml).not.toContain('/wbb/</loc>');
     });
-    test('every program of 2025-26 by ESPN id, the reclassifiers included; no player page', () => {
+    test('every program of 2026-27 by ESPN id, the reclassifiers and West Florida included; no player page', () => {
         const ids = [...xml.matchAll(/gameonpaper\.com\/wbb\/team\/(\d+)</g)].map((m) => Number(m[1]));
         expect(ids.length).toBe(363);
-        expect(ids).toEqual([...WBB_MEMBERS_2026]); // D43/D47: exactly the committed 2026 member table, in its order (membership.test.ts pins it to the rule)
-        for (const id of [88, 284, 2330, 2511, 2815, 2837, 2130, 2385, 2441]) expect(ids, String(id)).toContain(id);
-        for (const id of [2697, 42]) expect(ids, String(id)).not.toContain(id);
+        expect(ids).toEqual([...WBB_MEMBERS_2027]); // D43/D47: exactly the committed 2027 member table, in its order (membership.test.ts pins it to the rule)
+        for (const id of [88, 284, 2330, 2511, 2815, 2837, 2130, 2385, 2441, 2697]) expect(ids, String(id)).toContain(id);
+        for (const id of [2598, 42]) expect(ids, String(id)).not.toContain(id);
         expect(xml).not.toContain('/wbb/players/');
     });
     test('inside the protocol limits', () => {

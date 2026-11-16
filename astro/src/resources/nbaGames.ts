@@ -13,7 +13,7 @@ export const NBA_READ_TIMEOUT_MS = 8000;
 export const NBA_PROCESSOR_TIMEOUT_MS = 25000;
 const SEL = {
     schedule: 'id,date,status_type_name,status_type_completed,status_period,status_display_clock,status_type_detail,venue_full_name,season,format_regulation_periods,home_id,home_abbreviation,home_display_name,home_location,home_name,home_color,home_alternate_color,home_logo,home_score,home_winner,home_linescores,home_records,away_id,away_abbreviation,away_display_name,away_location,away_name,away_color,away_alternate_color,away_logo,away_score,away_winner,away_linescores,away_records',
-    pbp: 'id,game_play_number,period_number,clock_display_value,start_game_seconds_remaining,home_score,away_score,team_id,text,type_text,scoring_play,score_value,shooting_play,athlete_id_1,home_team_spread,game_spread_available',
+    pbp: 'id,game_play_number,period_number,clock_display_value,start_game_seconds_remaining,home_score,away_score,team_id,text,type_text,scoring_play,score_value,shooting_play,athlete_id_1,athlete_id_2,home_team_spread,game_spread_available',
     team_box: 'team_id,team_score,field_goals_made,field_goals_attempted,three_point_field_goals_made,three_point_field_goals_attempted,free_throws_made,free_throws_attempted,offensive_rebounds,defensive_rebounds,total_rebounds,assists,steals,blocks,turnovers,team_turnovers,total_turnovers,fouls,fast_break_points,points_in_paint,largest_lead',
     player_box: 'athlete_id,athlete_display_name,athlete_short_name,athlete_headshot_href,athlete_position_abbreviation,athlete_jersey,team_id,minutes,field_goals_made,field_goals_attempted,three_point_field_goals_made,three_point_field_goals_attempted,free_throws_made,free_throws_attempted,offensive_rebounds,defensive_rebounds,rebounds,assists,steals,blocks,turnovers,fouls,plus_minus,points,starter,ejected,did_not_play,reason',
     play_wp: 'game_play_number,home_win_prob,wp_delta,wp_regime,prior_source,pregame_home_prob,x_legacy,y_legacy',
@@ -63,10 +63,15 @@ export async function retrieveNbaGameRows(id: string, league: BasketballLeague):
     return { schedule, pbp, team_box, player_box, play_wp, game_team_rates, game_player_rates };
 }
 
-/** The processor's payload; a non-2xx (404 = not started / no plays, 5xx = degraded) or a timeout throws `ProcessorError`. */
-export async function retrieveNbaProcessedGame(id: string, cacheTTL: number, league: BasketballLeague): Promise<NbaProcessorPayload> {
+/**
+ * The processor's payload; a non-2xx (404 = not started / no plays, 5xx = degraded) or a timeout throws `ProcessorError`.
+ * `source` only ever arrives from an admin's `?source=` on the 'source-switch' path (routes/basketball/game.ts). It reaches
+ * the cache key as well as the URL (requestProcessor), so two feeds' payloads for one game never share an entry.
+ */
+export async function retrieveNbaProcessedGame(id: string, cacheTTL: number, league: BasketballLeague, source?: string): Promise<NbaProcessorPayload> {
     assertGameId(id, league);
-    const json = JSON.parse(await requestProcessor(`${league}/${id}/process`, cacheTTL, '', NBA_PROCESSOR_TIMEOUT_MS));
+    const query = source ? `source=${encodeURIComponent(source)}` : '';
+    const json = JSON.parse(await requestProcessor(`${league}/${id}/process`, cacheTTL, query, NBA_PROCESSOR_TIMEOUT_MS));
     if (json?.status === 'bad' || !Array.isArray(json?.plays)) throw new ProcessorError(502, `processor: ${json?.message ?? 'no plays'} for ${id}`);
     return json as NbaProcessorPayload;
 }

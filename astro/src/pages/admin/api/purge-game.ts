@@ -23,6 +23,8 @@ const KNOWN_TAGS = new Set(['game-completed', 'game-in-progress', 'game-schedule
     // /year/* and /team/* (route rules in astro.config.mjs, 3-day maxAge) and the teams
     // index pages: without these a summaries republish waits out the TTL or a redeploy
     'season', 'team', 'teams-index',
+    // the /trends, /charts/* and /teams, /players route rules (astro.config.mjs)
+    'charts', 'leaderboards',
     // every share card (routes/shareCard.ts caches each under it)
     'share-card']);
 

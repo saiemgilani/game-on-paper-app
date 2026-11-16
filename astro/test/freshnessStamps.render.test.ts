@@ -19,6 +19,12 @@ const h = vi.hoisted(() => ({
 // the stamps a fresh meta read shows after the first and second mid-render ingest
 const MOVED = ['2026-09-21T06:00:00Z', '2026-09-22T06:00:00Z'];
 const read = (pin: any) => { h.reads += 1; if (pin && h.moveAt.includes(h.reads)) { pin.held = false; h.ingests += 1; } return []; };
+// No live Data API (test/helpers/networkGuard.ts): the reads left unmocked, the /v1/meta
+// ingest stamp among them, get an empty answer and stay on their unversioned keys.
+vi.mock('../src/utils/telemetry', async (orig) => ({
+    ...(await orig<typeof import('../src/utils/telemetry')>()),
+    wrappedFetch: async () => new Response('{"data":[]}', { status: 200 }),
+}));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     sdvIngestStamp: async (league: string, table: string, fresh = false) => {
@@ -29,6 +35,8 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     retrievePlayerSummaries: async (...a: any[]) => { h.playerArgs.push(a); return read(a[8]); },
     // each row carries the number of ingests that had landed when it was read: its version
     retrievePercentiles: async (...a: any[]) => { h.pctArgs.push(a); read(a[4]); return [{ season: 2025, pctile: a[1], EPAplay: h.ingests }]; },
+    // no team-season bands (a 404): EPAplay keeps the game ladder, the percentiles batch above
+    retrieveTeamSeasonPercentiles: async () => [],
 }));
 /** the version of each percentile row the chart island received (its serialized `value`s) */
 const chartVersions = (html: string) => [...html.matchAll(/&quot;value&quot;:\[0,(\d+)\]/g)].map((m) => Number(m[1]));
