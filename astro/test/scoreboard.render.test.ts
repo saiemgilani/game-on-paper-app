@@ -260,7 +260,7 @@ describe('spice cues', () => {
         return container.renderToString(SchedulePage, {
             props: { season: 2026, week: 2, isScoreboard: true, games: [spicedEvent('405'), gameEvent('401', { completed: true })] },
             request: new Request('https://gameonpaper.com/'),
-            locals,
+            locals: locals as any, // Locals' cfContext is a Workers runtime field the render never reads
         });
     }
     const legend = (html: string) => [...html.slice(html.indexOf('Game border color guide')).matchAll(/<li><strong>(\w+)<\/strong> - ([^<]+)<\/li>/g)].map((m) => `${m[1]} - ${m[2]}`);
@@ -296,7 +296,7 @@ describe('spice cues', () => {
         const e = spicedEvent('406');
         e.competitions[0].notes = [{ type: 'event', headline }];
         return container.renderToString(GameCompactRow, {
-            props: { game: e }, request: new Request('https://gameonpaper.com/'), locals,
+            props: { game: e }, request: new Request('https://gameonpaper.com/'), locals: locals as any,
         });
     }
 
