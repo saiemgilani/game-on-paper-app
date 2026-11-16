@@ -1,0 +1,16 @@
+---
+// src/pages/mbb/players/compare.astro: BB-G13's player compare, behind 'bball-compare'
+import BasketballCompare from '../../../components/nba/BasketballCompare.astro';
+import { prepareBasketballCompare } from '../../../routes/basketball/compare';
+import { unavailable } from '../../../routes/basketball/cache';
+
+const r = await prepareBasketballCompare(Astro, 'mbb');
+if ('unavailable' in r) {
+    return unavailable('mbb');
+}
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+---
+
+<BasketballCompare data={r} />

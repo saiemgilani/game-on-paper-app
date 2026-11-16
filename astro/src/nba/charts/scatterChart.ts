@@ -4,7 +4,7 @@ import { scaleLinear } from "d3-scale";
 import { pointer, select } from "d3-selection";
 import { zoom, type ZoomTransform } from "d3-zoom";
 import { fmtDec, fmtPct, foldText } from "../format";
-import { dotLabels, median, pointValue, SCATTER_INFO, smallHeadshot, type ScatterMetric, type ScatterPoint } from "../scatterMetrics";
+import { dotLabels, median, pointValue, SCATTER_INFO, smallHeadshot, type AxisMetric, type ScatterPoint } from "../scatterMetrics";
 import { DEFAULT_WIDTH } from "./court";
 import { FONT_PX, setViewBox, tooltip, TOKENS, uniqueId } from "./theme";
 
@@ -12,8 +12,8 @@ import { FONT_PX, setViewBox, tooltip, TOKENS, uniqueId } from "./theme";
 
 export interface ScatterOptions {
   width: number;
-  x: ScatterMetric;
-  y: ScatterMetric;
+  x: AxisMetric;
+  y: AxisMetric;
   /** Draw ESPN headshots (in the canvas) instead of dots. */
   faces: boolean;
   /** Name filter; non-matching players are dimmed. */
@@ -30,10 +30,10 @@ const FACE_R = 13;
 
 export const SCATTER_VIEWBOX = { width: DEFAULT_WIDTH, height: H };
 
-export const fmtMetric = (m: ScatterMetric, v: number | null) => (SCATTER_INFO[m].pct ? fmtPct(v) : fmtDec(v));
+export const fmtMetric = (m: AxisMetric, v: number | null) => (SCATTER_INFO[m].pct ? fmtPct(v) : fmtDec(v));
 
 /** Points with both values, and each axis's median over them. */
-export function scatterLayout(points: ScatterPoint[], x: ScatterMetric, y: ScatterMetric) {
+export function scatterLayout(points: ScatterPoint[], x: AxisMetric, y: AxisMetric) {
   const visible = points
     .map((p) => ({ p, x: pointValue(p, x), y: pointValue(p, y) }))
     .filter((d): d is { p: ScatterPoint; x: number; y: number } => d.x !== null && d.y !== null)
@@ -64,10 +64,11 @@ function face(url: string): HTMLImageElement {
   return img;
 }
 
-export function describeScatter(points: ScatterPoint[], x: ScatterMetric, y: ScatterMetric, highlight: string | null = "Nets", minFga = 100): string {
+/** `population` names what is plotted (BB-G10's team view: "teams"); the default is the shooting view's players at the FGA bar. */
+export function describeScatter(points: ScatterPoint[], x: AxisMetric, y: AxisMetric, highlight: string | null = "Nets", minFga = 100, population = `players with ${minFga}+ FGA`): string {
   const { visible, medianX, medianY } = scatterLayout(points, x, y);
   const named = visible.filter((d) => d.p.nets).map((d) => `${d.p.name} ${fmtMetric(x, d.x)}, ${fmtMetric(y, d.y)}`);
-  return `${visible.length} players with ${minFga}+ FGA, ${SCATTER_INFO[y].label} against ${SCATTER_INFO[x].label}; medians ${fmtMetric(x, medianX)} and ${fmtMetric(y, medianY)}.${highlight ? ` ${highlight}: ${named.join("; ")}.` : ""}`;
+  return `${visible.length} ${population}, ${SCATTER_INFO[y].label} against ${SCATTER_INFO[x].label}; medians ${fmtMetric(x, medianX)} and ${fmtMetric(y, medianY)}.${highlight ? ` ${highlight}: ${named.join("; ")}.` : ""}`;
 }
 
 /**
@@ -88,8 +89,11 @@ export function renderScatter(svg: SVGSVGElement, points: ScatterPoint[], opts: 
   const root = select(svg).append("g");
   setViewBox(svg, W, H);
   const { visible, medianX, medianY } = scatterLayout(points, xm, ym);
-  const x0 = scaleLinear().domain(paddedDomain(visible.map((d) => d.x))).range([M.left, W - M.right]);
-  const y0 = scaleLinear().domain(paddedDomain(visible.map((d) => d.y))).range([H - M.bottom, M.top]);
+  // an inverted metric (lower is better: a defensive rating) runs the other way, so better stays up and to the right
+  const xr: [number, number] = SCATTER_INFO[xm].invert ? [W - M.right, M.left] : [M.left, W - M.right];
+  const yr: [number, number] = SCATTER_INFO[ym].invert ? [M.top, H - M.bottom] : [H - M.bottom, M.top];
+  const x0 = scaleLinear().domain(paddedDomain(visible.map((d) => d.x))).range(xr);
+  const y0 = scaleLinear().domain(paddedDomain(visible.map((d) => d.y))).range(yr);
   const clip = uniqueId("bn-scatter-clip");
   root.append("defs").append("clipPath").attr("id", clip).append("rect").attr("x", M.left).attr("y", M.top).attr("width", W - M.left - M.right).attr("height", H - M.top - M.bottom);
 

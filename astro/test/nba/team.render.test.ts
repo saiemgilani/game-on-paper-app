@@ -4,6 +4,12 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
+// BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
+// BB-G51's Shot profile reads the Data API with 'bball-shot-profile' on (preview): never from a test
+vi.mock('../../src/resources/shotZones', async (orig) => ({ ...(await orig<typeof import('../../src/resources/shotZones')>()), retrievePlayerShotZones: async () => [], retrieveTeamPlayerShotZones: async () => [], retrieveTeamShotZones: async () => ({ zones: null, rates: [] }), retrieveSeasonFt: async () => null }));
+vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
+// BB-G17's play-style chips read the Data API with 'bball-play-styles' on (preview): never from a test (no row: no chip)
+vi.mock('../../src/resources/playStyles', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playStyles')>()), retrievePlayerPlayStyle: async () => [], retrieveTeamPlayStyle: async () => [] }));
 import { parseTable, text } from '../helpers/tables';
 import { apiSeasonPlayerRows } from './rows';
 
@@ -20,6 +26,28 @@ vi.mock('../../src/resources/lineupShots', async () => {
         retrieveLineupCrosswalk: async () => [],
     };
 });
+// BB-G12's nearby ranks read the Data API with 'bball-rank-neighbors' on (preview): never from a test
+vi.mock('../../src/resources/bballNeighbors', async (orig) => ({ ...(await orig<typeof import('../../src/resources/bballNeighbors')>()), retrieveTeamRankRows: async () => [] }));
+// BB-G5's season block reads the Data API with 'bball-team-season' on (preview): never from a test
+vi.mock('../../src/resources/teamSeason', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/teamSeason')>()),
+    retrieveTeamSeason: async () => ({ rates: [], strength: null, games: [], gameRates: [] }),
+}));
+// BB-G3's Lineups tab reads the Data API with 'bball-lineups' on (preview): never from a test
+vi.mock('../../src/resources/lineups', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/lineups')>()),
+    retrieveLineups: async () => ({ units: [], names: [], pairs: [] }),
+}));
+// BB-G4's On/Off section reads the Data API with 'bball-on-off' on (preview): never from a test
+vi.mock('../../src/resources/onOff', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/onOff')>()),
+    retrieveOnOff: async () => ({ players: [], pairs: [], names: [] }),
+}));
+// BB-G25's Situations section reads the Data API with 'bball-situational' on (preview): never from a test
+vi.mock('../../src/resources/situational', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/situational')>()),
+    retrieveSituational: async () => ({ team: [], players: [], units: [], names: [] }),
+}));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async () => apiSeasonPlayerRows(),

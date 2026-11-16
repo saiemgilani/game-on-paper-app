@@ -232,6 +232,10 @@ const teamContextColumns: [(t: Record<string, any>) => string, string][] = [
                                 {league === 'cfb' && isFeatureEnabled('pro', Astro.locals) && (
                                     <a class="btn btn-sm btn-outline-secondary text-nowrap" href={`/pro/players/${player.espn_id}`} id="player-pro-cta">Pro profile</a>
                                 )}
+                                {isFeatureEnabled('player-compare', Astro.locals) && (
+                                    <a class="btn btn-sm btn-outline-secondary" id="player-compare-link"
+                                        href={compareHref(league, [String(player.espn_id)], season)}>Compare</a>
+                                )}
                             </div>
                         </div>
                     </div>

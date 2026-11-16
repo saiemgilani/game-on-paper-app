@@ -180,6 +180,15 @@ export const NFL_LOGO_ABBR: Record<string, string> = {
     '25': 'sf', '26': 'sea', '27': 'tb', '28': 'wsh', '29': 'car', '30': 'jax', '33': 'bal', '34': 'hou',
 };
 
+// The NBA's dark logos are the NFL's case: `nba/500-dark/<id>.png` is a 404 for every team, so DarkModeLogos drew a broken
+// image in dark mode (the pregame watch card, BB-G23's standings). ESPN team id -> abbreviation, all 30 verified against
+// 500-dark on 2026-11-04 (site.api.espn.com .../basketball/nba/teams). The scoreboard's allowlist (NBA_DARK_LOGO_ABBRS) is its values.
+export const NBA_LOGO_ABBR: Record<string, string> = {
+    '1': 'atl', '2': 'bos', '17': 'bkn', '30': 'cha', '4': 'chi', '5': 'cle', '6': 'dal', '7': 'den', '8': 'det', '9': 'gs',
+    '10': 'hou', '11': 'ind', '12': 'lac', '13': 'lal', '29': 'mem', '14': 'mia', '15': 'mil', '16': 'min', '3': 'no', '18': 'ny',
+    '25': 'okc', '19': 'orl', '20': 'phi', '21': 'phx', '22': 'por', '23': 'sac', '24': 'sa', '28': 'tor', '26': 'utah', '27': 'wsh',
+};
+
 // ESPN serves WNBA logos only under the abbreviation: `wnba/500-dark/<id>.png` is a 404 for all 15 teams and `wnba/500/<id>.png`
 // for Golden State (129689), Toronto (131935) and Portland (132052). ESPN team id -> abbreviation, all 15 verified 2026-10-12
 // (re-probed 2026-10-18) against both 500 and 500-dark. Of the defunct franchises, ESPN serves Charlotte (1, cha), Houston (4, hou)
@@ -220,9 +229,9 @@ export function teamLogoUrl(league: League | undefined, teamId: string | number,
             : 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png'); // ESPN serves no WNBA logo by id
     }
     if (!dark) return light;
-    if (logoLeague === 'nfl') {
-        const abbr = NFL_LOGO_ABBR[id];
-        return abbr ? `https://a.espncdn.com/i/teamlogos/nfl/500-dark/${abbr}.png` : light;
+    if (logoLeague === 'nfl' || logoLeague === 'nba') {
+        const abbr = (logoLeague === 'nfl' ? NFL_LOGO_ABBR : NBA_LOGO_ABBR)[id];
+        return abbr ? `https://a.espncdn.com/i/teamlogos/${logoLeague}/500-dark/${abbr}.png` : light;
     }
     return `https://a.espncdn.com/i/teamlogos/${logoLeague}/500-dark/${id}.png`;
 }

@@ -118,7 +118,7 @@ describe('the wnba league entry', () => {
         // a season never moves another league's logo
         expect(teamLogoUrl('nba', 12, false, 2002)).toBe('https://a.espncdn.com/i/teamlogos/nba/500/12.png');
         expect(teamLogoUrl('cfb', 2, true, 2002)).toBe('https://a.espncdn.com/i/teamlogos/ncaa/500-dark/2.png');
-        expect(teamLogoUrl('nba', 17, true)).toBe('https://a.espncdn.com/i/teamlogos/nba/500-dark/17.png'); // the NBA unchanged
+        expect(teamLogoUrl('nba', 17, true)).toBe('https://a.espncdn.com/i/teamlogos/nba/500-dark/bkn.png'); // the NBA unchanged
         expect(darkLogoCss([{ id: '129689', abbreviation: 'GS' }, { id: '1', abbreviation: 'CHA' }], BASKETBALL.wnba.darkLogo))
             .toBe("img.team-logo-129689{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/wnba/500-dark/gs.png&h=120&w=120')}"
                 + "img.team-logo-1{content:url('https://a.espncdn.com/combiner/i?img=/i/teamlogos/wnba/500-dark/cha.png&h=120&w=120')}");

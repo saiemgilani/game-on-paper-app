@@ -15,8 +15,26 @@ import { COURT } from '../../nba/data/court';
 import { placeholderSplit } from '../../nba/data/placeholder';
 import type { PlayerSeason } from '../../nba/data/players';
 import { rankSummaries, type RankMins, type RankSummary } from '../../nba/data/ranks';
-import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows } from '../../resources/nbaShots';
+import { retrievePlayerSituational } from '../../resources/situational';
+import { retrieveLeagueContextRows, retrievePlayerGameRows, retrievePlayerSeasons, retrievePlayerShots, retrieveSeasonPlayerRows, type SeasonPlayerRow } from '../../resources/nbaShots';
+import { retrievePlayerImpactCareer, retrievePlayerWarCareer } from '../../resources/playerCareer';
+import { retrievePlayerImpact, type PlayerImpactRow } from '../../resources/playerImpact';
+import { retrievePlayerOnOff } from '../../resources/playerOnOff';
+import { PLAYER_PLAY_STYLE_LEAGUES, retrievePlayerPlayStyle } from '../../resources/playStyles';
+import { hasMatchups, hasPlayTypes, retrievePlayerHustle, retrievePlayerMatchupRollup, retrievePlayerSynergy, retrievePlayerTopMatchups, type HustleRow, type MatchupRollupRow, type MatchupRow, type SynergyRow } from '../../resources/playerPlayTypes';
+import { hasCurrentImpact, retrieveCurrentImpact, type CurrentImpactRow } from '../../resources/currentImpact';
+import { hasEpv, retrievePlayerEpv, retrievePlayerWar, type EpvPlayerSeasonRow, type PlayerWarRow } from '../../resources/playerWar';
+import { retrievePlayerShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
+import { retrieveNcaaPlayerId, retrievePlayerShotZones, retrieveSeasonFt, retrieveTeamPlayerShotZones, type SeasonFt, type ShotZoneRow } from '../../resources/shotZones';
+import { retrievePlayerGameLog, type PlayerLogReads } from '../../resources/bballGameLogs';
+import { bbGameSetOf, type BbGameSet } from '../../utils/bballGameSet';
+import { isFeatureEnabled } from '../../utils/features';
+import { impactShown } from '../../utils/playerImpact';
+import { collegePlayerRows } from '../../utils/shotProfile';
 import type { BasketballLeague } from '../../utils/league';
+import { parseSituation, situationsFor, type PlayerSituationsTab } from '../../utils/situations';
+import { espnPartners, topPartners, type PlayerOnOff } from '../../utils/playerOnOff';
+import { playerPlayStyles, type PlayStyleChip } from '../../utils/playStyles';
 import { playerCache, setCache, uncacheable } from './cache';
 import { readCoverageNote, resolveBasketballSeason } from './season';
 
@@ -42,6 +60,44 @@ export interface BasketballPlayerParams {
     unlocated?: { count: number; total: number };
     /** a college season's shot_coverage sentence (D24); absent for the NBA/WNBA */
     coverage?: string | null;
+    /** BB-G25, only with 'bball-situational' on: the Situations section's control and his split rows; `rows` null when the read failed */
+    situations?: PlayerSituationsTab;
+    /** BB-G15, only with 'bball-poe' on: his shot quality season rows (one per team); null when the read failed */
+    poe?: ShotQualityRow[] | null;
+    /** BB-G6, only with 'bball-impact' on: his impact rows (player_impact, college player_value); null when the read failed */
+    impact?: PlayerImpactRow[] | null;
+    /** BB-G7, only with 'bball-player-on-off' on: his on/off rows and top partners; `teams` null when a read failed */
+    onOff?: PlayerOnOff;
+    /** BB-G17, only with 'bball-play-styles' on, NBA and college: his play-style chips; null when the read failed */
+    playStyles?: PlayStyleChip[] | null;
+    /** BB-G27, only with 'bball-war' on: his player_war rows; null when the read failed */
+    war?: PlayerWarRow[] | null;
+    /** BB-G27, only with 'bball-war' on and a season from 2021-22: his epv_player_seasons row; null when the read failed */
+    epv?: EpvPlayerSeasonRow[] | null;
+    /** BB-G19, only with 'bball-play-types' on and an NBA season from 2015-16: his Synergy, hustle and (from 2017-18) matchup rows */
+    playTypes?: PlayerPlayTypes;
+    /** BB-G54, only with 'bball-career' on: every season of his player_war rows and (NBA/WNBA) player_impact rows; a failed read is null */
+    career?: { war: PlayerWarRow[] | null; impact?: PlayerImpactRow[] | null };
+    /** BB-G51, only with 'bball-shot-profile' on: his player_shot_zones rows (one per team; college: by his ncaa_player_crosswalk id, none without a pair); null when a read failed */
+    zones?: ShotZoneRow[] | null;
+    /** BB-G51, with `zones`: his season FGM and FTM from player_season_stats, the split's free throws; null when there are none or a read failed */
+    zonesFt?: SeasonFt | null;
+    /** BB-G56, only with 'bball-current-impact' on and an NBA season from 2006-07: his player_impact rows (the season
+     *  rating) and his latest current_impact row; each null when its read failed */
+    currentImpact?: { seasonRows: PlayerImpactRow[] | null; current: CurrentImpactRow[] | null };
+    /** BB-G14, only with 'bball-game-set' on: the `?games=` set his game-set line shows (no extra read) */
+    gameSet?: BbGameSet;
+    /** BB-G50, only with 'bball-game-logs' on and his per-game rows read: the log's reads; null when the box read failed */
+    gameLog?: PlayerLogReads | null;
+}
+
+/** BB-G19's rows, each null when its read failed. */
+export interface PlayerPlayTypes {
+    synergy: SynergyRow[] | null;
+    hustle: HustleRow[] | null;
+    /** absent before 2017-18, the matchup tables' first season */
+    rollup?: MatchupRollupRow[] | null;
+    matchups?: MatchupRow[] | null;
 }
 
 export type BasketballPlayerPrep = { notFound: true } | { unavailable: true } | BasketballPlayerParams;
@@ -116,13 +172,76 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         console.error(`player ${personId}: the seasons read failed: ${seasonsR.reason}`);
     }
 
+    // BB-G6: the same rule as BB-G15's below, started first so the two reads run together
+    // college reads through ncaa_player_crosswalk (BB-D37); utils/playerImpact.ts COLLEGE_IMPACT is its kill switch
+    const impactP = isFeatureEnabled('bball-impact', Astro.locals) && impactShown(isNcaaDashboards(league)) ? readPlayerImpact(league, season, personId) : undefined;
+    // BB-G7: the same rule, all four leagues; college maps its stats.ncaa.org ids through ncaa_player_crosswalk (BB-D37)
+    const onOffP = isFeatureEnabled('bball-player-on-off', Astro.locals) ? readPlayerOnOff(league, season, personId, player.team_id, rows) : undefined;
+    // BB-G17: the same rule; the WNBA has no play-style table
+    const stylesP = isFeatureEnabled('bball-play-styles', Astro.locals) && PLAYER_PLAY_STYLE_LEAGUES.includes(league) ? readPlayerPlayStyles(league, season, personId) : undefined;
+    // BB-G27: the same rule again, its reads started with BB-G6's
+    const withWar = isFeatureEnabled('bball-war', Astro.locals);
+    const warP = withWar ? readDecorative('WAR', league, season, personId, retrievePlayerWar) : undefined;
+    const epvP = withWar && hasEpv(league, season) ? readDecorative('EPV', league, season, personId, retrievePlayerEpv) : undefined;
+    // BB-G19: the same rule again, NBA only, its reads started with BB-G6's
+    const playTypesP = isFeatureEnabled('bball-play-types', Astro.locals) && hasPlayTypes(league, season) ? readPlayTypes(league, season, personId) : undefined;
+    // BB-G54: every season of the league's range, one cached read per player whichever season page asked; college has no
+    // impact columns (BB-D16, as BB-G6)
+    const withCareer = isFeatureEnabled('bball-career', Astro.locals);
+    const [first, last] = [resolved.seasons[0] ?? season, resolved.seasons[resolved.seasons.length - 1] ?? season];
+    const careerWarP = withCareer ? readDecorative('career WAR', league, season, personId, (lg, _s, id) => retrievePlayerWarCareer(lg, first, last, id)) : undefined;
+    const careerImpactP = withCareer && (league === 'nba' || league === 'wnba')
+        ? readDecorative('career impact', league, season, personId, (_lg, _s, id) => retrievePlayerImpactCareer(league, first, last, id)) : undefined;
+    // BB-G51: the same rule; college reads his ESPN team's rows and picks his by his crosswalk id (utils/shotProfile.ts collegePlayerRows);
+    // his season FTM is read with them
+    const zonesP = isFeatureEnabled('bball-shot-profile', Astro.locals) ? readShotZones(league, season, personId, player.team_id) : undefined;
+    // BB-G56: the season rating rides on BB-G6's player_impact read (shared when that flag is on too); current_impact is one row
+    const withCurrent = isFeatureEnabled('bball-current-impact', Astro.locals) && hasCurrentImpact(league, season);
+    const seasonImpactP = withCurrent ? impactP ?? readPlayerImpact(league, season, personId) : undefined;
+    const currentP = withCurrent ? readDecorative('current impact', league, season, personId, retrieveCurrentImpact) : undefined;
+    // BB-G15: read only once the page will render; decorative, so a failed read keeps the page and turns caching off
+    const poe = isFeatureEnabled('bball-poe', Astro.locals) ? { poe: await readPlayerPoe(league, season, personId) } : {};
+    if (poe.poe === null) degraded = true;
+    const impact = impactP ? { impact: await impactP } : {};
+    if (impact.impact === null) degraded = true;
+    const onOff = onOffP ? { onOff: await onOffP } : {};
+    if (onOff.onOff?.teams === null) degraded = true;
+    const playStyles = stylesP ? { playStyles: await stylesP } : {};
+    if (playStyles.playStyles === null) degraded = true;
+    const war = warP ? { war: await warP } : {};
+    const epv = epvP ? { epv: await epvP } : {};
+    if (war.war === null || epv.epv === null) degraded = true;
+    const playTypes = playTypesP ? { playTypes: await playTypesP } : {};
+    if (playTypes.playTypes && Object.values(playTypes.playTypes).includes(null)) degraded = true;
+    const career = careerWarP ? { career: { war: await careerWarP, ...(careerImpactP ? { impact: await careerImpactP } : {}) } } : {};
+    if (career.career && (career.career.war === null || career.career.impact === null)) degraded = true;
+    const zr = zonesP ? await zonesP : undefined;
+    const zones = zonesP ? { zones: zr?.rows ?? null, zonesFt: zr?.ft ?? null } : {};
+    if (zones.zones === null) degraded = true;
+    const currentImpact = seasonImpactP && currentP ? { currentImpact: { seasonRows: await seasonImpactP, current: await currentP } } : {};
+    if (currentImpact.currentImpact && (currentImpact.currentImpact.seasonRows === null || currentImpact.currentImpact.current === null)) degraded = true;
+    // BB-G50: read only once the page will render and his games are known (the log's rows); off, nothing is read
+    let gameLog: PlayerLogReads | null | undefined;
+    if (games && isFeatureEnabled('bball-game-logs', Astro.locals)) {
+        try {
+            gameLog = await retrievePlayerGameLog(league, season, personId);
+            if (gameLog.degraded) degraded = true;
+        } catch (e) {
+            gameLog = null;
+            degraded = true;
+            console.error(`player ${personId}: the game log read failed: ${e}`);
+        }
+    }
+
     // seasonFgPct (line) still counts every shot: D29 "counted"
     const n = placeholderSplit(shots, placeholder).unlocated;
     const min = rankMins(league, season);
     if (degraded) uncacheable(Astro);
     else setCache(Astro, playerCache(league));
-    const coverage = await coverageP;
-    if (coverage === undefined) uncacheable(Astro);
+    // read only once the page will render (a 404 or 503 never spends it), alongside the coverage note
+    const situationsOn = isFeatureEnabled('bball-situational', Astro.locals);
+    const [coverage, situations] = await Promise.all([coverageP, situationsOn ? readPlayerSituations(Astro, league, season, personId, player.team_id) : undefined]);
+    if (coverage === undefined || situations?.rows === null) uncacheable(Astro);
     return {
         ...resolved,
         player,
@@ -137,5 +256,122 @@ export async function prepareBasketballPlayer(Astro: AstroGlobal, league: Basket
         hisSeasons,
         ...(n > 0 ? { unlocated: { count: n, total: shots.length } } : {}),
         ...(isNcaaDashboards(league) ? { coverage: coverage ?? null } : {}),
+        ...(situationsOn ? { situations } : {}),
+        ...poe,
+        ...impact,
+        ...onOff,
+        ...playStyles,
+        ...war,
+        ...epv,
+        ...playTypes,
+        ...career,
+        ...zones,
+        ...currentImpact,
+        // off: ?games= is never read and the params are BB-G5's
+        ...(isFeatureEnabled('bball-game-set', Astro.locals) ? { gameSet: bbGameSetOf(Astro.url.searchParams.get('games')) } : {}),
+        ...(gameLog !== undefined ? { gameLog } : {}),
     };
+}
+
+/** The player page's Situations section (BB-G25): ?situation= and his split rows with his team; `rows` null when a read failed (decorative). */
+async function readPlayerSituations(Astro: AstroGlobal, league: BasketballLeague, season: number, personId: number, teamId: number): Promise<PlayerSituationsTab> {
+    const options = situationsFor(league, season);
+    const situation = parseSituation(Astro.url.searchParams.get('situation'), options);
+    try {
+        return { situation, options, rows: await retrievePlayerSituational(league, season, personId, teamId) };
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} situational splits for player ${personId}: ${e}, ${e?.stack}`);
+        return { situation, options, rows: null };
+    }
+}
+
+/** BB-G17's read (the page's person id: stats.nba.com's for the NBA, ESPN's in college) as chips; null when it failed. */
+async function readPlayerPlayStyles(league: BasketballLeague, season: number, personId: number): Promise<PlayStyleChip[] | null> {
+    try {
+        return playerPlayStyles(await retrievePlayerPlayStyle(league, season, personId), league !== 'nba');
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} play styles for player ${personId}: ${e}, ${e?.stack}`);
+        return null;
+    }
+}
+
+/**
+ * BB-G51's read: the pros' rows by his stats id; college's his team's rows narrowed to him by his season's stats.ncaa.org
+ * id from ncaa_player_crosswalk (no pair, no row); and his season FGM and FTM (the split's free throws, Q13). Null when a
+ * read failed, the crosswalk's and the season stats' included: the panel says it is unavailable, never a guess.
+ */
+async function readShotZones(league: BasketballLeague, season: number, personId: number, teamId: number): Promise<{ rows: ShotZoneRow[]; ft: SeasonFt | null } | null> {
+    try {
+        const ftP = retrieveSeasonFt(league, season, personId);
+        if (!isNcaaDashboards(league)) {
+            const [rows, ft] = await Promise.all([retrievePlayerShotZones(league, season, personId), ftP]);
+            return { rows, ft };
+        }
+        const [rows, ncaaId, ft] = await Promise.all([retrieveTeamPlayerShotZones(league, season, teamId), retrieveNcaaPlayerId(league, season, personId), ftP]);
+        return { rows: collegePlayerRows(rows, ncaaId), ft };
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} shot zones for player ${personId}: ${e}, ${e?.stack}`);
+        return null;
+    }
+}
+
+/** BB-G6's read (the same person id as readPlayerPoe's); null when it failed. */
+export async function readPlayerImpact(league: BasketballLeague, season: number, personId: number): Promise<PlayerImpactRow[] | null> {
+    try {
+        return await retrievePlayerImpact(league, season, personId);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} impact for player ${personId}: ${e}, ${e?.stack}`);
+        return null;
+    }
+}
+
+/** BB-G7's reads, his top partners and the names and tricodes from the page's season rows; `teams` null when a read failed. */
+async function readPlayerOnOff(league: BasketballLeague, season: number, personId: number, teamId: number, rows: SeasonPlayerRow[]): Promise<PlayerOnOff> {
+    const names = new Map(rows.map((r) => [String(r.person_id), r.player_name]));
+    const tricodes = new Map(rows.map((r) => [String(r.team_id), r.team_tricode]));
+    try {
+        const { teams, pairs, playerId, toEspn } = await retrievePlayerOnOff(league, season, personId, teamId);
+        const partners = playerId === null ? [] : topPartners(pairs, playerId);
+        // college: each teammate's stats.ncaa.org id as the page's ESPN id (names, links)
+        return { teams, partners: toEspn ? espnPartners(partners, toEspn) : partners, names, tricodes, ...(playerId === null ? { unmatched: true as const } : {}) };
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} on/off for player ${personId}: ${e}, ${e?.stack}`);
+        return { teams: null, partners: [], names, tricodes };
+    }
+}
+
+/** BB-G27's reads (the season tables' person id, as readPlayerPoe's); null when the read failed. */
+export async function readDecorative<T>(what: string, league: BasketballLeague, season: number, personId: number,
+    read: (league: BasketballLeague, season: number, personId: number) => Promise<T[]>): Promise<T[] | null> {
+    try {
+        return await read(league, season, personId);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} ${what} for player ${personId}: ${e}, ${e?.stack}`);
+        return null;
+    }
+}
+
+/** BB-G19's reads, together; each its own null on failure, so one outage keeps the other lines. */
+async function readPlayTypes(league: BasketballLeague, season: number, personId: number): Promise<PlayerPlayTypes> {
+    const one = <T>(what: string, read: (season: number, personId: number) => Promise<T[]>) =>
+        readDecorative(what, league, season, personId, (_l, s, p) => read(s, p));
+    if (!hasMatchups(league, season)) {
+        const [synergy, hustle] = await Promise.all([one('play types', retrievePlayerSynergy), one('hustle', retrievePlayerHustle)]);
+        return { synergy, hustle };
+    }
+    const [synergy, hustle, rollup, matchups] = await Promise.all([
+        one('play types', retrievePlayerSynergy), one('hustle', retrievePlayerHustle),
+        one('matchup rollup', retrievePlayerMatchupRollup), one('matchups', retrievePlayerTopMatchups),
+    ]);
+    return { synergy, hustle, rollup, matchups };
+}
+
+/** BB-G15's read (the season tables' person id: stats.nba.com's for the NBA/WNBA, ESPN's in college); null when it failed. */
+async function readPlayerPoe(league: BasketballLeague, season: number, personId: number): Promise<ShotQualityRow[] | null> {
+    try {
+        return await retrievePlayerShotQuality(league, season, personId);
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} ${season} shot quality for player ${personId}: ${e}, ${e?.stack}`);
+        return null;
+    }
 }

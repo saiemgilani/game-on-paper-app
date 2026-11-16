@@ -3,6 +3,8 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
+// BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
+vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
 
 const prep = vi.fn();
 // No live Data API (test/helpers/networkGuard.ts): the reads left unmocked, the /v1/meta
@@ -14,6 +16,11 @@ vi.mock('../../src/utils/telemetry', async (orig) => ({
 vi.mock('../../src/routes/nba/game', () => ({ prepareNbaGame: (...a: unknown[]) => prep(...a) }));
 const summary = vi.fn();
 vi.mock('../../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../../src/resources/espn')>()), retrieveGameSummary: (...a: unknown[]) => summary(...a) }));
+// BB-G43's market row ('bball-lines', preview, live or final): no row, never a read
+vi.mock('../../src/resources/gameLines', async (orig) => ({ ...(await orig<typeof import('../../src/resources/gameLines')>()), retrieveGameLine: async () => null }));
+// the pregame's Players to Watch card reads the season's shot_season_players rows (#379): none, so no card,
+// which is what these renders always showed (the unmocked read was a failed-auth Data API call)
+vi.mock('../../src/resources/nbaShots', async (orig) => ({ ...(await orig<typeof import('../../src/resources/nbaShots')>()), retrieveSeasonPlayerRows: async () => [] }));
 import Page from '../../src/pages/nba/game/[id].astro';
 import { fromDataApi, fromProcessor } from '../../src/resources/nbaGame';
 import { biggestPlays } from '../../src/nba/data/game';
@@ -27,7 +34,8 @@ const ISLAND = /<astro-island(?:\s+[\w-]+(?:="[^"]*")?)*\s*>/g;
 const noScripts = (h: string) => h.replace(/<script[\s\S]*?<\/script>/g, '').replace(ISLAND, ''); // layout scripts and island props legitimately contain null/undefined
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
-const render = () => container.renderToString(Page, { request: new Request('https://gameonpaper.com/nba/game/401766458'), params: { id: '401766458' }, locals: { preview: true, league: 'nba' } as App.Locals });
+const render = (flagOverrides?: Record<string, boolean>) => container.renderToString(Page, { request: new Request('https://gameonpaper.com/nba/game/401766458'), params: { id: '401766458' }, locals: { preview: true, league: 'nba', flagOverrides: { 'bball-pregame-projection': false, 'bball-team-grid': false, 'bball-player-box-views': false, ...flagOverrides } } as unknown as App.Locals });
+const wpProps = (html: string) => ([...html.matchAll(ISLAND)].map((m) => m[0]).find((t) => t.includes('/WinProbabilityChart.svelte"')) ?? '').replace(/&quot;/g, '"');
 
 describe('/nba/game/[id] render', () => {
     test('a final game: title with scores, linescore, prior line once, six panels with bodies, breadcrumb', async () => {
@@ -133,7 +141,7 @@ describe('/nba/game/[id] render', () => {
     });
     test('unavailable is a 503 with no-store; notFound rewrites to /404', async () => {
         prep.mockResolvedValueOnce({ unavailable: true });
-        const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/nba/game/401766458'), params: { id: '401766458' }, locals: { preview: true, league: 'nba' } as App.Locals });
+        const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/nba/game/401766458'), params: { id: '401766458' }, locals: { preview: true, league: 'nba', flagOverrides: { 'bball-pregame-projection': false, 'bball-team-grid': false, 'bball-player-box-views': false } } as unknown as App.Locals });
         expect(res.status).toBe(503);
         expect(res.headers.get('Cache-Control')).toBe('no-store');
         const src = readFileSync(new URL('../../src/pages/nba/game/[id].astro', import.meta.url)).toString();
@@ -211,6 +219,29 @@ describe('/nba/game/[id] render', () => {
         const body = noScripts(html);
         expect(body).not.toMatch(/NaN|undefined/);
         expect(body).not.toContain(' · ');
+    });
+    test("'bball-gei': the processor's GEI reaches the chart island on, and nothing of it off", async () => {
+        const j = { ...read('game_401766458_processor'), excitement: { gei: 3.5370793861546774, lead_changes: 6, max_swing_pts: 9.34, completed: true } };
+        expect(fromProcessor(j, 'nba').excitement).toEqual({ gei: 3.5370793861546774, leadChanges: 6, maxSwingPts: 9.34, completed: true });
+        prep.mockResolvedValueOnce({ game: fromProcessor(j, 'nba') });
+        const on = wpProps(await render());
+        expect(on).toContain('"gei":[0,3.5370793861546774]');
+        expect(on).toContain('"showGei":[0,true]');
+        prep.mockResolvedValueOnce({ game: fromProcessor(j, 'nba') });
+        const off = wpProps(await render({ 'bball-gei': false }));
+        expect(off).toContain('"gei":[0,null]');
+        expect(off).not.toContain('showGei');
+        // no excitement in the payload (the Data API path, or a payload cached before it): on renders as off
+        prep.mockResolvedValueOnce({ game: fromProcessor(read('game_401766458_processor'), 'nba') });
+        expect(wpProps(await render())).not.toContain('showGei');
+        expect(fromDataApi(read('game_401766458_api'), 'nba').excitement).toBeUndefined();
+        // a partial index (sdv-py did not take the last play to the result), or a game the status does not call final: no GEI
+        for (const game of [fromProcessor({ ...j, excitement: { ...j.excitement, completed: false } }, 'nba'), { ...fromProcessor(j, 'nba'), status: { ...fromProcessor(j, 'nba').status, completed: false, name: 'STATUS_SUSPENDED' } }]) {
+            prep.mockResolvedValueOnce({ game });
+            const props = wpProps(await render());
+            expect(props).toContain('"gei":[0,null]');
+            expect(props).not.toContain('showGei');
+        }
     });
     test('win probability with no prior: footnote says so, nothing crashes', async () => {
         prep.mockResolvedValueOnce({ game: { ...fromProcessor(read('game_401766458_processor'), 'nba'), prior: null } });

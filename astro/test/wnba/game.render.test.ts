@@ -3,6 +3,8 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
+// BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
+vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
 
 const prep = vi.fn();
 // No live Data API (test/helpers/networkGuard.ts): the reads left unmocked, the /v1/meta
@@ -14,6 +16,11 @@ vi.mock('../../src/utils/telemetry', async (orig) => ({
 vi.mock('../../src/routes/basketball/game', async (orig) => ({ ...(await orig<typeof import('../../src/routes/basketball/game')>()), prepareBasketballGame: (...a: unknown[]) => prep(...a) }));
 const summary = vi.fn();
 vi.mock('../../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../../src/resources/espn')>()), retrieveGameSummary: (...a: unknown[]) => summary(...a) }));
+// BB-G43's market row ('bball-lines', preview, live or final): no row, never a read
+vi.mock('../../src/resources/gameLines', async (orig) => ({ ...(await orig<typeof import('../../src/resources/gameLines')>()), retrieveGameLine: async () => null }));
+// the pregame's Players to Watch card reads the season's shot_season_players rows (#379): none, so no card,
+// which is what these renders always showed (the unmocked read was a failed-auth Data API call)
+vi.mock('../../src/resources/nbaShots', async (orig) => ({ ...(await orig<typeof import('../../src/resources/nbaShots')>()), retrieveSeasonPlayerRows: async () => [] }));
 import Page from '../../src/pages/wnba/game/[id].astro';
 import { fromDataApi, fromProcessor } from '../../src/resources/nbaGame';
 import { teamLogoUrl } from '../../src/utils/league';

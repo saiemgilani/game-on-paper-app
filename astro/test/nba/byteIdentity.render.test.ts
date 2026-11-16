@@ -12,6 +12,8 @@
 // 2026-27, so each season picker gains it and the 2025-26 pages these captures load carry ?season=2026 in canonical and links.
 // Every capture was re-captured on feat/about-page: the shared footer gains "Meet the team on our About page." behind the
 // 'about-page' preview flag (these renders hold the preview cookie). That one footer line is the whole diff.
+// pregame.html was re-captured on feat/basketball-playoff-picture: its watch card's two dark logos move from nba/500-dark/<id>.png
+// (a 404 for every NBA team) to ESPN's abbreviation (utils/league.ts NBA_LOGO_ABBR), nothing else.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
@@ -44,6 +46,8 @@ const gameRow = (pid: number, g: any) => ({
 const lite = (s: any) => ({ game_id: s.game_id, x_legacy: s.x_legacy, y_legacy: s.y_legacy, shot_distance: s.shot_distance, shot_value: s.shot_value, shot_result: s.shot_result });
 const state: { players: () => any[] } = { players: apiSeasonPlayerRows };
 
+// BB-G51's Shot profile reads the Data API with 'bball-shot-profile' on (preview): never from a test
+vi.mock('../../src/resources/shotZones', async (orig) => ({ ...(await orig<typeof import('../../src/resources/shotZones')>()), retrievePlayerShotZones: async () => [], retrieveTeamPlayerShotZones: async () => [], retrieveTeamShotZones: async () => ({ zones: null, rates: [] }), retrieveSeasonFt: async () => null }));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async () => state.players(),
@@ -54,6 +58,36 @@ vi.mock('../../src/resources/nbaShots', async (orig) => ({
     retrieveSeasonPlayerGameRows: async () => Object.entries(byPlayer).flatMap(([pid, gs]) => gs.map((g) => gameRow(Number(pid), g))),
     retrievePlayerSeasons: async () => [2025, 2026],
 }));
+// BB-G25's Situations section is forced off below; mocked anyway, so a run with the flag flipped on (the mutation check) never reads the Data API
+vi.mock('../../src/resources/situational', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/situational')>()),
+    retrieveSituational: async () => ({ team: [], players: [], units: [], names: [] }),
+    retrievePlayerSituational: async () => [],
+}));
+// 'bball-poe' is off here, so a shot quality read is a bug: it throws, the page would say "unavailable" and the snapshot breaks
+vi.mock('../../src/resources/shotQuality', () => {
+    const no = async () => { throw new Error('a shot quality read with bball-poe off'); };
+    return { retrieveGameShotQuality: no, retrieveTeamShotQuality: no, retrievePlayerShotQuality: no };
+});
+// 'bball-impact' is off here too: an impact read throws and would put "unavailable" in the snapshot
+vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => { throw new Error('an impact read with bball-impact off'); } }));
+// 'bball-player-on-off' (BB-G7) is off too: an on/off read throws and would put "unavailable" in the snapshot
+vi.mock('../../src/resources/playerOnOff', () => ({ retrievePlayerOnOff: async () => { throw new Error('an on/off read with bball-player-on-off off'); } }));
+// 'bball-play-styles' (BB-G17) is off too: a play-style read throws and would put "unavailable" in the snapshot
+vi.mock('../../src/resources/playStyles', async (orig) => {
+    const no = async () => { throw new Error('a play-style read with bball-play-styles off'); };
+    return { ...(await orig<typeof import('../../src/resources/playStyles')>()), retrievePlayerPlayStyle: no, retrieveTeamPlayStyle: no };
+});
+// 'bball-war' is off here too: a WAR or EPV read throws and would put "unavailable" in the snapshot
+vi.mock('../../src/resources/playerWar', async (orig) => {
+    const no = async () => { throw new Error('a WAR or EPV read with bball-war off'); };
+    return { ...(await orig<typeof import('../../src/resources/playerWar')>()), retrievePlayerWar: no, retrievePlayerEpv: no };
+});
+// 'bball-play-types' is off here too: a play-types read throws and would put "unavailable" in the snapshot
+vi.mock('../../src/resources/playerPlayTypes', async (orig) => {
+    const no = async () => { throw new Error('a play-types read with bball-play-types off'); };
+    return { ...(await orig<typeof import('../../src/resources/playerPlayTypes')>()), retrievePlayerSynergy: no, retrievePlayerHustle: no, retrievePlayerMatchupRollup: no, retrievePlayerTopMatchups: no };
+});
 const games = { schedule: vi.fn(), rows: vi.fn(), proc: vi.fn() };
 vi.mock('../../src/resources/nbaGames', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaGames')>()),
@@ -85,10 +119,13 @@ afterAll(() => { vi.useRealTimers(); });
 // timed-out test must not leak into the next one and show up as a false snapshot mismatch.
 beforeEach(() => { for (const m of [...Object.values(games), ...Object.values(espn)]) m.mockReset(); });
 
-async function page(path: string, url: string, params: Record<string, string> = {}) {
+// 'bball-hub' (BB-G47) and BB-G52's lineup shot chart ('bball-lineup-shotchart') are off here, so these pages stay byte for byte main's; a test can turn more flags on or off
+async function page(path: string, url: string, params: Record<string, string> = {}, flagOverrides?: Record<string, boolean>) {
     const { default: Page } = await import(/* @vite-ignore */ `../../src/pages/nba/${path}`);
-    // BB-G52's lineup shot chart is behind 'bball-lineup-shotchart': off here, so these pages stay byte for byte main's
-    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-lineup-shotchart': false } } as App.Locals }));
+    // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture', BB-G30's (NBA Cup, November and December only)
+    // behind 'bball-nba-cup' and BB-G10's scatter views behind 'bball-impact-scatter': all off here, so these pages stay byte
+    // for byte main's on any day
+    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-hub': false, 'bball-lineup-shotchart': false, 'bball-playoff-picture': false, 'bball-best-games': false, 'bball-nba-cup': false, 'bball-rolling-movers': false, 'bball-team-season': false, 'bball-lineups': false, 'bball-on-off': false, 'bball-situational': false, 'bball-poe': false, 'bball-impact': false, 'bball-player-on-off': false, 'bball-play-styles': false, 'bball-war': false, 'bball-compare': false, 'bball-play-types': false, 'bball-career': false, 'bball-shot-profile': false, 'bball-current-impact': false, 'bball-game-set': false, 'bball-game-logs': false, 'bball-rank-neighbors': false, 'bball-coaches': false, 'bball-impact-box': false, 'bball-game-flow': false, 'bball-epv': false, 'bball-pregame-projection': false, 'bball-garbage-time': false, 'bball-pbp-controls': false, 'bball-game-leaders': false, 'bball-game-shooting': false, 'bball-shot-filters': false, 'bball-shift-chart': false, 'bball-team-grid': false, 'bball-situational-box': false, 'bball-player-box-views': false, 'bball-game-info': false, 'bball-props': false, 'bball-lines': false, 'bball-wp-lenses': false, 'bball-league-shots': false, 'bball-leaderboards-v2': false, 'bball-impact-scatter': false, ...flagOverrides } } as App.Locals }));
 }
 const snap = (name: string) => `./__byte_identity__/${name}.html`;
 const finalPage = { gameId: 401766458, gamepackageJSON: { header: proc.header } };
@@ -136,6 +173,12 @@ describe('PR 0 byte-identity: every /nba route state', () => {
         espn.page.mockResolvedValueOnce({ page: finalPage, regressed: false, fetchFailed: false });
         games.proc.mockResolvedValueOnce(proc);
         await expect(await page('game/[id].astro', '/nba/game/401766458', { id: '401766458' })).toMatchFileSnapshot(snap('game-processor'));
+    });
+    test("game: 'bball-gei' off, a payload carrying excitement renders the processor snapshot byte for byte", async () => {
+        games.schedule.mockResolvedValueOnce(null);
+        espn.page.mockResolvedValueOnce({ page: finalPage, regressed: false, fetchFailed: false });
+        games.proc.mockResolvedValueOnce({ ...proc, excitement: { gei: 3.54, lead_changes: 6, max_swing_pts: 9.34, completed: true } });
+        await expect(await page('game/[id].astro', '/nba/game/401766458', { id: '401766458' }, { 'bball-gei': false })).toMatchFileSnapshot(snap('game-processor'));
     });
     test('game: an ingested final, from the Data API', async () => {
         games.schedule.mockResolvedValueOnce(api.schedule[0]);

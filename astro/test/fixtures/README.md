@@ -804,6 +804,50 @@ children). 2026 season, captured 2026-10-18 with the `requestESPN` Safari UA. No
 **To regenerate:** re-fetch both URLs and gzip; the test pins the group ids, names and team counts, so a realignment
 change will need the assertion updated too.
 
+## `hub-game-lines.json`
+Real `game_lines` rows (BB-D33, the Data API's `/v1/<league>/game_lines?season=<s>&game_id=<id>&select=...&limit=1`, the
+league hub's own read) for every game of the scoreboard captures the hub test renders: `nba` (`nba/scoreboard-20250115`),
+`wnba` (`wnba/scoreboard-20250801`), `mbb` (`mbb/scoreboard-20250222-top25`) and `wbb` (`wbb/scoreboard-20260207-top25`),
+plus `nba-open-only`, a 2026-27 game no book had closed on (`n_books` 0, every `_close` null). Captured 2026-11-10. No edits.
+
+**Used by:** `test/basketball/hub.test.ts` (BB-G47).
+
+**To regenerate:** re-run the reads above with a read key; finals do not change, the open-only row will (it closes).
+
+## `hub-standouts-box.json.gz` and `hub-play-wp.json.gz`
+Real Data API rows for the league hub's "Tonight" (BB-G48), captured 2026-11-10 with the hub's own reads. No edits.
+- `hub-standouts-box.json.gz`: `{ "<league>:<game_date>": rows }`, each the answer to
+  `/v1/<league>/player_box?season=<s>&game_date=<day>&select=<the standouts columns>&order=-points&limit=200` for the four
+  scoreboard captures' days above (`nba:2025-01-15`, `wnba:2025-08-01`, `mbb:2025-02-22`, `wbb:2026-02-07`) and the NBA's day
+  before (`nba:2025-01-14`, the "no final yet" fallback).
+- `hub-play-wp.json.gz`: `{ "<ESPN game id>": [home_win_prob, ...] }`, the `home_win_prob` column of
+  `/v1/<league>/play_wp?season=<s>&game_id=<id>&select=game_play_number,home_win_prob&order=game_play_number&limit=2000`, in play
+  order, for every final of those four captures (30 games).
+
+**Used by:** `test/basketball/hubTonight.test.ts` (BB-G48).
+
+**To regenerate:** re-run the reads above with a read key; finals do not change.
+
+## `hub-war-leaders.json` and `hub-season-schedule.json.gz`
+Real Data API rows for the league hub's dashboards (BB-G49), captured 2026-11-10 with the hub's own reads. No edits.
+- `hub-war-leaders.json`: `{ "<league>:<season>": rows }`, each the answer to
+  `/v1/<schema>/player_war?season=<s>&select=player_id,player_name,team_id,war,min&order=-war&limit=25` for the site's current
+  season of each league (`nba_stats` 2027, `wnba_stats` 2026, `mbb` 2026, `wbb` 2026). The 2027 NBA rows will change as the
+  season goes on.
+- `hub-season-schedule.json.gz`: `{ "<league>:<season>": rows }`, each the answer to `/v1/<league>/schedule?season=<s>&select=
+  game_id,game_date,season_type,type_abbreviation,status_type_name,status_type_completed,home_id,away_id,home_abbreviation,
+  away_abbreviation,home_score,away_score&limit=50000` (college adds `home_current_rank,away_current_rank`) for the seasons of the
+  four scoreboard captures above (`nba:2025`, `wnba:2025`, `mbb:2025`, `wbb:2026`).
+
+- `hub-standings-strength.json.gz`: `{ "season_standings": { "<league>:<season>": rows }, "team_strength": { ... } }`, captured
+  2026-11-13 with the hub's own reads. `season_standings` is the answer to `/v1/<nba_stats|wnba_stats>/season_standings?season=<s>&
+  select=as_of_date,team_id,conference,wins,losses,seed&order=-as_of_date&limit=60` (one snapshot each: NBA 2025-04-14, WNBA
+  2025-09-12; `season` added to the select), and `team_strength` the answer to `/v1/<schema>/team_strength?season=<s>&select=
+  season,team_id,wins,losses,adj_net_rtg_rank&limit=500`, for the boards' seasons (`nba:2025`, `wnba:2025`, `mbb:2025`, `wbb:2026`).
+
+**Used by:** `test/basketball/hubDashboards.test.ts` (BB-G49).
+
+**To regenerate:** re-run the reads above with a read key; past seasons do not change.
 ## `team-hub-cfb.json`, `team-hub-nfl.json`
 Real Data API rows for the team profile's history tables (`'team-hub'`), per team id:
 `team_summaries` from `/v1/<league>/team_summaries?team_id=<id>` (select trimmed to `season, team_id, pos_team,
@@ -850,3 +894,881 @@ one 2026-27 Colorado State game (`season=2027&game_id=6607281`, 112 rows), Color
 
 **To regenerate:** the same reads with `select=` the columns above and `limit=1000` (never unfiltered), JSON-joined as
 `{nba: {season, team_id, rows}, wbb: {season, team_id, rows, crosswalk, season_players}}` and gzipped.
+## `best-games-wnba-2025.json.gz`
+`{ game_excitement, schedule }` for the 2025 WNBA season, exactly as the Best Games board reads them (BB-G29,
+`resources/bestGames.ts`): 312 `game_excitement` rows (every one completed and ranked) and the season's 312 schedule
+rows, 24 of them postseason, plus the All-Star Game.
+
+**Provenance (2026-11-04):** captured from the live Data API with the board's own queries:
+`/v1/wnba/game_excitement?season=2025&completed=true&select=game_id,season,gei,lead_changes,max_swing_pts,completed,gei_rank,gei_pct,gei_n`
+and `/v1/wnba/schedule?season=2025&select=id,game_date,season_type,home_id,home_display_name,home_abbreviation,home_score,away_id,away_display_name,away_abbreviation,away_score,notes_headline`.
+No hand edits. Cross-checked against the producer: `sportsdataverse.nba.nba_game_page.season_game_excitement(load_wnba_pbp([2025]),
+league="wnba", schedule=load_wnba_schedule([2025]))` (sdv-py eb420747, sdv-db main's lock) and `load_wnba_schedule([2025])`
+match these rows cell for cell (the same 312 ids each, no differing value).
+
+**Used by:** `test/bestGames.test.ts`.
+
+**To regenerate:** re-read the two URLs above (Bearer key) and gzip `{ game_excitement, schedule }`. The test pins the
+312 games, the top game (401736289, GEI 11.18) and the 24 postseason games.
+## `nba-cup-2027.json.gz`
+The NBA Cup snapshot of 2026-11-03 (2026-27, five days into Group Play), as sdv-db's `nba_stats.cup_sims` and
+`cup_standings` routes serve it (BB-D30, sdv-db #188): `{snapshot, sims, standings}`, 30 rows each. `sims` is sdv-db's
+`tests/fixtures/season_products/nba_cup_sims_2026-11-03.parquet` (`nba_cup_sim(2027, as_of_date=2026-11-03)`, 10,000
+sims). `standings` is sdv-py `nba_cup_standings(2027, as_of_date=2026-11-03, cup_schedule=<nba_cup_schedule_2027.parquet>)`
+run offline the way sdv-db's `test_season_products.py` runs it (the release reads answered by `nba_schedule_2027/2026.parquet`
+and `nba_cup_overtime_2027.parquet`), which sdv-db pins equal to the live call. No edits.
+
+**Used by:** `test/nbaCup.test.ts`.
+
+**To regenerate:** rerun both producers on sdv-db main's fixtures, write the rows as JSON (dates as ISO strings) and gzip.
+
+## `team-season-nba-2026.json.gz`, `team-season-mbb-2026.json.gz`
+The five Data API reads behind the team season block (BB-G5, `resources/teamSeason.ts`), captured live on 2026-11-04 with
+exactly that module's queries, as `{rates, strength, home, away, gameRates}` (the `data` array of each response, no edits):
+`/v1/<season schema>/team_season_rates?season=2026&team_id=<id>&limit=10`, `/v1/<season schema>/team_strength?season=2026&team_id=<id>&select=…&limit=1`,
+`/v1/<games schema>/schedule?season=2026&season_type=2&home_id=<espn>` and `&away_id=<espn>` (`select=…&limit=200`), and
+`/v1/<games schema>/game_team_rates?season=2026&team_id=<espn>&select=…&limit=200`. NBA: the Brooklyn Nets 2025-26
+(`nba_stats` id 1610612751, `nba` ESPN id 17). MBB: Duke 2025-26 (ESPN 150 in both `mbb` reads).
+
+**Used by:** `test/teamSeason.test.ts`.
+
+**To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `lineups-nba-2025.json.gz`, `lineups-mbb-2025.json.gz`
+The Lineups tab's reads (BB-G3, `resources/lineups.ts`) before sdv-db's `lineup_seasons` backfill: sdv-db's committed
+producer fixtures `tests/fixtures/season_products/{nba,mbb}_lineup_seasons_2025.parquet` (sdv-py #1108's
+`nba_lineup_seasons(2025)` / `mbb_lineup_seasons(2025)` over the real games of sdv-py's `tests/fixtures/bb_lineup_seasons`),
+filtered to one team and projected to the module's `select` columns, as `{units, names}`. NBA: the Minnesota Timberwolves
+2024-25 (`team_id` 1610612750, all 861 2/3/5-man units over every regular-season game), with `names` the `data` of
+`/v1/nba_stats/shot_season_players?season=2025&team_id=1610612750&select=person_id,player_name,team_id&limit=60`. MBB:
+Xavier 2024-25 (ESPN 2752, its 166 units over the fixture's two games, so no unit reaches the rank gate), with `names` the
+`data` of `/v1/mbb/ncaa_player_box?season=2025&team_espn_team_id=2752&select=player_id,clean_name&limit=2000`. The name
+reads were captured live on 2026-11-05; nothing is edited. The tests apply the API's own filter (`n_players`, `poss__gte`
+or `net_rtg_pct__isnull=false`, `order=-poss`, `limit`) to `units`.
+
+Xavier's `units` also carry college's shot-zone columns and their percentiles (`rim_rate` .. `opp_fg3_pct`, each with
+`_pct`, from the same parquet; rebuilt 2026-11-13 and asserted equal to the earlier rows on every earlier column), plus
+`crosswalk` (the `data` of `/v1/mbb/ncaa_player_crosswalk?season=2025&espn_team_id=2752&select=ncaa_player_id,espn_athlete_id&limit=100`,
+BB-D37) and `pages` (the `data` of `/v1/mbb/shot_season_players?season=2025&team_id=2752&select=person_id,player_name,team_id&limit=60`),
+both captured live on 2026-11-13.
+
+## `lineups-mbb-duke-2026.json.gz`
+Duke 2025-26 (ESPN 150), captured live on 2026-11-13 after the `lineup_seasons` backfill: `units` is the `data` of
+`/v1/mbb/lineup_seasons?season=2026&team_id=150&n_players=2&net_rtg_pct__isnull=false&order=-poss&limit=12&select=<the
+college select>` (its 12 most-used ranked pairs, Cameron and Cayden Boozer among them), `names` of
+`/v1/mbb/ncaa_player_box?season=2026&team_espn_team_id=150&select=player_id,clean_name&limit=2000`, `crosswalk` of
+`/v1/mbb/ncaa_player_crosswalk?season=2026&espn_team_id=150&select=ncaa_player_id,espn_athlete_id&limit=100` and `pages`
+of `/v1/mbb/shot_season_players?season=2026&team_id=150&select=person_id,player_name,team_id&limit=60`. Nothing is edited.
+It pins the labels of two players who share a surname and a first initial, and the shot-zone basis on ranked units.
+
+**Used by:** `test/lineups.test.ts`.
+
+**To regenerate:** read the two parquets from sdv-db main, filter `team_id`, select the columns above, write the rows as
+JSON with the name, crosswalk and page reads (season filter and limit as above, never unfiltered) and gzip; Duke's file
+is the four reads above. Live reads of `lineup_seasons?season=2026&team_id=<id>&n_players=<n>&poss__gte=<gate>&order=-poss&limit=100`
+can replace the parquet rows.
+
+## `on-off-nba-2025.json.gz`, `on-off-mbb-2025.json.gz`
+The On/Off and WOWY section's reads (BB-G4, `resources/onOff.ts`) before sdv-db's `player_on_off` / `player_wowy`
+backfill: sdv-db's committed producer fixtures `tests/fixtures/season_products/{nba,mbb}_player_{on_off,wowy}_2025.parquet`
+(sdv-db #198, from sdv-py #1110's `nba_player_on_off(2025)` / `nba_player_wowy(2025)` and the `mbb_` twins over real
+games), filtered to one team and projected to the module's `select` columns, as `{players, pairs}`. NBA: the Minnesota
+Timberwolves 2024-25 (`team_id` 1610612750, its 20 players over all 82 regular-season games and their 190 pairs). The
+producer ranked the fixture's three NBA teams' players together, so a percentile here is within those 70 players, not the
+league. MBB: Xavier 2024-25 (ESPN 2752, its 14 players over the fixture's two games and their 91 pairs, none ranked). The
+names are the `names` of `lineups-{nba,mbb}-2025.json.gz` above; Minnesota's 1642399 has no shot, so no
+`shot_season_players` row, and reads as `#1642399`. Nothing is edited; `players` keeps the producer's `-minutes_on` order.
+
+**Used by:** `test/onOff.test.ts`.
+
+**To regenerate:** read the four parquets from sdv-db main, filter `team_id`, select the columns above, write the rows as
+JSON and gzip. Once the backfill runs, the live `player_on_off?season=2026&team_id=<id>&order=-minutes_on&limit=100` and
+`player_wowy?season=2026&team_id=<id>&limit=1225` reads replace them.
+
+## `on-off-phi-2025.json.gz`
+The On/Off section's span columns (BB-G4 review, Q12): the `data` of
+`/v1/nba_stats/player_on_off?season=2025&team_id=1610612755&order=-minutes_on&limit=100`, captured live on 2026-11-13 (the
+Philadelphia 76ers 2024-25, 30 players), projected to `resources/onOff.ts`'s `select` columns, as `{players}`. Quentin Grimes
+(1629656) played 28 of 82 games and the team's 34 from 2025-02-04 to 2025-04-13: 3,018 full-season off minutes, 694 over his span.
+Nothing else is edited.
+
+**Used by:** `test/onOff.test.ts`.
+
+**To regenerate:** the same read (season filter and limit as above), projected to the module's `select`.
+
+## `player-bio-nba-2025.json.gz`
+The On/Off section's name read for pros with no `shot_season_players` row (BB-G4 review, `retrieveBioNames`): the `data` of
+`/v1/nba_stats/player_bio?season=2025&season_type=Regular%20Season&select=player_id,player_name&limit=1000`, captured live on
+2026-11-13 (569 players; Minnesota's 1642399 is Jesse Edwards). Nothing is edited.
+
+**Used by:** `test/onOff.test.ts`.
+
+**To regenerate:** the same read (season filter and limit as above).
+## `situations-nba-2024.json.gz`, `situations-mbb-2025.json.gz`
+The Situations section's reads (BB-G25, `resources/situational.ts`) before sdv-db's situational backfill: sdv-db's committed
+producer fixtures `tests/fixtures/season_products/{nba_situational_*_2024,mbb_situational_*_2025}.parquet` (sportsdataverse-py
+#1111's `nba_situational_team/_player/_lineup(2024)` and `mbb_situational_*(2025)` over the real games of sdv-py's
+`tests/fixtures/bb_situational`), filtered to one team and projected to the module's `select` columns (plus `team_id`), as
+`{team, players, lineups, names}`. NBA: the Minnesota Timberwolves 2023-24 (`team_id` 1610612750, every regular-season
+game): its 24 split rows, 393 player rows and the 1,293 rows of its 66 five-man units that pass the product's gate (50
+possessions, offense plus defense, in the `all` split; sdv-db #199 keeps every split of each), with `names` the `data` of
+`/v1/nba_stats/shot_season_players?season=2024&team_id=1610612750&select=person_id,player_name,team_id&limit=60`. MBB:
+Michigan State 2024-25 (ESPN 127, every game): 21 split rows, 247 player rows, the 472 rows of its 27 gated units, with
+`names` the `data` of `/v1/mbb/ncaa_player_box?season=2025&team_espn_team_id=127&select=player_id,clean_name&limit=2000`.
+The name reads were captured live on 2026-11-05; nothing is edited. The tests apply the API's own filter (`family`,
+`split`, `order=-poss`, `limit`) to `players` and `lineups`.
+
+**Used by:** `test/situations.test.ts`.
+
+**To regenerate:** read the six parquets from sdv-db main, filter `team_id`, apply the lineup gate above, select the columns,
+write the rows as JSON with the two name reads (season filter and limit as above, never unfiltered) and gzip. Once the
+backfill runs, the live `situational_{team,player,lineup}?season=<s>&team_id=<id>[&family=&split=&order=-poss]` reads replace them.
+
+## `situations-player-2026.json.gz`
+The player page's Situations read (BB-G25 review, `retrievePlayerSituational`), captured live on 2026-11-13: `nba.rows` is the
+`data` of `/v1/nba_stats/situational_player?season=2026&team_id=1610612750&player_id=1630162&poss__gte=10&select=player_id,<the
+section's columns>&limit=40` (Anthony Edwards, 24 splits); `mbb.crosswalk` of
+`/v1/mbb/ncaa_player_crosswalk?season=2026&espn_athlete_id=5041935&select=ncaa_player_id&limit=5` (Cameron Boozer) and `mbb.rows` of
+`/v1/mbb/situational_player?season=2026&team_id=150&player_id=11195975&poss__gte=10&select=...&limit=40` (18 splits; none for
+overtime, under 10 possessions). Nothing is edited.
+
+**Used by:** `test/situations.test.ts`.
+
+**To regenerate:** the same reads (season filter and limit as above).
+
+
+## `situations-game-2026.json.gz`
+The game page's Situations panel reads (BB-G25 review, Q27, `resources/situational.ts` `retrieveGameSituational`), captured live on 2026-11-13, sequentially, the `data` array of each response, no edits, as `{nba: {crosswalk, rows}, mbb: {teamBox, rows}}`:
+- `/v1/nba/schedule_crosswalk?season=2026&espn_game_id=401809773&select=nba_game_id,nba_home_team_id,nba_away_team_id&limit=2` (1 row: Detroit at Brooklyn, 2025-11-07, stats game 0022500031)
+- `/v1/nba_stats/situational_team_games?season=2026&game_id=0022500031&select=team_id,family,split,games,minutes,poss,opp_poss,pts,opp_pts,plus_minus,off_rtg,def_rtg,net_rtg&limit=60` (38: 19 splits a team)
+- `/v1/mbb/ncaa_team_box?season=2026&espn_game_id=401856577&select=contest_id&limit=4` (2 rows, contest 6564880: UConn at Duke, neutral site)
+- `/v1/mbb/situational_team_games?season=2026&game_id=6564880&select=...&limit=60` (30: 15 a team)
+
+**Used by:** `test/gameSituations.test.ts`.
+
+**To regenerate:** rerun the same reads (season filter and limit as above).
+## `shot-quality.json.gz`
+The Data API reads behind points over expected (BB-G15, `resources/shotQuality.ts`), captured live on 2026-11-05 with
+exactly that module's queries and `select=` lists, as `{nbaTeam, mbbTeam, nbaPlayer, wnbaGameDay, mbbGame}` (the `data` array of each
+response, no edits): `/v1/nba_stats/shot_quality_season?season=2026&team_id=1610612751&limit=60` (the Brooklyn Nets 2025-26, team
+row and shooters), `/v1/mbb/shot_quality_season?season=2026&team_id=150&limit=60` (Duke 2025-26),
+`/v1/nba_stats/shot_quality_season?season=2026&level=player&person_id=1629008&limit=10`,
+`/v1/wnba_stats/shot_quality_game?season=2025&game_date=2025-08-01&level=team&limit=40` (every WNBA game of Aug 1 2025 ET, so
+`wnba/game_401736289_api.json`, LA at Seattle, tipped 2025-08-02T02:00Z) and
+`/v1/mbb/shot_quality_game?season=2026&game_id=401808271&level=team&limit=40` (`mbb/game_401808271_api.json`).
+
+**Used by:** `test/shotQuality.test.ts`.
+
+**To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `player-impact.json.gz`
+The Data API reads behind the player page's Impact panel (BB-G6, `resources/playerImpact.ts`), captured live on 2026-11-05
+with that module's queries (no `select=`, so every column comes back), as `{nba, wnba, mbbTeam, wbbTeam}` (the `data` array of
+each response, no edits): `/v1/nba/player_impact?season=2026&season_type=Regular%20Season&player_id=1629008&limit=5` (Michael
+Porter Jr., the Nets 2025-26, the player of `nba/player_games.json`), `/v1/wnba/player_impact?season=2025&season_type=Regular%20Season&player_id=1628932&limit=5`
+(A'ja Wilson 2025), `/v1/mbb/player_value?season=2026&team_id=251&limit=40` (Texas 2025-26) and
+`/v1/wbb/player_value?season=2026&team_id=2579&limit=40` (South Carolina 2025-26). The college reads are by team, not by
+player, so one capture covers several players; the page reads one player (`player_id`).
+
+**Used by:** `test/playerImpact.test.ts`.
+
+**To regenerate:** rerun the four reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `on-off-nba-2025.json.gz`, `lineups-nba-2025.json.gz` (player page)
+The player page's On/Off section (BB-G7, `resources/playerOnOff.ts`) reuses two fixtures from the team-page PRs, copied
+byte for byte (same blob, so the identical adds merge cleanly): `on-off-nba-2025.json.gz` from #407 (BB-G4) and
+`lineups-nba-2025.json.gz` from #402 (BB-G3), whose sections in those PRs give the provenance. In short: sdv-db's committed
+producer output `tests/fixtures/season_products/nba_player_{on_off,wowy}_2025.parquet` (sdv-db #198) for the Minnesota
+Timberwolves 2024-25 (`team_id` 1610612750, 20 players, 190 pairs), and Minnesota's live `shot_season_players` name rows.
+The capture was filtered by `team_id`, so its rows carry no `team_id`; the test adds Minnesota's id, as the API's rows
+would carry it, and applies the API's own filters (`player_id`, `player_id_a`, `player_id_b`, `order`, `limit`). The
+player is Anthony Edwards (1630162). Nothing else is edited.
+
+**Used by:** `test/playerOnOff.test.ts`.
+
+**To regenerate:** as #407's and #402's sections. Once the backfill runs, the live
+`player_on_off?season=2026&player_id=<id>&order=-minutes_on&limit=5` and `player_wowy?season=2026&player_id_a=<id>&limit=100`
+(and `player_id_b=`) reads replace them.
+
+## `on-off-mbb-2026.json.gz` (player page, college)
+College On/Off through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of each
+response, no edits, all `season=2026`: `{xwalk, players, pairsA, pairsB}` =
+`mbb/ncaa_player_crosswalk?espn_team_id=150&limit=40` (14 rows, every Duke pair, all columns), then by Duke's leading shooter's
+stats.ncaa.org id (ESPN 5041935 -> `11195975`) with the module's own selects: `mbb/player_on_off?player_id=11195975&order=-minutes_on&limit=5`
+(1), `mbb/player_wowy?player_id_a=11195975&limit=100` (11) and `?player_id_b=11195975` (0: the producer orders the text ids, and
+`"11195975"` sorts first against every teammate). Every one of his 11 partners has a crosswalk pair.
+
+**Used by:** `test/playerOnOff.test.ts`.
+
+**To regenerate:** rerun the same five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+## `play-styles.json.gz`
+The play-style tables behind BB-G17's chips (`resources/playStyles.ts`), before their Data API backfill: sdv-db #200's
+committed producer output (`tests/fixtures/season_products/` on `feat/bb-d20-play-styles` at ba0df024, from
+sportsdataverse-py #1112 reading the published releases; nothing synthetic or edited), as `{nbaPlayers, nbaTeams, mbbPlayers}`
+(every row and column of each parquet, `json.dumps` of polars' `to_dicts()`):
+`nba_player_play_styles_2025.parquet` (318 rows, 2024-25), `nba_team_play_styles_2025.parquet` (30) and
+`mbb_player_play_styles_2026.parquet` (42 rows of 2025-26, the six smallest ESPN team ids). In the database college `team_id`
+is a bigint; the parquet carries it as text, and the page never reads it.
+
+**Used by:** `test/playStyles.test.ts`.
+
+**To regenerate:** once the backfill has run, capture the module's three reads live (season filter and limit as in
+`resources/playStyles.ts`, never unfiltered) in place of these rows, wrap them as above and gzip.
+## `player-war.json.gz`
+The rows behind the player page's Value panel (BB-G27, `resources/playerWar.ts`), as `{nba, wnba, mbbTeam, wbbTeam, nbaEpvSeason, epvProof}`
+(no edits). `player_war` (sdv-db #202) is not served yet (the Data API answers 404 until its backfill runs), so its rows are
+the producer's output, the frame sdv-db loads unchanged: sportsdataverse-py `origin/main` at 39541177 (with #1114), run on
+2026-11-05 as `nba_player_war(2026)` (kept: Michael Porter Jr., 1629008, the player of `nba/player_games.json`),
+`nba_player_war(2025, league_id="10")` (A'ja Wilson, 1628932), `mbb_player_war(2026)` (Texas, team 251, 13 players) and
+`wbb_player_war(2026)` (South Carolina, team 2579, 11 players), each `write_json()`. `epvProof` (GOP Q39, sdv-db #223) is
+five players' live Data API reads of 2026-11-13, each `{league, season, player_id, games, season_row}`:
+`games` = `/v1/<schema>/epv_player_games?season=<S>&player_id=<id>&select=game_id,epv_own,own_actions,off_epv_on,def_epv_on,epv_on&limit=130`
+and `season_row` = `/v1/<schema>/epv_player_seasons?season=<S>&player_id=<id>&limit=5`, the `data` arrays, no edits, for
+Michael Porter Jr. (nba_stats 2026, 1629008: 57 rows, 4 preseason), Luka Dončić (nba_stats 2025, 1629029: traded, with
+playoff rows), A'ja Wilson (wnba_stats 2025, 1628932: with playoff rows), mbb 2026 11195975 and wbb 2026 9341835 (each
+league's 2025-26 EPV leader). `nbaEpvSeason` is the first one's `season_row`.
+
+**Used by:** `test/playerWar.test.ts`.
+
+**To regenerate:** rerun the four sdv-py calls (filtered as above) and the ten reads (season filter and limit as above),
+wrap them as above and gzip. Once sdv-db #202's backfill has run, `/v1/{nba_stats,wnba_stats,mbb,wbb}/player_war?season=…&player_id=…&limit=5`
+replaces the sdv-py calls.
+
+## `player-compare.json.gz`
+The Data API reads behind the basketball player compare page (BB-G13, `routes/basketball/compare.ts`), captured live on
+2026-11-08 with the player page's queries, as `{nbaImpact, nbaWar, nbaSeasonPlayers, mbbSeasonPlayers}` (the `data` array of
+each response, concatenated, no edits): for Michael Porter Jr. (1629008) and Noah Clowney (1641730), the Nets 2025-26,
+`/v1/nba/player_impact?season=2026&season_type=Regular%20Season&player_id=…&limit=5`,
+`/v1/nba_stats/player_war?season=2026&player_id=…&limit=5` (now served: sdv-db #202's backfill has run) and
+`/v1/nba_stats/shot_season_players?season=2026&person_id=…&limit=5`; and `/v1/mbb/shot_season_players?season=2026&team_id=251&limit=40`
+(Texas 2025-26, the team of `player-impact.json.gz`'s and `player-war.json.gz`'s college rows).
+
+`nbaSeasonPlayers` and `mbbSeasonPlayers` were captured again on 2026-11-13 with the same three reads, once sdv-db#225 added
+`fg3_pct`, `ft_pct`, `<m>_n`, `<m>_rank` and `<m>_pct` (Q46), and `nbaMultiTeam` added from
+`/v1/nba_stats/shot_season_players?season=2026&person_id=201935&limit=5` (two team rows, the same percentages and ranks on each).
+
+**Used by:** `test/basketballCompare.test.ts`.
+
+**To regenerate:** rerun the eight reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+## `player-play-types.json.gz`
+The rows behind the NBA player page's Play types and Defense panels (BB-G19, `resources/playerPlayTypes.ts`), as
+`{porter, zubac, statsNba}` (no edits). `porter` (Michael Porter Jr., 1629008, the player of `nba/player_games.json`) and
+`zubac` (Ivica Zubac, 1627826, traded LAC to IND in 2025-26) are each `{synergy, hustle, rollup, matchups}`: live Data API
+reads of 2026-11-08 with the resource's exact queries, `season=2026&season_type=regular-season` plus
+`/v1/nba_stats/synergy?player_id=…&per_mode=totals&select=…&limit=80`,
+`/v1/nba_stats/hustle_player?player_id=…&per_mode=pergame&select=…&limit=5`,
+`/v1/nba_stats/matchups_rollup?def_player_id=…&per_mode=totals&select=…&limit=10` and
+`/v1/nba_stats/matchups?def_player_id=…&per_mode=totals&order=-partial_poss&select=…&limit=8`. `statsNba` is the oracle:
+the same two players' rows of stats.nba.com's `synergyplaytypes` (PlayerOrTeam=P, PerMode=Totals, Regular Season,
+2025-26; the 11 offensive and 7 defensive play types, one request each, curl_cffi `impersonate="chrome"`), same day,
+kept to `PLAYER_ID, TEAM_ID, TEAM_ABBREVIATION, PLAY_TYPE, TYPE_GROUPING, GP, POSS, POSS_PCT, PPP, PERCENTILE`.
+
+**Used by:** `test/playerPlayTypes.test.ts`.
+
+**To regenerate:** rerun the eight Data API reads (season filter and limit as above, never unfiltered) and the 18
+stats.nba.com requests (residential IP only), keep the two players' rows, wrap them as above and gzip.
+## `player-career.json.gz`
+The rows behind the player page's Career panel (BB-G54, `resources/playerCareer.ts`), as `{nba, nbaImpact, wnba, wnbaImpact, mbb, wbb}`,
+each the `data` array of one live Data API read on 2026-11-10 (no edits), the season range and his id as the page reads them:
+`/v1/nba_stats/player_war?season__gte=1998&season__lte=2026&player_id=1629008&limit=40` (Michael Porter Jr., 7 seasons),
+`/v1/nba/player_impact?…&player_id=1629008&season_type=Regular%20Season&limit=40` (his 2022, nine games, carries null RAPM / BPM
+ranks: below the gate), `/v1/wnba_stats/player_war` and `/v1/wnba/player_impact` with `season__gte=1997` for A'ja Wilson (1628932,
+9 seasons), `/v1/mbb/player_war?season__gte=2003&…&player_id=4848625` (Dailyn Swain, 3 seasons) and `/v1/wbb/player_war` for
+Joyce Edwards (5239100, 2 seasons).
+
+**Used by:** `test/playerCareer.test.ts`.
+
+**To regenerate:** rerun the six reads (season range and limit as above), wrap the `data` arrays as above and gzip.
+## `shot-zones.json.gz`
+The rows behind the Shot profile (BB-G51, `resources/shotZones.ts`), as `{nba, nbaTeam, wnba, mbbTexas, mbbTeam, wbbSouthCarolina}`,
+the `data` array of each live Data API read of 2026-11-10 (sdv-db #213, BB-D35; no edits):
+`/v1/nba_stats/player_shot_zones?season=2026&player_id=1629008&limit=5` (Michael Porter Jr., the player of `nba/player_games.json`),
+`/v1/nba_stats/team_shot_zones?season=2026&team_id=1610612751&limit=2` (Brooklyn, the team of `team-season-nba-2026.json.gz`),
+`/v1/wnba_stats/player_shot_zones?season=2025&player_id=1628932&limit=5` (A'ja Wilson),
+`/v1/mbb/player_shot_zones?season=2026&team_id=251&limit=40` (Texas, 13 shooters: the team of `mbb/dashboards/season_players_2026.json.gz`'s `p26`),
+`/v1/mbb/team_shot_zones?season=2026&team_id=150&limit=2` (Duke, the team of `team-season-mbb-2026.json.gz`) and
+`/v1/wbb/player_shot_zones?season=2026&team_id=2579&limit=40` (South Carolina, 11 shooters).
+
+## `shot-zones-xwalk-mbb-2026.json.gz`
+Texas 2025-26's `ncaa_player_crosswalk` pairs (BB-D37), the id the Shot profile's college path picks a player's
+`player_shot_zones` row by: `{xwalk}` = the `data` array of `/v1/mbb/ncaa_player_crosswalk?season=2026&espn_team_id=251&limit=40`,
+captured live on 2026-11-10, no edits (15 pairs, all columns; all 13 shooters of `shot-zones.json.gz`'s `mbbTexas` have one).
+The page reads one player's pair (`espn_athlete_id=`, `select=ncaa_player_id`); no pair is no row.
+
+**Used by:** `test/shotProfile.test.ts`.
+
+**To regenerate:** rerun the read (season filter and limit as above, never unfiltered), wrap it as above and gzip.
+
+## `shot-profile-ft.json.gz`
+The `player_season_stats` rows the player Shot profile's scoring split reads its free throws from (Q13: his season FTM, a read),
+as `{nba, wnba, mbbTexas}`, the `data` array of each live Data API read of 2026-11-13, no edits:
+`/v1/nba_stats/player_season_stats?season=2026&player_id=1629008&season_type=regular-season&per_mode=totals&measure_type=base&select=player_id,fgm,ftm&limit=5`
+(Michael Porter Jr.: 444 FGM, 195 FTM),
+`/v1/wnba_stats/player_season_stats?season=2025&player_id=1628932&season_type=Regular%20Season&per_mode=Totals&measure_type=Base&select=player_id,fgm,ftm&limit=5`
+(A'ja Wilson: 332, 248; this schema spells the three filters in title case) and
+`/v1/mbb/player_season_stats?season=2026&team_id=251&category=totals&select=season,athlete_id,team_id,category,stat_name,display_value,value&limit=400`
+(Texas, ESPN's long season totals, 195 rows for the 13 shooters; the made-attempted stats carry the counts only in
+`display_value`, e.g. `83-111`, with `value` null). The page reads one athlete (`athlete_id=`, `category=totals`, limit 20).
+Zone points plus FTM equal the season stats' `pts` for both pros (1259, 937) and for 12 of the 13 Texas shooters (the 13th is one over).
+The team split's `team_season_stats` rows, added on 2026-11-13 as `nbaTeam`, `nbaTeamOpp` and `mbbTeam`:
+`/v1/nba_stats/team_season_stats?season=2026&team_id=1610612751&season_type=regular-season&per_mode=totals&measure_type=base&select=team_id,gp,fgm,ftm,pts&limit=2`
+(Brooklyn: 3071 FGM, 1471 FTM, 8686 points), the same with `measure_type=opponent&select=team_id,gp,opp_fgm,opp_ftm,opp_pts` (3457, 1564, 9505;
+zone points plus FTM give both point totals exactly; the page selects only the makes), and
+`/v1/mbb/team_season_stats?season=2026&team_id=150&category=offensive&select=team_id,stat_name,display_value,value&limit=60`
+(Duke, ESPN's long season totals, 30 rows: 973 FGM and 543 FTM over 34 games, where `team_shot_zones` counts 1079 makes over 38,
+so the page drops Duke's split and says why; ESPN's team totals carry no opponents' free throws).
+
+**Used by:** `test/shotProfile.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+## `current-impact.json.gz`
+The Data API reads behind the NBA player page's Season impact / Current impact rows in the Impact table (BB-G56, `resources/currentImpact.ts`), captured live
+on 2026-11-12 as `{season, latest, opening}` (the `data` array of each response, no edits), all Michael Porter Jr. (1629008,
+the player of `nba/player_games.json`) in 2025-26: `/v1/nba/player_impact?season=2026&season_type=Regular%20Season&player_id=1629008&limit=5`
+(every column: the season rating `reml_rapm` and its box prior, BB-D38), `/v1/nba/current_impact?season=2026&player_id=1629008&order=-as_of&limit=1`
+(the page's read: the season's latest `as_of`, BB-D39) and the same with `order=as_of` (opening night, 0 possessions).
+
+**Used by:** `test/currentImpact.test.ts`.
+
+**To regenerate:** rerun the three reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `player-impact-xwalk.json.gz`
+College's Impact panel through `ncaa_player_crosswalk` (BB-D37), captured live on 2026-11-10, sequentially, the `data` array of
+each response, no edits, all `season=2026`, as `{mbbXwalk, mbbRapm, mbbPv, wbbXwalk, wbbRapm}`:
+`/v1/mbb/ncaa_player_crosswalk?espn_athlete_id=5041935&limit=5` (Cameron Boozer, Duke: ESPN 5041935 -> stats.ncaa.org
+`11195975`), `/v1/mbb/ncaa_rapm?player_id=11195975&limit=5`, `/v1/mbb/player_value?player_id=5041935&limit=5`,
+`/v1/wbb/ncaa_player_crosswalk?espn_athlete_id=5239100&limit=5` (Joyce Edwards, South Carolina: ESPN 5239100 -> `9342023`;
+her `player_value` row is in `player-impact.json.gz`'s `wbbTeam`) and `/v1/wbb/ncaa_rapm?player_id=9342023&limit=5`. The
+crosswalk and RAPM reads carry every column here; the page selects `ncaa_player_id` and `orapm,drapm,rapm_net,off_poss,def_poss`.
+
+**Used by:** `test/playerImpact.test.ts`.
+
+**To regenerate:** rerun the five reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `on-off-nba-2025-fox.json.gz` (player page, a traded player)
+Top partners split by team (BB-G7), captured live on 2026-11-13, sequentially, the `data` array of each response, no edits,
+all `nba_stats`, `season=2025`, with the module's own selects: `{players, pairsA, pairsB}` =
+`player_on_off?player_id=1628368&order=-minutes_on&limit=5` (2 rows: De'Aaron Fox's Sacramento and San Antonio seasons),
+`player_wowy?player_id_a=1628368&limit=100` (31) and `?player_id_b=1628368` (13): 24 Sacramento pairs and 20 San Antonio pairs.
+
+**Used by:** `test/playerOnOff.test.ts`.
+## `team-strength-2026.json`
+One `team_strength` row (BB-D19, sdv-db #186) per league for 2025-26, read live on 2026-11-05 as
+`/v1/<season schema>/team_strength?season=2026&team_id=<id>&select=…&limit=1` and stored as `{nba, mbb, wnba, wbb}` (the
+`data` array of each response, no edits). The select is `resources/teamSeason.ts`'s columns plus `season`, `team_id`,
+`games`, `pace` and `pace_rank` for the gates. NBA: the Brooklyn Nets (`nba_stats` 1610612751). MBB: Duke (`mbb` 150).
+WNBA: the Las Vegas Aces (`wnba_stats` 1611661319). WBB: UConn (`wbb` 41).
+
+**Used by:** `test/teamStrength.test.ts`. Its `__team_strength__/block-off-*.html` snapshots were written by BB-G5's
+template (#400's head), so the flag-off test pins the block byte for byte.
+
+**To regenerate:** rerun the four reads (season filter and `limit=1`, never unfiltered) and write them as above.
+## `game-set-nba-2026.json.gz`, `game-set-mbb-2026.json.gz`, `game-set-player-nba-2026.json.gz`
+The reads behind the game-set filter (BB-G14, `utils/bballGameSet.ts`), captured live on 2026-11-05, sequentially, the `data`
+array of each response, no edits. The two team files are the five team-season-block reads above for the same teams (the Brooklyn
+Nets, `nba_stats` 1610612751 / ESPN 17; Duke, ESPN 150), as `{rates, strength, home, away, gameRates}`, with the game_team_rates
+select the flag adds: `select=game_id,off_rtg,def_rtg,pace,efg_pct,tov_pct,orb_pct,ft_rate,possessions,game_minutes&limit=200`
+(Nets 82 rows, Duke 38). The player file is `{games, season}` for Michael Porter Jr. (1629008):
+`/v1/nba_stats/shot_player_games?season=2026&person_id=1629008&limit=200` (52 rows, the player page's own read) and
+`/v1/nba_stats/shot_season_players?season=2026&person_id=1629008&limit=5` (1 row, the oracle for "All games").
+
+The two `possessions,game_minutes` columns in `gameRates` come from the first version of the summed sets. They are no longer read, but the capture stays as it was taken.
+
+`game-set-possessions-2026.json.gz` holds the summed sets' reads (`resources/teamSeason.ts` `retrieveGameSetCounts`) and each team's live season row, captured live on 2026-11-13 in the same way: `{nets: {possessions, seasonAll, crosswalkHome, crosswalkAway}, duke: {possessions, seasonAll, teamBox, conferenceHome, conferenceAway}}`. `seasonAll` is the oracle: the season's `possessions` rows summed and divided once give exactly that row (the `rates` in the two team files above are from 2026-11-05 and one Nets possession behind).
+- `/v1/nba_stats/team_game_possessions?season=2026&team_id=1610612751&split=all&limit=100` (82 rows, regular season)
+- `/v1/nba_stats/team_season_rates?season=2026&team_id=1610612751&split=all&limit=5` (1)
+- `/v1/nba/schedule_crosswalk?season=2026&{home,away}_espn_team_id=17&select=espn_game_id,nba_game_id&limit=200` (43 + 43)
+- `/v1/mbb/team_game_possessions?season=2026&team_id=150&split=all&limit=100` (38; `game_id` is the stats.ncaa contest id)
+- `/v1/mbb/team_season_rates?season=2026&team_id=150&split=all&limit=5` (1)
+- `/v1/mbb/ncaa_team_box?season=2026&team_espn_team_id=150&select=contest_id,espn_game_id&limit=200` (38)
+- `/v1/mbb/schedule?season=2026&{home,away}_id=150&select=id,conference_competition&limit=200` (26 + 12)
+
+**Used by:** `test/bballGameSet.test.ts`.
+
+**To regenerate:** rerun the same twelve reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `game-logs-player-nba-2026.json.gz`, `game-logs-player-mbb-2026.json.gz`, `game-logs-flow-2026.json.gz`, `game-logs-xwalk-mbb-2026.json.gz`
+The reads behind the advanced game logs (BB-G50, `resources/bballGameLogs.ts`), captured live on 2026-11-10, sequentially, the
+`data` array of each response, no edits; each with the module's own `select` and `limit=200` unless noted.
+- NBA player, Michael Porter Jr. (stats 1629008, ESPN 4278104; his games are `game-set-player-nba-2026`'s): `{box, impact, poe, epv, xwalk, rates, sched}` =
+  `nba_stats/player_box?person_id=1629008` (54 rows), `nba_stats/game_player_impact?player_id=1629008` (56),
+  `nba_stats/shot_quality_game?person_id=1629008&level=player` (52), `nba_stats/epv_player_games?player_id=1629008` (57),
+  `nba/player_crosswalk?nba_player_id=1629008` (1), `nba/game_player_rates?athlete_id=4278104` (54) and
+  `nba/schedule_crosswalk?select=espn_game_id,nba_game_id&limit=2500` (1,415), all `season=2026`.
+- College player, Duke's leading shooter (ESPN 5041935): `{games, box, rates, poe}` = `mbb/shot_player_games?person_id=5041935` (38),
+  `mbb/player_box?athlete_id=5041935` (38), `mbb/game_player_rates?athlete_id=5041935` (38),
+  `mbb/shot_quality_game?person_id=5041935&level=player` (38), all `season=2026`.
+- Team flow: `{nets, duke}` = `nba_stats/game_flow?season=2026&team_id=1610612751` (86) and `mbb/game_flow?season=2026&team_id=150` (38).
+- College player, his stats.ncaa.org side (`game-logs-xwalk-mbb-2026`, captured live on 2026-11-10 once `ncaa_player_crosswalk` (BB-D37) was
+  served): `{xwalk, impact, epv, contests}` = `mbb/ncaa_player_crosswalk?season=2026&espn_team_id=150&limit=40` (14, every Duke pair;
+  his row is ESPN 5041935 -> stats.ncaa.org `11195975`, `name_jersey`), `mbb/game_player_impact?player_id=11195975` (38),
+  `mbb/epv_player_games?player_id=11195975` (38) and `mbb/ncaa_player_box?player_id=11195975&select=contest_id,espn_game_id,pts` (38;
+  `pts` is not in the module's select: the test uses it as the join oracle against ESPN's box), all `season=2026`.
+- The game list (`game-logs-played-2026`, captured live on 2026-11-13): every game he played is his ESPN `player_box` rows (Q20 on
+  GOP#443). `{nba: {games, box, xwalk, espnBox}, mbb: {games, box}, mpjEspnBox, boozerBox}`: Drake Powell (Nets, stats 1642962,
+  ESPN 5037873; four games without a field-goal attempt) `nba_stats/shot_player_games?person_id=1642962&limit=50000` (59),
+  `nba_stats/player_box?person_id=1642962` (69), `nba/player_crosswalk?nba_player_id=1642962` (1),
+  `nba/player_box?athlete_id=5037873` (69, the list select); Maliq Brown (Duke, ESPN 5105337; two)
+  `mbb/shot_player_games?person_id=5105337&limit=50000` (36) and `mbb/player_box?athlete_id=5105337` (38, the college select);
+  `nba/player_box?athlete_id=4278104` (54) and `mbb/player_box?athlete_id=5041935` (38) for the two players above. All `season=2026`.
+
+**Used by:** `test/bballGameLogs.test.ts`.
+
+
+**To regenerate:** rerun the same reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `schedule-context-nba-2026.json.gz`, `schedule-context-mbb-2026.json.gz`
+The reads behind the schedule context and rotation (BB-G53, `resources/bballScheduleContext.ts`), captured live on 2026-11-10,
+sequentially, the `data` array of each response, no edits other than the filter noted; for the same teams as `game-set-*-2026`
+(the Brooklyn Nets, ESPN 17; Duke, ESPN 150), as `{lines, strength, box}`:
+- `lines`: `{nba,mbb}/game_lines?season=2026&select=game_id,spread_home_close,ats_result,home_margin&limit=8000` (1,310 / 5,435 rows),
+  kept to the team's schedule games (82 / 38). `home_margin` is not in the module's select: the test uses it as the join oracle
+  against the schedule's final score.
+- `strength`: `nba_stats/team_strength` and `mbb/team_strength`, `?season=2026&select=team_id,adj_net_rtg,adj_net_rtg_rank&limit=1000` (30 / 365).
+- `box`: `nba/player_box?season=2026&team_id=17&season_type=2` (1,026) and `mbb/player_box?season=2026&team_id=150` (500), both
+  `select=game_id,athlete_id,athlete_short_name,minutes,starter,did_not_play&limit=3000`.
+
+**Used by:** `test/bballScheduleContext.test.ts`.
+
+**To regenerate:** rerun the same six reads (season filter and limit as above, never unfiltered), keep the team's games in `lines`, wrap and gzip.
+
+## `schedule-context-proj-nba-2026.json.gz`, `schedule-context-proj-mbb-2026.json.gz`
+The rated pregame projections for the schedule's projection column (Q21 on GOP#457), as `{proj}`: `game_id, exp_home_margin`.
+Captured live on 2026-11-13 from the served table (sportsdataverse-py#1193, sdv-db#229):
+`{nba,mbb}/rated_priors?season=2026&select=game_id,home_team_id,away_team_id,exp_home_margin&limit=8000` (1,330 / 6,318 rows),
+kept to games with `home_team_id` or `away_team_id` 17 (the Nets, 82 games; the opener has no rating yet, so its margin is
+null) or 150 (Duke, 38 games, all rated), then the module's two columns. No other edits.
+
+**Used by:** `test/bballScheduleContext.test.ts`.
+
+**To regenerate:** once sdv-db serves it, `nba/rated_priors?season=2026&select=game_id,exp_home_margin&limit=8000`, kept to the Nets' games.
+## BB-G12 nearby ranks (`nba/rank_neighbors_teams_2026.json`, `mbb/rank_neighbors_teams_2026_top12.json`)
+
+Live Data API reads, 2026-11-13, each filtered by season and unedited. Each uses the `select` the page sends: `team_id` plus each of the twelve measures and its `_rank` (`net_rtg, off_rtg, def_rtg, adj_net_rtg, efg_pct, opp_efg_pct, pace, tov_pct, orb_pct, ft_rate, sos, sov`).
+
+- `nba/rank_neighbors_teams_2026.json`: `GET /v1/nba_stats/team_strength?season=2026&select=...&limit=40`, all 30 teams.
+- `mbb/rank_neighbors_teams_2026_top12.json`: `GET /v1/mbb/team_strength?season=2026&net_rtg_rank__lte=12&select=...&limit=20`,
+  D-I's top 12 by net rating (Duke, 150, is 1st), enough for Duke's net-rating window.
+
+The player capture (`player_stats_advanced` rank windows) was dropped along with the player lists. Those lists wait for a producer-ranked player table with a minimum.
+
+**Used by:** `test/bballNeighbors.test.ts`.
+
+**To regenerate:** repeat the reads above and write each response's `data` array.
+## `bball-coaches-2025.json.gz`
+Head-coach rows as the Data API served them on 2026-11-05 (BB-D8, sdv-db #196; sdv-py `nba_coach_seasons` #1109), with
+the `select` the BB-G9 page sends (`utils/bballCoaches.ts bballCoachSelect`): `{nba, wnba}`, each `{season: 2025,
+seasons, careers}`. `seasons` is `/v1/<lg>_stats/coach_seasons?season=2025&limit=40` (NBA: 27 rows, three 2024-25
+team-seasons left uncredited; WNBA: 9 of 13 teams); `careers` is `/v1/<lg>_stats/coach_careers?limit=25` (NBA) and
+`limit=20` (WNBA), the first rows the table returns, not the whole table. No edits.
+
+**Used by:** `test/bballCoaches.test.ts`.
+
+**To regenerate:** re-fetch the four URLs with that `select` (Bearer `SDV_DATA_READ_KEY`), wrap as above and gzip.
+## `impact-box-{nba-2027,wnba-2026,mbb-2026,wbb-2026,wbb-2026-nond1}.json.gz`, `impact-box-mbb-2026-xwalk.json.gz`
+The Data API reads behind the game page's Impact box (BB-G1, `resources/impactBox.ts`), captured live on 2026-11-05 with
+exactly that module's queries, as `{league, season, espnGameId, schedule, crosswalk | box, names?, players, home, away}`
+(the `data` array of each response, no edits). The pros: `/v1/<nba|wnba>/schedule_crosswalk?season=…&espn_game_id=…&limit=1`,
+then `/v1/<nba_stats|wnba_stats>/player_box`, `game_player_impact` (`game_id=<stats id>`, `limit=80`) and `game_lineups_used`
+once per side (`team_id=<stats id>&order=-seconds&limit=5`). College: `/v1/<mbb|wbb>/ncaa_player_box?season=…&espn_game_id=…`
+(`limit=80`), then the same two tables by the contest id (ESPN team ids). `schedule` is the games schema's row
+(`schedule?season=…&id=…&limit=1`), the final-score oracle for the +/- check. Games: BOS 113 at DET 121, 2026-10-20 (ESPN
+401909088); CON 75 at NY 106, 2026-05-08 (401856890); Southern Miss 79 at Buffalo 85, 2025-11-03 (401823425); GW 50 at
+Temple 86 (401824983); UDC 47 at GW 86 (401824982), whose non-D1 side has no stats.ncaa.org ids and no impact rows.
+
+The player links (`impact-box-mbb-2026-xwalk`, captured live on 2026-11-10 once `ncaa_player_crosswalk` (BB-D37) was served): `{2084, 2572}` =
+`/v1/mbb/ncaa_player_crosswalk?season=2026&espn_team_id=<2084|2572>&select=ncaa_player_id,espn_athlete_id&limit=40` (Buffalo 14 rows,
+Southern Miss 18), the `data` array of each, no edits; every one of the game's 24 impact players has a pair. The module reads
+the same with `limit=80`. The wbb captures carry no crosswalk rows, so their names stay unlinked in the tests.
+
+Every unit and the player pages (`impact-box-units-pages`, captured live on 2026-11-12 with the module's queries) = `{units, pages}`. `units[<capture>]` = `{home, away}`, each side's `/v1/<schema>/game_lineups_used?season=…&game_id=…&team_id=…&order=-seconds&limit=100` (`UNIT_LIMIT`; 14 to 24 units a side, the first five equal to the captures' top five; the non-D1 side none). `pages[<schema>-<season>]` = `/v1/<schema>/shot_season_players?season=…&select=person_id&limit=50000`, the season's shooters, whose ids are the player pages (nba_stats 2027: 452 rows, wnba_stats 2026: 260, mbb 2026: 4,861, wbb 2026: 4,501). The `data` array of each, no edits; every captured impact player with a page id is in his season's list, so the no-page case is tested by removing one id.
+
+**Used by:** `test/impactBox.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `ingame-lineups-{nba,wnba,mbb,wbb}.json.gz`
+The Data API reads behind BB-G37's in-game lineups (`resources/impactBox.ts` `retrieveInGameLineups`, sdv-db game_units and
+game_on_off, BB-D32), captured live on 2026-11-10 with exactly that function's queries, as `{units, onoff}` (the `data`
+array of each response, no edits): `/v1/<nba_stats|wnba_stats|mbb|wbb>/game_units?season=…&game_id=…&select=…&limit=3000`
+and `game_on_off?season=…&game_id=…&select=…&limit=80`. The games are the `impact-box-*` ones: BOS at DET (0022600001,
+season 2027), CON at NY (1022600001, 2026), Southern Miss at Buffalo (contest 6388769, 2026), GW at Temple (contest
+6387150, 2026); 536, 393, 492 and 446 unit rows. Every stretch in them lists five players a side, so the five-man rows
+sum to the team's game and the picker's inclusion-exclusion matches them exactly.
+
+`season` (added 2026-11-13) is the season's team net ratings the section prints as a reference line, captured live
+the same day with `retrieveInGameLineups`'s third read: `/v1/<schema>/team_season_rates?season=…&split=all&select=team_id,games,net_rtg&limit=1000`
+(the `data` array, no edits; 30, 15, 365 and 358 rows).
+
+**Used by:** `test/inGameLineups.test.ts`, `test/inGameLineupsIsland.test.ts`.
+
+**To regenerate:** rerun the two reads per game (season filter and limit as above), wrap them as above and gzip.
+
+## `game-flow-{nba-401909834,nba-401909088,wnba-401856902,mbb-401823353,wbb-401812873}.json.gz`
+The Data API reads behind BB-G28's Game flow panel (`resources/gameFlow.ts`),
+captured live on 2026-11-05, every read season-filtered with a small limit, as `{league, season, espnGameId, resolve,
+schedule, pbp, flow}` (the `data` array of each response, no edits). `resolve` is the id mapping: the pros'
+`/v1/<nba|wnba>/schedule_crosswalk?season=…&<league>_game_id=…&limit=1` (with `espn_game_id` added to the select),
+college's `/v1/<mbb|wbb>/ncaa_player_box?season=…&contest_id=…&select=contest_id,espn_game_id&limit=1`. `schedule` is the
+games schema's row (`schedule?season=…&id=…&limit=1`), `pbp` its play-by-play with the score columns
+(`pbp?season=…&game_id=…&order=game_play_number&limit=1500`), the page's lead-chart input, and `flow` both
+`game_flow?season=…&game_id=<producer id>&limit=2` rows, the oracle. Games: ATL 132 at ORL 125 (ESPN 401909834, 22 lead
+changes), BOS 113 at DET 121 (401909088), MIN 88 at PHX 84 (401856902), Sam Houston 84 at Idaho State 81 (401823353,
+23 lead changes), UC San Diego 80 at UC Davis 88 in overtime (401812873). The games were picked from small unsorted
+`game_flow?season=…&limit=60` windows (no sorted read).
+
+**Used by:** `test/gameFlow.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+
+## `epv-box-nba-2025.json.gz`
+The reads behind BB-G26's EPV box (`resources/epvBox.ts`) for CHA 89 at ORL 114, 2024-11-12 (ESPN 401703372, stats
+0022400003), as `{league, season, espnGameId, schedule, crosswalk, names, players, teams, plays, pages}`. `crosswalk`, `names` and
+`schedule` were captured live on 2026-11-05 with that module's queries (`/v1/nba/schedule_crosswalk?season=2025&nba_game_id=0022400003&limit=1`,
+its four id columns kept; `/v1/nba_stats/player_box?season=2025&game_id=0022400003&select=person_id,first_name,family_name,name_i&limit=80`;
+`/v1/nba/schedule?season=2025&id=401703372&limit=1` with the score columns), the `data` array of each, no edits. The
+Data API's `epv_player_games` / `epv_team_games` were not built yet (the endpoint answered 404 "unknown table" on
+2026-11-05), so `players` and `teams` are that game's rows of sdv-db's own producer fixtures
+(`tests/fixtures/season_products/nba_epv_{player,team}_games_2025.parquet` on sdv-db main: sdv-py #1113's
+`nba_epv_*` on the published releases, scored by its bundled booster), `season` and `game_id` dropped, no other edits.
+`plays` (GOP Q35's biggest plays, sdv-db #223) was captured live on 2026-11-13 with the module's query
+(`/v1/nba_stats/epv_plays?season=2025&game_id=0022400003&select=period,seconds_remaining,team_id,player_id,description,points,epv_before,epv_after,epv_added&order=-epv_added&limit=10`),
+its `data` array, no edits.
+
+**Used by:** `test/epvBox.test.ts`.
+
+**To regenerate:** once the backfill has run, rerun the reads (`epv_player_games` / `epv_team_games?season=2025&game_id=0022400003`,
+limits 80 and 2), wrap them as above and gzip.
+## `pregame-projection.json.gz`
+The Data API reads behind BB-G18's pregame projection (`resources/pregameProjection.ts`). `rated_priors` holds, keyed
+`<schema>.<season>.<game_id>`, the `data` array of `GET /v1/<lg>/rated_priors?season=…&game_id=…&limit=1`, captured
+live on 2026-11-13 with no edits: MARQ at MICH (mbb 401909524, 2 and 2 games in), UK v IU at a neutral site (mbb
+401916290), CONN at OSU women (wbb 401911739), ORL at BOS (nba 401909994), CLE at ORL (nba 401898403, a preseason game:
+no row, `[]`), an opening-night game with a null prediction (nba 2026 401809243) and a 2026 WNBA game (401856990).
+`pages` are four real scheduled ESPN captures (`cdn.espn.com/core/<sport>/playbyplay?gameId=…&xhr=1`, trimmed to
+`{gameId, gamepackageJSON: {header}}`, the part the pregame page reads): the three college games (captured 2026-11-08)
+and ORL at BOS (2026-11-13).
+
+**Used by:** `test/pregameProjection.test.ts`, `test/pregameProjectionOff.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), rerun the oracle with sdv-py, wrap
+them as above and gzip.
+## `garbage-time-{nba-0022300718,wbb-401824983,wnba-1022600001,nba-0022600001}.json.gz`
+One game's possession log with BB-D7's flags and sportsdataverse-py's own situational splits for that game, the oracle
+for BB-G2's garbage-time toggle (`utils/garbageTime.ts`). Built on 2026-11-08 with sportsdataverse-py `origin/main`
+64b22369 from the sportsdataverse-data releases (no Data API read), as `{league, game_id, espnGameId, note, teams,
+possessions, oracle, names}`:
+
+- **The pros** (`load_{nba,wnba}_stats_possessions`, `_pbp`, `_schedules`, filtered to the game): `possessions` is the
+  release's rows with `nba_possession_flags.add_possession_flags` appended (`seconds_to_first_shot`, `is_transition`,
+  `is_garbage_time`), which is what `{nba,wnba}_stats.possessions` serves once the producers' wiring (hoopR-nba-stats-data
+  #54, wehoop-wnba-stats-data #28) is republished. `teams` is the stats schedule's home and away.
+- **College** (`load_ncaa_wbb_possessions(2026)` filtered to `espn_game_id`, `load_wbb_schedule(2026)`): the release's
+  rows as they are; bigballR's `is_garbage_time` is already in them. `teams` is the ESPN home and away ids.
+- **`oracle`**: `situational_team`, `situational_player` and `situational_lineup` (`_common/situational_splits.py`) on
+  `nba_situation_rows(...)` / `ncaa_situation_rows(...)` for the game, the `all` and `garbage` families only
+  (`top_n=1` and empty ratings: the `opponent` family is not kept). The `team` rows carry the same values as the Data API's `situational_team_games` rows for 0022300718 and contest 6387150 (checked 2026-11-13), so the tests use them as the per-game splits the four factors read.
+- **`names`**: for the 2023-24 game only (no BB-G1 capture covers it), `load_nba_stats_player_boxscores(2023)`'s
+  `person_id, first_name, family_name, name_i`.
+
+Games: TOR 100 at NOP 138, 2024-02-05 (`0022300718`, the game with the most garbage possessions, 53 of 193, in sdv-py's
+committed BB-D7 corpus `tests/fixtures/bb_possession_flags/nba_possessions_2024.parquet`); GW 50 at Temple 86 (ESPN
+401824983, 14 of 140, the `impact-box-wbb-2026` game); CON 75 at NY 106 (1022600001) and BOS 113 at DET 121
+(0022600001), the BB-G1 pro games, neither with garbage time (bigballR's rule also needs three or fewer starters on).
+The log's whole-game counts against stats.nba.com's team box (`load_*_stats_team_boxscores`): FGA, 3PA and FGM equal; FTA
+within one (the log leaves the defense's technical free throws out); rebounds higher (the log counts team rebounds).
+
+**Used by:** `test/garbageTime.test.ts`.
+
+**To regenerate:** rerun those calls in an sdv-py checkout of `origin/main` (polars, no network beyond the GitHub
+release assets), write `{...}` above with `json.dumps(..., default=str)` and gzip (`mtime=0`).
+
+## `game-leaders-{nba-401766458,wnba-401736287,mbb-401820775,wbb-401805076}.json.gz`
+The reads behind BB-G35's Leaders panel for the four ingested finals the game-page tests already use
+(`<lg>/game_<id>_api.json`), captured live on 2026-11-09, every read season-filtered with a limit, as `{league,
+espnGameId, season, assists, averages: {home, away}}` (the `data` array of each response, no edits). `assists` is the
+game's play-by-play with the second athlete (`pbp?season=…&game_id=…&select=game_play_number,athlete_id_2&order=game_play_number&limit=1500`),
+which the tests join onto the API fixture's plays by `game_play_number` (those fixtures predate `athlete_id_2` in the
+page's select). `averages` is each side's `player_season_stats?season=…&team_id=…&select=category,stat_name,value,athlete_id,team_id&limit=3000`.
+Games: ATL 95 at ORL 120 (2024-25), GS 73 at CHI 66 (WNBA 2025), NC State 90 at Notre Dame 96 (MBB 2025-26), UTEP 87
+at Louisiana Tech 91 in overtime (WBB 2025-26).
+
+This 2026-11-09 capture predates the women's producer fix: its WNBA 2025 rows are mostly career lines under the season
+filter (games played up to 436), and WBB 2026 has one or two career rows a team (82 to 107 games). The wehoop data repos
+write season-only rows since 2026-11-10, and the page draws what the producer serves (no games-played ceiling), so these
+two captures exercise the pivot and the panel only, not the numbers' meaning.
+
+## `season-averages-wnba-2025-team-17.json.gz`
+One live read on 2026-11-13, after the producer fix: `wnba/player_season_stats?season=2025&team_id=17&select=category,stat_name,value,athlete_id,team_id&limit=3000`
+(Las Vegas, 645 rows, 15 players), saved as `{league, season, teamId, rows}` with `rows` the response's `data` array, no
+edits. NaLyssa Smith (4398776), traded in from Dallas, has 45 games, one more than a team's 44-game schedule; nobody has more.
+
+**Used by:** `test/gameLeaders.test.ts`.
+## `game-stints-{nba-401909088,wnba-401856890,mbb-401820775,wbb-401805076}.json.gz`
+The Data API reads behind BB-G38's ON/OFF shot filter (`resources/gameStints.ts`), captured live on 2026-11-10 with that
+module's queries, as `{league, season, espnGameId, homeId, awayId, crosswalk | box, stints, roster: {home, away}, pbp?}`
+(the `data` array of each response, no edits). The pros: `crosswalk` is the BB-G1 capture's
+`/v1/<nba|wnba>/schedule_crosswalk?season=…&espn_game_id=…&limit=1` row (the same query, `impact-box-*`), then
+`/v1/<nba_stats|wnba_stats>/game_stints?season=…&game_id=<stats id>&limit=600` and
+`/v1/<nba|wnba>/player_crosswalk?season=…&espn_team_id=<ESPN id>&select=<league>_player_id,espn_athlete_id&limit=60` per side.
+College: `/v1/<mbb|wbb>/ncaa_player_box?season=…&espn_game_id=…&select=contest_id,player_id,clean_name,player&limit=80`,
+then `game_stints` by the contest id and `ncaa_player_crosswalk?season=…&espn_team_id=…&select=ncaa_player_id,espn_athlete_id&limit=60`
+per side. The stints were read with `team_id` added to the module's select; on 2026-11-10 they were re-read with the module's widened select (BB-G36: `seconds,poss,opp_poss,pts,opp_pts,plus_minus` added) and the same filter, the same rows. `pbp` (pros only; college uses the
+`<league>/game_*_api.json` final) is `/v1/<nba|wnba>/pbp?season=…&game_id=…&order=game_play_number&limit=5000` with the game
+page's own pbp select. Games: BOS 113 at DET 121 (2026-10-20, stats 0022600001), CON 75 at NY 106 (2026-05-08,
+1022600001), NC State at Notre Dame (2026-02-28, contest 6456375), UTEP at Louisiana Tech (contest 6402602). On every field
+goal attempt exactly five of the shooting team are on the floor under the `[clock_out, clock_in)` rule; the WNBA
+crosswalk leaves one of the game's 19 players unmapped (four on for his stretches).
+
+`impact` (BB-G36's MIN, #455 Q6) is the game's `/v1/<schema>/game_player_impact?season=…&game_id=<stats id | contest id>&select=team_id,player_id,minutes,poss,opp_poss,pts,opp_pts,plus_minus,off_rtg,def_rtg,net_rtg&limit=80`,
+the Impact box's own query: the pros' rows are the `impact-box-nba-2027` / `impact-box-wnba-2026` captures' `players` (the same
+games), the college rows were read live on 2026-11-13 (18 a game). Every player's stint seconds add up to his `minutes` × 60.
+
+**Used by:** `test/shotFilters.test.ts`, `test/shiftChart.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered), wrap them as above and gzip.
+## `team-grid-{nba-401585607,wnba-401736325,mbb-401820775,wbb-401805076}.json.gz`
+
+BB-G32's team stats grid (`'bball-team-grid'`). One game per league, `{league, season, payload, team_season_rates, game_map,
+team_game_possessions, situational_team_games}`:
+
+- `payload`: the offline body of `GET /<league>/<id>/process` (python/app.py through Flask's test client, the ESPN download
+  patched to return `python/tests/fixtures/<league>_summary_<id>.json.gz`, sportsdataverse lock 0bb4db3e, the BB-D31 merge).
+  It carries the new `splits` key (each side's counted team split row and its players' rows). Generated 2026-11-10.
+  Regenerated 2026-11-10 at sportsdataverse lock ccdc4baf (BB-G33) with the league's shot cells seeded
+  (`python/tests/fixtures/<league>_shot_quality_cells.json.gz`): the only key that moved is the new `expected` (each side's BB-D40
+  `team_game_expected` row, priced).
+- `team_season_rates`: the Data API's `/<schema>/team_season_rates?season=<s>&split=all&select=team_id,games,poss,pts,efg_pct,
+  tov_pct,orb_pct,ft_rate,off_rtg,def_rtg,pace&limit=1000`, read 2026-11-10: `nba_stats` 2024 (30 rows), `wnba_stats` 2025
+  (13), `mbb` 2026 (365), `wbb` 2026 (358).
+- `game_map`, `team_game_possessions`, `situational_team_games` (the final's counted rows, review Q22), read 2026-11-13: the
+  ESPN game's id (`/{nba,wnba}/schedule_crosswalk?season=&espn_game_id=&select=<lg>_game_id,<lg>_home_team_id,<lg>_away_team_id&limit=1`;
+  college `/<schema>/ncaa_team_box?season=&espn_game_id=&select=contest_id&limit=4`), then by that id
+  `/<schema>/team_game_possessions?season=&game_id=&split=all` (the two `all` rows, `team_id,game_id,poss,opp_poss,pts,opp_pts,seconds`)
+  and `/<schema>/situational_team_games?season=&game_id=&select=team_id,family,split,games,minutes,poss,opp_poss,pts,opp_pts,
+  plus_minus,off_rtg,def_rtg,net_rtg&limit=60` (every family; 38 / 38 / 34 / 38 rows).
+
+Games: TOR 96 at ORL 111 (2023-24), SEA 80 at ATL 78 (2025), NC State 90 at Notre Dame 96 in overtime (2025-26), UTEP 87 at
+Louisiana Tech 91 in overtime (2025-26).
+
+**Used by:** `test/teamGrid.test.ts`, `test/situationalBox.test.ts`.
+
+**To regenerate:** in `python/`, rerun the offline route call above per game and the four reads (season filter, one capped read
+each), then write the object with `json.dumps(..., separators=(",", ":"))` and gzip (`mtime=0`).
+
+## `game-team-expected.json`
+
+BB-G33's expected points on a Data API final (`'bball-situational-box'`): `GET /v1/<league>/game_team_expected?season=<s>&game_id=<id>&limit=10`
+(sdv-db BB-D40, #215), read 2026-11-10, the `data` arrays keyed by league for three of the team-grid finals: wnba 2025 401736325, mbb 2026
+401820775, wbb 2026 401805076 (two rows each, every column as served). The NBA capture's season (2023-24) is not built yet.
+
+**Used by:** `test/situationalBox.test.ts`. **To regenerate:** rerun the three reads (season filter, one capped read each) and write
+`{league: data}` with `json.dumps(..., separators=(",", ":"))`.
+## `player-box-views-{nba-401585607,wnba-401736325,mbb-401820775,wbb-401805076}.json.gz`
+
+BB-G34's player box views (`'bball-player-box-views'`): the same four games as `team-grid-*`, whose payloads carry BB-D31's
+player splits. Each file is `{league, espnGameId, season, source, player_season_stats: {home, away}}`, the rows trimmed to
+`athlete_id, stat_name, value`:
+
+- nba 2024 (ORL 19, TOR 28) and wnba 2025 (ATL 20, SEA 14): the Data API's `/<league>/player_season_stats?season=<s>&
+  team_id=<id>&select=athlete_id,stat_name,value&limit=5000`, read 2026-11-10.
+- mbb 2026 and wbb 2026: the BB-G35 game-leaders capture of the same game (read 2026-11-10). The wbb rows are career lines
+  (82 to 107 games played), which the season guard leaves out; the test pins that.
+
+**Used by:** `test/playerBoxViews.test.ts`.
+## `epv-box-{wnba,mbb,wbb}-2025.json.gz`
+The rows behind BB-G46's EPV box (`resources/epvBox.ts` for the WNBA and college), one 2025 game a league. Built on
+2026-11-10 with no Data API read (it was answering 429 that day): `players` and `teams` are the game's rows of sdv-db's
+producer fixtures (`tests/fixtures/season_products/{wnba,mbb,wbb}_epv_{player,team}_games_2025.parquet` on sdv-db main
+`6f125d3`, sdv-py's `{wnba,mbb}_epv_*` on the published releases), `season` and `game_id` dropped, no other edits; the
+id and name rows are sportsdataverse-py `origin/main` loaders on the sportsdataverse-data releases, filtered to the game:
+
+- **`epv-box-wnba-2025`**, LV at NY, 2025-05-17 (ESPN 401736116, stats 1022500005), as `{league, season, espnGameId,
+  crosswalk, names, players, teams}`: `crosswalk` is `load_wnba_schedule_crosswalk(2025)`'s row (`wnba_game_id`,
+  `wnba_home_team_id`, `wnba_away_team_id`), `names` the whole season's `load_wnba_player_crosswalk(2025)`
+  (`wnba_player_id`, `wnba_player_name`), what `wnba.player_crosswalk?season=2025` serves. The stats box
+  (`wnba_stats.player_box`) starts in 2026, so the season crosswalk names the WNBA rows.
+- **`epv-box-{mbb,wbb}-2025`**, UNC Wilmington 67 at East Carolina 53, 2024-12-03 (ESPN 401722197, contest 5722015) and
+  Winthrop 39 at Georgia Tech 85, 2024-11-04 (ESPN 401711537, contest 5722020), as `{league, season, espnGameId, home,
+  away, box, players, teams, score}`: `box` is `load_ncaa_{mbb,wbb}_player_box(2025)`'s rows for the contest
+  (`contest_id`, `player_id`, `clean_name`, `player`), what `ncaa_player_box?season=2025&espn_game_id=...` serves; `home`,
+  `away` and `score` are `load_{mbb,wbb}_schedule(2025)`'s ESPN ids, names and scores.
+
+Added 2026-11-13 for Q31's player links, captured live with exactly the Impact box's queries (the `data` arrays, no
+edits), in all four `epv-box-*-2025` files: `pages` is `/v1/<nba_stats|wnba_stats|mbb|wbb>/shot_season_players?season=2025&select=person_id&limit=50000`
+(566, 179, 4852 and 4516 rows), and college's `pairs` is `{<espn team id>: ncaa_player_crosswalk?season=2025&espn_team_id=…&select=ncaa_player_id,espn_athlete_id&limit=80}`
+for each side (151 and 350; 59 and 2737). One player a college game has no crosswalk pair or page, so stays unlinked.
+
+**Used by:** `test/epvBox.test.ts`.
+
+**To regenerate:** rerun those calls in an sdv-py checkout (polars, no network beyond the GitHub release assets), filter to
+the game, write `{...}` above with `json.dumps(..., default=str)` and gzip (`mtime=0`).
+## `game-info.json.gz`
+The reads behind BB-G42's Game info (`resources/gameInfo.ts`), captured on 2026-11-10, as `{captured, summary,
+official_seasons, officials, espn_injuries}`:
+
+- **`summary`**: ESPN's site summary (`site.api.espn.com/.../summary?event=<id>`) for six games, trimmed to `header` (id,
+  date, the two competitors), `gameInfo.officials` and `injuries` (each player's status, athlete id and name, details).
+  NBA 401766458 (ORL-ATL final, 2025-04-15: its `injuries` are the 2026-11-09 report, which is why a final reads the
+  snapshot), 401909952 (LAL at ATL, 2026-11-09 Eastern), 401909960 (MIL at NY, scheduled: no crew named yet); WNBA
+  401856902, MBB 401823353, WBB 401812873 (the BB-G28 games).
+- **`official_seasons`**: the Data API's `{nba_stats,wnba_stats,mbb,wbb}/official_seasons` (BB-D34) for NBA 2025 (78
+  officials) and WNBA, MBB and WBB 2026 (35, 813, 839), the columns `PROFILE_SELECT` names, `limit=5000`.
+  Added 2026-11-13 for Q33 (the previous season beside a thin one), captured live with the same query: NBA 2024, 2026
+  and 2027 (80, 81, 83 officials), WNBA 2025 (38), MBB 2025 (823) and WBB 2025 (0: its officials release starts in 2026).
+- **`officials`**: `nba/officials?season=2025&game_id=401766458` (names only) and `wnba/officials?season=2026&game_id=401856902`
+  (with ESPN's `official_id`).
+- **`espn_injuries`**: `nba/espn_injuries?season=2027&as_of_date__gte=2026-11-06&as_of_date__lte=2026-11-09&order=-as_of_date`
+  (the 6th, 7th and 8th: no Nov 9 filing) and `season=2025&as_of_date=2025-04-15` (empty: no snapshot that far back).
+
+**Used by:** `test/gameInfo.test.ts`.
+
+**To regenerate:** rerun the reads (season filter and limit as above, never unfiltered, one at a time), trim the summaries
+to the keys above and gzip.
+## `player-props.json.gz`
+Real Data API rows of sdv-db's `player_props` (BB-D33), captured 2026-11-10 with resources/playerProps.ts's own query
+(`?season=&game_id=&select=athlete_id,team_id,player_name,stat,line,n_books,over_price,under_price,over_prob&limit=300`),
+keyed `<league>-<ESPN game id>` as `{league, season, rows}`:
+
+- **`nba-401705127`** (season 2025, 77 rows, all five stats): the game of `nba/game_401705127_processor.json`, an OT
+  final. Three of the lined players (out that night) have no box row.
+- **`mbb-401808271`** (season 2026, 28 rows: points, rebounds, assists only): the game of `mbb/game_401808271_api.json`.
+
+**Used by:** `test/playerProps.test.ts`.
+
+**To regenerate:** repeat the two reads (Bearer key, one game each) and write `{key: {league, season, rows: body.data}}`
+gzipped.
+## `game-lines.json`
+Ten real `game_lines` rows (BB-D33, sdv-db #216) and the eight finals' scores, the oracle for BB-G43's Lines and markets
+panel (`utils/gameLines.ts`). Read from the Data API on 2026-11-10 as `{game_lines, schedule}`:
+
+- **`game_lines`**: `GET /v1/{lg}/game_lines?season=S&limit=2` for nba 2026 and 2027, wnba 2025, mbb 2026 and wbb 2026, as
+  served. The 2026-27 NBA rows are open-only (no close, no results: the current season's odds crosswalk is not rebuilt);
+  WKU-DEL (wbb, 401805007) has a spread but no total and no moneylines.
+- **`schedule`**: `GET /v1/{lg}/schedule?id=<game_id>&select=id,season,home_score,away_score,home_abbreviation,away_abbreviation`
+  for the eight finals, with `league` added.
+
+**Used by:** `test/gameLines.test.ts` (the cover and total results against the rows' own `ats_result` / `total_result`).
+
+**To regenerate:** repeat the reads (a season filter and a small limit, `Authorization: Bearer` with the read key); the
+rows' game ids are asserted, so keep the same ones.
+## `wp-lenses-nba-{401704939,401704690}.json.gz`
+Two 2025 NBA finals as the game page's Data API read sees them (`DataApiGameRows`: `schedule`, `pbp`, `team_box`,
+`player_box`, `play_wp`, `game_team_rates`, `game_player_rates`), with BB-G45's two `play_wp` variant columns added.
+CHA 98 at PHI 108, 2024-12-20 (401704939, closing line PHI -13, `game_lines.market_home_wp_close` 0.8424) and BKN 119 at
+MEM 106, 2024-10-30 (401704690, no `game_lines` row): the BB-D33 games of sdv-db #217's own fixtures.
+
+- **The seven tables**: read from the production Data API on 2026-11-10 (`GET /v1/nba/<table>?season=2025&game_id=<id>`,
+  each with the `select` of `resources/nbaGames.ts`), as they are.
+- **`home_win_prob_naive`, `home_win_prob_market`**: sdv-db #217 (merged 2026-11-10) adds them to `nba.play_wp`, but the
+  Data API did not serve them yet when these were cut (`unknown select column`; the droplet backfill follows), so they
+  were computed locally with sportsdataverse-py `nba_game_lines.wp_variants(pbp, market, league="nba",
+  regulation_periods=4)` (4564898380) on sdv-db `tests/fixtures/nba_game_pages/nba_<id>_pbp.parquet` (the hoopR release's
+  pbp for the game), with `market` the game's `market_home_wp_close` from `GET /v1/nba/game_lines` (none for 401704690:
+  its market column is null on every play), joined on `game_play_number`. The same checkout's `score_win_prob` on that
+  pbp reproduces the API's `home_win_prob` on every play exactly (max difference 0.0), so the variants are the build's.
+
+**Used by:** `test/wpLenses.test.ts`.
+
+**To regenerate:** once the Data API serves the columns, read `play_wp` with
+`select=game_play_number,home_win_prob,wp_delta,wp_regime,prior_source,pregame_home_prob,x_legacy,y_legacy,home_win_prob_naive,home_win_prob_market`
+and the other six tables as above, and write `{schedule, pbp, ...}` with `json.dumps` and gzip.
+## `nba/league_context_squares_2026.json` / `mbb/dashboards/league_squares_2026.json`
+Real Data API reads of 2025-26 `shot_league_context` captured 2026-11-05, after sdv-db #191's Nov 4 rebuild (BB-D1):
+`/v1/nba_stats/shot_league_context?season=2026&kind=zone&limit=10` (6 rows) followed by `?season=2026&kind=square&limit=1500`
+(376 rows; attempts sum to 219,159, the zone rows' sum and the season-player rows' sum), and
+`/v1/mbb/shot_league_context?season=2026&kind=square&limit=1500` (468 rows, 707,869 attempts). Each read is one page
+(`next: null`). The response's `data` arrays, concatenated, no edits.
+
+**Used by:** `test/basketball/leagueShots.test.ts`.
+
+**To regenerate:** re-fetch the URLs with a read key and write the `data` arrays (zone rows first for the NBA file).
+
+## `nba/team_context_nets_2026.json` / `nba/team_shots_nets_2026.json.gz` / `mbb/dashboards/team_context_sec_2026.json.gz`
+Real Data API reads captured 2026-11-13, after sdv-db #221 published `shot_team_context` (BB-G16):
+`/v1/nba_stats/shot_team_context?season=2026&team_id=1610612751&limit=1000` (252 rows: 251 squares and the Nets' total line,
+6,933 attempts), the read it replaces, `retrieveTeamShots`'s query for the Nets
+(`/v1/nba_stats/shots?season=2026&team_id=1610612751&game_id__like=002%&select=game_id,x_legacy,y_legacy,shot_distance,shot_value,shot_result&limit=50000`,
+6,933 rows), and `/v1/mbb/shot_team_context?season=2026&conference_id=mbb:sec&limit=50000` (3,183 rows, the 16 SEC teams; Texas's
+total is 2,101, the row count of `mbb/dashboards/tex_shots_2026.json`). Each read is one page (`next: null`). The response's
+`data` arrays, no edits; the two larger files are gzipped.
+
+**Used by:** `test/basketball/leagueShots.test.ts` (the table against the team reads it replaces, cell for cell).
+
+**To regenerate:** re-fetch the URLs with a read key and write the `data` arrays (gzip the shots and the SEC rows).
+## `leaderboards-v2-2026.json.gz`
+The basketball leaderboards' reads (BB-G8, `resources/leaderboards.ts`), captured live from the Data API on 2026-11-05.
+Every read is season-filtered with a small limit; nothing is edited except that the two name reads keep only the ids
+the captured lineups use. `reads` lists each query and its row count:
+- `nbaImpact`: `/v1/nba/player_impact?season=2026&season_type=Regular Season&off_poss__gte=100&order=-off_poss&limit=40`
+  with the impact columns as `select`;
+- `mbbImpact`: `/v1/mbb/ncaa_rapm?season=2026&estimand=league&off_poss__gte=200&order=-off_poss&limit=30`;
+- `wnbaRates`, `wnbaStrength`, `wnbaFlow`: `/v1/wnba_stats/{team_season_rates?split=all,team_strength,team_season_flow}`
+  `?season=2026&limit=20` (all 15 teams, every column);
+- `mbbRates`: `/v1/mbb/team_season_rates?season=2026&split=all&limit=30` (an unsorted window of 30 teams);
+- `nbaLineups`: `/v1/nba_stats/lineup_seasons?season=2026&n_players=5&poss__gte=200&order=-poss&limit=30`, and `nbaNames`
+  the rows of `/v1/nba_stats/shot_season_players?season=2026&select=person_id,player_name&limit=800` for those units' ids;
+- `mbbLineups`: `/v1/mbb/lineup_seasons?season=2026&n_players=5&poss__gte=100&order=-poss&limit=20`, and `mbbNames` the
+  rows of `/v1/mbb/ncaa_rapm?season=2026&estimand=league&off_poss__gte=100&select=player_id,player&limit=6000` for those ids.
+
+**Used by:** `test/leaderboardsV2.test.ts`.
+
+**To regenerate:** rerun the reads above (season filter and limit as listed, never unfiltered), filter the two name reads to
+the lineups' player ids, write `{nbaImpact, mbbImpact, wnbaRates, wnbaStrength, wnbaFlow, mbbRates, nbaLineups, nbaNames,
+mbbLineups, mbbNames, reads, captured}` as JSON and gzip.
+
+## `war-boards-2026.json.gz`
+The rows behind BB-G27's two leaderboards (`resources/leaderboards.ts`, boards `value` and `poe`), as `{nbaWar, mbbWar, nbaPoe}`
+(no edits). `player_war` (sdv-db #202) is not served yet (the Data API answers 404 until its backfill runs), so `nbaWar` /
+`mbbWar` are the producer's output, the frame sdv-db loads unchanged, cut the way the board's read cuts it (`poss >= 250` /
+`100`, most possessions first, 500 rows): sportsdataverse-py `origin/main` at 39541177 (with #1114), run on 2026-11-05 as
+`nba_player_war(2026)` (495 rows) and `mbb_player_war(2026)` (500 of 5,030), each `write_json()`. `nbaPoe` is a live Data
+API read of the same day with the board's query: `/v1/nba_stats/shot_quality_season?season=2026&level=player&attempts__gte=100&order=-attempts&select=person_id,team_id,team_tricode,games,attempts,pts,xpts,poe,poe_se,xpps,poe_per_shot,fg_pct_oe&limit=500`
+(453 rows). The POE board's names come from `leaderboards-v2-2026.json.gz`'s `nbaNames` (112 of the 453 shooters; the rest
+show their id, as the board does for a player the season players do not list).
+
+**Used by:** `test/warBoards.test.ts`.
+
+**To regenerate:** rerun the two sdv-py calls (cut as above) and the one read, wrap them as above and gzip. Once sdv-db
+#202's backfill has run, `/v1/{nba_stats,mbb}/player_war?season=2026&poss__gte=…&order=-poss&limit=500` replaces the
+sdv-py calls.
+
+## `leaderboards-v2-bases-2026.json.gz`
+The per-game and per-75 columns behind the leaderboards' basis select (#413 Q25; sdv-py#1173, sdv-db#222), captured live
+from the Data API on 2026-11-13. Every read is season-filtered with a small limit and kept as served, every column:
+- `nbaRates`, `wnbaRates`, `mbbRates`, `wbbRates`: `/v1/{nba_stats,wnba_stats,mbb,wbb}/team_season_rates?season=2026&split=all`
+  (`limit=10`; WNBA `limit=20`, all 15 teams);
+- `wnbaRates2024`: the same read for WNBA 2024, a season the producer has not backfilled (every new column null);
+- `wnbaFlow`, `wnbaFlow2024`: `/v1/wnba_stats/team_season_flow?season={2026,2024}&limit=20` (`kills_per75` null in 2024);
+- `nbaLineups`: `/v1/nba_stats/lineup_seasons?season=2026&n_players=5&poss__gte=200&order=-poss&limit=20` (early season:
+  no unit is ranked yet), `mbbLineups`: `/v1/mbb/lineup_seasons?season=2026&n_players=5&poss__gte=100&order=-poss&limit=10`.
+
+**Used by:** `test/leaderboardsV2.test.ts`.
+
+**To regenerate:** rerun the reads above (season filter and limit as listed, never unfiltered), write `{nbaRates, wnbaRates,
+mbbRates, wbbRates, wnbaRates2024, wnbaFlow, wnbaFlow2024, nbaLineups, mbbLineups, reads, captured}` as JSON and gzip.
+
+## `leaderboards-current-impact-2026.json.gz`
+The NBA Impact board's Season vs Current view (#463 Q18), the `data` arrays of the board's three live Data API reads of
+2026-11-13, no edits:
+- `seasonRows`: `/v1/nba/player_impact?season=2026&off_poss__gte=250&order=-off_poss&limit=500&season_type=Regular%20Season&select=player_id,player_name,team_id,team_abbreviation,teams,gp,off_poss,def_poss,o_reml_rapm,d_reml_rapm,reml_rapm` (496 rows);
+- `latest`: `/v1/nba/current_impact?season=2026&select=as_of&order=-as_of&limit=1` (`2026-04-07`);
+- `currentRows`: `/v1/nba/current_impact?season=2026&as_of=2026-04-07&order=-off_poss&limit=500` (500 rows, every column).
+491 season rows have a current row of the same player id; neither table ships a `_rank` / `_pct` for these columns yet.
+
+**Used by:** `test/leaderboardsV2.test.ts`.
+
+**To regenerate:** rerun the three reads (season filter and limit as above, never unfiltered), write
+`{seasonRows, latest, currentRows}` as JSON and gzip.
+## BB-G10 scatter views (`nba/player_impact_2026_bkn.json`, `nba/team_strength_2026.json`)
+
+Live Data API reads, unedited apart from the column selection.
+
+- `nba/player_impact_2026_bkn.json` (2026-11-12): `GET /v1/nba/player_impact?season=2026&season_type=Regular Season&team_id=1610612751`
+  (the 20 Brooklyn rows, 2025-26) with `select=player_id,o_rapm,d_rapm,rapm,ospm,dspm,spm,off_poss`: the RAPM and SPM
+  columns the player view plots and the offensive possessions its impact bar reads.
+- `nba/team_strength_2026.json` (2026-11-05): `GET /v1/nba_stats/team_strength?season=2026` with the team view's `select` (all 30 teams).
+
+**Used by:** `test/nba/impactScatter.test.ts`.
+
+**To regenerate:** repeat the two reads (season filter, `limit=40`) and write each response's `data` array.

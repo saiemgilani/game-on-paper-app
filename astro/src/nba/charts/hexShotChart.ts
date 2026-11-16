@@ -310,3 +310,46 @@ export function describeHex(data: HexShotChartData): string {
   const drawn = data.squares.filter((h) => h.attempts >= MIN_DRAWN_ATTEMPTS).length;
   return `${attempts} attempts; ${drawn} ${fmtDec(data.side / 10)} ft squares with ${MIN_DRAWN_ATTEMPTS} or more. By zone: ${zones.join("; ")}.`;
 }
+
+/**
+ * One cell of a small-multiple square chart (BB-G16), compact because a league page ships one chart per team: the lattice
+ * index (i, j), the attempts, and the colour's shrunk FG% vs league in thousandths (null without a league rate).
+ */
+export type SquareCell = [i: number, j: number, attempts: number, diff: number | null];
+
+/** The cells a small multiple draws: what the full chart draws (MIN_DRAWN_ATTEMPTS or more), coloured as it colours them. */
+export function squareCells(squares: Pick<HexVsLeague, "x" | "y" | "attempts" | "makes" | "leagueFgPct">[], side: number): SquareCell[] {
+  return squares
+    .filter((c) => c.attempts >= MIN_DRAWN_ATTEMPTS)
+    .map((c) => {
+      const d = colourDiff(c.makes, c.attempts, c.leagueFgPct);
+      return [c.x / side || 0, c.y / side || 0, c.attempts, d === null ? null : Math.round(d * 1000)];
+    });
+}
+
+/**
+ * A team's squares on the half court, no legend or hover: the page draws one key for every chart. `cap` is shared by every
+ * chart on the page, so a square's size means the same attempts in each.
+ */
+export function renderSquareMultiple(svg: SVGSVGElement, cells: SquareCell[], { width, side, cap, court = COURT }: { width: number; side: number; cap: number; court?: Court }): () => void {
+  const v = courtViewport(width);
+  const theme = chartTheme(svg);
+  const root = select(svg).append("g");
+  drawCourt(root, v, { court });
+  const size = scaleSqrt().domain([0, cap]).range([0, toSvgLength(side * SQUARE_FILL, v)]).clamp(true);
+  root
+    .append("g")
+    .selectAll("path")
+    .data(cells.filter((c) => c[1] * side <= v.top).sort((a, b) => a[2] - b[2]))
+    .join("path")
+    .attr("transform", (c) => {
+      const p = toSvg({ x: c[0] * side, y: c[1] * side }, v);
+      return `translate(${p.x},${p.y})`;
+    })
+    .attr("d", (c) => squarePath(size(c[2])))
+    .style("fill", (c) => diffColor(c[3] === null ? null : c[3] / 1000, theme))
+    .style("stroke", TOKENS.muted)
+    .style("stroke-width", 0.5);
+  setViewBox(svg, v.width, v.height);
+  return () => root.remove();
+}

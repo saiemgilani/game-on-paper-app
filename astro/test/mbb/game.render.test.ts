@@ -3,6 +3,8 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
+// BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
+vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
 import { BASKETBALL } from '../../src/basketball/config';
 
 const prep = vi.fn();
@@ -15,6 +17,11 @@ vi.mock('../../src/utils/telemetry', async (orig) => ({
 vi.mock('../../src/routes/basketball/game', async (orig) => ({ ...(await orig<typeof import('../../src/routes/basketball/game')>()), prepareBasketballGame: (...a: unknown[]) => prep(...a) }));
 const summary = vi.fn();
 vi.mock('../../src/resources/espn', async (orig) => ({ ...(await orig<typeof import('../../src/resources/espn')>()), retrieveGameSummary: (...a: unknown[]) => summary(...a) }));
+// BB-G43's market row ('bball-lines', preview, live or final): no row, never a read
+vi.mock('../../src/resources/gameLines', async (orig) => ({ ...(await orig<typeof import('../../src/resources/gameLines')>()), retrieveGameLine: async () => null }));
+// the pregame's Players to Watch card reads the season's shot_season_players rows (#379): none, so no card,
+// which is what these renders always showed (the unmocked read was a failed-auth Data API call)
+vi.mock('../../src/resources/nbaShots', async (orig) => ({ ...(await orig<typeof import('../../src/resources/nbaShots')>()), retrieveSeasonPlayerRows: async () => [] }));
 import Page from '../../src/pages/mbb/game/[id].astro';
 import { fromDataApi, fromProcessor } from '../../src/resources/nbaGame';
 
@@ -28,7 +35,7 @@ const buttons = (h: string) => [...h.matchAll(/<button[^>]*>([\s\S]*?)<\/button>
 const linescoreHeads = (h: string) => [...(h.match(/aria-label="Linescore">[\s\S]*?<\/thead>/)?.[0] ?? '').matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((m) => plain(m[1]));
 let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
-const render = (id: string) => container.renderToString(Page, { request: new Request(`https://gameonpaper.com/mbb/game/${id}`), params: { id }, locals: { preview: true, league: 'mbb' } as App.Locals });
+const render = (id: string) => container.renderToString(Page, { request: new Request(`https://gameonpaper.com/mbb/game/${id}`), params: { id }, locals: { preview: true, league: 'mbb', flagOverrides: { 'bball-pregame-projection': false } } as unknown as App.Locals });
 
 function common(html: string) {
     expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
@@ -116,7 +123,7 @@ describe('/mbb/game/[id] render (real captures)', () => {
     });
     test('the processor-unavailable answer is a 503 naming the game', async () => {
         prep.mockResolvedValueOnce({ unavailable: true });
-        const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/mbb/game/401820775'), params: { id: '401820775' }, locals: { preview: true, league: 'mbb' } as App.Locals });
+        const res = await container.renderToResponse(Page, { request: new Request('https://gameonpaper.com/mbb/game/401820775'), params: { id: '401820775' }, locals: { preview: true, league: 'mbb', flagOverrides: { 'bball-pregame-projection': false } } as unknown as App.Locals });
         expect([res.status, res.headers.get('Cache-Control'), await res.text()]).toEqual([503, 'no-store', 'This game is temporarily unavailable. Please try again shortly.']);
     });
 });
