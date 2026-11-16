@@ -1821,8 +1821,11 @@ async function readPlayerSitemapIds(league: League, only?: number): Promise<Map<
 const sitemapIdsInFlight = new Map<string, Promise<Map<number, string[]>>>();
 
 /**
- * The ESPN athlete ids with a player page, per season (seasons with none are left
- * out): ids as strings, unique, ascending. Every season of the league, or with
+ * The ESPN athlete ids with a passing, rushing or receiving season row, per season
+ * (seasons with none are left out): ids as strings, unique, ascending. A player whose
+ * page rests on per-game rows alone (a defense-only player: the Data API has no
+ * defensive season tables) is deliberately not listed -- his page has no season line
+ * or splits; see PR #358 open question 2. Every season of the league, or with
  * `season` just that one (a season file's read: `season__gte = season__lte`). CFB's season tables key on the ESPN id
  * itself; NFL's key on gsis and map through the nflverse crosswalk (`nfl.players`),
  * and a player it has no ESPN id for is left out -- his gsis URL would only redirect.
