@@ -149,10 +149,15 @@ describe('Red - FCS upset', () => {
         expect(calculateSpiceLevel(game({ period: 1, clock: 8 * MIN, home: { score: 7, conf: FCS }, away: { score: 0 } }))).toBe(SpiceLevel.BELL);
     });
 
-    // AS THE LOGIC STANDS (open question for Akshay): a TIE counts as the FCS
-    // team leading, so an FBS-FCS game tied 0-0 with 7:29 left in the 1st is red.
-    test('current behaviour: a tied FBS-FCS game is red once the first 7:30 is gone', () => {
-        expect(calculateSpiceLevel(game({ period: 1, clock: 7 * MIN, home: { score: 0, conf: FCS }, away: { score: 0 } }))).toBe(SpiceLevel.REAPER);
+    // Sourcery on #360: "FCS leading" used >= / <=, so a tie counted as the
+    // FCS team leading and a 0-0 FBS-FCS game with 7:29 left in the 1st was red.
+    test('a tied FBS-FCS game is not red: the FCS team must be strictly ahead', () => {
+        expect(calculateSpiceLevel(game({ period: 1, clock: 7 * MIN, home: { score: 0, conf: FCS }, away: { score: 0 } }))).toBe(SpiceLevel.BELL);
+        expect(calculateSpiceLevel(game({ period: 3, clock: 10 * MIN, home: { score: 14 }, away: { score: 14, conf: FCS } }))).toBe(SpiceLevel.BELL);
+        // tied late is still a close game late: green, not red
+        expect(calculateSpiceLevel(game({ period: 4, clock: 2 * MIN, home: { score: 17, conf: FCS }, away: { score: 17 } }))).toBe(SpiceLevel.SERRANO);
+        // one point is enough
+        expect(calculateSpiceLevel(game({ period: 3, clock: 10 * MIN, home: { score: 14 }, away: { score: 15, conf: FCS } }))).toBe(SpiceLevel.REAPER);
     });
 
     test('two FCS teams, or two FBS teams, are never red', () => {

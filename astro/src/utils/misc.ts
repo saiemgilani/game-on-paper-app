@@ -38,7 +38,8 @@ export const SPICE_LABEL: Record<SpiceLevel, string | null> = {
 };
 
 // The scoreboard card's border level (moved verbatim from GameThumb.astro so
-// the legend's claims can be tested; test/spiceLevel.test.ts).
+// the legend's claims can be tested; test/spiceLevel.test.ts). One change since:
+// "FCS leading" is strict, so a tied FBS-FCS game is not an FCS upset.
 export function calculateSpiceLevel(g: ESPNScheduleEvent): SpiceLevel {
     const homeScore = cleanScore(g.competitions[0].competitors[0].score);
     const awayScore = cleanScore(g.competitions[0].competitors[1].score);
@@ -72,8 +73,8 @@ export function calculateSpiceLevel(g: ESPNScheduleEvent): SpiceLevel {
     var oneScorePossibleByTrailingTeam = (oneScoreDriveTime && (Math.abs(homeScore - awayScore) >= 0 && Math.abs(homeScore - awayScore) <= 8));
     var twoScoresPossibleByTrailingTeam = (twoScoreDriveTime && (Math.abs(homeScore - awayScore) >= 9 && Math.abs(homeScore - awayScore) <= 16));
     var fbsVsFcsGame = ((!FBS_CONFERENCES.includes(homeConferenceId) && FBS_CONFERENCES.includes(awayConferenceId)) || (!FBS_CONFERENCES.includes(awayConferenceId) && FBS_CONFERENCES.includes(homeConferenceId)))
-    var homeFcsLeading = (!FBS_CONFERENCES.includes(homeConferenceId) && FBS_CONFERENCES.includes(awayConferenceId) && (homeScore - awayScore) >= 0);
-    var awayFcsLeading = (FBS_CONFERENCES.includes(homeConferenceId) && !FBS_CONFERENCES.includes(awayConferenceId) && (homeScore - awayScore) <= 0)
+    var homeFcsLeading = (!FBS_CONFERENCES.includes(homeConferenceId) && FBS_CONFERENCES.includes(awayConferenceId) && (homeScore - awayScore) > 0);
+    var awayFcsLeading = (FBS_CONFERENCES.includes(homeConferenceId) && !FBS_CONFERENCES.includes(awayConferenceId) && (homeScore - awayScore) < 0)
 
     if ((isMiddleHalf && (oneScorePossibleByTrailingTeam || twoScoresPossibleByTrailingTeam)) && ((homeRank < 26 && awayRank > 25)
     || (awayRank < 26 && homeRank > 25))) {
