@@ -21,7 +21,7 @@
  * a phone without JS still gets the first one.
  */
 import DarkModeLogos from '../DarkModeLogos.astro';
-import { espnLogoLeague } from '../../utils/league';
+import { teamLogoUrl } from '../../utils/league';
 import type { NeighborList } from '../../utils/neighbors';
 
 interface Props {
@@ -30,7 +30,8 @@ interface Props {
 }
 const { lists, kind } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
-const logoSrc = (teamId: string) => `https://a.espncdn.com/i/teamlogos/${espnLogoLeague(league)}/500/${teamId}.png`;
+// the light logo: for football the id path (as before); for the WNBA, whose logos ESPN serves only by abbreviation, that path (BB-G12)
+const logoSrc = (teamId: string) => teamLogoUrl(league, teamId, false);
 const teamIds = [...new Set(lists.flatMap((l) => l.rows.filter((r) => kind === 'team' || r.team).map((r) => r.teamId)))];
 const pickerId = `nb-metric-${kind}`;
 // the player tables carry a Team column, so their four lists sit two to a row

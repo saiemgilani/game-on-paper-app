@@ -18,16 +18,16 @@ import { TEX, conferenceNames, conferences, coverage, leagueContext, scheduleTea
 const state = vi.hoisted(() => ({ dropTex: false, dropTexPlayers: false, failMembership: false, emptySeason: false }));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
-    retrieveSeasonPlayerRows: async (s: number) => (state.emptySeason ? [] : seasonPlayers(s as 2019 | 2023 | 2026).filter((r) => !(state.dropTexPlayers && r.team_id === TEX))),
+    retrieveSeasonPlayerRows: async (s: number) => (state.emptySeason || s === 2027 ? [] : seasonPlayers(s as 2019 | 2023 | 2026).filter((r) => !(state.dropTexPlayers && r.team_id === TEX))),
     retrieveLeagueContextRows: async () => leagueContext(2026),
-    retrieveTeamShots: async (s: number, id: number) => (id === TEX ? texShots(s as 2019 | 2026) : []),
+    retrieveTeamShots: async (s: number, id: number) => (id === TEX && s !== 2027 ? texShots(s as 2019 | 2026) : []), // no 2027 capture
     retrieveCoverageRows: async () => coverage(),
     retrieveConferenceRows: async (s: number) => {
         if (state.failMembership) throw new Error('down');
-        const teams = conferences(s as 2019 | 2021 | 2026).filter((r) => !(state.dropTex && r.team_id === String(TEX)));
-        return { teams, groups: s === 2021 ? [] : conferenceNames(s as 2019 | 2026) };
+        const teams = conferences(s as 2019 | 2021 | 2026 | 2027).filter((r) => !(state.dropTex && r.team_id === String(TEX)));
+        return { teams, groups: s === 2021 ? [] : conferenceNames(s as 2019 | 2026 | 2027) };
     },
-    retrieveScheduleTeamRows: async (s: number) => scheduleTeams(s as 2019 | 2021 | 2026),
+    retrieveScheduleTeamRows: async (s: number) => scheduleTeams(s as 2019 | 2021 | 2026 | 2027),
 }));
 const fakeAstro = (path: string, params: Record<string, string> = {}) => {
     const cache: unknown[] = [];
@@ -39,15 +39,15 @@ beforeAll(async () => { container = await AstroContainer.create({ renderers: awa
 beforeEach(() => { Object.assign(state, { dropTex: false, dropTexPlayers: false, failMembership: false, emptySeason: false }); });
 
 describe('the member-seasons table (R-P11)', () => {
-    test('2019, 2021 and 2026 re-derive from the committed captures by the same rule', () => {
-        for (const s of [2019, 2021, 2026] as const) {
+    test('2019, 2021, 2026 and 2027 re-derive from the committed captures by the same rule', () => {
+        for (const s of [2019, 2021, 2026, 2027] as const) {
             const played = new Set(scheduleTeams(s).flatMap((g) => [g.home_id, g.away_id]).filter((x) => x != null).map(Number));
             const rule = [...new Set(conferences(s).filter((r) => /^\d+$/.test(r.team_id)).map((r) => Number(r.team_id)))].filter((id) => played.has(id)).sort((a, b) => a - b);
             const table = [...MBB_MEMBER_SEASONS].filter(([, ss]) => ss.includes(s)).map(([id]) => id).sort((a, b) => a - b);
             expect(table, String(s)).toEqual(rule);
             expect(withSeasonMembers([], conferences(s), scheduleTeams(s), s, 'mbb').map((t) => t.team_id).sort((a, b) => a - b), String(s)).toEqual(rule);
         }
-        expect(MBB_MEMBER_SEASONS_THROUGH).toBe(2026);
+        expect(MBB_MEMBER_SEASONS_THROUGH).toBe(2027);
     });
     test('the season rollover moves together: currentMembers, the member table and MBB_LAST_KNOWN_SEASON agree (review Important 1)', () => {
         const m = BASKETBALL.mbb;
@@ -56,30 +56,30 @@ describe('the member-seasons table (R-P11)', () => {
         expect([...m.currentMembers!.ids].sort((a, b) => a - b)).toEqual(last);
     });
     test('St. Thomas lists only its member seasons on its team page', async () => {
-        expect(MBB_MEMBER_SEASONS.get(STMN)).toEqual([2022, 2023, 2024, 2025, 2026]);
+        expect(MBB_MEMBER_SEASONS.get(STMN)).toEqual([2022, 2023, 2024, 2025, 2026, 2027]);
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
         const r: any = await prepareBasketballTeam(fakeAstro(`/mbb/team/${STMN}`, { id: String(STMN) }).a, 'mbb');
-        expect(r.seasons).toEqual([2022, 2023, 2024, 2025, 2026]);
+        expect(r.seasons).toEqual([2022, 2023, 2024, 2025, 2026, 2027]);
         const tex: any = await prepareBasketballTeam(fakeAstro(`/mbb/team/${TEX}`, { id: String(TEX) }).a, 'mbb');
-        expect([...tex.seasons].sort()).toEqual([2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]);
+        expect([...tex.seasons].sort()).toEqual([2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027]);
     });
     test('the players page carries ?team=<St. Thomas> only into its member seasons', async () => {
         const { prepareBasketballPlayers } = await import('../../src/routes/basketball/players');
-        const data: any = await prepareBasketballPlayers(fakeAstro(`/mbb/players?team=${STMN}`).a, 'mbb');
+        const data: any = await prepareBasketballPlayers(fakeAstro(`/mbb/players?team=${STMN}&season=2026`).a, 'mbb'); // the 2026 captures
         expect(data.selected.team_id).toBe(STMN);
         const html = await container.renderToString(NbaPlayersRoute, { props: { data }, locals: { league: 'mbb' } as App.Locals });
         const opts = [...html.matchAll(/<option value="(\/mbb\/players[^"]*)"[^>]*>(\d{4}-\d{2})</g)].map((m) => m[1].replace(/&amp;/g, '&'));
-        expect(opts).toHaveLength(8);
+        expect(opts).toHaveLength(9);
         for (const s of [2019, 2020, 2021]) expect(opts).toContain(`/mbb/players?season=${s}`);
-        for (const s of [2022, 2023, 2024, 2025]) expect(opts).toContain(`/mbb/players?team=${STMN}&season=${s}`);
-        expect(opts).toContain(`/mbb/players?team=${STMN}`);
+        for (const s of [2022, 2023, 2024, 2025, 2026]) expect(opts).toContain(`/mbb/players?team=${STMN}&season=${s}`);
+        expect(opts).toContain(`/mbb/players?team=${STMN}`); // 2026-27, the current season
     });
 });
 
 describe('/mbb/team/<id>: membership with or without shots', () => {
     test('Texas 2026 with shots is a member: the dashboard page', async () => {
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
-        const r: any = await prepareBasketballTeam(fakeAstro(`/mbb/team/${TEX}`, { id: String(TEX) }).a, 'mbb');
+        const r: any = await prepareBasketballTeam(fakeAstro(`/mbb/team/${TEX}?season=2026`, { id: String(TEX) }).a, 'mbb');
         expect([r.team.team_id, r.empty, r.dashboard === null, r.line.attempts]).toEqual([TEX, undefined, false, texShots(2026).length]);
     });
     // Self-review on #344: R-S14 (made for WBB's New Orleans) is in the shared route, so it changed MBB too. Mutation of the
@@ -89,15 +89,15 @@ describe('/mbb/team/<id>: membership with or without shots', () => {
         state.dropTexPlayers = true;
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
         const { prepareBasketballTeams } = await import('../../src/routes/basketball/teams');
-        const r: any = await prepareBasketballTeam(fakeAstro(`/mbb/team/${TEX}`, { id: String(TEX) }).a, 'mbb');
+        const r: any = await prepareBasketballTeam(fakeAstro(`/mbb/team/${TEX}?season=2026`, { id: String(TEX) }).a, 'mbb');
         expect([r.empty, r.noPlayers, r.team.team_id, r.roster, r.dashboard === null, r.line.attempts]).toEqual([undefined, true, TEX, [], false, texShots(2026).length]);
-        const index: any = await prepareBasketballTeams(fakeAstro('/mbb/teams').a, 'mbb');
+        const index: any = await prepareBasketballTeams(fakeAstro('/mbb/teams?season=2026').a, 'mbb');
         expect(index.lines.get(TEX)).toEqual(r.line);
     });
     test('a team with shots but no conference row that season is a 404, as the index leaves it out (the real 2026 rows less Texas\'s)', async () => {
         state.dropTex = true;
         const { prepareBasketballTeam } = await import('../../src/routes/basketball/team');
-        const f = fakeAstro(`/mbb/team/${TEX}`, { id: String(TEX) });
+        const f = fakeAstro(`/mbb/team/${TEX}?season=2026`, { id: String(TEX) });
         expect(await prepareBasketballTeam(f.a, 'mbb')).toEqual({ notFound: true });
         expect(f.cache.at(-1)).toBe(false);
     });
@@ -116,7 +116,7 @@ describe('/mbb/team/<id>: membership with or without shots', () => {
 describe('college copy', () => {
     test('the index promises a shot chart and roster only for each team with linked shots', async () => {
         const { prepareBasketballTeams } = await import('../../src/routes/basketball/teams');
-        const data: any = await prepareBasketballTeams(fakeAstro('/mbb/teams').a, 'mbb');
+        const data: any = await prepareBasketballTeams(fakeAstro('/mbb/teams?season=2026').a, 'mbb');
         const html = await container.renderToString(NbaTeamsRoute, { props: { data }, locals: { league: 'mbb' } as App.Locals });
         expect(html).toContain('with a shot chart and roster for each team with linked shots.');
     });
@@ -128,6 +128,6 @@ describe('college copy', () => {
         const html = await container.renderToString(NbaPlayersRoute, { props: { data }, locals: { league: 'mbb' } as App.Locals });
         expect(html).toContain('for the team you choose');
         expect(html).not.toContain('every team');
-        expect(html).toContain('shots in 2025-26 yet.');
+        expect(html).toContain('shots in 2026-27 yet.');
     });
 });

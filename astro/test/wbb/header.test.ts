@@ -8,16 +8,20 @@ let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 
 describe('the WBB Header', () => {
-    test('five pages, no featured-team entry, a switch that includes the other basketball leagues', async () => {
+    test('five pages (and Best Games and Bracketology and Leaderboards behind their flags), no featured-team entry, a switch that includes the other basketball leagues', async () => {
         const html = await container.renderToString(Header, { locals: { league: 'wbb', preview: true } as App.Locals });
         const items = [...html.matchAll(/<a href="(\/wbb[^"]*)" class="nav-link px-2 link-secondary">([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`);
-        expect(items).toEqual(['Scoreboard /wbb/scoreboard', 'Players /wbb/players', 'Teams /wbb/teams', 'Scatter /wbb/scatter', 'Leaders /wbb/leaders']);
+        expect(items).toEqual(['Scoreboard /wbb/scoreboard', 'Players /wbb/players', 'Teams /wbb/teams', 'Scatter /wbb/scatter', 'Leaders /wbb/leaders', 'Best Games /wbb/best-games', 'Bracketology /wbb/bracketology', 'Leaderboards /wbb/leaderboards']);
         expect(html).not.toContain('>Nets<');
         expect(html).toContain('title="Switch league"');
         for (const href of ['href="/"', 'href="/nfl"', 'href="/nba"', 'href="/wnba"', 'href="/mbb"']) expect(html).toContain(href);
     });
-    test("a football viewer's Header does not offer WBB while it is in preview", async () => {
-        const html = await container.renderToString(Header, { locals: { league: 'cfb', preview: true } as App.Locals });
+    test("a public football viewer's Header does not offer WBB while it is in preview", async () => {
+        const html = await container.renderToString(Header, { locals: { league: 'cfb' } as App.Locals });
         expect(html).not.toContain('href="/wbb"');
+    });
+    test('a football viewer in preview mode is offered WBB (BB-G31)', async () => {
+        const html = await container.renderToString(Header, { locals: { league: 'cfb', preview: true } as App.Locals });
+        expect(html).toContain('href="/wbb"');
     });
 });

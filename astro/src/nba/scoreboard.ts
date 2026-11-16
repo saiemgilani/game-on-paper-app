@@ -4,7 +4,7 @@ import { DateTime } from 'luxon';
 import type { ESPNCompetitor, ESPNScheduleEvent, ESPNStatus } from '../resources/espn';
 import { FIRST_SEASON } from './seasonRange';
 import type { DarkLogoStrategy, PeriodKind, ScoreboardGroups } from '../basketball/config';
-import { espnLogoLeague, type League } from '../utils/league';
+import { NBA_LOGO_ABBR, espnLogoLeague, type League } from '../utils/league';
 import { endOfPeriodText, finalText, periodShort } from '../basketball/periods';
 
 const LIVE = ['STATUS_IN_PROGRESS', 'STATUS_END_PERIOD', 'STATUS_HALFTIME'];
@@ -71,9 +71,8 @@ export function toEspnDate(iso: string): string {
     return iso.replaceAll('-', '');
 }
 
-/** ESPN's lower-case spellings of the 30 teams, each verified to serve nba/500-dark/<abbr>.png. */
-export const NBA_DARK_LOGO_ABBRS: ReadonlySet<string> = new Set(
-    'atl bos bkn cha chi cle dal den det gs hou ind lac lal mem mia mil min no ny okc orl phi phx por sac sa tor utah wsh'.split(' '));
+/** ESPN's lower-case spellings of the 30 teams, each verified to serve nba/500-dark/<abbr>.png (utils/league.ts NBA_LOGO_ABBR). */
+export const NBA_DARK_LOGO_ABBRS: ReadonlySet<string> = new Set(Object.values(NBA_LOGO_ABBR));
 
 /** Dark-mode logo rules, only for numeric team ids (and, for 'abbr', allowlisted abbreviations); nothing raw reaches the style block. */
 export function darkLogoCss(

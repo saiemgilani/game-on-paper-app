@@ -1,0 +1,353 @@
+{
+ "nba": [
+  {
+   "game_id": 401705127,
+   "n_books": 9,
+   "spread_home_open": 5.5,
+   "spread_home_close": 5.5,
+   "total_open": 219.5,
+   "total_close": 219.5,
+   "market_home_wp_open": 0.3403141361256544,
+   "market_home_wp_close": 0.3403141361256544,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401705128,
+   "n_books": 9,
+   "spread_home_open": 14,
+   "spread_home_close": 14,
+   "total_open": 229,
+   "total_close": 229,
+   "market_home_wp_open": 0.1264367816091954,
+   "market_home_wp_close": 0.1264367816091954,
+   "ats_result": "home"
+  },
+  {
+   "game_id": 401705135,
+   "n_books": 9,
+   "spread_home_open": 5.5,
+   "spread_home_close": 5.5,
+   "total_open": 222.5,
+   "total_close": 222.5,
+   "market_home_wp_open": 0.3324808184143222,
+   "market_home_wp_close": 0.3324808184143222,
+   "ats_result": "home"
+  },
+  {
+   "game_id": 401705136,
+   "n_books": 9,
+   "spread_home_open": -4.5,
+   "spread_home_close": -4.5,
+   "total_open": 214.5,
+   "total_close": 214.5,
+   "market_home_wp_open": 0.6211096075778079,
+   "market_home_wp_close": 0.6211096075778079,
+   "ats_result": "home"
+  }
+ ],
+ "wnba": [
+  {
+   "game_id": 401736285,
+   "n_books": 11,
+   "spread_home_open": 4,
+   "spread_home_close": 4,
+   "total_open": 168,
+   "total_close": 168,
+   "market_home_wp_open": 0.3865173648610243,
+   "market_home_wp_close": 0.3865173648610243,
+   "ats_result": "home"
+  },
+  {
+   "game_id": 401736286,
+   "n_books": 11,
+   "spread_home_open": 12,
+   "spread_home_close": 12,
+   "total_open": 172,
+   "total_close": 172,
+   "market_home_wp_open": 0.16580310880829016,
+   "market_home_wp_close": 0.16580310880829016,
+   "ats_result": "home"
+  },
+  {
+   "game_id": 401736287,
+   "n_books": 11,
+   "spread_home_open": 4.5,
+   "spread_home_close": 4.5,
+   "total_open": 153.5,
+   "total_close": 153.5,
+   "market_home_wp_open": 0.3756784940773817,
+   "market_home_wp_close": 0.3756784940773817,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401736288,
+   "n_books": 11,
+   "spread_home_open": 4,
+   "spread_home_close": 4,
+   "total_open": 175.5,
+   "total_close": 175.5,
+   "market_home_wp_open": 0.3831417624521073,
+   "market_home_wp_close": 0.3831417624521073,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401736289,
+   "n_books": 11,
+   "spread_home_open": -5,
+   "spread_home_close": -5,
+   "total_open": 170,
+   "total_close": 170,
+   "market_home_wp_open": 0.6505699719310306,
+   "market_home_wp_close": 0.6505699719310306,
+   "ats_result": "away"
+  }
+ ],
+ "mbb": [
+  {
+   "game_id": 401708406,
+   "n_books": 9,
+   "spread_home_open": -15.5,
+   "spread_home_close": -15.5,
+   "total_open": 145.5,
+   "total_close": 145.5,
+   "market_home_wp_open": 0.9039548022598869,
+   "market_home_wp_close": 0.9039548022598869,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401708407,
+   "n_books": 9,
+   "spread_home_open": 9.5,
+   "spread_home_close": 9.5,
+   "total_open": 154.5,
+   "total_close": 154.5,
+   "market_home_wp_open": 0.1957070707070707,
+   "market_home_wp_close": 0.1957070707070707,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401707856,
+   "n_books": 10,
+   "spread_home_open": 8.5,
+   "spread_home_close": 8.5,
+   "total_open": 156.75,
+   "total_close": 156.75,
+   "market_home_wp_open": 0.21436467935009132,
+   "market_home_wp_close": 0.21436467935009132,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401708404,
+   "n_books": 9,
+   "spread_home_open": -12,
+   "spread_home_close": -12,
+   "total_open": 181,
+   "total_close": 181,
+   "market_home_wp_open": 0.8328690807799444,
+   "market_home_wp_close": 0.8328690807799444,
+   "ats_result": "home"
+  },
+  {
+   "game_id": 401725751,
+   "n_books": 9,
+   "spread_home_open": -11.5,
+   "spread_home_close": -11.5,
+   "total_open": 130,
+   "total_close": 130,
+   "market_home_wp_open": 0.8579439252336449,
+   "market_home_wp_close": 0.8579439252336449,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401708409,
+   "n_books": 10,
+   "spread_home_open": -2,
+   "spread_home_close": -2,
+   "total_open": 130.5,
+   "total_close": 130.5,
+   "market_home_wp_open": 0.552594002855783,
+   "market_home_wp_close": 0.552594002855783,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401725755,
+   "n_books": 10,
+   "spread_home_open": -9.5,
+   "spread_home_close": -9.5,
+   "total_open": 134.5,
+   "total_close": 134.5,
+   "market_home_wp_open": 0.8174653462526965,
+   "market_home_wp_close": 0.8174653462526965,
+   "ats_result": "home"
+  },
+  {
+   "game_id": 401721447,
+   "n_books": 10,
+   "spread_home_open": -8.5,
+   "spread_home_close": -8.5,
+   "total_open": 153,
+   "total_close": 153,
+   "market_home_wp_open": 0.766128622351675,
+   "market_home_wp_close": 0.766128622351675,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401708405,
+   "n_books": 9,
+   "spread_home_open": -0.5,
+   "spread_home_close": -0.5,
+   "total_open": 150,
+   "total_close": 150,
+   "market_home_wp_open": 0.5173641257162701,
+   "market_home_wp_close": 0.5173641257162701,
+   "ats_result": "home"
+  },
+  {
+   "game_id": 401724887,
+   "n_books": 9,
+   "spread_home_open": 1.5,
+   "spread_home_close": 1.5,
+   "total_open": 146.5,
+   "total_close": 146.5,
+   "market_home_wp_open": 0.4773218142548596,
+   "market_home_wp_close": 0.4773218142548596,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401725750,
+   "n_books": 10,
+   "spread_home_open": -7,
+   "spread_home_close": -7,
+   "total_open": 153.5,
+   "total_close": 153.5,
+   "market_home_wp_open": 0.7231085949562532,
+   "market_home_wp_close": 0.7231085949562532,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401708411,
+   "n_books": 10,
+   "spread_home_open": 4.5,
+   "spread_home_close": 4.5,
+   "total_open": 149,
+   "total_close": 149,
+   "market_home_wp_open": 0.3634123806590699,
+   "market_home_wp_close": 0.3634123806590699,
+   "ats_result": "home"
+  },
+  {
+   "game_id": 401725752,
+   "n_books": 9,
+   "spread_home_open": -14.5,
+   "spread_home_close": -14.5,
+   "total_open": 150.5,
+   "total_close": 150.5,
+   "market_home_wp_open": 0.8946332737030412,
+   "market_home_wp_close": 0.8946332737030412,
+   "ats_result": "home"
+  },
+  {
+   "game_id": 401708410,
+   "n_books": 9,
+   "spread_home_open": -1.5,
+   "spread_home_close": -1.5,
+   "total_open": 152.5,
+   "total_close": 152.5,
+   "market_home_wp_open": 0.5324675324675325,
+   "market_home_wp_close": 0.5324675324675325,
+   "ats_result": "home"
+  },
+  {
+   "game_id": 401724891,
+   "n_books": 10,
+   "spread_home_open": -13.5,
+   "spread_home_close": -13.5,
+   "total_open": 154.5,
+   "total_close": 154.5,
+   "market_home_wp_open": 0.88,
+   "market_home_wp_close": 0.88,
+   "ats_result": "away"
+  }
+ ],
+ "wbb": [
+  {
+   "game_id": 401825672,
+   "n_books": 8,
+   "spread_home_open": -45.5,
+   "spread_home_close": -45.5,
+   "total_open": 135.5,
+   "total_close": 135.5,
+   "market_home_wp_open": 0.9807503701851888,
+   "market_home_wp_close": 0.9807503701851888,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401825328,
+   "n_books": 8,
+   "spread_home_open": 20.5,
+   "spread_home_close": 20.5,
+   "total_open": 160.5,
+   "total_close": 160.5,
+   "market_home_wp_open": 0.0579903053697603,
+   "market_home_wp_close": 0.0579903053697603,
+   "ats_result": "home"
+  },
+  {
+   "game_id": 401827378,
+   "n_books": 8,
+   "spread_home_open": -10.5,
+   "spread_home_close": -10.5,
+   "total_open": 125.5,
+   "total_close": 125.5,
+   "market_home_wp_open": 0.8176143106257465,
+   "market_home_wp_close": 0.8176143106257465,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401827379,
+   "n_books": 7,
+   "spread_home_open": 18.5,
+   "spread_home_close": 18.5,
+   "total_open": 132.5,
+   "total_close": 132.5,
+   "market_home_wp_open": 0.06846216634754018,
+   "market_home_wp_close": 0.06846216634754018,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401827384,
+   "n_books": 8,
+   "spread_home_open": -21.5,
+   "spread_home_close": -21.5,
+   "total_open": 139.5,
+   "total_close": 139.5,
+   "market_home_wp_open": 0.9397944199706315,
+   "market_home_wp_close": 0.9397944199706315,
+   "ats_result": "away"
+  },
+  {
+   "game_id": 401825327,
+   "n_books": 8,
+   "spread_home_open": 1.5,
+   "spread_home_close": 1.5,
+   "total_open": 150.5,
+   "total_close": 150.5,
+   "market_home_wp_open": 0.4677419354838709,
+   "market_home_wp_close": 0.4677419354838709,
+   "ats_result": "away"
+  }
+ ],
+ "nba-open-only": [
+  {
+   "game_id": 401909088,
+   "n_books": 0,
+   "spread_home_open": -1.5,
+   "spread_home_close": null,
+   "total_open": 221.5,
+   "total_close": null,
+   "market_home_wp_open": 0.5324675324675325,
+   "market_home_wp_close": null,
+   "ats_result": null
+  }
+ ]
+}

@@ -1,5 +1,5 @@
 ---
-import { COACH_BOARDS, COACH_MIN_PLAYS, formatCoachValue, formatSeasonSpan, numericValue, rankCoachRows, resolveCoachSort, sortCoachRows, splitByMinPlays, type CoachRow } from '../../utils/coaches';
+import { COACH_BOARDS, COACH_MIN_PLAYS, coachBoardColumns, formatCoachValue, formatSeasonSpan, numericValue, rankCoachRows, resolveCoachSort, sortCoachRows, splitByMinPlays, type CoachRow } from '../../utils/coaches';
 import { MEME_STRING_LIST } from '../../utils/constants';
 import { espnLogoLeague, leaguePath } from '../../utils/league';
 import { cleanField, countRegexMatches, generateColorRampValue } from '../../utils/misc';
@@ -18,21 +18,31 @@ interface Props {
 const { season, board, metric, rows } = Astro.props;
 const league = Astro.locals.league ?? 'cfb';
 const careers = season === undefined;
-const def = COACH_BOARDS[board];
-const sortKey = resolveCoachSort(board, metric);
+const def = { ...COACH_BOARDS[board], columns: coachBoardColumns(COACH_BOARDS[board], league) };
+const sortKey = resolveCoachSort(board, metric, league);
 const sortColumn = def.columns.find((c) => c.key === sortKey) ?? def.columns[0];
 
 const minPlays = careers ? COACH_MIN_PLAYS.careers : COACH_MIN_PLAYS.season;
-const { qualified, partial } = splitByMinPlays(sortCoachRows(rows, sortColumn), minPlays);
+// a situational board ranks only coaches with games in the sorted situation
+const minGames = def.minGames && sortColumn.games ? { key: sortColumn.games, min: careers ? def.minGames.careers : def.minGames.season } : undefined;
+const gamesLabel = minGames && def.columns.find((c) => c.key === minGames.key)?.label.toLowerCase();
+const { qualified, partial } = splitByMinPlays(sortCoachRows(rows, sortColumn), minPlays, minGames);
 const ranks = rankCoachRows(qualified, sortKey);
 // every quality cell is shaded by its own column's rank, as the team grid does;
 // a style column (pace, pass rate, go rate) has no good end, so it stays plain
-const columnRank = new Map<string, Map<CoachRow, number | null>>(def.columns.filter((c) => !c.neutral).map((c) => {
-    const sorted = sortCoachRows(qualified, c);
+// a situational column is shaded only among coaches who also clear the games floor in its own
+// situation, so a 1-opener career's 100% is not painted the best opener record
+const gamesFloor = def.minGames && (careers ? def.minGames.careers : def.minGames.season);
+const columnRank = new Map<string, { n: number; ranks: Map<CoachRow, number | null> }>(def.columns.filter((c) => !c.neutral).map((c) => {
+    const pool = gamesFloor && c.games ? splitByMinPlays(qualified, 0, { key: c.games, min: gamesFloor }).qualified : qualified;
+    const sorted = sortCoachRows(pool, c);
     const r = rankCoachRows(sorted, c.key);
-    return [c.key, new Map(sorted.map((row, i) => [row, r[i]]))];
+    return [c.key, { n: pool.length, ranks: new Map(sorted.map((row, i) => [row, r[i]])) }];
 }));
-const shade = (row: CoachRow, key: string) => generateColorRampValue(columnRank.get(key)?.get(row) ?? null, qualified.length, true) ?? '';
+const shade = (row: CoachRow, key: string) => {
+    const col = columnRank.get(key);
+    return generateColorRampValue(col?.ranks.get(row) ?? null, col?.n ?? qualified.length, true) ?? '';
+};
 const hrefFor = (key: string) => `?sort=${key}`;
 const arrow = sortColumn.lowerIsBetter ? 'up' : 'down';
 const teamHref = (row: CoachRow) => leaguePath(league, `/year/${row.season}/team/${row.pos_team_id}`);
@@ -141,7 +151,7 @@ function formatTeamStrings(teams?: string | number | null): string {
                         ))}
                         {partial.length > 0 && (
                             <tr class="table-secondary coach-partial-divider">
-                                <td colspan={totalColumns} class="text-muted small">Fewer than {minPlays} plays{careers ? '' : ' this season'} (interim or partial {careers ? 'careers' : 'seasons'}): shown, not ranked.</td>
+                                <td colspan={totalColumns} class="text-muted small">Fewer than {minPlays} plays{careers ? '' : ' this season'} (interim or partial {careers ? 'careers' : 'seasons'}){minGames && `, or ${minGames.min === 1 ? 'no' : `fewer than ${minGames.min}`} ${gamesLabel}`}: shown, not ranked.</td>
                             </tr>
                         )}
                         {partial.map((row) => (

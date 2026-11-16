@@ -3,6 +3,24 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
+// BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
+// BB-G51's Shot profile reads the Data API with 'bball-shot-profile' on (preview): never from a test
+vi.mock('../../src/resources/shotZones', async (orig) => ({ ...(await orig<typeof import('../../src/resources/shotZones')>()), retrievePlayerShotZones: async () => [], retrieveTeamPlayerShotZones: async () => [], retrieveTeamShotZones: async () => ({ zones: null, rates: [] }), retrieveSeasonFt: async () => null }));
+vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
+// BB-G6's Impact panel reads the Data API with 'bball-impact' on (preview): never from a test
+vi.mock('../../src/resources/playerImpact', () => ({ retrievePlayerImpact: async () => [] }));
+// BB-G7's On/Off section reads the Data API with 'bball-player-on-off' on (preview): never from a test
+vi.mock('../../src/resources/playerOnOff', () => ({ retrievePlayerOnOff: async () => ({ teams: [], pairs: [] }) }));
+// BB-G17's play-style chips read the Data API with 'bball-play-styles' on (preview): never from a test (no row: no chip)
+vi.mock('../../src/resources/playStyles', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playStyles')>()), retrievePlayerPlayStyle: async () => [], retrieveTeamPlayStyle: async () => [] }));
+// BB-G27's Value panel reads the Data API with 'bball-war' on (preview): never from a test
+vi.mock('../../src/resources/playerWar', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playerWar')>()), retrievePlayerWar: async () => [], retrievePlayerEpv: async () => [] }));
+// BB-G19's Play types and Defense panels read the Data API with 'bball-play-types' on (preview): never from a test
+vi.mock('../../src/resources/playerPlayTypes', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playerPlayTypes')>()), retrievePlayerSynergy: async () => [], retrievePlayerHustle: async () => [], retrievePlayerMatchupRollup: async () => [], retrievePlayerTopMatchups: async () => [] }));
+// BB-G54's Career panel reads the Data API with 'bball-career' on (preview): never from a test
+vi.mock('../../src/resources/playerCareer', () => ({ retrievePlayerWarCareer: async () => [], retrievePlayerImpactCareer: async () => [] }));
+// BB-G56's Season impact / Current impact rows read the Data API with 'bball-current-impact' on (preview): never from a test
+vi.mock('../../src/resources/currentImpact', async (orig) => ({ ...(await orig<typeof import('../../src/resources/currentImpact')>()), retrieveCurrentImpact: async () => [] }));
 import { readFileSync } from 'node:fs';
 import { text } from '../helpers/tables';
 
@@ -14,6 +32,11 @@ const oracle = read('league_context');
 const PID = Number(Object.keys(playerGames)[0]);
 const me = players.find((p: any) => p.person_id === PID);
 const state = { nullDates: false };
+// BB-G25's player Situations section reads the Data API with 'bball-situational' on (preview): never from a test
+const psit = vi.hoisted(() => ({ calls: [] as unknown[][] }));
+vi.mock('../../src/resources/situational', async (orig) => ({ ...(await orig<typeof import('../../src/resources/situational')>()), retrievePlayerSituational: async (...a: unknown[]) => { psit.calls.push(a); return []; } }));
+// BB-G12's nearby ranks read the Data API with 'bball-rank-neighbors' on (preview): never from a test
+vi.mock('../../src/resources/bballNeighbors', async (orig) => ({ ...(await orig<typeof import('../../src/resources/bballNeighbors')>()), retrieveTeamRankRows: async () => [] }));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveLeagueContextRows: async () => [
@@ -55,6 +78,10 @@ describe('/nba/players/[id]', () => {
         expect(html).not.toContain('undefined');
         expect(html).not.toContain('NaN');
         expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
+        // BB-G25 (preview on): the Situations section reads his rows with his team and sits in the page nav
+        expect(psit.calls.at(-1)).toEqual(['nba', expect.any(Number), PID, me.team_id]); // the season is today's current one
+        expect(html).toContain('id="situations"');
+        expect(html).toContain('href="#situations"');
     });
     test('null game dates: the six charts render and the per-game views say unavailable', async () => {
         state.nullDates = true;
