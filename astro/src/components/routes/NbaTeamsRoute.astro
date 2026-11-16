@@ -12,6 +12,7 @@ import type { NbaTeamsParams } from '../../routes/nba/teams';
 import { basketball, seasonLabelFor } from '../../basketball/config';
 import { dashboardScope, isNcaaDashboards } from '../../basketball/dashboards';
 import { LEAGUES, leaguePath } from '../../utils/league';
+import { isFeatureEnabled } from '../../utils/features';
 
 interface Props { data: NbaTeamsParams; landing?: boolean }
 const { data, landing = false } = Astro.props;
@@ -37,7 +38,8 @@ const breadcrumbs: PageBreadcrumb[] = landing
         <h1 class="h3">{landing ? `${name} teams, ${label}` : `Teams, ${label}`}</h1>
         {data.unlocated && <p class="small text-muted">{placeholderNote(data.unlocated.count, data.unlocated.total, 'season')}</p>}
         <p class="text-muted">{subtitle}</p>{coverage && (<p class="small text-muted" id="nba-coverage">{coverage}</p>)}
-        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={here} />
+        <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={here} />{isFeatureEnabled('bball-league-shots', Astro.locals) && (
+          <p class="small mt-2" id="teams-shots-link"><a href={withParams(lp('/shots'), { season: String(season) }, { season: String(current) })}>Every team's shot chart on one page &rarr;</a></p>)}
         {landing && (
           <div class="d-flex flex-wrap align-items-center gap-3 mt-2">
             <a href={lp('/scoreboard')}>Scoreboard &rarr;</a>

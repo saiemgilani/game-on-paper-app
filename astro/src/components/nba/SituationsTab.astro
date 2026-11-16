@@ -1,0 +1,76 @@
+---
+// src/components/nba/SituationsTab.astro
+// BB-G25, behind 'bball-situational': the team page's Situations section. One Situation control (All, Clutch, by period,
+// Leading, Tied, Trailing, Home, Away, Transition, Half court, Second chance (pros), Garbage time out, vs top N; SituationSelect, a plain
+// <select> of URLs) drives three tables: the team (the situation and All), its players (10+ possessions in the situation)
+// and its five-man units (25+) in that situation. One number per cell, every one the producer's (sdv-db
+// situational_team / _player / _lineup); nothing is shaded, since the producer publishes no percentile for a split.
+import SituationSelect from './SituationSelect.astro';
+import { UNIT_LIMIT } from '../../resources/situational';
+import { PLAYER_MIN_POSS, SITUATION_COLS as COLS, teamRows, UNIT_MIN_POSS, type SituationsTab } from '../../utils/situations';
+import { fmtInt } from '../../nba/format';
+import { withParams } from '../../nba/links';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+
+interface Props { data: SituationsTab; season: number; current: number; basePath: string; teamName: string }
+const { data, season, current, basePath, teamName } = Astro.props;
+const league = basketball(Astro.locals.league).league;
+const label = seasonLabelFor(league, season);
+const { situation, options, reads, playerNames, unitLabels } = data;
+
+const href = (key: string) => `${withParams(basePath, { season: String(season), situation: key }, { season: String(current), situation: 'all' })}#situations`;
+const team = reads ? teamRows(reads.team, situation) : [];
+const sit = situation.label;
+---
+<section id="situations" aria-label={`${label} situations`} class="mb-4">
+  <h2 class="h5">Situations</h2>
+  <SituationSelect options={options} situation={situation} href={href} />
+  <p class="small text-muted mb-2" id="situation-note">{situation.note} Each possession counts for the players on the floor when it starts.</p>
+  {reads === null ? (<p class="text-muted" id="situations-unavailable">The {label} situational splits are temporarily unavailable.</p>) : team.length === 0 ? (<p class="text-muted" id="situations-empty">No {label} possessions are split by situation for {teamName} yet.</p>) : (<Fragment>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-3" id="situations-team">
+      <caption class="small text-muted">{teamName}, {label}{team.length === 1 && situation.key !== 'all' ? `: no possession in the situation (${sit})` : ''}.</caption>
+      <thead><tr><th scope="col">Situation</th>{COLS.map((c) => (<th scope="col" class="text-end"><abbr title={c.hover}>{c.label}</abbr></th>))}</tr></thead>
+      <tbody>
+        {team.map((r) => (
+          <tr><th scope="row" class="fw-normal text-nowrap">{r.family === 'all' ? 'All' : sit}</th>{COLS.map((c) => (<td class="numeral text-end">{c.cell(r)}</td>))}</tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <div class="row g-3">
+    <div class="col-12">
+      <h3 class="h6">Players: {sit}</h3>
+      {reads.players.length === 0 ? (<p class="text-muted small" id="situations-players-empty">No player has {PLAYER_MIN_POSS} possessions in the situation.</p>) : (
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0" id="situations-players">
+            <caption class="small text-muted">Players with {PLAYER_MIN_POSS}+ possessions in the situation, most first.</caption>
+            <thead><tr><th scope="col">Player</th>{COLS.map((c) => (<th scope="col" class="text-end"><abbr title={c.hover}>{c.label}</abbr></th>))}</tr></thead>
+            <tbody>
+              {reads.players.map((r, i) => (
+                <tr><th scope="row" class="fw-normal text-nowrap">{playerNames[i]}</th>{COLS.map((c) => (<td class="numeral text-end">{c.cell(r)}</td>))}</tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+    <div class="col-12">
+      <h3 class="h6">Five-man units: {sit}</h3>
+      {reads.units.length === 0 ? (<p class="text-muted small" id="situations-units-empty">No five-man unit has {UNIT_MIN_POSS} possessions in the situation.</p>) : (
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0" id="situations-units">
+            <caption class="small text-muted">{reads.units.length >= UNIT_LIMIT ? `The ${fmtInt(UNIT_LIMIT)} units with the most possessions in the situation` : `${fmtInt(reads.units.length)} units, most possessions first`}; units with {UNIT_MIN_POSS}+ possessions in the situation and 50 in the season (offense plus defense).</caption>
+            <thead><tr><th scope="col">Unit</th>{COLS.map((c) => (<th scope="col" class="text-end"><abbr title={c.hover}>{c.label}</abbr></th>))}</tr></thead>
+            <tbody>
+              {reads.units.map((r, i) => (
+                <tr><th scope="row" class="fw-normal text-nowrap"><span title={unitLabels[i]?.full}>{unitLabels[i]?.short}</span></th>{COLS.map((c) => (<td class="numeral text-end">{c.cell(r)}</td>))}</tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  </div>
+  </Fragment>)}
+</section>

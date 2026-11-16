@@ -11,11 +11,15 @@ import DarkModeLogos from "../../components/DarkModeLogos.astro";
 import FallbackSpinner from '../../components/FallbackSpinner.astro';
 import { leaguePath, teamCountOf } from "../../utils/league";
 import type { TeamProfileData } from "../../routes/teamProfile";
+import TeamPlayerTable from "../../components/team/tables/TeamPlayerTable.astro";
+import { isFeatureEnabled } from "../../utils/features";
+import { bestSeasons, coachEras, conferenceSpans } from "../../utils/teamHub";
+import { formatSeasonSpan } from "../../utils/coaches";
 
 // Route component: routes/teamProfile.ts (per-league page) read ESPN + the
 // season tables and made the not-found decision; this renders.
 type Props = TeamProfileData;
-const { league, id, team, percentiles: allPctls, teamSummaries, seasonBands } = Astro.props;
+const { league, id, team, percentiles: allPctls, teamSummaries, seasonBands, coachSeasons } = Astro.props;
 // the flag's prop reaches the island only for a viewer the flag admits, so the public island is unchanged
 const bandProps = seasonBands ? { seasonBands } : {};
 
@@ -59,6 +63,22 @@ function createSeasonRow(summary: SDVTeamSummary): string {
     </tr>
     `
 }
+
+// 'team-hub': history tables under Seasons, the same six metrics as the Seasons table
+const hub = isFeatureEnabled('team-hub', Astro.locals);
+const HUB_METRICS: Record<string, string> = {
+    net_adj_epa: "Net Adj EPA/Play",
+    EPAplay_margin: "Net EPA/Play",
+    adj_off_epa: "Off Adj EPA/Play",
+    EPAplay_off: "Off EPA/Play",
+    adj_def_epa: "Def Adj EPA/Play",
+    EPAplay_def: "Def EPA/Play",
+};
+const best = hub ? bestSeasons(teamData, Object.keys(HUB_METRICS)) : [];
+const eras = hub ? coachEras(coachSeasons ?? []) : [];
+// CFB only: nfl team_summaries carries today's conference and division on every season
+// (Seattle is NFC West in 1999), so it has no realignment history to show
+const spans = hub && league === 'cfb' ? conferenceSpans(teamData) : [];
 
 // Astro.response.headers.set('Cache-Control', `public, max-age=${24 * 60 * 60}`);
 ---
@@ -113,4 +133,62 @@ function createSeasonRow(summary: SDVTeamSummary): string {
             </div>
         </div>
     </div>
+    {best.length > 0 && (
+        <div class="container mb-3">
+            <TeamPlayerTable id="best-seasons" title="Best Seasons" show={true} population={false}>
+                <Fragment slot="header">
+                    <th class="text-left" colspan="1">Metric</th>
+                    <th class="text-center" colspan="1">Season</th>
+                    <th class="text-center" colspan="1">Value (Rk)</th>
+                </Fragment>
+                <Fragment slot="rows">
+                    {best.map(({ metric, row }) => (
+                        <tr>
+                            <td class="text-left text-nowrap">{HUB_METRICS[metric]}</td>
+                            <td class="text-center"><a href={leaguePath(league, `/year/${row.season}/team/${team.id}`)}>{row.season}</a></td>
+                            <Fragment set:html={createSeasonColumn(row, metric)} />
+                        </tr>
+                    ))}
+                </Fragment>
+            </TeamPlayerTable>
+        </div>
+    )}
+    {eras.length > 0 && (
+        <div class="container mb-3">
+            <TeamPlayerTable id="head-coaches" title="Head Coaches" show={true} population={false}>
+                <Fragment slot="header">
+                    <th class="text-left text-nowrap" colspan="1">Head Coach</th>
+                    <th class="text-center" colspan="1"><abbr title="First to last season as head coach (seasons)">Seasons</abbr></th>
+                    <th class="text-center" colspan="1"><abbr title="Games as head coach">Games</abbr></th>
+                </Fragment>
+                <Fragment slot="rows">
+                    {eras.map((era) => (
+                        <tr>
+                            <td class="text-left text-nowrap"><strong>{cleanField({ ...era, pos_team_id: team.id }, "coach")}</strong></td>
+                            <td class="numeral text-center text-nowrap">{formatSeasonSpan(era)}</td>
+                            <td class="numeral text-center">{era.games}</td>
+                        </tr>
+                    ))}
+                </Fragment>
+            </TeamPlayerTable>
+        </div>
+    )}
+    {spans.length > 0 && (
+        <div class="container mb-3">
+            <TeamPlayerTable id="conference-history" title="Conference History" show={true} population={false}>
+                <Fragment slot="header">
+                    <th class="text-left text-nowrap" colspan="1">Conference</th>
+                    <th class="text-center" colspan="1">Seasons</th>
+                </Fragment>
+                <Fragment slot="rows">
+                    {spans.map((s) => (
+                        <tr>
+                            <td class="text-left text-nowrap">{s.conference}</td>
+                            <td class="numeral text-center text-nowrap">{formatSeasonSpan(s)}</td>
+                        </tr>
+                    ))}
+                </Fragment>
+            </TeamPlayerTable>
+        </div>
+    )}
 </GenericPage>

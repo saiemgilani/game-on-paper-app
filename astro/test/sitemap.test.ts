@@ -28,6 +28,10 @@ describe('sitemap.xml', () => {
     expect(xml).not.toContain('<loc>https://gameonpaper.com/glossary</loc>');
   });
 
+  test('the About page stays out while its flag is not public', () => {
+    expect(xml).not.toContain('gameonpaper.com/about');
+  });
+
   test('finished seasons are pinned to a past lastmod so Google stops re-crawling', () => {
     const m = xml.match(/<loc>https:\/\/gameonpaper\.com\/year\/2015<\/loc><lastmod>([^<]+)</);
     expect(m?.[1]).toBe('2016-01-15');

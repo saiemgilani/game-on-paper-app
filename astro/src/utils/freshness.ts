@@ -11,6 +11,21 @@
 
 export interface FreshnessStamp { iso: string; text: string }
 
+/**
+ * The public data-status rows (/data-sources, flag 'data-status'): each season surface and the
+ * cfb /v1/meta table its stamp comes from, the same table that stamps the surface itself.
+ * `table: null` is read live from ESPN: it gets no stamp, never an invented one.
+ */
+export const STATUS_SURFACES: { label: string; table: string | null }[] = [
+    { label: 'Team leaderboards', table: 'team_summaries' },
+    { label: 'Passing leaderboards', table: 'passing' },
+    { label: 'Rushing leaderboards', table: 'rushing' },
+    { label: 'Receiving leaderboards', table: 'receiving' },
+    { label: 'National trends', table: 'percentiles' },
+    { label: 'Team schedules', table: 'schedule' },
+    { label: 'Scoreboard, rankings and game pages', table: null },
+];
+
 /** An ingest time with its zone named. No `timeZone` = the viewer's own, which is what the page shows. */
 export function freshnessTime(iso: string, opts: { locale?: string; timeZone?: string } = {}): string {
     return new Intl.DateTimeFormat(opts.locale, {

@@ -45,6 +45,12 @@ describe('NeighborRanks', () => {
 });
 
 const calls: any[] = [];
+// No live Data API (test/helpers/networkGuard.ts): the reads left unmocked, the /v1/meta
+// ingest stamp among them, get an empty answer and stay on their unversioned keys.
+vi.mock('../src/utils/telemetry', async (orig) => ({
+    ...(await orig<typeof import('../src/utils/telemetry')>()),
+    wrappedFetch: async () => new Response('{"data":[]}', { status: 200 }),
+}));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     retrieveTeamSummaries: async (req: any) => {
@@ -54,6 +60,9 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     },
     retrieveTeamSeasonInformation: async () => null,
     retrievePlayerSummaries: async () => [],
+    // the season team page's other panels: no rows (a failed read's answers)
+    retrieveTeamOpponentSplits: async () => null,
+    retrieveTeamTendencies: async () => [],
 }));
 vi.mock('../src/resources/espn', async (orig) => ({
     ...(await orig<typeof import('../src/resources/espn')>()),
