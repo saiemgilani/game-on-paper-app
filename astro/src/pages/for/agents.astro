@@ -1,0 +1,150 @@
+---
+import GenericPage from '../../layouts/GenericPage.astro';
+import { isFeatureEnabled } from '../../utils/features';
+import { isEspnAthleteId } from '../../utils/players';
+import { CURRENT_YEAR } from '../../utils/constants';
+import { FLAGS_PARAM, VIEW_PARAM } from '../../utils/adminView';
+
+if (!isFeatureEnabled('agent-demo', Astro.locals)) {
+    return Astro.rewrite("/404");
+}
+
+// A guided tour of the free site for a player's representatives. Every link points at a real page, built from
+// ?player=&season=&team= so a demo can switch to a client's ESPN ids without a deploy. Bad values fall back to
+// the example (Haynes King, Georgia Tech QB, 2025).
+const q = Astro.url.searchParams;
+const pick = (v: string | null, ok: (s: string) => boolean, fallback: string) => (v && ok(v) ? v : fallback);
+const player = pick(q.get('player'), isEspnAthleteId, '4428993');
+const season = pick(q.get('season'), (s) => /^\d{4}$/.test(s) && +s >= 2004 && +s <= CURRENT_YEAR, '2025');
+const team = pick(q.get('team'), (s) => /^\d{1,6}$/.test(s), '59');
+// The form submits to the URL it was opened on (no action), so /preview/for/agents stays on the preview surface;
+// an admin's ?view= and ?flags= ride along as hidden fields, or the next render loses the preview and 404s.
+const carried = [VIEW_PARAM, FLAGS_PARAM].flatMap((name) => { const v = q.get(name); return v ? [{ name, value: v }] : []; });
+
+const tour = [
+    {
+        id: 'percentiles',
+        title: 'Ranked against his position',
+        shows: 'Every passing, rushing and receiving number on the player page is shaded by its percentile among players at his position, with his national rank beside it.',
+        use: 'lead with a sentence a program cannot wave away: better than most of the country at his position, on the plays that decide games.',
+        links: [{ label: 'Season page', href: `/players/${player}?season=${season}` }],
+    },
+    {
+        id: 'development',
+        title: 'Development, season by season',
+        shows: 'The career view puts one row per season for each category, so growth in EPA per play and success rate reads as a line, not a highlight.',
+        use: 'show a player and his family how much he has improved, and where the next jump has to come from.',
+        links: [{ label: 'Career page', href: `/players/${player}` }],
+    },
+    {
+        id: 'situations',
+        title: 'When he produces',
+        shows: 'The game log rates every game, and the situational splits rate him by down, quarter and red zone against his position group.',
+        use: 'answer "is he only good against weak teams?" with his games, and point to third downs and the red zone.',
+        links: [{ label: 'Game log and splits', href: `/players/${player}?season=${season}#player-game-log-panel-panel` }],
+    },
+    {
+        id: 'compare',
+        title: 'Side by side with his comps',
+        shows: 'Up to four players on one page, with the same columns and the same position shading.',
+        use: 'put a client next to the players a program already values.',
+        links: [{ label: 'Compare', href: `/players/compare?ids=${player}&season=${season}` }],
+    },
+    {
+        id: 'fit',
+        title: 'The offense around him',
+        shows: 'Team Context on the player page, and each team page\'s profile, five factors and player tables.',
+        use: 'separate the player from the scheme, and read how a destination uses his position before a visit.',
+        links: [
+            { label: 'Team season', href: `/year/${season}/team/${team}` },
+            { label: 'Team history', href: `/team/${team}` },
+        ],
+    },
+    {
+        id: 'national',
+        title: 'Where he sits nationally',
+        shows: 'Season leaderboards by category, and a search for every player-season over a set of thresholds.',
+        use: 'build a short list of comparable players in seconds, from the same numbers a program sees.',
+        links: [
+            { label: 'Passing', href: `/year/${season}/players/passing` },
+            { label: 'Rushing', href: `/year/${season}/players/rushing` },
+            { label: 'Receiving', href: `/year/${season}/players/receiving` },
+            { label: 'Season search', href: '/search/seasons' },
+        ],
+    },
+    {
+        id: 'plain-english',
+        title: 'Plain English for families',
+        shows: 'Every metric is defined in the Glossary, and every page is free to open and share.',
+        use: 'send a family the link after a call, so the numbers mean the same thing at the kitchen table.',
+        links: [{ label: 'Glossary', href: '/glossary' }],
+    },
+];
+
+const title = 'Game on Paper for player representation';
+const subtitle = 'How agents can use the free site in conversations with programs, players and families.';
+---
+<GenericPage
+    title={title}
+    subtitle={subtitle}
+    slug="/for/agents"
+    heading={title}
+    description={subtitle}
+    breadcrumbs={[
+        { title: 'Home', url: '/', active: false },
+        { title: 'For agents', url: '/for/agents', active: true },
+    ]}
+>
+    <div class="container my-4">
+        <h1 class="fs-3">{title}</h1>
+        <p>
+            Game on Paper rates every play of every FBS game with EPA and success rate, then ranks each player against
+            his position. Three things that matter in a negotiation:
+        </p>
+        <ol id="agent-demo-points">
+            <li>A number a program cannot wave away: every stat ranked against his position group.</li>
+            <li>A development story: season by season, game by game, situation by situation.</li>
+            <li>Plain English for families: every metric defined, every page free to share.</li>
+        </ol>
+
+        <form class="row g-2 align-items-end my-3" method="get" id="agent-demo-form">
+            {carried.map((c) => <input type="hidden" name={c.name} value={c.value} />)}
+            <div class="col-auto">
+                <label class="form-label small mb-0" for="agent-demo-player">Player (ESPN id)</label>
+                <input class="form-control form-control-sm" id="agent-demo-player" name="player" value={player} inputmode="numeric" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0" for="agent-demo-season">Season</label>
+                <input class="form-control form-control-sm" id="agent-demo-season" name="season" value={season} inputmode="numeric" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0" for="agent-demo-team">Team (ESPN id)</label>
+                <input class="form-control form-control-sm" id="agent-demo-team" name="team" value={team} inputmode="numeric" />
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-sm btn-outline-secondary" type="submit">Update links</button>
+            </div>
+        </form>
+
+        <div class="row g-3">
+            {tour.map((t) => (
+                <div class="col-md-6 col-12">
+                    <div class="card h-100" id={`agent-demo-${t.id}`}>
+                        <div class="card-body">
+                            <h2 class="fs-6 card-title mb-2">{t.title}</h2>
+                            <p class="card-text mb-2">{t.shows}</p>
+                            <p class="card-text text-muted small mb-2">Use it to: {t.use}</p>
+                            <p class="small mb-0">{t.links.map((l, i) => <>{i > 0 && ', '}<a href={l.href}>{l.label}</a></>)}</p>
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+
+        <h2 class="fs-5 mt-4">What the numbers cover</h2>
+        <p id="agent-demo-coverage">
+            Usage and efficiency for players with the ball: quarterbacks, running backs, receivers and tight ends.
+            There are no individual grades for linemen or defensive backs, no athletic testing and no NIL market data.
+        </p>
+    </div>
+</GenericPage>
