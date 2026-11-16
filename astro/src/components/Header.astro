@@ -54,6 +54,10 @@ const switchHref = (lg: League) => carryAdminParams(leaguePath(lg, "/"), Astro.u
                             <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/passing`)}>Passing</a></li>
                             <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/rushing`)}>Rushing</a></li>
                             <li><a class="dropdown-item" href={lp(`/year/${METRIC_YEAR}/players/receiving`)}>Receiving</a></li>
+                            {/* behind the 'all-time-leaderboards' flag: middleware 404s the boards for everyone else */}
+                            {isFeatureEnabled("all-time-leaderboards", Astro.locals) && (
+                                <li><a class="dropdown-item" href={lp("/all-time/players/passing")}>All-Time</a></li>
+                            )}
                             {/* the coach boards are behind the 'coaches' flag: middleware 404s them for everyone else */}
                             {isFeatureEnabled("coaches", Astro.locals) && (
                                 <Fragment>

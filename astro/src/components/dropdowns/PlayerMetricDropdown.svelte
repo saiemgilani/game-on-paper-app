@@ -4,9 +4,11 @@
     import { LEAGUES, leaguePath } from "../../utils/league";
 
     // `league` is passed by the SSR page (Astro.locals.league); cfb default
-    // keeps every existing caller unchanged.
-    const { season, category, metric, league = 'cfb' } = $props()
+    // keeps every existing caller unchanged. `allTime` offers the all-time board
+    // (the 'all-time-leaderboards' flag, read by the page); a null season is that board.
+    const { season, category, metric, league = 'cfb', allTime = false } = $props()
     const seasons = LEAGUES[league].seasons;
+    const ALL_TIME = 'all-time';
 
     function onChangeSeason(e) {
         onChangeValue(e.target.value, category, metric)
@@ -21,7 +23,7 @@
     }
 
     function onChangeValue(s, c, m) {
-		window.location = leaguePath(league, `/year/${s}/players/${c}?sort=${m}`);
+		window.location = leaguePath(league, (s === ALL_TIME || s === null) ? `/all-time/players/${c}?sort=${m}` : `/year/${s}/players/${c}?sort=${m}`);
     }
 
 </script>
@@ -30,6 +32,9 @@
         <div class="col-lg-auto mb-3">
             <select class="form-select form-select-md" onchange={onChangeSeason}>
 				<option value="-1" disabled>Choose Season...</option>
+				{#if allTime}
+					<option value={ALL_TIME} selected={season == null}>All-time</option>
+				{/if}
 				{#each seasons as s}
 					<option value={s} selected={(season == s)}>{s}</option>
 				{/each}

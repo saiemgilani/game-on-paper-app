@@ -378,6 +378,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // distribution for the metrics team_summaries carries; its other metrics, and either page when the read
     // fails, keep the game ladder. Off: the ladder reads and today's charts, unchanged. Game pages keep the ladder.
     'team-season-bands': 'on',
+    // All-time player leaderboards (S17): /all-time/players/<category> and the /nfl twin,
+    // the top qualified player-seasons across every season the table has. Gated in
+    // middleware like 'coaches' (routes/allTime.ts isAllTimePath); the header entry, the
+    // season dropdown's All-time option and the sitemap block read the same flag.
+    'all-time-leaderboards': 'preview',
     // The team profile as a history hub (/team/<id> and the /nfl twin): Best Seasons, Head Coaches and,
     // CFB only, Conference History tables under Seasons. Only this path reads the team's
     // coach_tendencies rows; the other two pivot the team_summaries rows the page already reads.
