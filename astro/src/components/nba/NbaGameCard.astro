@@ -1,7 +1,8 @@
 ---
 // One scoreboard card: the football GameThumb's frame (same column classes, border, button)
 // with TeamRow for the two teams and basketball status copy. No possession, no red zone,
-// no linescore (the linescore lives on the game page).
+// no linescore (the linescore lives on the game page). The default slot (above the button) is the league hub's line row;
+// the scoreboard passes none, which renders nothing.
 import type { ESPNScheduleEvent } from '../../resources/espn';
 import TeamRow from '../schedule/TeamRow.astro';
 import { gameLeaders, hasEspnLogo, statusLine } from '../../nba/scoreboard';
@@ -55,6 +56,7 @@ const spice = basketballSpice({ state, period: rawStatus.period ?? 0, clock: raw
                     {homeLine && <span class="d-block">{cleanAbbreviation(home.team)}: {homeLine}</span>}
                 </p>
             )}
+            <slot />
             <div class="d-flex justify-content-between game-thumb-actions">
                 <a class="btn btn-sm btn-outline-primary" role="button" href={gameHref(league, game.id)}>{state === 'pre' ? 'Preview' : 'Stats'}</a>
             </div>

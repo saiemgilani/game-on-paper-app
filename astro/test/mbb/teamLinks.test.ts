@@ -12,9 +12,12 @@ describe('season-aware team links (D48, R8)', () => {
         expect(teamHrefFromEspn({ id: '17' }, 'nba', 2015)).toBe('/nba/team/1610612751'); // no currentMembers: the season is ignored
         expect(teamHrefFromEspn({ id: '999' }, 'nba', 2026)).toBeNull();
     });
-    test('college, the current season: members link with no query; Hartford (no 2026 conference row) is plain text', () => {
-        expect(teamHrefFromEspn({ id: '150' }, 'mbb', 2026)).toBe('/mbb/team/150');
-        expect(teamHrefFromEspn({ id: '42' }, 'mbb', 2026)).toBeNull();
+    test('college, the current season: members link with no query; Hartford (no 2027 conference row) is plain text', () => {
+        expect(teamHrefFromEspn({ id: '150' }, 'mbb', 2027)).toBe('/mbb/team/150');
+        expect(teamHrefFromEspn({ id: '42' }, 'mbb', 2027)).toBeNull();
+        expect(teamHrefFromEspn({ id: '2697' }, 'mbb', 2027)).toBe('/mbb/team/2697'); // West Florida, D-I from 2026-27 (BB-D29)
+        expect(teamHrefFromEspn({ id: '2598' }, 'mbb', 2027)).toBeNull();             // Saint Francis, D-I through 2025-26
+        expect(teamHrefFromEspn({ id: '150' }, 'mbb', 2026)).toBe('/mbb/team/150?season=2026'); // 2025-26 is a past season now
         expect(teamHrefFromEspn({ id: '42' }, 'mbb')).toBeNull();       // season omitted = the current season
         expect(teamHrefFromEspn({ id: '42' }, 'mbb', null)).toBeNull(); // a game whose header has no season
     });
@@ -32,7 +35,7 @@ describe('season-aware team links (D48, R8)', () => {
     test('R-P3: before 2019 a current member links its current page (no ?season=), anyone else is plain text', () => {
         expect(teamHrefFromEspn({ id: '150' }, 'mbb', 2015)).toBe('/mbb/team/150');
         expect(teamHrefFromEspn({ id: '150' }, 'mbb', 2018)).toBe('/mbb/team/150');
-        expect(teamHrefFromEspn({ id: '42' }, 'mbb', 2015)).toBeNull();   // Hartford: D-I then, not a 2026 member
+        expect(teamHrefFromEspn({ id: '42' }, 'mbb', 2015)).toBeNull();   // Hartford: D-I then, not a 2027 member
         expect(teamHrefFromEspn({ id: '2597' }, 'mbb', 2010)).toBeNull(); // St. Francis Brooklyn, departed
     });
 });

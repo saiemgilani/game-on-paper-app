@@ -17,6 +17,7 @@ import { FLAGS, isFeatureEnabled } from './utils/features';
 import { LEAGUES, PREFIXED_LEAGUES } from './utils/league';
 import { isCoachBoardPath } from './utils/coaches';
 import { isAllTimePath, isPlayerPath } from './utils/players';
+import { isStatSearchPath } from './utils/statSearch';
 
 const GAME_ID_RE = /\/game\/(\d+)/;
 
@@ -188,6 +189,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
   // The all-time player boards (/all-time/players/<category> and the /nfl twin): same gate.
   if (isAllTimePath(effectivePath) && !isFeatureEnabled('all-time-leaderboards', context.locals)) {
+    previewRewrite = '/404';
+  }
+  // The stat-threshold search (/search/seasons and the /nfl twin): same gate.
+  if (isStatSearchPath(effectivePath) && !isFeatureEnabled('stat-search', context.locals)) {
     previewRewrite = '/404';
   }
   // Game on Paper Pro: /pro/** and /pricing are one more 'preview' namespace. Past

@@ -6,11 +6,12 @@ import math
 from typing import Any
 
 import polars as pl
+from sportsdataverse.nba.nba_game_page import game_excitement
 
 PLAY_COLUMNS = [
     "id", "sequence_number", "game_play_number", "period_number", "clock_display_value",
     "start_game_seconds_remaining", "home_score", "away_score", "team_id", "text", "type_text",
-    "scoring_play", "score_value", "shooting_play", "athlete_id_1",
+    "scoring_play", "score_value", "shooting_play", "athlete_id_1", "athlete_id_2",
     "home_win_prob", "wp_delta", "wp_regime", "x_legacy", "y_legacy",
 ]
 
@@ -87,4 +88,24 @@ def build_payload(game_id: int, final: dict, frames: dict, regulation_periods: i
             "away": _rows(players.filter(pl.col("team_id") == int(away["id"]))),
         },
         "plays": _rows(frames["pbp"], PLAY_COLUMNS),
+        # sdv-py BB-D28 on the same WP series as `plays`: {gei, lead_changes, max_swing_pts, completed}.
+        # Additive; the page reads it only under the 'bball-gei' flag (NbaWinProbability.astro).
+        "excitement": game_excitement(
+            frames["pbp"], league=frames["league"], regulation_periods=frames["regulation_periods"]
+        ),
+        # sdv-py BB-D31, counted from the plays (live too): each side's team split row (null before the tip) and its
+        # players' split rows. Additive; the page reads the team rows only under 'bball-team-grid' (BB-G32).
+        "splits": {
+            ha: {
+                "team": next(iter(_rows(frames["team_game_splits"].filter(pl.col("team_id") == int(side["id"])))), None),
+                "players": _rows(frames["player_game_splits"].filter(pl.col("team_id") == int(side["id"]))),
+            }
+            for ha, side in (("home", home), ("away", away))
+        },
+        # sdv-py BB-D40 on the same plays: each side's team_game_expected row (null before the tip); its expected
+        # columns are null when the league's shot cells could not be read. Read only under 'bball-situational-box'.
+        "expected": {
+            ha: next(iter(_rows(frames["team_game_expected"].filter(pl.col("team_id") == int(side["id"])))), None)
+            for ha, side in (("home", home), ("away", away))
+        },
     }

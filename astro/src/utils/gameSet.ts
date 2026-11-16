@@ -1,6 +1,8 @@
 import { DateTime } from 'luxon';
 import type { SDVGame, SDVTeamOpponentSplit } from '../resources/sdv';
+import { LEAGUES, type League } from './league';
 import { cleanTextForTeam, numberOrNull, type MetricFormat } from './misc';
+import { rankIn } from './teamSplits';
 
 /**
  * A team-season's games from `{league}.team_opponent_splits`, one row per
@@ -137,4 +139,123 @@ export function opponentAverages(splits: GameSplits, metric: GameMetric): { raw:
  */
 export function averageAxisBounds(average: number | null): { suggestedMin: number, suggestedMax: number } {
     return { suggestedMin: Math.min(0, average ?? 0), suggestedMax: Math.max(0, average ?? 0) };
+}
+
+// ---- game sets ('game-set-filter') ------------------------------------------
+// The Team Stats panel on the season team page: the team's line over a subset
+// of its games (`?games=`), ranked against the same subset of every other
+// team's games. Everything is summed from team_opponent_splits rows: rates are
+// weighted by plays (aggregateGames), wins and losses are the rows' points,
+// "last 4" is season type then week. Conference games and FBS opponents come
+// from the season's team_summaries membership (team -> conference), so the
+// team and its rank population are cut by one rule.
+
+export const GAME_SETS = [
+    { key: 'all', label: 'All Games' },
+    { key: 'conf', label: 'Conference Games' },
+    { key: 'nofcs', label: 'vs FBS', leagues: ['cfb'] },
+    { key: 'home', label: 'Home' },
+    { key: 'away', label: 'Away' },
+    { key: 'wins', label: 'Wins' },
+    { key: 'losses', label: 'Losses' },
+    { key: 'last4', label: 'Last 4 Games' },
+] as const satisfies readonly { key: string, label: string, leagues?: readonly League[] }[];
+export type GameSet = (typeof GAME_SETS)[number]['key'];
+
+const inLeague = (s: (typeof GAME_SETS)[number], league: League) => !('leagues' in s) || (s.leagues as readonly League[]).includes(league);
+
+/** The `?games=` value as a set this league offers; anything else is `all`. */
+export function gameSetOf(param: string | null | undefined, league: League): GameSet {
+    return GAME_SETS.find((s) => s.key === param && inLeague(s, league))?.key ?? 'all';
+}
+
+/** team_id -> conference for the season's FBS (or NFL) teams: the rank population. */
+export type SeasonTeams = Map<string, string | null>;
+export function seasonTeams(rows: { team_id?: unknown, conference?: unknown }[]): SeasonTeams {
+    return new Map(rows.filter((r) => r.team_id !== null && r.team_id !== undefined)
+        .map((r) => [String(r.team_id), typeof r.conference === 'string' && r.conference ? r.conference : null]));
+}
+
+// ponytail: CFB's independents share one team_summaries value ("FBS Independents"),
+// which is not a conference; a membership flag on the row would replace this test
+const conferenceOf = (teams: SeasonTeams, id: unknown) => {
+    const c = teams.get(String(id));
+    return c && !/independent/i.test(c) ? c : null;
+};
+
+// the rows carry no kickoff: season type, then week. The postseason is all
+// week 1 and its game ids are not in kickoff order, but no team plays more
+// than four postseason games, so which four are last never depends on the tie
+const byWeek = (a: SDVTeamOpponentSplit, b: SDVTeamOpponentSplit) =>
+    (a.season_type - b.season_type) || (a.week - b.week) || (a.game_id - b.game_id);
+
+/** One team's rows (`team_opponent_splits`, team side) cut to a game set. */
+export function applyGameSet(rows: SDVTeamOpponentSplit[], set: GameSet, teams: SeasonTeams): SDVTeamOpponentSplit[] {
+    const pf = (r: SDVTeamOpponentSplit) => numberOrNull(r.points_for), pa = (r: SDVTeamOpponentSplit) => numberOrNull(r.points_against);
+    switch (set) {
+        // regular season only: a CFP game between two members is not a conference game
+        case 'conf': return rows.filter((r) => r.season_type === 2 && conferenceOf(teams, r.team_id) !== null && conferenceOf(teams, r.team_id) === conferenceOf(teams, r.opponent_id));
+        case 'nofcs': return rows.filter((r) => teams.has(String(r.opponent_id)));
+        case 'home': return rows.filter((r) => r.is_home === true);
+        case 'away': return rows.filter((r) => r.is_home === false);
+        case 'wins': return rows.filter((r) => pf(r) !== null && pa(r) !== null && pf(r)! > pa(r)!);
+        case 'losses': return rows.filter((r) => pf(r) !== null && pa(r) !== null && pf(r)! < pa(r)!);
+        case 'last4': return rows.toSorted(byWeek).slice(-4);
+        default: return rows;
+    }
+}
+
+/** The panel's columns; points are per game, and fewer points allowed is better. */
+export const GAME_SET_COLUMNS = [
+    { key: 'epa_per_play', label: 'Off EPA/Play', format: 'num2', lowerIsBetter: false },
+    { key: 'success_rate', label: 'Off Success Rate', format: 'pct', lowerIsBetter: false },
+    { key: 'points_for', label: 'Points For', format: 'num1', lowerIsBetter: false },
+    { key: 'points_against', label: 'Points Against', format: 'num1', lowerIsBetter: true },
+] as const;
+export type GameSetColumn = (typeof GAME_SET_COLUMNS)[number]['key'];
+export type GameSetLine = { games: number } & Record<GameSetColumn, number | null>;
+
+/** A set of games as one line: rates weighted by plays, points per game over the games that have a score. */
+export function gameSetLine(rows: SDVTeamOpponentSplit[]): GameSetLine {
+    const perGame = (key: 'points_for' | 'points_against') => {
+        const pts = rows.map((r) => numberOrNull(r[key])).filter((v): v is number => v !== null);
+        return pts.length > 0 ? pts.reduce((s, v) => s + v, 0) / pts.length : null;
+    };
+    const { games, epa_per_play, success_rate } = aggregateGames(rows);
+    return { games, epa_per_play, success_rate, points_for: perGame('points_for'), points_against: perGame('points_against') };
+}
+
+export interface GameSetTable {
+    set: GameSet;
+    /** the sets this team has at least one game in, `all` first: the select's options */
+    sets: GameSet[];
+    line: GameSetLine;
+    /** 1 is best; null when the team is outside the population (or has no value) */
+    ranks: Record<GameSetColumn, number | null>;
+    /** teams in the population with a game in this set: the ranks' scale */
+    ranked: number;
+    /** who they are: "FBS" / "NFL", or the conference for conference games */
+    pool: string;
+}
+
+/**
+ * The Team Stats panel for one team: its line over `set`, ranked against the
+ * season's FBS (NFL) teams over the same set, or its conference's teams for
+ * conference games. `season` is every team-game row of the season; `teams`
+ * the season's team -> conference map. A set the team has no game in falls
+ * back to `all`, so a shared link never renders an empty table.
+ */
+export function gameSetTable(season: SDVTeamOpponentSplit[], teams: SeasonTeams, teamId: string, requested: GameSet, league: League): GameSetTable {
+    const byTeam = Map.groupBy(season, (r) => String(r.team_id));
+    const own = byTeam.get(teamId) ?? [];
+    const sets = GAME_SETS.filter((s) => inLeague(s, league) && (s.key === 'all' || applyGameSet(own, s.key, teams).length > 0)).map((s) => s.key);
+    const set = sets.includes(requested) ? requested : 'all';
+    const conference = set === 'conf' ? conferenceOf(teams, teamId) : null;
+    const population = [...teams.keys()].filter((id) => set !== 'conf' || conferenceOf(teams, id) === conference);
+    const lines = population.map((id) => gameSetLine(applyGameSet(byTeam.get(id) ?? [], set, teams))).filter((l) => l.games > 0);
+    const line = gameSetLine(applyGameSet(own, set, teams));
+    const ranked = teams.has(teamId);
+    const ranks = Object.fromEntries(GAME_SET_COLUMNS.map((c) => [c.key,
+        ranked ? rankIn(line[c.key], lines.map((l) => l[c.key]), c.lowerIsBetter ? 'def' : 'off') : null])) as Record<GameSetColumn, number | null>;
+    return { set, sets, line, ranks, ranked: lines.length, pool: conference ?? LEAGUES[league].pool };
 }

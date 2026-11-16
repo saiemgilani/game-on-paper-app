@@ -1,0 +1,44 @@
+---
+/**
+ * Scout Pack index: every FBS team with a pack this week, from `pro/<season>/teams/index.json`
+ * (gop-pro scout.py). Pro and Program only; middleware has checked the tier.
+ */
+import GenericPage from '../../../layouts/GenericPage.astro';
+import ProNav from '../../../components/pro/ProNav.astro';
+import { cleanTextForTeam } from '../../../utils/misc';
+import { PRO_SEASON, proObject } from '../../../resources/pro';
+
+interface ScoutIndex {
+    season: number; week: number; snapshot: string; rendered: string
+    teams: { team_id: number; team: string; opponent_id: number | null; opponent: string | null }[]
+}
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
+const index = await proObject<ScoutIndex>(`pro/${PRO_SEASON}/teams/index.json`);
+const teams = [...(index?.teams ?? [])].sort((a, b) => a.team.localeCompare(b.team));
+---
+<GenericPage title="Scout Pack | Game on Paper Pro" subtitle={`${PRO_SEASON} Scout Pack`} slug="/pro/teams"
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Scout Pack', active: true }]} heading="Scout Pack">
+    <ProNav active="teams" />
+    <div class="container mb-4">
+        <h1 class="fs-3">Scout Pack</h1>
+        <p>
+            Each team's next opponent, unit by unit, beside its own offense and defense, with the opponent's play-calling by down
+            and distance and a self-scout of your own. Refreshed every week of the season; each pack downloads as a PDF.
+        </p>
+        {!index
+            ? <p class="text-muted" id="pro-teams-unavailable">Scout Packs are unavailable right now.</p>
+            : (
+            <Fragment>
+                <p class="text-muted text-small">{index.season} through week {index.week}, rendered {index.rendered}.</p>
+                <div class="row" id="pro-teams">
+                    {teams.map((t) => (
+                        <div class="col-lg-3 col-md-4 col-6 mb-1">
+                            <a href={`/pro/teams/${t.team_id}`}>{cleanTextForTeam(t.team, t.team_id)}</a>
+                            <span class="text-muted text-small"> {t.opponent_id === null ? 'bye' : `next: ${cleanTextForTeam(t.opponent ?? '', t.opponent_id)}`}</span>
+                        </div>
+                    ))}
+                </div>
+            </Fragment>
+            )}
+    </div>
+</GenericPage>

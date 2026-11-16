@@ -40,7 +40,7 @@ describe('D-I membership by season (plan #6 TeamModule members)', () => {
         expect(OTHER.map((r) => r.id)).toEqual([2113, 2542, 2597]);
         expect(mbbTeamInSeason(2697, 2027)?.tricode).toBe('UWF');
         expect(mbbTeamInSeason(2697, 2026)).toBeUndefined();
-        expect(mbbSeasonsOf(2697)).toEqual([]); // clamped to MBB_LAST_KNOWN_SEASON (2026) until the 2026-27 dashboards roll, as wbbSeasonsOf
+        expect(mbbSeasonsOf(2697)).toEqual([2027]); // clamped to MBB_LAST_KNOWN_SEASON, 2027 since BB-D29 rolled the dashboards to 2026-27
         // hoopR-mbb-data's 2023 schedule (its last D-I season) spells St. Francis Brooklyn SFBK, as ESPN's team endpoint does
         expect(mbbTeamInSeason(2597, 2023)!.tricode).toBe('SFBK');
         expect(mbbTeamInSeason(2597, 2024)).toBeUndefined();             // left D-I after 2023
@@ -55,8 +55,8 @@ describe('D-I membership by season (plan #6 TeamModule members)', () => {
         expect(mbbFranchiseOf('NOPE')).toBeUndefined();
     });
     test('seasonsOf (R3): the 366 list every season, a departed program its measured D-I seasons, an unknown id none', () => {
-        expect(mbbSeasonsOf(150)).toEqual(span(2003, 2026));
-        expect(mbbSeasonsOf(42)).toEqual(span(2003, 2026));
+        expect(mbbSeasonsOf(150)).toEqual(span(2003, 2027));
+        expect(mbbSeasonsOf(42)).toEqual(span(2003, 2027));
         for (const r of OTHER) expect(mbbSeasonsOf(r.id), String(r.id)).toEqual(span(r.first, r.last));
         expect(mbbSeasonsOf(2113)).toEqual([2008, 2009, 2010, 2011]); // Centenary
         expect(mbbSeasonsOf(2476)).toBeUndefined();

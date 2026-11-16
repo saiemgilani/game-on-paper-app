@@ -1,0 +1,62 @@
+---
+/**
+ * One team's player section on the v2 game page: the advanced box, usage box
+ * and the passing / rushing charts.
+ *
+ * With `spans` (the 'player-quarter-filter' flag), the section gets the Team
+ * Stats panel's "Show only" select (SituationalSection.svelte): same label,
+ * same options in the same order, and each window is pre-rendered from its
+ * `advBoxScoreSpans` box and that window's plays, all but "Game" `hidden`.
+ * PlayerSpanSelect's module script flips `hidden`, so the components stay SSR
+ * Astro and no island props are added.
+ * Without `spans` it renders exactly what the page rendered before the flag.
+ */
+import type { ProcessedBoxScore } from '../../../resources/python';
+import { parseSpan } from '../../../utils/span';
+import PlayerBoxScore from './PlayerBoxScore.astro';
+import UsageBoxScore from './UsageBoxScore.astro';
+import PassingChart from './PassingChart.astro';
+import RushingChart from './RushingChart.astro';
+import PlayerSpanSelect from './PlayerSpanSelect.astro';
+
+interface Props {
+    box: Partial<ProcessedBoxScore>,
+    plays: any[],
+    teamId: number,
+    season?: number,
+    /** game.advBoxScoreSpans; omit for the unfiltered section */
+    spans?: Record<string, Partial<ProcessedBoxScore>> | null,
+}
+const { box, plays, teamId, season, spans } = Astro.props;
+
+// the same list the Team Stats select builds: the payload's key order, known spans only
+const windows = [
+    { key: 'all', label: 'Game', box, plays },
+    ...Object.keys(spans ?? {}).map(parseSpan).filter((s) => !!s).map((s) => ({
+        key: s!.key, label: s!.label, box: spans![s!.key] ?? {}, plays: plays.filter((p) => s!.test(p)),
+    })),
+];
+const rowsOf = (b: Partial<ProcessedBoxScore>, k: keyof ProcessedBoxScore, key = 'pos_team') =>
+    ((b[k] as any[] | undefined) ?? []).filter((g: any) => g[key] == teamId);
+---
+{spans && <PlayerSpanSelect id={`span-players-${teamId}`} windows={windows} />}
+{windows.map((w) => (
+<div class="row" data-player-span={spans ? w.key : undefined} hidden={w.key !== 'all'}>
+    <PlayerBoxScore
+        pass={rowsOf(w.box, 'pass')}
+        rush={rowsOf(w.box, 'rush')}
+        receiver={rowsOf(w.box, 'receiver')}
+        kickers={rowsOf(w.box, 'st_kickers')}
+        punters={rowsOf(w.box, 'st_punters')}
+        blocks={rowsOf(w.box, 'st_blocks', 'def_pos_team')}
+        returners={rowsOf(w.box, 'st_returners')}
+        plays={w.plays}
+        teamId={teamId}
+        box={w.box}
+        season={season}
+    />
+    <UsageBoxScore box={w.box} teamId={teamId} season={season} />
+    <PassingChart plays={w.plays.filter(p => p.pos_team == teamId)} />
+    <RushingChart plays={w.plays.filter(p => p.pos_team == teamId)} />
+</div>
+))}

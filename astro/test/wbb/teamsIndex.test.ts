@@ -10,6 +10,13 @@ import { teamLinesFromRows, teamsFromSeasonRows } from '../../src/nba/tables';
 import { WBB_CONFERENCES } from '../../src/nba/data/wbbTeams';
 import { SC, conferenceNames, conferences, coverage, scheduleTeams, seasonPlayers, unlinkedPrograms } from './dashboardFixtures';
 
+// No live Data API (test/helpers/networkGuard.ts): the reads left unmocked, the /v1/meta
+// ingest stamp and the unlinked programs' shot_rows among them, get an empty answer.
+vi.mock('../../src/utils/telemetry', async (orig) => ({
+    ...(await orig<typeof import('../../src/utils/telemetry')>()),
+    wrappedFetch: async () => new Response('{"data":[]}', { status: 200 }),
+}));
+
 const members = (season: 2019 | 2026) => withSeasonMembers(teamsFromSeasonRows(seasonPlayers(season), season, 'wbb'), conferences(season), scheduleTeams(season), season, 'wbb');
 const ids = (season: 2019 | 2026) => new Set(conferences(season).map((r) => Number(r.team_id)));
 let container: AstroContainer;
@@ -96,6 +103,7 @@ describe('the teams loader (plan #9\'s, on WBB)', () => {
             retrieveCoverageRows: async () => coverage(),
             retrieveConferenceRows: async () => { if (fail) throw new Error('down'); return { teams: conferences(2026), groups: conferenceNames(2026) }; },
             retrieveScheduleTeamRows: async () => scheduleTeams(2026),
+            retrieveTeamShots: async () => [], // the members without a season-player line: no shots, so they keep the dash
         }));
         const { prepareBasketballTeams } = await import('../../src/routes/basketball/teams');
         const astro = () => ({ params: {}, url: new URL('https://gameonpaper.com/wbb/teams'), locals: {} as any, cache: { set: () => {} }, response: { headers: new Headers() } } as any);

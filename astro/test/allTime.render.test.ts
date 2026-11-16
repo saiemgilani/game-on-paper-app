@@ -27,11 +27,12 @@ async function render(lg: 'cfb' | 'nfl', metric = 'TEPA') {
     return container.renderToString(Page, {
         props: { category: 'passing', metric, rows: failed ? null : lg === 'nfl' ? fx.nfl_passing : fx.cfb_passing, stamp: null },
         request: new Request(`https://gameonpaper.com${lg === 'nfl' ? '/nfl' : ''}/all-time/players/passing`),
-        locals: { league: lg, preview: true },
+        locals: { league: lg, preview: true } as App.Locals,
     });
 }
 
-const bodyRows = (html: string) => html.split('<tr').filter((r) => r.includes('<td'));
+// the board's rows only: each opens with its Rk cell (the page also carries other tables, e.g. a legend)
+const bodyRows = (html: string) => html.split('<tr').filter((r) => r.startsWith('><td class="text-right'));
 
 describe('all-time passing, cfb', () => {
     test('states its span, first season to METRIC_YEAR', async () => {
@@ -97,7 +98,7 @@ describe('the season board', () => {
         const at = (preview: boolean) => container.renderToString(Page, {
             props: { season: 2025, category: 'passing', metric: 'TEPA' },
             request: new Request('https://gameonpaper.com/year/2025/players/passing'),
-            locals: { league: 'cfb', preview },
+            locals: { league: 'cfb', preview } as App.Locals,
         });
         expect(await at(false)).not.toContain('value="all-time"');
         expect(await at(true)).toMatch(/<option value="all-time"[^>]*>All-time<\/option>/);
@@ -108,7 +109,7 @@ describe('the season board', () => {
         const html = await container.renderToString(Page, {
             props: { season: 2025, category: 'passing', metric: 'TEPA' },
             request: new Request('https://gameonpaper.com/year/2025/players/passing'),
-            locals: { league: 'cfb', preview: false },
+            locals: { league: 'cfb', preview: false } as App.Locals,
         });
         expect(html).toContain('<astro-island');
         expect(html).not.toContain('allTime');
