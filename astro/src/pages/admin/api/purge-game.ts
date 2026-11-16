@@ -26,7 +26,9 @@ const KNOWN_TAGS = new Set(['game-completed', 'game-in-progress', 'game-schedule
     // the /trends, /charts/* and /teams, /players route rules (astro.config.mjs)
     'charts', 'leaderboards',
     // every share card (routes/shareCard.ts caches each under it)
-    'share-card']);
+    'share-card',
+    // /sitemap-index.xml and the player sitemaps, after a flag promotion changes what they list
+    'sitemap']);
 
 export const GET: APIRoute = async (context) => purge(context);
 export const POST: APIRoute = async (context) => purge(context);
