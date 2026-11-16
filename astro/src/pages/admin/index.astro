@@ -86,6 +86,8 @@ const subtitle = "Operational dashboards for Game on Paper";
     <div class="card twrap"><table class="table table-sm mb-0" id="t-watchlist"></table></div>
     <h6 class="admin-label">Regression-guard marks (KV high-water; a stale mark renders that page uncached on every request)</h6>
     <div class="card twrap"><table class="table table-sm mb-0" id="t-guards"></table></div>
+    <h6 class="admin-label">Source overrides (pinned until removed; honoured where source-switch is on. Pin one from the game page's admin tools)</h6>
+    <div class="card twrap"><table class="table table-sm mb-0" id="t-overrides"></table></div>
     <h6 class="admin-label">Games with activity · last 30 min (click a row for page detail)</h6>
     <div class="card twrap"><table class="table table-sm mb-0" id="t-games"></table></div>
     <div id="page-detail"></div>
@@ -366,10 +368,16 @@ const subtitle = "Operational dashboards for Game on Paper";
     document.getElementById('asof').textContent = new Date().toLocaleTimeString() + ' · refresh 45s';
   }
 
+  type OverrideList = { ok?: boolean; error?: string; truncated?: boolean;
+    overrides?: { league: string; game_id: string; source?: string; actor?: string; set_at?: string }[] };
+  type OverrideWrite = { ok?: boolean; error?: string; purged?: boolean };
   async function refreshGames() {
-    const [d, guards] = await Promise.all([
+    const [d, guards, pins] = await Promise.all([
       api('games'),
       fetch('/admin/api/guards').then((r) => r.json()).catch(() => ({ marks: [] })),
+      // an unreadable list is an error row, never an empty table: no pins and a KV outage must not look alike
+      fetch('/admin/api/source-override').then((r) => r.json() as Promise<OverrideList>)
+        .catch((): OverrideList => ({ ok: false, error: 'request failed' })),
     ]);
     const markBy = Object.fromEntries((guards.marks ?? []).map((m) => [String(m.game_id), m]));
     table('t-watchlist', ['Game', 'Score', 'Status', 'Req 30m', 'Render', 'Cache intent', 'ESPN fetch', 'DQ lints', 'Guard'],
@@ -399,6 +407,25 @@ const subtitle = "Operational dashboards for Game on Paper";
           const j = await r.json().catch(() => ({}));
           if (!r.ok || j.ok !== true) throw new Error(j.error ?? r.status);
           b.textContent = 'Reset ✓';
+        } catch { b.textContent = 'Failed'; b.disabled = false; }
+      }));
+    const pinNote = pins.ok !== true ? `list unavailable: ${esc(pins.error ?? 'unknown error')}`
+      : pins.truncated ? 'list truncated at the first 2000 pins' : '';
+    table('t-overrides', ['Game', 'League', 'Source', 'Set by', 'Set at', ''],
+      (pinNote ? [{ cells: [`<span class="pill crit">${pinNote}</span>`, '', '', '', '', ''] }] : []).concat((pins.overrides ?? []).map((o) => ({ cells: [
+        `<a href="${o.league === 'nfl' ? '/nfl' : ''}/game/${esc(o.game_id)}" target="_blank"><span class="mono">${esc(o.game_id)}</span></a>`,
+        esc(o.league), `<span class="mono">${esc(o.source ?? '?')}</span>`, esc(o.actor ?? '—'),
+        o.set_at ? esc(new Date(o.set_at).toLocaleString()) : '—',
+        `<button class="btn btn-sm btn-outline-danger" data-override-league="${esc(o.league)}" data-override-id="${esc(o.game_id)}" title="Remove the pin and purge the page">Remove</button>`] }))));
+    document.querySelectorAll<HTMLButtonElement>('#t-overrides [data-override-id]').forEach((b) =>
+      b.addEventListener('click', async () => {
+        b.disabled = true;
+        try {
+          const r = await fetch('/admin/api/source-override', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ league: b.dataset.overrideLeague, id: b.dataset.overrideId, source: null }) });
+          const j: OverrideWrite = await (r.json() as Promise<OverrideWrite>).catch(() => ({}));
+          if (!r.ok || j.ok !== true) throw new Error(j.error ?? String(r.status));
+          b.textContent = j.purged === false ? 'Removed; purge failed' : 'Removed ✓';
         } catch { b.textContent = 'Failed'; b.disabled = false; }
       }));
     const fetchBy = Object.fromEntries(d.lastFetch.map((f) => [f.game_id, f]));

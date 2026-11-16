@@ -29,6 +29,8 @@ import { CURRENT_YEAR, METRIC_YEAR } from '../utils/constants';
 import { CARD_MAX_AGE, CARD_STATES, CARD_VARIANTS, cardCacheControl, cardLogoUrl, cardState, type CardState, type CardVariant } from '../utils/shareTags';
 import type { League } from '../utils/league';
 import { safeCachePut } from '../utils/misc';
+import { isFeatureEnabled } from '../utils/features';
+import { gameSource } from '../utils/sourceOverride';
 
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
@@ -52,9 +54,14 @@ async function projection(header: any, league: League) {
     return margin == null ? undefined : { margin, homeWinProb: calculatePredictedWinProb(margin, league) };
 }
 
-/** A played card's KV key: per game, state, variant and deploy (a new renderer redraws every card). */
-export function cardKey(league: League, id: string | number, state: CardState, variant: CardVariant): string {
-    return `card:${league === 'cfb' ? '' : `${league}:`}${id}:${state}:${variant}:${APP_VERSION}`;
+/**
+ * A played card's KV key: per game, state, variant and deploy (a new renderer redraws every card),
+ * and per source when it was drawn from one other than ESPN (an admin's `?source=` or a pin,
+ * utils/sourceOverride.ts), so a card from one feed is never served for another. The ESPN key is
+ * unchanged.
+ */
+export function cardKey(league: League, id: string | number, state: CardState, variant: CardVariant, source?: string): string {
+    return `card:${league === 'cfb' ? '' : `${league}:`}${id}:${state}:${variant}:${APP_VERSION}${source ? `:${source}` : ''}`;
 }
 
 /** The card kept in KV, or null on a miss or any KV failure (fail-open: the route draws one). */
@@ -79,14 +86,14 @@ function cardLogos(league: League, header: any) {
  * minute, not per viewer: a key already in KV is never redrawn. `header` is ESPN's; a processed
  * game in another state (the page's cache lags a transition) is skipped, as the route skips it.
  */
-export async function warmShareCards(id: string | number, league: League, header: any, game: ProcessedGame): Promise<void> {
+export async function warmShareCards(id: string | number, league: League, header: any, game: ProcessedGame, source?: string): Promise<void> {
     try {
         const state = cardState(header.competitions[0].status);
         const page = cardPage(game);
         if (state === 'pre' || page.state !== state) return;
         const logos = cardLogos(league, header);
         await Promise.all(CARD_VARIANTS.map(async (variant) => {
-            const key = cardKey(league, id, state, variant);
+            const key = cardKey(league, id, state, variant, source);
             if (await keptCard(key)) return;
             const png = await retrieveShareCard(id, league, state, variant, undefined, logos, page);
             if (png) await safeCachePut(env.ESPN_API_CACHE, key, png, CARD_MAX_AGE[state]);
@@ -97,7 +104,7 @@ export async function warmShareCards(id: string | number, league: League, header
 }
 
 export function shareCardRoute(league: League): APIRoute {
-    return async ({ params, url, cache }: APIContext) => {
+    return async ({ params, url, cache, locals }: APIContext) => {
         const id = params.id ?? '';
         const asked = url.searchParams.get('state');
         const variant = (url.searchParams.get('variant') ?? 'full') as CardVariant;
@@ -109,7 +116,10 @@ export function shareCardRoute(league: League): APIRoute {
         if (!header?.competitions?.[0]) return new Response('Not found', { status: 404, headers: NO_STORE });
 
         const state = cardState(header.competitions[0].status);
-        const key = state === 'pre' ? null : cardKey(league, id, state, variant);
+        // the game's pinned source, as the page reads it (utils/sourceOverride.ts): it picks the kept
+        // card and the processed game, so the card shows the feed the page shows
+        const source = state === 'pre' ? undefined : await gameSource(league, id, isFeatureEnabled('source-switch', locals));
+        const key = state === 'pre' ? null : cardKey(league, id, state, variant, source);
         const kept = key ? await keptCard(key) : null;
         if (kept) return cardResponse(kept, state, !guarded.regressed, cache);
 
@@ -118,7 +128,8 @@ export function shareCardRoute(league: League): APIRoute {
         // same cache entry, same TTL as the page), so it costs the API drawing, not a second
         // play-by-play run.
         const comp = header.competitions[0];
-        const page = state === 'pre' ? null : await retrieveCardPage(id, league, getGameCacheConfig(comp.date, comp.status).maxAge || 30);
+        // `true`: the card route reads no `?source=`, so any source here is a pin
+        const page = state === 'pre' ? null : await retrieveCardPage(id, league, getGameCacheConfig(comp.date, comp.status).maxAge || 30, source, true);
         const png = await retrieveShareCard(id, league, state, variant, state === 'pre' ? await projection(header, league) : undefined, logos, page);
         if (!png) return new Response('Card unavailable', { status: 502, headers: NO_STORE });
 

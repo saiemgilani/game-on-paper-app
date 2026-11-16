@@ -25,6 +25,8 @@ const KNOWN_TAGS = new Set(['game-completed', 'game-in-progress', 'game-schedule
     'season', 'team', 'teams-index',
     // the /trends, /charts/* and /teams, /players route rules (astro.config.mjs)
     'charts', 'leaderboards',
+    // every share card (routes/shareCard.ts caches each under it)
+    'share-card',
     // /sitemap-index.xml and the player sitemaps, after a flag promotion changes what they list
     'sitemap']);
 
@@ -63,6 +65,10 @@ async function purge(context: Parameters<APIRoute>[0]): Promise<Response> {
             // which: purging the other league's path and mark is a harmless miss.
             await context.cache.invalidate({ path: `/game/${id}` });
             await context.cache.invalidate({ path: `/nfl/game/${id}` });
+            // and its share card, which caches for up to a year once final: a re-purge
+            // after a source pin changes (utils/sourceOverride.ts) has to reach it too
+            await context.cache.invalidate({ path: `/game/${id}/card.png` });
+            await context.cache.invalidate({ path: `/nfl/game/${id}/card.png` });
             // A forced refresh also resets the regression guard's high-water mark:
             // a stale or inflated mark makes every honest payload "regress", which
             // renders the page uncached on every request.
