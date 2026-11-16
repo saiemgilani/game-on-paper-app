@@ -5,7 +5,7 @@
  */
 import type { AstroGlobal } from 'astro';
 import { retrieveTeamInformation, type ESPNTeam } from '../resources/espn';
-import { retrievePercentiles, retrieveTeamSeasonPercentiles, retrieveTeamSummaries, type SDVSeasonPercentile, type SDVTeamSeasonBand, type SDVTeamSummary } from '../resources/sdv';
+import { retrievePercentiles, retrieveTeamCoachSeasons, retrieveTeamSeasonPercentiles, retrieveTeamSummaries, type SDVCoachTendency, type SDVSeasonPercentile, type SDVTeamSeasonBand, type SDVTeamSummary } from '../resources/sdv';
 import { isFeatureEnabled } from '../utils/features';
 import type { League } from '../utils/league';
 
@@ -18,6 +18,8 @@ export interface TeamProfileData {
     teamSummaries: SDVTeamSummary[];
     /** 'team-season-bands' */
     seasonBands: boolean;
+    /** 'team-hub': the team's head-coach seasons; `null` when the read failed; absent with the flag off (no read) */
+    coachSeasons?: SDVCoachTendency[] | null;
 }
 
 export type TeamProfileResult = { notFound: true } | TeamProfileData;
@@ -52,6 +54,16 @@ export async function loadTeamProfile(Astro: AstroGlobal, league: League): Promi
         }
         percentiles = ladder;
     }
-    const teamSummaries = await retrieveTeamSummaries({ team_id: Number(id), league });
-    return { league, id, team, percentiles, teamSummaries, seasonBands };
+    const hub = isFeatureEnabled('team-hub', Astro.locals);
+    const [teamSummaries, coachSeasons] = await Promise.all([
+        retrieveTeamSummaries({ team_id: Number(id), league }),
+        hub ? retrieveTeamCoachSeasons({ team_id: id, league }) : undefined,
+    ]);
+    // A failed coach read renders the page without Head Coaches; that render must not be cached as the
+    // page. set(false) alone emits no header (heuristic ~2 h cache, routes/game.ts), so opt out explicitly.
+    if (hub && coachSeasons === null) {
+        Astro.cache.set(false);
+        Astro.response.headers.set('Cache-Control', 'no-store');
+    }
+    return { league, id, team, percentiles, teamSummaries, seasonBands, ...(hub ? { coachSeasons } : {}) };
 }

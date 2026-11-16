@@ -4,12 +4,50 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
+// BB-G15's points over expected reads the Data API with 'bball-poe' on (preview): never from a test
+// BB-G51's Shot profile reads the Data API with 'bball-shot-profile' on (preview): never from a test
+vi.mock('../../src/resources/shotZones', async (orig) => ({ ...(await orig<typeof import('../../src/resources/shotZones')>()), retrievePlayerShotZones: async () => [], retrieveTeamPlayerShotZones: async () => [], retrieveTeamShotZones: async () => ({ zones: null, rates: [] }), retrieveSeasonFt: async () => null }));
+vi.mock('../../src/resources/shotQuality', () => ({ retrieveGameShotQuality: async () => [], retrieveTeamShotQuality: async () => [], retrievePlayerShotQuality: async () => [] }));
+// BB-G17's play-style chips read the Data API with 'bball-play-styles' on (preview): never from a test (no row: no chip)
+vi.mock('../../src/resources/playStyles', async (orig) => ({ ...(await orig<typeof import('../../src/resources/playStyles')>()), retrievePlayerPlayStyle: async () => [], retrieveTeamPlayStyle: async () => [] }));
 import { parseTable, text } from '../helpers/tables';
 import { apiSeasonPlayerRows } from './rows';
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/nba/${name}.json`, import.meta.url)).toString());
 const oracle = read('league_context');
 const shots = read('shots') as any[];
+// BB-G52's lineup shot chart reads the Data API with 'bball-lineup-shotchart' on (preview): never from a test
+// the real rows of three Nets games (fixtures/lineup-shots.json.gz), by side
+vi.mock('../../src/resources/lineupShots', async () => {
+    const { gunzipSync } = await import('node:zlib');
+    const fx = JSON.parse(gunzipSync(readFileSync(new URL('../fixtures/lineup-shots.json.gz', import.meta.url))).toString()).nba;
+    return {
+        retrieveLineupShotRows: async (_s: number, teamId: number, side: string) => fx.rows.filter((r: any) => (side === 'offense' ? r.team_id : r.opp_team_id) === teamId),
+        retrieveLineupCrosswalk: async () => [],
+    };
+});
+// BB-G12's nearby ranks read the Data API with 'bball-rank-neighbors' on (preview): never from a test
+vi.mock('../../src/resources/bballNeighbors', async (orig) => ({ ...(await orig<typeof import('../../src/resources/bballNeighbors')>()), retrieveTeamRankRows: async () => [] }));
+// BB-G5's season block reads the Data API with 'bball-team-season' on (preview): never from a test
+vi.mock('../../src/resources/teamSeason', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/teamSeason')>()),
+    retrieveTeamSeason: async () => ({ rates: [], strength: null, games: [], gameRates: [] }),
+}));
+// BB-G3's Lineups tab reads the Data API with 'bball-lineups' on (preview): never from a test
+vi.mock('../../src/resources/lineups', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/lineups')>()),
+    retrieveLineups: async () => ({ units: [], names: [], pairs: [] }),
+}));
+// BB-G4's On/Off section reads the Data API with 'bball-on-off' on (preview): never from a test
+vi.mock('../../src/resources/onOff', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/onOff')>()),
+    retrieveOnOff: async () => ({ players: [], pairs: [], names: [] }),
+}));
+// BB-G25's Situations section reads the Data API with 'bball-situational' on (preview): never from a test
+vi.mock('../../src/resources/situational', async (orig) => ({
+    ...(await orig<typeof import('../../src/resources/situational')>()),
+    retrieveSituational: async () => ({ team: [], players: [], units: [], names: [] }),
+}));
 vi.mock('../../src/resources/nbaShots', async (orig) => ({
     ...(await orig<typeof import('../../src/resources/nbaShots')>()),
     retrieveSeasonPlayerRows: async () => apiSeasonPlayerRows(),
@@ -67,5 +105,35 @@ describe('/nba/team/[id]', () => {
         const html = await render(String(NETS_TEAM_ID), '?season=2026');
         const row = html.split('id="nba-roster"')[1].split('<tbody>')[1].split('</tr>').find((tr) => tr.includes(`/nba/players/${traded.person_id}`))!;
         expect(row).toContain('season totals across teams');
+    });
+    test('BB-G52: the lineup shot chart (preview): form, line and chart; ?p=&s=off filters it; flag off renders none', async () => {
+        const all = await render(String(NETS_TEAM_ID), '?season=2026');
+        expect(all).toContain('id="lineup-shots"');
+        expect(all).toContain('href="#lineup-shots"');
+        expect(all).toContain('id="lineup-shots-form"');
+        expect(all.match(/name="p"/g)).toHaveLength(5);
+        expect(all).not.toContain('name="op"'); // the opponent rows are the defense view's
+        expect(all).toContain('<input type="hidden" name="season" value="2026"');
+        expect(text(all.split('id="lineup-shots-line"')[1].split('</p>')[0])).toContain('Every lineup: ');
+        expect(all).toContain('id="lineup-shots-chart"');
+        const id = all.split('id="lineup-p1"')[1].split('<option value="')[2].split('"')[0];
+        const off = await render(String(NETS_TEAM_ID), `?season=2026&side=defense&p=${id}&s=off`);
+        const line = text(off.split('id="lineup-shots-line"')[1].split('</p>')[0]);
+        expect(line).toMatch(/ off: /);
+        expect(line).toContain('opponent shots');
+        expect(off).toMatch(new RegExp(`<option value="${id}" selected`));
+        expect(off.match(/name="op"/g)).toHaveLength(5);
+        // defense: an opponent player ON (?op=&os=on) narrows the opponent shots, and the line names it
+        const y = off.split('id="lineup-op1"')[1].split('<option value="')[2].split('"')[0];
+        const opp = await render(String(NETS_TEAM_ID), `?season=2026&side=defense&op=${y}&os=on`);
+        const oppLine = text(opp.split('id="lineup-shots-line"')[1].split('</p>')[0]);
+        expect(oppLine).toMatch(/^>\s*opponent .+ on: \d/);
+        expect(opp).toMatch(new RegExp(`<option value="${y}" selected`));
+        expect(opp).toContain('Opponent player 1');
+        expect(off).not.toContain('undefined');
+        expect(off).not.toContain('NaN');
+        const { default: Page } = await import('../../src/pages/nba/team/[id].astro');
+        const flagOff = await container.renderToString(Page, { params: { id: String(NETS_TEAM_ID) }, request: new Request(`https://gameonpaper.com/nba/team/${NETS_TEAM_ID}?season=2026`), locals: { preview: true, flagOverrides: { 'bball-lineup-shotchart': false } } as App.Locals });
+        expect(flagOff).not.toContain('lineup-shots');
     });
 });

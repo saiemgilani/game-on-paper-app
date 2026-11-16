@@ -1,0 +1,17 @@
+---
+// src/pages/nba/standings.astro
+import PlayoffPictureRoute from '../../components/routes/PlayoffPictureRoute.astro';
+import { preparePlayoffPicture } from '../../routes/basketball/playoffPicture';
+import { unavailable } from '../../routes/basketball/cache';
+import { isFeatureEnabled } from '../../utils/features';
+
+if (!isFeatureEnabled('bball-playoff-picture', Astro.locals)) {
+    return Astro.rewrite('/404');
+}
+const r = await preparePlayoffPicture(Astro, 'nba');
+if ('unavailable' in r) {
+    return unavailable('nba', 'The standings are temporarily unavailable. Please try again shortly.');
+}
+---
+
+<PlayoffPictureRoute data={r} />

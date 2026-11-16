@@ -17,6 +17,12 @@ const rows: Record<string, any[]> = { cfb: fixture('cfb'), nfl: fixture('nfl') }
 // `override`, when set, is the whole row list the API returns (`[]` = no row for the team)
 const feed: { override: any[] | null; calls: any[]; order: string[] } = { override: null, calls: [], order: [] };
 
+// No live Data API (test/helpers/networkGuard.ts): the reads left unmocked, the /v1/meta
+// ingest stamp among them, get an empty answer and stay on their unversioned keys.
+vi.mock('../src/utils/telemetry', async (orig) => ({
+    ...(await orig<typeof import('../src/utils/telemetry')>()),
+    wrappedFetch: async () => new Response('{"data":[]}', { status: 200 }),
+}));
 vi.mock('../src/resources/espn', async (orig) => ({
     ...(await orig<typeof import('../src/resources/espn')>()),
     retrieveTeamInformation: async (id: string, league = 'cfb') =>
@@ -38,6 +44,7 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         feed.calls.push(req);
         return feed.override ?? rows[req.league];
     },
+    retrieveTeamOpponentSplits: async () => null, // the Results by Opponent panel: no rows
 }));
 
 let container: AstroContainer;

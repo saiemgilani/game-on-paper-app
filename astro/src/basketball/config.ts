@@ -3,10 +3,10 @@
 // Leaf data (team lists, court geometry, dark-logo lists) stays in src/nba/**; this file only points at it.
 import { LEAGUES, leagueSource, NBA_GAMES_SOURCE, WNBA_LOGO_ABBR, isBasketball, type BasketballLeague, type League, type SdvSource } from '../utils/league';
 import { COURT, NCAA_COURTS, NCAA_W_COURTS, WNBA_COURT, WNBA_COURT_1997, WNBA_COURT_2004, WNBA_RESTRICTED_AREA } from '../nba/data/court';
-import { MBB_MEMBERS_2026 } from '../nba/data/mbbMembers';
+import { MBB_MEMBERS_2027 } from '../nba/data/mbbMembers';
 import { MBB_MEMBER_SEASONS, MBB_MEMBER_SEASONS_THROUGH } from '../nba/data/mbbMemberSeasons';
 import { MBB_CONFERENCES, MBB_TEAMS, mbbFranchiseOf, mbbSeasonsOf, mbbTeamByEspnId, mbbTeamInSeason } from '../nba/data/mbbTeams';
-import { WBB_MEMBERS_2026 } from '../nba/data/wbbMembers';
+import { WBB_MEMBERS_2027 } from '../nba/data/wbbMembers';
 import { WBB_MEMBER_SEASONS, WBB_MEMBER_SEASONS_THROUGH } from '../nba/data/wbbMemberSeasons';
 import { WBB_CONFERENCES, WBB_TEAMS, wbbFranchiseOf, wbbSeasonsOf, wbbTeamByEspnId, wbbTeamInSeason } from '../nba/data/wbbTeams';
 import { placeholderAt, type PlaceholderLocation } from '../nba/data/placeholder';
@@ -146,7 +146,7 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         teams: { all: TEAMS, byEspnId: teamByEspnId, inSeason: teamInSeason, franchiseOf, seasonsOf: (id) => (teamById(id) ? LEAGUES.nba.seasons : undefined) },
         landing: 'featured-team',
         headerMenu: [
-            { label: 'Scoreboard', path: '/scoreboard' }, { label: 'Nets', path: '/' }, { label: 'Players', path: '/players' },
+            { label: 'Scoreboard', path: '/scoreboard' }, { label: 'Players', path: '/players' },
             { label: 'Teams', path: '/teams' }, { label: 'Scatter', path: '/scatter' }, { label: 'Leaders', path: '/leaders' },
         ],
         shotDashboards: 'stats-api',
@@ -244,7 +244,7 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         // of player games holds at most 43,835 rows (2022), under the 50,000 cap; a 20-game window needs ~120 days of games
         leadersRead: { days: 49, windows: [5, 10] },
         // the member table's last season; memberSeasons.test.ts ties it, these ids and MBB_LAST_KNOWN_SEASON together
-        currentMembers: { season: MBB_MEMBER_SEASONS_THROUGH, ids: MBB_MEMBERS_2026 },
+        currentMembers: { season: MBB_MEMBER_SEASONS_THROUGH, ids: MBB_MEMBERS_2027 },
         memberSeasons: { through: MBB_MEMBER_SEASONS_THROUGH, seasons: MBB_MEMBER_SEASONS },
         // D44 (R6): regular season + postseason games, measured (games_in_scope.json); plan #9 wires rankMins / the scatter bar to it
         gamesInScope: mbbGamesInScope,
@@ -303,9 +303,9 @@ export const BASKETBALL: Record<BasketballLeague, BasketballConfig> = {
         // D26, measured (plans/2026-10-11-wbb-shots-gop.md, Measured facts; Task 2's leaders_window_rows.json): any 49-day window
         // (inclusive dates) of WBB player games holds at most 40,983 rows, under the 50,000 cap
         leadersRead: { days: 49, windows: [5, 10] },
-        // D38 + D43/D47: the 2025-26 members (357 core + the six reclassifiers); plan #9's sitemap loop and current-season links read
+        // D38 + D43/D47: the 2026-27 members (363: the six reclassifiers and West Florida in, Saint Francis out; BB-D29); plan #9's sitemap loop and current-season links read
         // it. The member table's last season (R-S4); memberSeasons.test.ts ties it, these ids and WBB_LAST_KNOWN_SEASON together
-        currentMembers: { season: WBB_MEMBER_SEASONS_THROUGH, ids: WBB_MEMBERS_2026 },
+        currentMembers: { season: WBB_MEMBER_SEASONS_THROUGH, ids: WBB_MEMBERS_2027 },
         memberSeasons: { through: WBB_MEMBER_SEASONS_THROUGH, seasons: WBB_MEMBER_SEASONS },
         // D44 (R6): regular season + postseason games, measured (games_in_scope.json)
         gamesInScope: wbbGamesInScope,
@@ -401,6 +401,20 @@ export function rankMins(league: BasketballLeague, season: number): RankMins {
     const cfg = BASKETBALL[league];
     const g = (cfg.gamesInScope ?? cfg.regularSeasonGames)(season);
     return { fga: Math.round((RANK_MIN.fga * g) / NBA_SEASON_GAMES), fg3a: Math.round((RANK_MIN.fg3a * g) / NBA_SEASON_GAMES) };
+}
+
+/**
+ * BB-G10 (Q30): the scatter's impact-axes bar, offensive possessions over a full regular season (82 NBA / 44 WNBA games),
+ * scaled by the season's games like the FGA bar. About a 10th man's share of his team's possessions: in 2025-26 a team's
+ * median 10th man had 2,094 (NBA) and 678 (WNBA) and a team about 8,100 / 3,500, so 2,000 / 800 keep 286 NBA and 136
+ * WNBA players, about nine a team. The same bar as the leaderboards' Impact qualifier.
+ */
+const IMPACT_MIN_OFF_POSS: Partial<Record<BasketballLeague, { poss: number; games: number }>> = {
+    nba: { poss: 2000, games: NBA_SEASON_GAMES }, wnba: { poss: 800, games: 44 },
+};
+export function impactPossMin(league: BasketballLeague, season: number): number | null {
+    const bar = IMPACT_MIN_OFF_POSS[league];
+    return bar ? Math.round((bar.poss * BASKETBALL[league].regularSeasonGames(season)) / bar.games) : null;
 }
 
 export interface IslandLeagueProps { highlight?: string | null; minFga?: number; pronoun?: Pronoun; leaderBars?: LeaderBars }

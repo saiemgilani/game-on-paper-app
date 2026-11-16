@@ -1,0 +1,109 @@
+---
+// src/components/nba/game/NbaGarbageTime.astro
+// BB-G2, behind 'bball-garbage-time': the garbage-time toggle beside the Impact box ('toggle'), the same select above the
+// four factors ('select', the same `?garbage=out` link landing on #factors) and, with `?garbage=out`,
+// the four factors ('factors') and the pros' team box rows ('teambox') from the possession log, all its possessions
+// beside those with garbage time left out; 'whole' marks a table the log cannot split. Every flag is the producer's;
+// Possessions, ORtg and DRtg are the producer's situational_team_games rows; the other sums are utils/garbageTime.ts's.
+import type { NbaGame } from '../../../resources/nbaGame';
+import type { GarbageView, SplitBox, SplitRates } from '../../../utils/garbageTime';
+import { clockText } from '../../../utils/garbageTime';
+import { GARBAGE_PARAM } from '../../../routes/basketball/game';
+import { periodShort } from '../../../basketball/periods';
+import { dash } from '../../../nba/data/game';
+import { fmtDec, fmtPct } from '../../../nba/format';
+import { gameHref } from '../../../nba/links';
+import { cleanAbbreviation } from '../../../utils/misc';
+import { PRO_LEAGUES } from '../../../utils/league';
+import { basketball } from '../../../basketball/config';
+
+interface Props { game: NbaGame; view: GarbageView; part: 'toggle' | 'select' | 'factors' | 'teambox' | 'whole' }
+const { game, view, part } = Astro.props;
+// the select lands back on the panel it sits in
+const anchor = part === 'select' ? 'factors' : 'impact';
+const league = basketball(Astro.locals.league).league;
+const pro = PRO_LEAGUES.includes(league);
+const base = gameHref(league, game.id);
+const allHref = `${base}#impact`;
+const selectAll = `${base}#${anchor}`;
+const selectOut = `${base}?${GARBAGE_PARAM}=out#${anchor}`;
+const selectId = part === 'select' ? 'garbage-factors' : 'garbage';
+const from = view.start ? `${periodShort(view.start.period, game.regulation, game.periodKind)} ${clockText(view.start.clock)}` : null;
+const sides = (['away', 'home'] as const).map((s) => ({ s, abbr: cleanAbbreviation(game[s].team) }));
+
+type Row<T> = { label: string; v: (x: T) => number | null; fmt: (n: number) => string; better: 'high' | 'low' | 'none' };
+const factorRows: Row<SplitRates>[] = [
+    { label: 'eFG%', v: (r) => r.efg_pct, fmt: (n) => fmtPct(n, 1), better: 'high' },
+    { label: 'TOV%', v: (r) => r.tov_pct, fmt: (n) => fmtPct(n, 1), better: 'low' },
+    { label: 'ORB%', v: (r) => r.orb_pct, fmt: (n) => fmtPct(n, 1), better: 'high' },
+    { label: 'FT rate', v: (r) => r.ft_rate, fmt: (n) => fmtDec(n, 3), better: 'high' },
+    { label: 'Possessions', v: (r) => r.possessions, fmt: (n) => String(n), better: 'none' },
+    { label: 'ORtg', v: (r) => r.off_rtg, fmt: (n) => fmtDec(n, 1), better: 'high' },
+    { label: 'DRtg', v: (r) => r.def_rtg, fmt: (n) => fmtDec(n, 1), better: 'low' },
+    { label: 'Pace', v: (r) => r.pace, fmt: (n) => fmtDec(n, 1), better: 'none' },
+];
+const pairText = (m: number, a: number) => `${m}-${a}`;
+const boxRows: { label: string; v: (b: SplitBox) => string }[] = [
+    { label: 'Points', v: (b) => String(b.pts) },
+    { label: 'FG', v: (b) => pairText(b.fgm, b.fga) },
+    { label: '3PT', v: (b) => pairText(b.fg3m, b.fg3a) },
+    { label: 'FT', v: (b) => pairText(b.ftm, b.fta) },
+    { label: 'Rebounds (off-def)', v: (b) => `${b.oreb + b.dreb} (${pairText(b.oreb, b.dreb)})` },
+    { label: 'Turnovers', v: (b) => String(b.tov) },
+];
+const rates = view.rates;
+const val = (side: 'home' | 'away', k: 'all' | 'out', r: Row<SplitRates>) => { const x = rates?.[side][k]; return x ? r.v(x) : null; };
+// the college log carries points, not shots: a row with no value anywhere is left out, not dashed
+const shownFactors = factorRows.filter((r) => sides.some(({ s }) => val(s, 'all', r) != null || val(s, 'out', r) != null));
+const wins = (r: Row<SplitRates>, mine: number | null, theirs: number | null) => r.better !== 'none' && mine != null && theirs != null && (r.better === 'high' ? mine > theirs : mine < theirs);
+const excludedText = `${view.excluded} of ${view.total} possessions`;
+---
+{part === 'toggle' && view.unavailable && (<p class="text-muted small" id="garbage-unavailable">The garbage-time split is temporarily unavailable: these are the whole game's numbers.</p>)}
+{(part === 'toggle' || part === 'select') && !view.unavailable && (
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2" id={part === 'select' ? 'garbage-toggle-factors' : 'garbage-toggle'}>
+  <label class="small text-muted mb-0" for={selectId}>Possessions</label>
+  <select id={selectId} class="form-select form-select-sm w-auto" onchange="window.location.href = this.value">
+    <option value={selectAll} selected={!view.out}>All</option>
+    <option value={selectOut} selected={view.out}>Garbage time out</option>
+  </select>
+  <span class="small text-muted">Garbage time{from ? ` from ${from}` : ''}: {excludedText}.</span>
+</div>)}
+{part === 'toggle' && !view.unavailable && view.out && (<p class="small text-muted" id="garbage-impact-note">Garbage time out, from the possession log: each possession is credited to the ten players on the floor as it starts, so a number can differ from the whole-game box by a free throw or two beyond the garbage time itself.</p>)}
+{part === 'factors' && rates && (
+<Fragment>
+<div class="table-responsive"><table class="table table-sm numeral w-auto" aria-label="Four factors, garbage time out">
+  <thead>
+    <tr><th scope="col" rowspan="2"><span class="visually-hidden">Metric</span></th>{sides.map(({ abbr }) => (<th scope="colgroup" colspan="2" class="text-center">{abbr}</th>))}</tr>
+    <tr>{sides.map(() => (<Fragment><th scope="col" class="text-end fw-normal">All</th><th scope="col" class="text-end">GT out</th></Fragment>))}</tr>
+  </thead>
+  <tbody>
+    {shownFactors.map((r) => (
+      <tr>
+        <th scope="row" class="fw-normal">{r.label}</th>
+        {sides.map(({ s }) => {
+          const other = s === 'home' ? 'away' : 'home';
+          return (<Fragment><td class="text-end text-muted">{dash(val(s, 'all', r), r.fmt)}</td><td class:list={['text-end', { 'fw-bold': wins(r, val(s, 'out', r), val(other, 'out', r)) }]}>{dash(val(s, 'out', r), r.fmt)}</td></Fragment>);
+        })}
+      </tr>
+    ))}
+  </tbody>
+</table></div>
+<p class="small text-muted" id="garbage-factors-note">Garbage time out ({excludedText} left out): All for every possession and GT out without garbage time; bold marks the better side with it out. Possessions, ORtg and DRtg are the producer's per-game splits; {pro ? 'the shooting factors and pace come' : 'pace comes'} from the game's possession log{pro ? ', whose rebounds include team rebounds' : ''}. Possessions are counted, not estimated, so All can differ from the whole-game table. Ratings are per 100 possessions; pace is possessions per {view.regulationMinutes} minutes of the clock those possessions used.{!pro ? ' The college log carries points, not shots, so the shooting factors are whole-game only.' : ''} <a href={allHref.replace('#impact', '#factors')}>All possessions</a></p>
+</Fragment>
+)}
+{part === 'teambox' && (view.box ? (
+<Fragment>
+<div class="table-responsive"><table class="table table-sm numeral w-auto" aria-label="Team box score, garbage time out">
+  <thead>
+    <tr><th scope="col" rowspan="2"><span class="visually-hidden">Metric</span></th>{sides.map(({ abbr }) => (<th scope="colgroup" colspan="2" class="text-center">{abbr}</th>))}</tr>
+    <tr>{sides.map(() => (<Fragment><th scope="col" class="text-end fw-normal">All</th><th scope="col" class="text-end">GT out</th></Fragment>))}</tr>
+  </thead>
+  <tbody>
+    {boxRows.map((r) => (
+      <tr><th scope="row" class="fw-normal">{r.label}</th>{sides.map(({ s }) => (<Fragment><td class="text-end text-muted text-nowrap">{view.box![s].all ? r.v(view.box![s].all!) : '–'}</td><td class="text-end text-nowrap">{view.box![s].out ? r.v(view.box![s].out!) : '–'}</td></Fragment>))}</tr>
+    ))}
+  </tbody>
+</table></div>
+<p class="small text-muted" id="garbage-teambox-note">From the possession log, as the four factors. Assists, steals, blocks, fouls and the ESPN rows (fast break, paint, largest lead) are not in the log: <a href={allHref.replace('#impact', '#teambox')}>the whole-game box</a> has them.</p>
+</Fragment>) : (<p class="small text-muted" id="garbage-teambox-whole">Whole game: the college possession log carries points, not box counts. The Impact box below has garbage time out.</p>))}
+{part === 'whole' && (<p class="small text-muted" id="garbage-players-whole">Whole game: the possession log has no player box counts. The Impact box below has garbage time out.</p>)}

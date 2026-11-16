@@ -8,7 +8,10 @@ import { wrappedFetch } from "../utils/telemetry"
 import { LEAGUES, type League, type SdvSource, leagueSource, teamCategoriesFor } from '../utils/league';
 import { coachMetricColumns, type CoachRow } from '../utils/coaches';
 import { formatRecord } from '../utils/resume';
+import { type IngestStamps, purgeTarget } from '../utils/pagePurge';
 import { PLAYER_SPLITS, isEspnAthleteId } from '../utils/players';
+import { statSearchQuery } from '../utils/statSearch';
+import { earliestFinals, FIRST_FINAL_SPAN, type FinalScoreRow } from '../utils/finalScore';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -583,20 +586,21 @@ async function generateSDVCacheKey(fullKey: string): Promise<string> {
 const SDV_META_URL = new URL('meta', LEAGUES.cfb.sdvApiBase).toString();
 const SDV_META_KEY = 'sdv-meta:datasets';
 const SDV_META_TTL = 60 * 5;
-// a stalled meta read must not hold up the page: it falls back to the unversioned key
-const SDV_META_TIMEOUT_MS = 5_000;
 // Single-flight: the in-flight read is shared, so a burst on a fresh isolate makes one
 // meta call, not one per request. Sharing a promise across requests is safe under
 // `handle_cross_request_promise_resolution` (default since compatibility_date
 // 2024-10-14; ours is later). fetchSDVDatasets never rejects: a failure resolves to
 // null, which holds for the window, then retries -- no per-request retry storm on a down API.
 let sdvMeta: { at: number, datasets: Promise<Record<string, string> | null> } | undefined;
+export const SDV_META_TIMEOUT_MS = 5_000;
 
 // `fresh` skips the shared KV copy (a pinned read's post-fetch check; see requestSDV).
 async function fetchSDVDatasets(fresh = false): Promise<Record<string, string> | null> {
     try {
         const cached = fresh ? null : await env.SDV_API_CACHE.get(SDV_META_KEY, "json");
         if (cached) return cached as Record<string, string>;
+        // every Data API read awaits this first (and the isolate memoises the promise), so a
+        // stalled /v1/meta must give up rather than hold every read behind it
         const req = await wrappedFetch(SDV_META_URL, { headers: { "Authorization": `Bearer ${SDV_AUTH_TOKEN}` }, signal: AbortSignal.timeout(SDV_META_TIMEOUT_MS) });
         if (!req.ok) throw new Error(`status ${req.status}`);
         const datasets = (await req.json() as any)?.datasets;
@@ -616,6 +620,14 @@ async function fetchSDVDatasets(fresh = false): Promise<Record<string, string> |
  *  pinned read saw a newer ingest (TrendsRoute), which those copies may not show yet. */
 export async function sdvIngestStamp(league: League, table: string, fresh = false): Promise<string | undefined> {
     return ingestStamp(LEAGUES[league].sdvSchema, table, fresh);
+}
+
+/** The page purge cron's next target across the football tables (utils/pagePurge.ts),
+ *  from /v1/meta read past the cached copies. Only cfb and nfl: the purged tags are the
+ *  football summary pages', and the basketball leagues' pages carry their own league tag
+ *  and a 6 h TTL, so their ingests must not clear the football pages. */
+export async function sdvPurgeTarget(purgedFor: IngestStamps, now: number): Promise<IngestStamps | undefined> {
+    return purgeTarget(await fetchSDVDatasets(true), [LEAGUES.cfb.sdvSchema, LEAGUES.nfl.sdvSchema], purgedFor, now);
 }
 
 /** When `<schema>.<table>` last ingested, per /v1/meta; see sdvIngestStamp. */
@@ -1043,6 +1055,34 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
     }
 }
 
+/** A row of sdv-db F11 `{league}.player_seasons_wide`: box-score season totals (CFB all games, NFL regular season). */
+export interface SDVPlayerSeasonWide {
+    season: number
+    player_id: string | number
+    espn_id: string | null
+    player_name: string
+    team_id: number | null
+    team_abbr: string | null
+    games: number | null
+    [stat: string]: string | number | null
+}
+
+/** The read answers in well under a second (2026-11-02); past this the page says the search is unavailable. */
+export const STAT_SEARCH_TIMEOUT_MS = 10_000;
+
+/**
+ * Player-seasons meeting every threshold (S15). `null` when the read failed or timed out,
+ * so the page can say so instead of showing "no seasons" as the truth.
+ */
+export async function retrievePlayerSeasonsWide({ filters, league = 'cfb' }: { filters: Record<string, number>; league?: League }): Promise<SDVPlayerSeasonWide[] | null> {
+    try {
+        return await retrieveRowsFrom<SDVPlayerSeasonWide>(leagueSource(league), 'player_seasons_wide', statSearchQuery(filters), 60 * 60 * 24, true, STAT_SEARCH_TIMEOUT_MS);
+    } catch (err) {
+        console.error(`ERROR while searching ${league} player_seasons_wide: ${err}`);
+        return null;
+    }
+}
+
 // The largest ranked table is CFB receiving (744 rows in 2025, 538 in 2024); the
 // reader throws rather than truncate if a season ever passes this.
 const RANKED_ROWS_LIMIT = '2000';
@@ -1227,6 +1267,31 @@ export async function retrieveMatchupHistory(team1Id: string | number, team2Id: 
 }
 
 
+/**
+ * IF-6: every completed game in the league's schedule table tied for the earliest kickoff with
+ * this final, either way round (home/away swapped is a second read; a tie needs one). CFB is
+ * FBS vs FBS only. Both reads must succeed inside the timeout or the answer is `[]`: a
+ * half-answered lookup could miss an earlier game, and the chip must fail closed, never
+ * stall or break the header. A failure is `null`, not `[]`: the caller must not cache a
+ * chipless render of a game that may be first (`[]` is a real "no match").
+ */
+export async function retrieveFirstFinal(league: League, homePoints: number, awayPoints: number, timeoutMs = 3000): Promise<FinalScoreRow[] | null> {
+    if (!LEAGUES[league]?.sdvEnabled || !FIRST_FINAL_SPAN[league]) return [];
+    const pairs = homePoints === awayPoints ? [[homePoints, awayPoints]] : [[homePoints, awayPoints], [awayPoints, homePoints]];
+    try {
+        const reads = pairs.map(([h, a]) => retrieveRowsFrom<FinalScoreRow>(leagueSource(league), LEAGUES[league].scheduleTable, {
+            home_points: String(h), away_points: String(a), completed: 'true',
+            ...(league === 'cfb' ? { fbs_game: 'true' } : {}),
+            // ponytail: 5 rows covers games sharing the earliest kickoff; more than 5 simultaneous firsts is not a thing
+            order: 'start_date', limit: '5', select: 'game_id,start_date',
+        }, 60 * 60 * 24, true, timeoutMs));
+        return earliestFinals((await Promise.all(reads)).flat());
+    } catch (e) {
+        console.warn(`first-final lookup failed, no chip: ${e}`);
+        return null;
+    }
+}
+
 export async function retrieveTeamSchedule(season: string | number, teamId: string | number, league: League = 'cfb'): Promise<SDVGame[]> {
     const schedulePromises: Promise<SDVGame[]>[] = [];
     for (const k of ["home_id", "away_id"]) {
@@ -1365,6 +1430,34 @@ export async function retrieveTeamOpponentSplits(season: number, teamId: string 
     }
 }
 
+/** The columns the Team Stats game-set panel sums; the rest of a row is never read there. */
+export const SEASON_SPLIT_COLUMNS = ['game_id', 'team_id', 'opponent_id', 'season_type', 'week', 'is_home', 'points_for', 'points_against', 'plays', 'epa_per_play', 'success_rate'];
+export const SEASON_SPLITS_TIMEOUT_MS = 10_000;
+// the API's default page is 1000 rows; a CFB season is ~1,900
+export const SEASON_SPLITS_LIMIT = 5000;
+
+/**
+ * Every team-game row of a season ('game-set-filter'): the Team Stats panel's
+ * rank population. One season-keyed URL, so one KV entry shared by every team
+ * page of the season. Rows carry only `SEASON_SPLIT_COLUMNS`. Null on any
+ * failure, a timeout or a truncated page included: a short season would rank
+ * the team against part of the field.
+ */
+export async function retrieveSeasonOpponentSplits(season: number, league: League = 'cfb'): Promise<SDVTeamOpponentSplit[] | null> {
+    if (!LEAGUES[league].sdvEnabled) return null;
+    const query = new URLSearchParams({ season: String(season), select: SEASON_SPLIT_COLUMNS.join(','), limit: String(SEASON_SPLITS_LIMIT) });
+    try {
+        const content = await requestSDV('team_opponent_splits', query, undefined, 60 * 60 * 24 * 3, true, leagueSource(league), true, SEASON_SPLITS_TIMEOUT_MS);
+        if (!Array.isArray(content?.data)) throw new Error('no data array');
+        // the API leaves `next` null on a page cut short by `limit`, so a full page counts as truncated too
+        if (content.next || content.data.length >= SEASON_SPLITS_LIMIT) throw new Error(`more rows than one ${SEASON_SPLITS_LIMIT}-row page`);
+        return content.data;
+    } catch (e) {
+        console.error(`ERROR while loading the season's team_opponent_splits (${league} ${season}): ${e}`);
+        return null;
+    }
+}
+
 // ---- head-coach tendencies ------------------------------------------------
 // Three season tables the nfl-data / cfb-data producers build from the same
 // play-by-play as team_summaries, sharing one metric vocabulary: team_tendencies
@@ -1375,7 +1468,9 @@ export async function retrieveTeamOpponentSplits(season: number, teamId: string 
 // No season fallback loop: a season the tables lack renders as "no data".
 
 const COACH_TENDENCIES_TTL = 60 * 60 * 24 * 3;
-const COACH_ROW_LIMIT = 400;
+// cfb coach_careers has 447 head-coach rows (11-02); 400 silently dropped ~47. The API
+// leaves `next` null on a page cut short by `limit`, so a full page counts as truncated.
+const COACH_ROW_LIMIT = 2000;
 
 export interface SDVTeamTendency extends CoachRow {
     season: number
@@ -1408,19 +1503,25 @@ const TEAM_TENDENCY_KEYS = ['season', 'pos_team_id', 'pos_team', 'games', 'plays
 const COACH_TENDENCY_KEYS = [...TEAM_TENDENCY_KEYS, 'coach', 'role'];
 const COACH_CAREER_KEYS = ['coach', 'role', 'teams', 'seasons', 'first_season', 'last_season', 'games', 'plays', 'drives'];
 
-async function requestTendencyTable<T>(table: string, keys: string[], filters: Record<string, string>, columns: string[] | undefined, league: League): Promise<T[]> {
+async function requestTendencyTable<T>(table: string, keys: string[], filters: Record<string, string>, columns: string[] | undefined, league: League, timeoutMs?: number, strict = false): Promise<T[]> {
     if (!LEAGUES[league].sdvEnabled) return [];
-    const metrics = columns && columns.length > 0 ? columns : coachMetricColumns();
+    const metrics = columns && columns.length > 0 ? columns : coachMetricColumns(league);
     const payload: Record<string, string> = {
         ...filters,
         select: [...new Set([...keys, ...metrics])].join(','),
         limit: String(COACH_ROW_LIMIT),
     };
     try {
-        const content: SDVAPIResponse<T> = await requestSDV(table, new URLSearchParams(payload), undefined, COACH_TENDENCIES_TTL, true, leagueSource(league));
-        return Array.isArray(content?.data) ? content.data : [];
+        const content: SDVAPIResponse<T> = await requestSDV(table, new URLSearchParams(payload), undefined, COACH_TENDENCIES_TTL, true, leagueSource(league), strict, timeoutMs);
+        if (strict && !Array.isArray(content?.data)) throw new SDVRequestError(502, table, 'no data array in the response');
+        const rows = Array.isArray(content?.data) ? content.data : [];
+        // a truncated board would rank against a partial field: fail loudly, never rank it
+        if (rows.length >= COACH_ROW_LIMIT) throw new Error(`${rows.length} rows hit the ${COACH_ROW_LIMIT}-row limit`);
+        return rows;
     } catch (err) {
         console.error(`ERROR while loading ${table} from SDV (${JSON.stringify(filters)}): ${err}`);
+        // `strict`: the caller must tell a failed read from a team with no rows
+        if (strict) throw err;
         return [];
     }
 }
@@ -1434,6 +1535,23 @@ export async function retrieveTeamTendencies({ season, league = 'cfb', columns }
 /** Head coaches only (`role=HC`); a coordinator row, if the builder ever emits one, never lands on the HC board. */
 export async function retrieveCoachTendencies({ season, league = 'cfb', columns }: SDVSeasonTendencyRequest): Promise<SDVCoachTendency[]> {
     return requestTendencyTable<SDVCoachTendency>('coach_tendencies', COACH_TENDENCY_KEYS, { season: String(season), role: 'HC' }, columns, league);
+}
+
+/** The team profile waits on this read; past the deadline the page renders without its Head Coaches table. */
+export const TEAM_COACH_READ_TIMEOUT_MS = 8000;
+
+/**
+ * One team's head-coach seasons, every season (the team profile's Head Coaches table); keys only, no metrics.
+ * `null` when the read failed or timed out, so the page can keep that degraded render out of the cache;
+ * `[]` is a team with no coach rows.
+ */
+export async function retrieveTeamCoachSeasons({ team_id, league = 'cfb' }: { team_id: string | number; league?: League }): Promise<SDVCoachTendency[] | null> {
+    try {
+        // ponytail: `games` stands in for "no metric columns" -- it is already a key, so the select is the keys alone
+        return await requestTendencyTable<SDVCoachTendency>('coach_tendencies', COACH_TENDENCY_KEYS, { pos_team_id: String(team_id), role: 'HC' }, ['games'], league, TEAM_COACH_READ_TIMEOUT_MS, true);
+    } catch {
+        return null; // requestTendencyTable logged it
+    }
 }
 
 export async function retrieveCoachCareers({ league = 'cfb', columns }: { league?: League; columns?: string[] } = {}): Promise<SDVCoachCareer[]> {
@@ -1483,10 +1601,14 @@ export interface SDVPlayerSplit {
     success_rate: number | null
 }
 
-/** A 404 is "no such player"; anything else is a real failure and is rethrown. */
+//: Player and compare pages await these reads; a stalled Data API used to hold the
+//: render open until the Worker was killed. A timeout is an SDVRequestError 504.
+export const PLAYER_READ_TIMEOUT_MS = 10_000;
+
+/** A 404 is "no such player"; anything else (a timeout included) is a real failure and is rethrown. */
 async function requestPlayer(league: League, path: string, query: Record<string, string>, ttl: number): Promise<any | null> {
     try {
-        return await requestSDV(path, new URLSearchParams(query), undefined, ttl, true, leagueSource(league), true);
+        return await requestSDV(path, new URLSearchParams(query), undefined, ttl, true, leagueSource(league), true, PLAYER_READ_TIMEOUT_MS);
     } catch (e) {
         if (e instanceof SDVRequestError && e.status === 404) return null;
         throw e;

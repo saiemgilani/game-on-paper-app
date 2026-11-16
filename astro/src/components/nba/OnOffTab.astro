@@ -1,0 +1,132 @@
+---
+// src/components/nba/OnOffTab.astro
+// BB-G4, behind 'bball-on-off': the team page's On/Off and WOWY section. On/Off: each player's team with him on the floor
+// and off it, and the difference, per 100 possessions; a rating is shaded by the producer's league percentile where he is
+// ranked (on and on-off only), and left plain below the rank gate. WOWY ("with or without you"): one player, picked by a
+// plain <select> of URLs (LineupsTab's pattern: no JS island), against each teammate: together, each without the other,
+// neither. Every number is the producer's (sdv-db player_on_off / player_wowy).
+import { RATINGS, type OnOffRow, type Rating } from '../../resources/onOff';
+import { isShortTenure, ON_OFF_MIN_MINUTES, shownLines, shownPlayers, sideValue, usesSpan, WOWY_MIN_MINUTES, type OnOffTab } from '../../utils/onOff';
+import { fmtDate, fmtInt } from '../../nba/format';
+import { withParams } from '../../nba/links';
+import { generateColorRampValue, generateMarginalString } from '../../utils/misc';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+import { isNcaaDashboards } from '../../basketball/dashboards';
+
+interface Props { data: OnOffTab; season: number; current: number; basePath: string; teamName: string }
+const { data, season, current, basePath, teamName } = Astro.props;
+const cfg = basketball(Astro.locals.league);
+const label = seasonLabelFor(cfg.league, season);
+const { players, names, wowy, lines, all } = data;
+
+const dash = '—';
+const name = (id: string | number) => names.get(String(id)) ?? `#${id}`;
+const shade = (pct: number | null | undefined) => generateColorRampValue(pct ?? null, 100);
+const rtg = (v: number | null | undefined) => (v == null ? dash : v.toFixed(1));
+const net = (v: number | null | undefined) => (v == null ? dash : generateMarginalString(v, 1, 1));
+const fmt = (m: Rating, side: 'on' | 'off' | 'diff', v: number | null) => (m === 'net_rtg' || side === 'diff' ? net(v) : rtg(v));
+const HEAD: Record<Rating, { label: string; hover: string }> = {
+    off_rtg: { label: 'ORtg', hover: 'Points scored per 100 possessions' },
+    def_rtg: { label: 'DRtg', hover: 'Points allowed per 100 possessions' },
+    net_rtg: { label: 'Net', hover: 'ORtg minus DRtg' },
+};
+// the off side is never ranked; a span on − off (a † player's time with the team) is not either
+const pctOf = (p: OnOffRow, m: Rating, side: 'on' | 'off' | 'diff') => (side === 'off' || (side === 'diff' && usesSpan(p)) ? null : p[`${m}_${side}_pct`]);
+const teamGames = players?.[0]?.team_games;
+const wowyName = wowy === null ? '' : name(wowy);
+const defaults = { season: String(current), wowy: String(players?.[0]?.player_id ?? ''), onoff: '' };
+const state = { season: String(season), wowy: wowy ?? '', onoff: all ? 'all' : '' };
+const wowyHref = (id: string) => `${withParams(basePath, { ...state, wowy: id }, defaults)}#wowy`;
+// ?onoff=all lifts both minimums; the link flips it and keeps the WOWY pick
+const allHref = `${withParams(basePath, { ...state, onoff: all ? '' : 'all' }, defaults)}#on-off`;
+const rows = players ? shownPlayers(players, all) : [];
+const hidden = players ? players.length - rows.length : 0;
+const mates = shownLines(lines, all);
+const hiddenMates = lines.length - mates.length;
+const shortOf = (p: OnOffRow) => !isShortTenure(p) ? null : usesSpan(p)
+  ? `Played ${fmtInt(p.games)} of the team's ${fmtInt(p.team_games)} games. His off side and on − off cover only his time with the team: its ${fmtInt(p.team_games_span)} games from ${fmtDate(p.span_first_date!)} to ${fmtDate(p.span_last_date!)}`
+  : `Played ${fmtInt(p.games)} of the team's ${fmtInt(p.team_games)} games, so his off side includes games he was not with the team or did not play`;
+const anyShort = rows.some((p) => isShortTenure(p));
+const anySpan = rows.some((p) => usesSpan(p));
+// the pros' off side differs from stats.nba.com's / stats.wnba.com's; college has no such reference to differ from
+const proSource = isNcaaDashboards(cfg.league) ? null : cfg.statsSourceLabel;
+---
+<section id="on-off" aria-label={`${label} on/off`} class="mb-4">
+  <h2 class="h5">On/Off</h2>
+  {players === null ? (<p class="text-muted" id="on-off-unavailable">The {label} on/off numbers are temporarily unavailable.</p>) : players.length === 0 ? (<p class="text-muted" id="on-off-empty">No {teamName} on/off numbers for {label} yet.</p>) : (
+    <Fragment>
+      <p class="small text-muted mb-2" id="on-off-note">On is the team with the player on the floor; off is the rest of the team's season: all {teamGames ? fmtInt(teamGames) : ''} of its games, including any before the player joined or after the player left, and the games the player missed. So on plus off is {anySpan ? '' : 'always '}the team's whole season{anySpan && ' for a player without †'}.{proSource && ` ${proSource} counts the off side only while the player was on the roster, so for a player traded or signed mid-season${anySpan ? ' without †' : ''} its numbers differ from these.`}{anyShort && (anySpan ? " † marks a player who played under three quarters of the team's games: his off side and on − off cover only his time with the team, the team's games from his first game for it to his last (the dates are on the mark), and his on − off is not ranked." : " † marks a player who played under three quarters of the team's games.")}</p>
+      <p class="small mb-2" id="on-off-minimum">{all ? (<Fragment>Every player and teammate is shown. <a href={allHref}>Hide players under {ON_OFF_MIN_MINUTES} minutes on the floor and teammates under {WOWY_MIN_MINUTES} minutes together</a></Fragment>) : (<Fragment><span class="text-muted">Players with {ON_OFF_MIN_MINUTES}+ minutes on the floor{hidden > 0 && ` (${fmtInt(hidden)} hidden)`}; WOWY teammates with {WOWY_MIN_MINUTES}+ minutes together.</span> <a href={allHref}>Show all</a></Fragment>)}</p>
+      {rows.length === 0 ? (<p class="text-muted" id="on-off-few">No {teamName} player has {ON_OFF_MIN_MINUTES} minutes on the floor in {label} yet. <a href={allHref}>Show all</a></p>) : (
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0" id="on-off-table">
+          <caption class="small text-muted">Per 100 possessions. Shading by league percentile where the player is ranked (on and on − off); a plain cell is below the rank gate{anySpan ? ", or a † player's on − off over his time with the team" : ''}.</caption>
+          <thead>
+            <tr>
+              <td colspan="4"></td>
+              <th scope="colgroup" colspan="3" class="text-center">On the floor</th>
+              <th scope="colgroup" colspan="3" class="text-center">Off the floor</th>
+              <th scope="colgroup" colspan="3" class="text-center">On − off</th>
+            </tr>
+            <tr>
+              <th scope="col">Player</th>
+              <th scope="col" class="text-end"><abbr title={`Games played for the team, of its ${teamGames ?? ''}`}>GP</abbr></th>
+              <th scope="col" class="text-end"><abbr title="Minutes on the floor">Min on</abbr></th>
+              <th scope="col" class="text-end"><abbr title="The team's minutes with the player off the floor">Min off</abbr></th>
+              {(['on', 'off', 'diff'] as const).flatMap(() => RATINGS.map((m) => (<th scope="col" class="text-end text-nowrap"><abbr title={HEAD[m].hover}>{HEAD[m].label}</abbr></th>)))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((p) => (
+              <tr>
+                <th scope="row" class="fw-normal text-nowrap">{name(p.player_id)}{shortOf(p) && (<span class="text-muted ms-1" title={shortOf(p)!}>†<span class="visually-hidden"> ({shortOf(p)})</span></span>)}</th>
+                <td class="numeral text-end">{fmtInt(p.games)}</td>
+                <td class="numeral text-end">{fmtInt(p.minutes_on)}</td>
+                <td class="numeral text-end">{fmtInt(usesSpan(p) ? p.minutes_off_span : p.minutes_off)}</td>
+                {(['on', 'off', 'diff'] as const).flatMap((side) => RATINGS.map((m) => (<td class:list={['numeral', 'text-end', shade(pctOf(p, m, side))]}>{fmt(m, side, sideValue(p, m, side))}</td>)))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      )}
+      <div id="wowy" class="mt-3">
+        <h3 class="h6">With or without you</h3>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+          <label class="visually-hidden" for="wowy-player">Player</label>
+          <select id="wowy-player" class="form-select form-select-sm w-auto" onchange="window.location.href = this.value">
+            {players.map((p) => (<option value={wowyHref(String(p.player_id))} selected={String(p.player_id) === wowy}>{name(p.player_id)}</option>))}
+          </select>
+        </div>
+        {lines.length === 0 ? (<p class="text-muted" id="wowy-empty">No {wowyName} teammate pairs for {label} yet.</p>) : mates.length === 0 ? (<p class="text-muted" id="wowy-few">No teammate shared {WOWY_MIN_MINUTES} minutes with {wowyName} in {label}. <a href={allHref}>Show all</a></p>) : (
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0" id="wowy-table">
+              <caption class="small text-muted">{wowyName} with and without each teammate: the team's minutes and net rating per 100 possessions in each part of its season. The four parts add up to the team's season.{hiddenMates > 0 && ` ${fmtInt(hiddenMates)} teammates under ${WOWY_MIN_MINUTES} minutes together are hidden.`}</caption>
+              <thead>
+                <tr>
+                  <td></td>
+                  <th scope="colgroup" colspan="2" class="text-center">Together</th>
+                  <th scope="colgroup" colspan="2" class="text-center">{wowyName} without</th>
+                  <th scope="colgroup" colspan="2" class="text-center">Teammate without</th>
+                  <th scope="colgroup" colspan="2" class="text-center">Neither</th>
+                </tr>
+                <tr>
+                  <th scope="col">Teammate</th>
+                  {[0, 1, 2, 3].flatMap(() => [(<th scope="col" class="text-end">Min</th>), (<th scope="col" class="text-end"><abbr title={HEAD.net_rtg.hover}>Net</abbr></th>)])}
+                </tr>
+              </thead>
+              <tbody>
+                {mates.map((l) => (
+                  <tr>
+                    <th scope="row" class="fw-normal text-nowrap">{name(l.teammate)}</th>
+                    {[l.together, l.without, l.mateOnly, l.neither].flatMap((s) => [(<td class="numeral text-end">{fmtInt(s.minutes)}</td>), (<td class="numeral text-end">{net(s.net)}</td>)])}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </Fragment>
+  )}
+</section>

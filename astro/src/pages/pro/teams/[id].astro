@@ -1,0 +1,146 @@
+---
+/**
+ * Scout Pack for one team: the web twin of gop-pro's scout.typ, read from
+ * `pro/<season>/teams/<team_id>.json`. The next opponent unit by unit beside this team's,
+ * the opponent's down-and-distance tendencies, then the self-scout. A bye week has no
+ * opponent and shows the team alone. Middleware has checked the tier (Pro, Program).
+ */
+import GenericPage from '../../../layouts/GenericPage.astro';
+import Panel from '../../../layouts/panel/GenericPanel.astro';
+import ProNav from '../../../components/pro/ProNav.astro';
+import BandBar from '../../../components/pro/BandBar.astro';
+import { cleanTextForTeam } from '../../../utils/misc';
+import { PRO_SEASON, proObject } from '../../../resources/pro';
+
+/** better: share of FBS teams this unit is better than (direction-aware); null for a tendency */
+interface Metric { key: string; label: string; value: number | null; better: number | null; tendency: boolean }
+interface Tendency { down: number; dist: string; plays: number; pass_rate: number; pass_oe: number | null; epa_play: number; success: number }
+interface Side { team_id: number; team: string; conference: string | null; offense: Metric[]; defense: Metric[]; tendencies: Tendency[] }
+interface ScoutDoc {
+    season: number; week: number; snapshot: string; rendered: string; notes: string[]
+    team: { team_id: number; team: string; conference: string | null }
+    game: { week: number; date: string; home: boolean; opponent_id: number; opponent: string } | null
+    self: Omit<Side, 'team_id' | 'team' | 'conference'>
+    opponent?: Side
+}
+
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
+const id = Astro.params.id ?? '';
+const doc = /^\d+$/.test(id) ? await proObject<ScoutDoc>(`pro/${PRO_SEASON}/teams/${id}.json`) : null;
+if (!doc) return Astro.rewrite('/404');
+const team = cleanTextForTeam(doc.team.team, doc.team.team_id);
+const opp = doc.opponent ? { ...doc.opponent, name: cleanTextForTeam(doc.opponent.team, doc.opponent.team_id) } : null;
+const signed = (v: number, d: number) => `${v >= 0 ? '+' : ''}${v.toFixed(d)}`;
+// scout.typ's fmt(): EPA signed to 2, line yards to 2, plays per game to 1, every other metric a rate
+const fmt = (m: Metric) => (m.value === null ? '—'
+    : m.key.includes('EPA') ? signed(m.value, 2)
+    : m.key.startsWith('line_yards') ? m.value.toFixed(2)
+    : m.key.startsWith('playsgame') ? m.value.toFixed(1)
+    : `${(m.value * 100).toFixed(1)}%`);
+const ordinal = (d: number) => ['1st', '2nd', '3rd', '4th'][d - 1] ?? String(d);
+// the two halves of a matchup: [panel id, title, [side title, rows][]]
+const matchups: [string, string, [string, Metric[]][]][] = opp
+    ? [
+        ['pro-scout-their-ball', `When ${opp.name} has the ball`, [[`${opp.name} offense`, opp.offense], [`${team} defense`, doc.self.defense]]],
+        ['pro-scout-our-ball', `When ${team} has the ball`, [[`${team} offense`, doc.self.offense], [`${opp.name} defense`, opp.defense]]],
+    ]
+    : [['pro-scout-units', `${team} offense and defense`, [[`${team} offense`, doc.self.offense], [`${team} defense`, doc.self.defense]]]];
+const tendencies: [string, string, Tendency[]][] = [
+    ...(opp ? [['pro-scout-opp-tendencies', `${opp.name} offense: tendencies`, opp.tendencies] as [string, string, Tendency[]]] : []),
+    ['pro-scout-self', `Self-scout: ${team} offense`, doc.self.tendencies],
+];
+---
+<GenericPage title={`${team} Scout Pack | Game on Paper Pro`} subtitle={`${doc.season} Scout Pack, week ${doc.week}`} slug={`/pro/teams/${id}`}
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Scout Pack', url: '/pro/teams', active: false }, { title: team, active: true }]}
+    heading={`${team} Scout Pack`}>
+    <ProNav active="teams" />
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2">
+            <h1 class="fs-3 mb-0">
+                {`${team} `}
+                <span class="text-muted fs-5" id="pro-scout-game">
+                    {doc.game
+                        ? <Fragment>{`${doc.game.home ? 'vs' : 'at'} `}<a href={`/pro/teams/${doc.game.opponent_id}`}>{opp?.name ?? doc.game.opponent}</a>, week {doc.game.week} ({doc.game.date})</Fragment>
+                        : 'bye week'}
+                </span>
+            </h1>
+            <a class="btn btn-sm btn-outline-secondary text-nowrap" href={`/pro/file/pro/${doc.season}/teams/${id}.pdf`} id="pro-pdf">Download PDF</a>
+        </div>
+        <p class="text-muted text-small">Bars: the share of FBS teams each unit is better than (100 = best). Tendencies are not ranked.</p>
+
+        {matchups.map(([pid, title, sides]) => (
+            <Panel id={pid} title={title} show={true} class="mb-md-3">
+                <Fragment slot="panel-body">
+                    <div class="row">
+                        {sides.map(([side, rows]) => (
+                            <div class="col-lg-6 col-12">
+                                <p class="fw-bold mb-1">{side}</p>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-left" colspan="1">Metric</th>
+                                                <th class="text-center" colspan="1">Value</th>
+                                                <th class="text-center" colspan="1">Better than</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {rows.map((m) => (
+                                                <tr data-key={m.key}>
+                                                    <td class="text-left text-nowrap" colspan="1">{m.label}</td>
+                                                    <td class="text-center numeral" colspan="1">{fmt(m)}</td>
+                                                    <td class="text-center" colspan="1">{m.tendency ? <span class="text-muted text-small">tendency</span> : <BandBar mid={m.better} />}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Fragment>
+            </Panel>
+        ))}
+
+        {tendencies.map(([pid, title, rows]) => (
+            <Panel id={pid} title={title} show={true} class="mb-md-3">
+                <p slot="panel-subtitle" class="m-0 text-muted text-small">Downs 1 to 3, garbage time out.</p>
+                <Fragment slot="panel-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th class="text-left" colspan="1">Down</th>
+                                    <th class="text-center" colspan="1">Distance</th>
+                                    <th class="text-center" colspan="1">Plays</th>
+                                    <th class="text-center" colspan="1">Pass rate</th>
+                                    <th class="text-center" colspan="1"><abbr title="Pass rate over expected, in percentage points, for the down, distance and situation">Pass over exp.</abbr></th>
+                                    <th class="text-center" colspan="1">EPA/play</th>
+                                    <th class="text-center" colspan="1">Success</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((r) => (
+                                    <tr>
+                                        <td class="text-left" colspan="1">{ordinal(r.down)}</td>
+                                        <td class="text-center" colspan="1">{r.dist}</td>
+                                        <td class="text-center numeral" colspan="1">{r.plays}</td>
+                                        <td class="text-center numeral" colspan="1">{`${Math.round(r.pass_rate * 100)}%`}</td>
+                                        <td class="text-center numeral" colspan="1">{r.pass_oe === null ? '—' : signed(r.pass_oe, 1)}</td>
+                                        <td class="text-center numeral" colspan="1">{signed(r.epa_play, 2)}</td>
+                                        <td class="text-center numeral" colspan="1">{`${Math.round(r.success * 100)}%`}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Fragment>
+            </Panel>
+        ))}
+
+        <ul class="text-muted text-small mb-1" id="pro-scout-notes">{doc.notes.map((n) => <li>{n}</li>)}</ul>
+        <p class="text-muted text-small" id="pro-provenance">
+            {`${doc.season} through week ${doc.week}. Data ${doc.snapshot}, rendered ${doc.rendered}. `}How every number is made: <a href="/pro/methodology">methodology</a>.
+        </p>
+    </div>
+</GenericPage>

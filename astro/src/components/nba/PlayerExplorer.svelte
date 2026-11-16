@@ -14,13 +14,15 @@
     import Timeline from './charts/Timeline.svelte';
     import VersusChart from './charts/VersusChart.svelte';
     import type { PlayerExplorerData as ExplorerData } from '../../routes/nba/explorer';
-    let { data, subject, pronoun = 'his', leagueLines = 'full regular season' }: { data: ExplorerData; subject: string; pronoun?: 'his' | 'her'; leagueLines?: string } = $props();
+    // initial: BB-G14 ('bball-game-set'), the game ids of the page's ?games= set to start from; absent, every game
+    let { data, subject, pronoun = 'his', leagueLines = 'full regular season', initial }: { data: ExplorerData; subject: string; pronoun?: 'his' | 'her'; leagueLines?: string; initial?: string[] } = $props();
 
     const WINDOWS = [5, 10, 20] as const;
     const NO_GAMES = 'No games selected: choose games above (a preset, single games or a date window) to draw this.';
     // svelte-ignore state_referenced_locally -- data is fixed for the island's life (one player-season per page)
     const games = data.games;
-    let selected = $state<ReadonlySet<string>>(new Set(games?.map((g) => g.game_id) ?? []));
+    // svelte-ignore state_referenced_locally -- the start set is fixed for the island's life too
+    let selected = $state<ReadonlySet<string>>(new Set(initial ?? games?.map((g) => g.game_id) ?? []));
     let dateWindow = $state<DateWindow>(null);
     let n = $state<(typeof WINDOWS)[number]>(10);
     // what each date field shows while it has focus (Chromium reports half-typed values)

@@ -3,42 +3,132 @@ import GenericPage, { type PageBreadcrumb } from '../../../layouts/GenericPage.a
 import Panel from '../../../layouts/panel/GenericPanel.astro';
 import NavScroller, { type ScrollerItem } from '../../NavScroller.astro';
 import NbaGameHeader from './NbaGameHeader.astro';
+import NbaAdminSourceTools from './NbaAdminSourceTools.astro';
 import NbaFourFactors from './NbaFourFactors.astro';
 import NbaTeamBox from './NbaTeamBox.astro';
 import NbaPlayerBox from './NbaPlayerBox.astro';
 import NbaWinProbability from './NbaWinProbability.astro';
 import NbaGameShotCharts from './NbaGameShotCharts.astro';
 import NbaPlaysTable from './NbaPlaysTable.astro';
+import GameSituations from './GameSituations.astro';
+import NbaShotQuality from './NbaShotQuality.astro';
+import NbaImpactBox from './NbaImpactBox.astro';
+import NbaGameFlow from './NbaGameFlow.astro';
+import NbaEpvBox from './NbaEpvBox.astro';
+import NbaGarbageTime from './NbaGarbageTime.astro';
+import NbaGameLeaders from './NbaGameLeaders.astro';
+import NbaTeamGrid from './NbaTeamGrid.astro';
+import NbaSituationalBox from './NbaSituationalBox.astro';
+import NbaPlayerBoxViews from './NbaPlayerBoxViews.astro';
+import type { PlayerSeasonRate } from '../../../resources/playerSeasonRates';
+import NbaGameInfo from './NbaGameInfo.astro';
+import NbaPlayerProps from './NbaPlayerProps.astro';
 import { isFeatureEnabled } from '../../../utils/features';
 import { cleanAbbreviation, pickGameColors } from '../../../utils/misc';
 import { gameHref, scoreboardDayHref, teamHrefFromEspn } from '../../../nba/links';
 import { basketballEventJsonLd } from '../../../basketball/parity';
 import { LEAGUES, leaguePath } from '../../../utils/league';
-import { basketball } from '../../../basketball/config';
+import { basketball, courtFor, pickRegulation } from '../../../basketball/config';
 import type { NbaGame } from '../../../resources/nbaGame';
+import type { BasketballSourceTools } from '../../../routes/basketball/game';
+import type { ImpactBoxReads } from '../../../resources/impactBox';
+import type { GameFlowReads } from '../../../resources/gameFlow';
+import type { GarbageReads } from '../../../resources/garbageTime';
+import type { LeagueContext } from '../../../nba/dashboard';
+import type { GameStints, ShiftReads } from '../../../resources/gameStints';
+import NbaShiftChart from './NbaShiftChart.astro';
+import { garbageView } from '../../../utils/garbageTime';
+import NbaGameLines from './NbaGameLines.astro';
+import type { GameLine } from '../../../utils/gameLines';
+import type { PropRow } from '../../../resources/playerProps';
+import { propsView } from '../../../utils/playerProps';
+import type { GameInfoReads } from '../../../utils/gameInfo';
+import type { TeamGridSeason } from '../../../resources/teamGrid';
+import type { SeasonAverage } from '../../../utils/gameLeaders';
+import type { EpvBoxReads } from '../../../resources/epvBox';
+import type { GameShotQuality } from '../../../utils/shotQuality';
+import type { GameSituationsTab } from '../../../utils/situations';
+import NbaLatest from './NbaLatest.astro';
+import { latestStrip } from '../../../basketball/latest';
 
-interface Props { game: NbaGame }
-const { game } = Astro.props;
+interface Props {
+  game: NbaGame;
+  /** admin + 'source-switch' only (routes/basketball/game.ts) */
+  sourceTools?: BasketballSourceTools;
+  /** BB-G25, 'bball-situational' and a final only: the Situations panel */
+  situations?: GameSituationsTab;
+  /** BB-G15, 'bball-poe' only */
+  poe?: GameShotQuality | null;
+  /** BB-G1, 'bball-impact-box' and a final only: the Impact box's reads; null when one failed; absent: no panel */
+  impact?: ImpactBoxReads | null;
+  /** BB-G28, 'bball-game-flow' and a final only: the game_flow rows; null when the read failed; absent: no panel */
+  flow?: GameFlowReads | null;
+  /** BB-G26, 'bball-epv', an NBA final from 2021-22 only: the EPV rows; null when a read failed; absent: no panel */
+  epv?: EpvBoxReads | null;
+  /** BB-G2, 'bball-garbage-time' with the Impact box and a final only: the possession log and `?garbage=out`; absent: no toggle */
+  garbage?: { reads: GarbageReads | null; out: boolean };
+  /** BB-G35, 'bball-game-leaders' and a final only: the season averages; null when the read failed; absent: none drawn */
+  averages?: SeasonAverage[] | null;
+  /** BB-G39, 'bball-game-shooting' and a final only: the league curve beside the shot charts; null/absent: the charts alone */
+  shooting?: LeagueContext | null;
+  /** BB-G38, 'bball-shot-filters' (live or final): the shot filters, with the final's stints for ON/OFF (null: none); absent: today's charts */
+  shotFilters?: { stints: GameStints | null };
+  /** BB-G36, 'bball-shift-chart' and a final only: the game's stints and minutes (null: the read failed); absent: no panel */
+  shift?: ShiftReads | null;
+  /** BB-G32, 'bball-team-grid', live or final: the season team rates; null when the read failed; absent: none drawn */
+  season?: TeamGridSeason | null;
+  /** BB-G34, 'bball-player-box-views', live or final: the players' season lines for Vs average; null when the read failed */
+  playerSeason?: PlayerSeasonRate[] | null;
+  /** BB-G42, 'bball-game-info', live or final: the crew, the profiles and the injury report; null when a read failed; absent: no panel */
+  info?: GameInfoReads | null;
+  /** BB-G44, 'bball-props', nba/wnba/mbb, a final or live game: the player_props rows; null when the read failed; absent: no panel */
+  playerProps?: PropRow[] | null;
+  /** BB-G43, 'bball-lines', live or final with a game_lines row: the market row; null when the read failed; absent: no panel */
+  lines?: GameLine | null;
+}
+const { game, sourceTools, situations, poe, impact, flow, epv, garbage, averages, shooting, shotFilters, shift, season, playerSeason, info, playerProps, lines } = Astro.props;
+// BB-G44: the props panel's view (null: the read failed; undefined: no props for the game)
+const propLines = playerProps === null ? null : playerProps ? propsView(playerProps, game) : undefined;
+const withProps = playerProps === null || propLines != null;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const title = `${game.away.team.displayName} ${game.away.score ?? ''} at ${game.home.team.displayName} ${game.home.score ?? ''} | Game on Paper`.replace(/\s+/g, ' ');
 const description = `${game.away.team.displayName} at ${game.home.team.displayName}: win probability, biggest plays, four factors, advanced box score and shot charts.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: leaguePath(league, '/'), active: false }, { title: 'Scoreboard', url: scoreboardDayHref(league, game.date), active: false }, { title: `${cleanAbbreviation(game.away.team)} @ ${cleanAbbreviation(game.home.team)}`, active: true }];
-const items: ScrollerItem[] = [{ href: '#wp', title: 'Win probability' }, { href: '#factors', title: 'Four factors' }, { href: '#teambox', title: 'Team box' }, { href: '#players', title: 'Players' }, { href: '#shots', title: 'Shots' }, { href: '#plays', title: 'Plays' }];
 const side = (s: typeof game.home) => ({ name: s.team.displayName, href: teamHrefFromEspn(s.team, league, game.season), score: s.score });
 const jsonLd = basketballEventJsonLd({ league, path: gameHref(league, game.id), date: game.date, description, venue: game.venue, statusDetail: game.status.detail, home: side(game.home), away: side(game.away) });
 const colors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColors(game.home.team, game.away.team) : null;
+// BB-G2: undefined (the page as without the flag) unless the log flags garbage time; `split` only on `?garbage=out`
+const gt = garbage && garbageView(garbage.reads, impact, garbage.out, league, game.regulation, pickRegulation(cfg.regulation, game.season, game.regulation).periodMinutes);
+const split = gt?.rates ? gt : undefined;
+// BB-G32: one Team stats panel for the four factors and the team box; `?garbage=out` keeps BB-G2's split tables
+const grid = isFeatureEnabled('bball-team-grid', Astro.locals) && !split;
+// BB-G33: the possession factors (BB-D31 splits, whole game), so not beside `?garbage=out`'s split tables
+const situational = isFeatureEnabled('bball-situational-box', Astro.locals) && !split;
+// BB-G15 ('bball-poe'): its own panel after Four factors, for a game with both team rows or a failed read (it says so)
+const poeShown = poe === null || (poe != null && poe.home != null && poe.away != null);
+// BB-G41: null (the page as without the flag) unless the game is live
+const latest = isFeatureEnabled('bball-latest-strip', Astro.locals) ? latestStrip(game, { rimPlaceholder: cfg.espnRimPlaceholder === true, court: courtFor(league, game.season) }) : null;
+const items: ScrollerItem[] = [...(latest ? [{ href: '#latest', title: 'Latest' }] : []), { href: '#wp', title: 'Win probability' }, ...(flow !== undefined ? [{ href: '#flow', title: 'Game flow' }] : []), ...(lines !== undefined ? [{ href: '#lines', title: 'Lines' }] : []), { href: '#factors', title: 'Four factors' }, { href: '#teambox', title: 'Team box' }, ...(poeShown ? [{ href: '#poe', title: 'Points over expected' }] : []), ...(situational ? [{ href: '#possession-factors', title: 'Possession factors' }] : []), ...(situations ? [{ href: '#situations', title: 'Situations' }] : []), { href: '#players', title: 'Players' }, ...(withProps ? [{ href: '#props', title: 'Player props' }] : []), ...(impact !== undefined ? [{ href: '#impact', title: 'Impact' }] : []), ...(shift !== undefined ? [{ href: '#shifts', title: 'Shifts' }] : []), ...(epv !== undefined ? [{ href: '#epv', title: 'EPV' }] : []), { href: '#shots', title: 'Shots' }, { href: '#plays', title: 'Plays' }, ...(info !== undefined ? [{ href: '#info', title: 'Game info' }] : [])];
+// BB-G35: the Leaders panel, live or final, after the box score
+const withLeaders = isFeatureEnabled('bball-game-leaders', Astro.locals);
+if (withLeaders) items.splice(items.findIndex((i) => i.href === '#shots'), 0, { href: '#leaders', title: 'Leaders' });
+// BB-G34: the player box views; `?garbage=out` keeps BB-G2's whole-game note above them
+const boxViews = isFeatureEnabled('bball-player-box-views', Astro.locals);
 ---
 <GenericPage title={title} subtitle={description} slug={gameHref(league, game.id)} breadcrumbs={breadcrumbs} description={description} jsonLd={[jsonLd]}>
   <link href="/assets/css/sticky-table.css" rel="stylesheet">
   <div class="container">
-    <NbaGameHeader game={game} />
+    <NbaGameHeader game={game} />{sourceTools && <NbaAdminSourceTools game={game} tools={sourceTools} />}{info && !game.status.completed && <NbaGameInfo info={info} home={game.home.team} away={game.away.team} season={game.season} part="summary" />}
     <div class="game-nav-sticky py-1 mb-3 border-top border-bottom"><NavScroller items={items} /></div>
-    <Panel id="wp" title="Win probability" show={true}><div slot="panel-body"><NbaWinProbability game={game} colors={colors} /></div></Panel>
-    <Panel id="factors" title="Four factors" show={true}><div slot="panel-body"><NbaFourFactors game={game} /></div></Panel>
-    <Panel id="teambox" title="Team box" show={true}><div slot="panel-body"><NbaTeamBox game={game} /></div></Panel>
-    <Panel id="players" title="Players" show={true}><div slot="panel-body"><div class="row"><div class="col-12 col-xl-6"><NbaPlayerBox side={game.away} id="box-away" league={league} /></div><div class="col-12 col-xl-6"><NbaPlayerBox side={game.home} id="box-home" league={league} /></div></div></div></Panel>
-    <Panel id="shots" title="Shot charts" show={true}><div slot="panel-body"><NbaGameShotCharts game={game} /></div></Panel>
-    <Panel id="plays" title="Play-by-play" show={true}><div slot="panel-body"><NbaPlaysTable game={game} /></div></Panel>
+    {latest && (<Panel id="latest" title="Latest" show={true}><div slot="panel-body"><NbaLatest game={game} latest={latest} /></div></Panel>)}
+    <Panel id="wp" title="Win probability" show={true}><div slot="panel-body"><NbaWinProbability game={game} colors={colors} /></div></Panel>{flow !== undefined && (<Panel id="flow" title="Game flow" show={true}><div slot="panel-body"><NbaGameFlow game={game} flow={flow} /></div></Panel>)}{lines !== undefined && (<Panel id="lines" title="Lines and markets" show={true}><div slot="panel-body"><NbaGameLines line={lines} home={game.home.team} away={game.away.team} game={game} /></div></Panel>)}
+    {grid ? (<Panel id="factors" title="Team stats" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="select" />}<NbaTeamGrid game={game} season={season} /></div></Panel>) : (<Fragment><Panel id="factors" title="Four factors" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="select" />}{split ? <NbaGarbageTime game={game} view={split} part="factors" /> : <NbaFourFactors game={game} />}</div></Panel>
+    <Panel id="teambox" title="Team box" show={true}><div slot="panel-body">{split?.box ? <NbaGarbageTime game={game} view={split} part="teambox" /> : (<Fragment>{split && <NbaGarbageTime game={game} view={split} part="teambox" />}<NbaTeamBox game={game} /></Fragment>)}</div></Panel></Fragment>)}{poeShown && (<Panel id="poe" title="Points over expected" show={true}><div slot="panel-body"><NbaShotQuality game={game} poe={poe ?? null} /></div></Panel>)}
+    {situations && <Panel id="situations" title="Situations" show={true}><div slot="panel-body"><GameSituations game={game} data={situations} /></div></Panel>}
+    <Panel id="players" title="Players" show={true}><div slot="panel-body">{split && <NbaGarbageTime game={game} view={split} part="whole" />}{boxViews ? <NbaPlayerBoxViews game={game} league={league} playerSeason={playerSeason} /> : <div class="row"><div class="col-12 col-xl-6"><NbaPlayerBox side={game.away} id="box-away" league={league} /></div><div class="col-12 col-xl-6"><NbaPlayerBox side={game.home} id="box-home" league={league} /></div></div>}</div></Panel>{impact !== undefined && (<Panel id="impact" title="Impact and lineups" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="toggle" />}<NbaImpactBox game={game} impact={gt?.impact ?? impact} fromLog={gt?.impact !== undefined} /></div></Panel>)}{epv !== undefined && (<Panel id="epv" title="EPV added" show={true}><div slot="panel-body"><NbaEpvBox game={game} epv={epv} /></div></Panel>)}{withLeaders && (<Panel id="leaders" title="Leaders" show={true}><div slot="panel-body"><NbaGameLeaders game={game} league={league} averages={averages} /></div></Panel>)}{withProps && (<Panel id="props" title="Player props" show={true}><div slot="panel-body"><NbaPlayerProps game={game} view={propLines ?? null} /></div></Panel>)}
+    {shift !== undefined && (<Panel id="shifts" title="Shift chart" show={true}><div slot="panel-body"><NbaShiftChart game={game} reads={shift} periodMinutes={pickRegulation(cfg.regulation, game.season, game.regulation).periodMinutes} /></div></Panel>)}{situational && (<Panel id="possession-factors" title="Possession factors" show={true}><div slot="panel-body"><NbaSituationalBox game={game} league={league} /></div></Panel>)}
+    <Panel id="shots" title="Shot charts" show={true}><div slot="panel-body"><NbaGameShotCharts game={game} shooting={shooting} filters={shotFilters} /></div></Panel>
+    <Panel id="plays" title="Play-by-play" show={true}><div slot="panel-body"><NbaPlaysTable game={game} /></div></Panel>{info !== undefined && (<Panel id="info" title="Game info" show={true}><div slot="panel-body"><NbaGameInfo info={info} home={game.home.team} away={game.away.team} season={game.season} players={{ home: game.home.players, away: game.away.players }} /></div></Panel>)}
   </div>
 </GenericPage>

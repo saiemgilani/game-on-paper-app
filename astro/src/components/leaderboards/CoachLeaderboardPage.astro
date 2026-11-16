@@ -2,7 +2,7 @@
 import GenericPage, { type PageBreadcrumb } from "../../layouts/GenericPage.astro";
 import { retrieveCoachCareers, retrieveCoachTendencies, retrieveTeamSummaries } from "../../resources/sdv";
 import { METRIC_YEAR } from "../../utils/constants";
-import { COACH_BOARDS, COACH_BOARD_SLUGS, COACH_MIN_PLAYS, coachSourceColumns, numericValue, teamsWithoutCoach, withDerivedColumns, type CoachRow } from "../../utils/coaches";
+import { COACH_BOARDS, COACH_MIN_PLAYS, coachBoardColumns, coachBoardSlugs, coachSourceColumns, numericValue, teamsWithoutCoach, withDerivedColumns, type CoachRow } from "../../utils/coaches";
 import { LEAGUES, leaguePath } from "../../utils/league";
 import { cleanField } from "../../utils/misc";
 import { COACH_BOARD_COPY, datasetJsonLd } from "../../utils/seo";
@@ -33,7 +33,7 @@ const description = copy.description(seasonOrNull, league);
 const seasons = cfg.seasons.filter((y) => y <= METRIC_YEAR).toSorted((a, b) => b - a);
 
 // the page fetches so the Dataset's coverage can come from the rows themselves
-const columnKeys = [...new Set(def.columns.flatMap((c) => coachSourceColumns(c.key)))];
+const columnKeys = [...new Set(coachBoardColumns(def, league).flatMap((c) => coachSourceColumns(c.key)))];
 const fetched: CoachRow[] = careers
     ? await retrieveCoachCareers({ league, columns: columnKeys })
     : await retrieveCoachTendencies({ season, league, columns: columnKeys });
@@ -80,6 +80,7 @@ const breadcrumbs: PageBreadcrumb[] = careers
         { title: "Head Coaches", url: boardBase, active: false },
         { title: def.title, url: pageUrl, active: true },
     ];
+const minGamesText = (n: number) => (n === 1 ? 'no game' : `fewer than ${n} games`);
 const subtitle = careers ? `Head coach ${def.title.toLowerCase()} across every season` : `Head coach ${def.title.toLowerCase()} during the ${season} season`;
 ---
 
@@ -93,6 +94,7 @@ const subtitle = careers ? `Head coach ${def.title.toLowerCase()} across every s
                     {careers
                         ? <Fragment>Coaches with fewer than {COACH_MIN_PLAYS.careers} plays are listed below the divider without a rank.</Fragment>
                         : <Fragment>Coaches with fewer than {COACH_MIN_PLAYS.season} plays are listed below the divider without a rank.</Fragment>}
+                    {def.minGames && ` So are coaches with ${minGamesText(careers ? def.minGames.careers : def.minGames.season)} in the situation the board is sorted by.`}
                     {league === 'cfb' && " Includes all games (including bowls/CFP and those against FCS opponents)."}{league === 'nfl' && " Regular season and playoffs."}
                 </p>
                 <p class="m-0 mb-2 text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>; head coaches per {league === 'cfb' ? <a href="https://collegefootballdata.com">CFBD</a> : "the nflverse schedule"}. Click a column heading to sort by it. Rows with no clock data show "—".</p>
@@ -115,7 +117,7 @@ const subtitle = careers ? `Head coach ${def.title.toLowerCase()} across every s
                         <div class="col-auto mb-3">
                             <label class="visually-hidden" for="coach-board">Leaderboard option</label>
                             <select id="coach-board" class="form-select form-select-md" onchange="window.location.href = this.value">
-                                {COACH_BOARD_SLUGS.map((b) => (
+                                {coachBoardSlugs(Astro.locals).map((b) => (
                                     <option value={`${boardBase}/${b}`} selected={b === board}>{COACH_BOARDS[b].title}</option>
                                 ))}
                             </select>
