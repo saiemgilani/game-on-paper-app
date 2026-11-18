@@ -139,8 +139,10 @@ export function flowExtras(game: NbaGame, periodSeconds: number): FlowExtras {
         // the OT's 5:00 share one elapsed time): the score at the last play before it is the baseline
         const prior = game.periods > reg ? game.plays.findLast((p) => p.period < game.periods) : undefined;
         const cut = total - LAST_WINDOW;
-        const before = prior ? { home: prior.homeScore, away: prior.awayScore } : [...series].reverse().find((p) => p.t < cut) ?? series[0];
-        last5 = { home: end.home - before.home, away: end.away - before.away };
+        // series[0] is leadSeries' synthetic 0-0: a baseline only for a log that starts at the tip, else last5 stays null
+        const found = game.periods > reg ? undefined : [...series].reverse().find((p) => p.t < cut);
+        const before = prior ? { home: prior.homeScore, away: prior.awayScore } : found && (found !== series[0] || game.plays[0]?.period === 1) ? found : null;
+        if (before) last5 = { home: end.home - before.home, away: end.away - before.away };
     }
     return {
         runs: runs(series, RUN_LIST_MIN),

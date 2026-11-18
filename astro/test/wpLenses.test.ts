@@ -110,6 +110,11 @@ describe('the extras agree with the rows', () => {
         const after = ps.slice(i4 + 1).map((p) => ({ ...p, homeScore: p.homeScore + 3 }));
         const edge = { ...ot, plays: [...ps.slice(0, i4 + 1), buzzer, opener, ...after] };
         expect(flowExtras(edge, 720).last5).toEqual({ home: want.home + 1, away: want.away });
+        // a log that starts in the final OT has no real baseline: no last 5:00, never the whole final score (leadSeries' 0-0)
+        expect(flowExtras({ ...ot, plays: ps.filter((p) => p.period === 5) }, 720).last5).toBeNull();
+        // nor does a regulation final whose log starts inside its last 5:00
+        const reg4 = ps.slice(0, i4 + 1).filter((p) => p.period === 4 && (p.secondsRemaining ?? 0) < 300);
+        expect(flowExtras({ ...ot, periods: 4, plays: reg4 }, 720).last5).toBeNull();
         // not the clutch window (regulation's last 5:00 plus the OT, Q40's old reading)
         const clutch = plays.filter((p) => p.period_number === 4 && clockSeconds(p.clock_display_value)! > 300).at(-1)!;
         expect(want.home + want.away).toBeLessThan((end.home_score - clutch.home_score) + (end.away_score - clutch.away_score));

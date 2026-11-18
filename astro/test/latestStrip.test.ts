@@ -155,7 +155,16 @@ describe('the game page', () => {
         expect(now.querySelector('#game-section-picker option[value="#latest"]')).not.toBeNull();
         expect(swapLatest(now, dom(await page(later, 'nba')))).toBe(true);
         expect(now.querySelector('[data-latest-poll] tbody tr td:nth-child(4)')!.textContent).toBe(later.plays.at(-1)!.text);
+        // a refetched page not final but with no strip (suspended) keeps this strip and the poll
+        const suspended = dom(await page(live('nba', GAMES.nba, 0.6, 'STATUS_SUSPENDED'), 'nba'));
+        expect(suspended.querySelector('[data-latest-poll]')).toBeNull();
+        expect(swapLatest(now, suspended)).toBe(true);
+        expect(now.querySelector('#latest-panel [data-latest-poll]')).not.toBeNull();
+        // a selected Latest hands the phone-width picker back to its placeholder
+        const picker = now.querySelector<HTMLSelectElement>('#game-section-picker')!;
+        picker.querySelector<HTMLOptionElement>('option[value="#latest"]')!.selected = true;
         expect(swapLatest(now, dom(await page(final('nba'), 'nba')))).toBe(false);
+        expect(picker.selectedIndex).toBe(0);
         expect(now.querySelector('#latest-panel')).toBeNull();
         expect(now.querySelector('[data-latest-poll]')).toBeNull();
         expect(now.querySelector('a[href="#latest"]')).toBeNull();
@@ -167,12 +176,15 @@ describe('the game page', () => {
         expect(html).not.toContain('id="latest"');
         expect(html).not.toContain('href="#latest"');
     });
-    test('a final with the flag on renders byte for byte as with it off; so does a suspended game', async () => {
-        for (const g of [final('nba'), live('nba', GAMES.nba, 0.6, 'STATUS_SUSPENDED')]) {
-            const on = await page(g, 'nba', true);
-            expect(on).not.toContain('id="latest"');
-            expect(on).toBe(await page(g, 'nba', false));
-        }
+    test('a final with the flag on renders byte for byte as with it off; a suspended game adds only the pending marker', async () => {
+        const on = await page(final('nba'), 'nba', true);
+        expect(on).not.toContain('id="latest"');
+        expect(on).toBe(await page(final('nba'), 'nba', false));
+        const g = live('nba', GAMES.nba, 0.6, 'STATUS_SUSPENDED');
+        const sus = await page(g, 'nba', true);
+        expect(sus).not.toContain('id="latest"');
+        expect(sus).toContain('<template data-latest-pending></template>');
+        expect(sus.replace('<template data-latest-pending></template>', '')).toBe(await page(g, 'nba', false));
     });
     test("end of regulation: the End Period row's change is the settle (wnba 401736289: -60.3 into OT), so a dash", async () => {
         const g0 = final('wnba');

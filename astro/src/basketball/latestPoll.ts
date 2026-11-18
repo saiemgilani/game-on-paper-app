@@ -1,25 +1,34 @@
 /**
  * The Latest strip's refresh (BB-G41, 'bball-latest-strip'; Nov 17 decisions, #445): every 30 s while the game is live,
- * `next` refetches the page's own render and swaps the strip in. It answers false once the page has no live strip (the
- * game went final): the poll stops. A failed or stalled refetch (past `deadline`, its signal aborted) is logged and the
- * poll goes on; a hidden tab skips its turns.
+ * `next` refetches the page's own render and swaps the strip in. It answers false once the refetched page is a final: the
+ * poll stops. A failed or stalled refetch (past `deadline`, its signal aborted) is logged and the poll goes on; a hidden
+ * tab skips its turns.
  */
 export const LATEST_POLL_MS = 30_000;
-export const LATEST_DEADLINE_MS = 10_000;
+// a cold live render reads ESPN, then waits up to 25 s on the processor (NBA_PROCESSOR_TIMEOUT_MS); the next turn waits for this one
+export const LATEST_DEADLINE_MS = 30_000;
 
 /**
- * Swap the refetched page's strip into this one; true while live. A refetched page with no strip (the game went final):
- * this page's stale live panel and its nav entries (the link and the phone-width picker's option) are removed and false stops the poll (a reload shows the final's panels).
+ * Swap the refetched page's strip into this one; true while the poll should go on. A refetched page with no strip that is
+ * not a final (`[data-latest-pending]`: suspended, or live with no plays yet) keeps this strip and the poll. A final: this
+ * page's stale live panel and its nav entries (the link and the phone-width picker's option) are removed and false stops
+ * the poll (a reload shows the final's panels).
  */
 export function swapLatest(page: Document, fetched: Document): boolean {
     const el = page.querySelector('[data-latest-poll]');
     const next = fetched.querySelector('[data-latest-poll]');
     if (!el) return false;
     if (!next) {
+        if (fetched.querySelector('[data-latest-pending]')) return true;
         (el.closest('#latest-panel') ?? el).remove();
         const nav = page.querySelector('a[href="#latest"]');
         (nav?.closest('li') ?? nav)?.remove();
-        page.querySelector('#game-section-picker option[value="#latest"]')?.remove(); // the phone-width section picker's entry
+        // the phone-width section picker's entry; a selected Latest hands the selection back to the placeholder first, so
+        // picking the next section still fires `change`
+        const picker = page.querySelector<HTMLSelectElement>('#game-section-picker');
+        const opt = picker?.querySelector<HTMLOptionElement>('option[value="#latest"]');
+        if (picker && opt?.selected) picker.selectedIndex = 0;
+        opt?.remove();
         return false;
     }
     el.replaceChildren(...Array.from(next.childNodes, (n) => page.importNode(n, true)));

@@ -81,6 +81,9 @@ describe('results agree with the producer', () => {
         expect(upset(pk(0.49), 0, 1)).toBeNull();
         expect(upset(pk(0.5), 1, 0)).toBeNull();
         expect(upset(pk(null), 1, 0)).toBeNull();
+        // the cut reads the winner's printed percent: 50.5 / 49.5 print 51% / 50% (toFixed), so the away side is no underdog
+        expect(upset(pk(0.505), 0, 1)).toBeNull();
+        expect(upset(pk(0.51), 0, 1)).toEqual({ side: 'away', wp: 1 - 0.51 });
         expect(upset(row(401736112), 100, 100)).toBeNull(); // no winner
         // the WP decides when the line and the WP disagree, so the tag matches the percent it prints; a printed 50% has no underdog
         expect(upset({ ...pk(0.55), spread_home_open: 1, spread_home_close: null }, 1, 0)).toBeNull();

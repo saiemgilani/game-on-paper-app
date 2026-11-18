@@ -53,15 +53,17 @@ export const hasLine = (l: GameLine): boolean => [l.spread_home_open, l.spread_h
     l.market_home_wp_open, l.market_away_wp_open, l.market_home_wp_close, l.market_away_wp_close].some((v) => v != null);
 
 /**
- * The market underdog: the side whose no-vig market WP (the close, else the open), as a whole percent, is under 50%, so the
- * tag never contradicts the percent beside it; with no WP, the side getting points on the line. null: no underdog (a
- * printed 50%, a pick'em with no WP, or no market). The league hub's card (basketball/hub.ts) uses the same rule.
+ * The market underdog: the side whose no-vig market WP (the close, else the open), as the whole percent printed for it, is
+ * under 50%, so the tag never contradicts the percent beside it; with no WP, the side getting points on the line. null: no
+ * underdog (neither side prints under 50%, a pick'em with no WP, or no market). The league hub's card (basketball/hub.ts)
+ * uses the same rule on the one percent it prints, the favourite's.
  */
 export function underdog(l: GameLine): 'home' | 'away' | null {
     const hw = marketHomeWp(l);
     if (hw != null) {
-        const pct = Math.round(hw * 100);
-        return pct === 50 ? null : pct < 50 ? 'home' : 'away';
+        // each side's percent as the panel prints it (fmtPct, toFixed(0)): 50.5 / 49.5 can print 51% / 50%, and that is no underdog
+        const printed = (wp: number) => Number((wp * 100).toFixed(0));
+        return printed(hw) < 50 ? 'home' : printed(1 - hw) < 50 ? 'away' : null;
     }
     const s = lineSpread(l);
     return s == null || s === 0 ? null : s > 0 ? 'home' : 'away';

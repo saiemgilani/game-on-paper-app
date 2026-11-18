@@ -32,7 +32,7 @@ const pct = (line: number, actual: number) => Math.max(0, Math.min(100, Math.rou
       <tbody>
         {players.map((p) => (
           <tr class={p.dnp ? 'text-muted' : undefined}>
-            <th scope="row" class="text-start fw-normal text-nowrap">{p.name}{p.dnp && <span class="small" title="Did not play: the lines are void"> DNP</span>}</th>
+            <th scope="row" class="text-start fw-normal text-nowrap">{p.name}{p.dnp && <span class="small" title={view.final ? 'Did not play: the lines are void' : 'Has not played'}> DNP</span>}</th>
             {cols.map(({ stat }) => { const c = p.cells[stat]; return (
               <td class="text-end text-nowrap">{c ? (
                 <Fragment>

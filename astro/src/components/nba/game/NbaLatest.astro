@@ -70,7 +70,7 @@ const R = 6;
     import { pollLatest, swapLatest } from '../../../basketball/latestPoll';
     if (document.querySelector('[data-latest-poll]')) pollLatest(async (signal) => {
         const res = await fetch(location.href, { cache: 'no-cache', signal });
-        if (!res.ok) return true;
+        if (!res.ok) throw new Error(`refetch answered ${res.status}`); // logged by pollLatest, which keeps polling
         return swapLatest(document, new DOMParser().parseFromString(await res.text(), 'text/html'));
     }, { hidden: () => document.hidden });
 </script>
