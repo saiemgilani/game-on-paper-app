@@ -65,7 +65,9 @@ export const FLAGS: Record<string, FeatureState> = {
     // BB-G47's league hub at /nba, /wnba, /mbb and /wbb: today's games (the scoreboard's own read and cards, live first, then
     // upcoming, then final) with the market line and win probability from `{league}.game_lines` (BB-D33) where it has the
     // game, and an index of the league's pages. Off: the landing is today's (the NBA's featured team, the others' teams
-    // index), byte for byte, and no game_lines read is made.
+    // index), byte for byte, and no game_lines read is made. On, the NBA's Nets landing moves to /nba/roster (Nov 17, #458;
+    // /nba?season= redirects there), a new public URL on promotion: smoke it, and purge /nba/roster's cached 404 and the
+    // cached /nba landing (tag `nba`, held six hours; the ingest purge does not clear it).
     'bball-hub': 'preview',
     // BB-G48's "Tonight" on that hub (so it shows only where 'bball-hub' is on too): the night's five best games by game score
     // from `{league}.player_box` (the board's day once the nightly has its finals, else the day before), linked to their game
@@ -82,6 +84,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // for a final, with its lead changes and biggest WP swing beside it. Off: the chart island's props are today's. A Data API-served game page still has no GEI
     // (resources/nbaGame.ts fromDataApi).
     'bball-gei': 'preview',
+    // Basketball game link previews (nba/wnba/mbb/wbb, so inside each league's flag), as 'share-card' is for football:
+    // a live or final game page's og:image is its 1200x630 card (`/<league>/game/<id>/card.png`, routes/basketball/
+    // shareCard.ts, python/share_card.py render_basketball): the score, the teams, the WP line and, on a final, the GEI.
+    // Off: the head is today's, byte for byte. The card endpoint itself is not gated (a crawler carries no cookie).
+    'bball-share-card': 'preview',
     // The Best Games board (BB-G29): /<league>/best-games and its Header entry, inside each league's flag. sdv-db's
     // `{lg}.game_excitement` by season, day range and team. Its own flag, so promoting the game pages' GEI line does not
     // ship the board. Off: the board is the site's 404 and the Header is today's.
@@ -382,7 +389,7 @@ export const FLAGS: Record<string, FeatureState> = {
     // All-time player leaderboards (S17): /all-time/players/<category> and the /nfl twin,
     // the top qualified player-seasons across every season the table has. Gated in
     // middleware like 'coaches' (routes/allTime.ts isAllTimePath); the header entry, the
-    // season dropdown's All-time option and the sitemap block read the same flag.
+    // season dropdown's All-Time option and the sitemap block read the same flag.
     'all-time-leaderboards': 'preview',
     // The team profile as a history hub (/team/<id> and the /nfl twin): Best Seasons, Head Coaches and,
     // CFB only, Conference History tables under Seasons. Only this path reads the team's

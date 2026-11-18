@@ -1044,6 +1044,47 @@ def card_nfl(game_id: int):
     return _card("nfl", game_id)
 
 
+def _bball_card_body_ok(body) -> bool:
+    if not isinstance(body, dict):
+        return False
+    plays = body.get("plays", [])
+    return (
+        all(isinstance(body.get(side), dict) for side in ("home", "away"))
+        and isinstance(plays, list)
+        and all(isinstance(p, list) and len(p) == 3 for p in plays)
+    )
+
+
+def _card_basketball(league: str, game_id: int):
+    """'bball-share-card' (preview): a basketball game's 1200x630 card (share_card.render_basketball) as a PNG.
+
+    Live or final only (`state`). The POST body is everything the card draws, built by the Worker from the game the
+    page renders (astro basketball/shareCard.ts), so this route reads nothing itself: no ESPN, no play-by-play run.
+    Caching is the Worker's.
+    """
+    state = request.args.get("state")
+    if state not in ("live", "final"):
+        return jsonify({"status": "bad", "message": "state is live|final"}), 400
+    body = request.get_json(silent=True)
+    if request.content_length is None or request.content_length > _CARD_BODY_MAX or not _bball_card_body_ok(body):
+        return jsonify({"status": "bad", "message": "body is {home: {..}, away: {..}, plays: [[period, wp, secs], ..]}"}), 400
+    try:
+        png = share_card.render_basketball(body, league, state, _logo_fetch, dt.now(tz.utc))
+    except Exception as e:  # not a 401: require_auth_token answers that for any raise
+        logging.getLogger("root").error(f"card: render failed for {league} {game_id}: {e!r}")
+        return jsonify({"status": "bad", "message": "card render failed"}), 500
+    return Response(png, mimetype="image/png")
+
+
+for _league in BASKETBALL_PROCESSORS:
+    app.add_url_rule(
+        f"/{_league}/<int(min=100000,max=999999999999):game_id>/card.png",
+        endpoint=f"card_{_league}",
+        view_func=require_auth_token(lambda game_id, _lg=_league: _card_basketball(_lg, game_id)),
+        methods=["POST"],
+    )
+
+
 @app.route("/cfb/playoff/projection", methods=["POST"])
 @require_auth_token
 def playoff_projection_route():

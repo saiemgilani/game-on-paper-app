@@ -67,8 +67,8 @@ export const TIEBREAK_LABEL: Record<string, string> = {
 /** A bracket line: a seated team, or a slot a game still to be played fills, labelled (no seed). */
 export type CupUnit = { seed: number; team: CupTeam } | { label: string };
 
-/** A round's games, and the sim column each seated team's number is: its chance to reach the next round. */
-export interface CupBracketRound { name: string; games: [CupUnit, CupUnit][]; next: 'p_semifinal' | 'p_final' | 'p_champion' }
+/** A round's games. Each seated team's number on the page is its title chance, in every round (Nov 17 decisions, #398). */
+export interface CupBracketRound { name: string; games: [CupUnit, CupUnit][] }
 
 /**
  * The Cup window, November and December (Group Play opens in early November; the final is mid-December), by the US
@@ -106,9 +106,9 @@ export function cupBracket(teams: CupTeam[]): { rounds: CupBracketRound[]; champ
     const conf = (c: string) => [...pair(c, 1, 4), ...pair(c, 2, 3)];
     return {
         rounds: [
-            { name: 'Quarterfinals', next: 'p_semifinal', games: confs.flatMap((c) => [[unit(c, 1), unit(c, 4)], [unit(c, 2), unit(c, 3)]] as [CupUnit, CupUnit][]) },
-            { name: 'Semifinals', next: 'p_final', games: confs.map((c) => [through(pair(c, 1, 4), 'p_semifinal', `${c} 1-4 winner`), through(pair(c, 2, 3), 'p_semifinal', `${c} 2-3 winner`)]) },
-            { name: 'Championship', next: 'p_champion', games: [[through(conf('East'), 'p_final', 'East winner'), through(conf('West'), 'p_final', 'West winner')]] },
+            { name: 'Quarterfinals', games: confs.flatMap((c) => [[unit(c, 1), unit(c, 4)], [unit(c, 2), unit(c, 3)]] as [CupUnit, CupUnit][]) },
+            { name: 'Semifinals', games: confs.map((c) => [through(pair(c, 1, 4), 'p_semifinal', `${c} 1-4 winner`), through(pair(c, 2, 3), 'p_semifinal', `${c} 2-3 winner`)]) },
+            { name: 'Championship', games: [[through(conf('East'), 'p_final', 'East winner'), through(conf('West'), 'p_final', 'West winner')]] },
         ],
         champion: teams.find((t) => t.sim.p_champion === 1 && t.standing?.knockout_seed != null) ?? null,
     };

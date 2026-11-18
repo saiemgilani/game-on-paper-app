@@ -29,9 +29,12 @@ interface Props {
     canonicalPath?: string
     /** leave out the analytics script, for a page whose URL carries a secret (the magic-link landing). */
     noAnalytics?: boolean
+    /** og:image / twitter:image in place of the site's social card, same 1200x630 ('bball-share-card': a game's card) */
+    image?: { url: string, alt: string }
 }
 
-const { title, subtitle, slug, breadcrumbs, description, jsonLd, heading, canonicalPath, noAnalytics } = Astro.props;
+const { title, subtitle, slug, breadcrumbs, description, jsonLd, heading, canonicalPath, noAnalytics, image } = Astro.props;
+const socialImage = image?.url ?? "https://gameonpaper.com/assets/img/social-card.png";
 const metaDescription = description || subtitle;
 // One <script> per object: a single tag holding an array is valid JSON-LD, but
 // some validators/extensions read r['@context'] per tag and throw on arrays.
@@ -95,7 +98,7 @@ function generateBreadcrumbsListHtml(): string {
         <meta property="og:url" content={canonicalUrl}>
         <meta property="og:title" content={title}>
         <meta property="og:description" content={metaDescription}>
-        <meta property="og:image" content="https://gameonpaper.com/assets/img/social-card.png">
+        <meta property="og:image" content={socialImage}>{image && <meta property="og:image:alt" content={image.alt}>}
         <meta property="og:image:width" content="1200">
         <meta property="og:image:height" content="630">
         <meta property="og:type" content="website">
@@ -104,7 +107,7 @@ function generateBreadcrumbsListHtml(): string {
         <meta name="twitter:title" content={title}>
         <meta name="twitter:description" content={metaDescription}>
         <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:image" content="https://gameonpaper.com/assets/img/social-card.png">
+        <meta name="twitter:image" content={socialImage}>
         <meta name="title" content={title}>
         <meta name="medium" content="website">
         {structuredData.map((s) => <script type="application/ld+json" set:html={s} />)}
