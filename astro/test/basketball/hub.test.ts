@@ -97,8 +97,8 @@ describe('hubTags and hubIndex', () => {
         expect(hubTags({ neutralSite: false, broadcasts: [], broadcast: 'NBA TV' })).toEqual(['TV: NBA TV']);
         expect(hubTags({ neutralSite: false, broadcasts: [], broadcast: '' })).toEqual([]);
     });
-    test("every league indexes its Header pages; the NBA's featured-team landing becomes a link to that team's page", () => {
-        expect(hubIndex('nba').map((p) => p.path)).toEqual(['/scoreboard', '/players', '/teams', '/scatter', '/leaders', '/team/17']);
+    test("every league indexes its Header pages; the NBA's featured-team landing becomes a link to its roster page", () => {
+        expect(hubIndex('nba').map((p) => p.path)).toEqual(['/scoreboard', '/players', '/teams', '/scatter', '/leaders', '/roster']);
         expect(hubIndex('nba')[5].label).toBe('Nets');
         for (const lg of ['nba', 'wnba', 'mbb', 'wbb'] as const) {
             const paths = hubIndex(lg).map((p) => p.path);
@@ -148,7 +148,7 @@ describe('/<league> behind bball-hub', () => {
         expect(at('live')).toBeLessThan(at('upcoming'));
         expect(at('upcoming')).toBeLessThan(at('final'));
         // the Nets landing the hub replaces is one click away in the page index
-        expect(html.slice(html.indexOf('id="hub-index"'))).toContain('href="/nba/team/17"');
+        expect(html.slice(html.indexOf('id="hub-index"'))).toContain('href="/nba/roster"');
         // not final: no cover or upset words on those two cards
         const card = (id: string) => html.split(`data-hub-line="${id}"`)[1].split('</p>')[0];
         for (const id of [a.id, b.id]) expect(card(id)).not.toMatch(/covered|Upset|Push/);

@@ -1,0 +1,19 @@
+---
+// src/pages/nba/roster.astro
+// The featured team's (Nets) roster shooting, the landing that the 'bball-hub' league hub takes over at /nba (Nov 17, #458).
+// Same read and template as the flag-off /nba; off, this URL is the site's 404.
+import NbaHomeRoute from '../../components/routes/NbaHomeRoute.astro';
+import { prepareNbaHome } from '../../routes/nba/home';
+import { NBA_UNAVAILABLE } from '../../routes/nba/cache';
+import { isFeatureEnabled } from '../../utils/features';
+
+if (!isFeatureEnabled('bball-hub', Astro.locals)) {
+    return Astro.rewrite('/404');
+}
+const r = await prepareNbaHome(Astro);
+if ('unavailable' in r) {
+    return NBA_UNAVAILABLE();
+}
+---
+
+<NbaHomeRoute data={r} path="/roster" />

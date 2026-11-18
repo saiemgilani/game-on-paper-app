@@ -12,8 +12,10 @@ import type { NbaHomeParams } from '../../routes/nba/home';
 import { basketball, seasonLabelFor } from '../../basketball/config';
 import { LEAGUES, leaguePath } from '../../utils/league';
 
-interface Props { data: NbaHomeParams }
+// `path`: where this page is served. '/' is the landing (flag off); '/roster' is the same page behind 'bball-hub', where the hub takes '/'.
+interface Props { data: NbaHomeParams; path?: string }
 const { season, seasons, current, q, roster, headshots } = Astro.props.data;
+const path = Astro.props.path ?? '/';
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const name = LEAGUES[league].shortName;
@@ -25,14 +27,14 @@ const title = `${teamName(ft.statsTeamId, season)} shooting, ${label} | Game on 
 const subtitle = `Hex shot charts, shooting signatures and distance and side splits for every ${ft.menuLabel} player, compared with the rest of the league, from ${cfg.statsSourceLabel} play-by-play.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: label, active: true }];
 ---
-<GenericPage title={title} subtitle={subtitle} slug={lp('/')} breadcrumbs={breadcrumbs} canonicalPath={`${lp('/')}${q}`}>
+<GenericPage title={title} subtitle={subtitle} slug={lp(path)} breadcrumbs={breadcrumbs} canonicalPath={`${lp(path)}${q}`}>
   <div class="container">
     <div class="row mb-3">
       <div class="col-12">
         <h1 class="h3">Where the {ft.menuLabel} shoot, and how often it goes in.</h1>
         <p class="text-muted">{subtitle}</p>
         <div class="d-flex flex-wrap align-items-center gap-3">
-          <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp('/')} />
+          <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={lp(path)} />
           <a href={lp('/scoreboard')}>Scoreboard &rarr;</a>
           <a href={withParams(lp('/players'), { season: String(season) }, { season: String(current) })}>All players &rarr;</a>
           <a href={withParams(lp('/teams'), { season: String(season) }, { season: String(current) })}>All teams &rarr;</a>
