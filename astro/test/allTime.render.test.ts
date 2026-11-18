@@ -57,9 +57,9 @@ describe('all-time passing, cfb', () => {
         expect(rows[0]).toContain('hulk-bg-level');
     }, 60_000);
 
-    test('the dropdown offers All-time, selected', async () => {
+    test('the dropdown offers All-Time, selected', async () => {
         const html = await render('cfb');
-        expect(html).toMatch(/<option value="all-time" selected[^>]*>All-time<\/option>/);
+        expect(html).toMatch(/<option value="all-time" selected[^>]*>All-Time<\/option>/);
     }, 60_000);
 });
 
@@ -93,7 +93,7 @@ describe('the page files', () => {
 });
 
 describe('the season board', () => {
-    test('offers the All-time option only behind the flag', async () => {
+    test('offers the All-Time option only behind the flag', async () => {
         const { default: Page } = await import('../src/components/leaderboards/PlayerLeaderboardPage.astro');
         const at = (preview: boolean) => container.renderToString(Page, {
             props: { season: 2025, category: 'passing', metric: 'TEPA' },
@@ -101,7 +101,7 @@ describe('the season board', () => {
             locals: { league: 'cfb', preview } as App.Locals,
         });
         expect(await at(false)).not.toContain('value="all-time"');
-        expect(await at(true)).toMatch(/<option value="all-time"[^>]*>All-time<\/option>/);
+        expect(await at(true)).toMatch(/<option value="all-time"[^>]*>All-Time<\/option>/);
         expect(await at(true)).not.toMatch(/<option value="all-time" selected/);
     }, 60_000);
     test('flag off, the island props carry no allTime key (the public page stays byte-identical)', async () => {
@@ -125,5 +125,43 @@ describe('all-time passing, nfl', () => {
         expect(html).toContain('href="/nfl/year/2004/team/11"');
         expect(html).not.toContain('teamlogos/ncaa/');
         expect(html).not.toContain('FBS');
+    }, 60_000);
+});
+
+// Nov 17 decisions on #361: a rate board states its sample floor, and the NFL board hides Catch %.
+describe('the decisions on #361', () => {
+    async function board(lg: 'cfb' | 'nfl', category: string, metric: string) {
+        const { default: Page } = await import('../src/components/leaderboards/AllTimePage.astro');
+        return container.renderToString(Page, {
+            props: { category, metric, rows: [], stamp: null },
+            request: new Request(`https://gameonpaper.com${lg === 'nfl' ? '/nfl' : ''}/all-time/players/${category}`),
+            locals: { league: lg, preview: true } as App.Locals,
+        });
+    }
+
+    test('a rate metric states the cross-season sample floor; a total does not', async () => {
+        expect(await board('cfb', 'passing', 'EPAplay')).toContain('<span id="all-time-min-sample">150 dropbacks</span>');
+        expect(await board('nfl', 'rushing', 'yardsplay')).toContain('<span id="all-time-min-sample">75 carries</span>');
+        expect(await board('cfb', 'receiving', 'catchpct')).toContain('<span id="all-time-min-sample">40 targets</span>');
+        expect(await board('cfb', 'passing', 'TEPA')).not.toContain('all-time-min-sample');
+    }, 60_000);
+
+    test('the NFL all-time receiving board has no Catch % column or option; the cfb one keeps it', async () => {
+        const nfl = await board('nfl', 'receiving', 'TEPA');
+        expect(nfl).not.toContain('Catch %');
+        expect(nfl).not.toContain('value="catchpct"');
+        const cfb = await board('cfb', 'receiving', 'TEPA');
+        expect(cfb).toContain('>Catch %');
+        expect(cfb).toContain('value="catchpct"');
+    }, 60_000);
+
+    test('the NFL season receiving board keeps Catch %', async () => {
+        const { default: Page } = await import('../src/components/leaderboards/PlayerLeaderboardPage.astro');
+        const html = await container.renderToString(Page, {
+            props: { season: 2025, category: 'receiving', metric: 'TEPA' },
+            request: new Request('https://gameonpaper.com/nfl/year/2025/players/receiving'),
+            locals: { league: 'nfl', preview: true } as App.Locals,
+        });
+        expect(html).toContain('value="catchpct"');
     }, 60_000);
 });

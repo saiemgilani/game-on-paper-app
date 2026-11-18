@@ -73,6 +73,18 @@ describe('the all-time read', () => {
         expect(await retrieveAllTimePlayerSeasons({ category: SummaryType.RECEIVING, metric: 'TEPA', league: 'nfl' })).toBeNull();
     });
 
+    // Nov 17 decision on #361: a rate metric needs a season's worth of plays, on top of qualifying in its season
+    test('a rate metric reads the cross-season sample floor; a total or counting metric does not', () => {
+        expect(allTimePlayerQuery('passing', 'EPAplay').get('dropbacks__gte')).toBe('150');
+        expect(allTimePlayerQuery('passing', 'success', 'nfl').get('dropbacks__gte')).toBe('150');
+        expect(allTimePlayerQuery('rushing', 'yardsplay').get('plays__gte')).toBe('75');
+        expect(allTimePlayerQuery('receiving', 'catchpct').get('targets__gte')).toBe('40');
+        expect(allTimePlayerQuery('receiving', 'EPAplay', 'nfl').get('targets__gte')).toBe('40');
+        for (const [c, m] of [['passing', 'TEPA'], ['passing', 'dropbacks'], ['passing', 'sack_adj_yards'], ['rushing', 'yards'], ['receiving', 'targets']]) {
+            expect([...allTimePlayerQuery(c, m).keys()].some((k) => /^(dropbacks|plays|targets)__gte$/.test(k)), `${c} ${m}`).toBe(false);
+        }
+    });
+
     test('every category in both leagues has a recorded span', () => {
         for (const lg of ['cfb', 'nfl'] as const) {
             for (const c of ['passing', 'rushing', 'receiving']) expect(ALL_TIME_SPAN[lg][c], `${lg} ${c}`).toBeGreaterThan(1990);
@@ -101,6 +113,11 @@ describe('the all-time route', () => {
     test('an unknown category is a 404', () => {
         expect(prepareAllTime(astro('defense'), 'cfb')).toEqual({ notFound: true });
         expect(prepareAllTime(astro('toString'), 'cfb')).toEqual({ notFound: true });
+    });
+
+    test('the NFL board hides Catch %, so its sort falls back to the default; cfb keeps it', () => {
+        expect(prepareAllTime(astro('receiving', 'catchpct'), 'nfl')).toEqual({ category: 'receiving', metric: 'TEPA' });
+        expect(prepareAllTime(astro('receiving', 'catchpct'), 'cfb')).toEqual({ category: 'receiving', metric: 'catchpct' });
     });
 
     test('the sort must be a column of the category, else the default', () => {

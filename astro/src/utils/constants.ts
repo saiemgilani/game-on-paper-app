@@ -1006,36 +1006,61 @@ export const SDV_TEAM_METRIC_HOVER_TEXT: Record<string, Record<string, string>> 
  * for a volume count, `counting`, which makes the board sort it by value rather
  * than by its `_rank` (utils/players.ts playerBoardSort). The one list of metrics.
  */
-export interface PlayerMetric { title: string; counting?: true }
+/** `counting`: a season total with no _rank column. `rate`: a per-play/percentage metric, which the all-time boards hold to ALL_TIME_MIN_SAMPLE. */
+export interface PlayerMetric { title: string; counting?: true; rate?: true }
 
 export const SDV_PLAYER_METRIC_CATEGORIES: Record<string, Record<string, PlayerMetric>> = {
     "passing": {
         "dropbacks": { title: "Dropbacks", counting: true },
         "sack_adj_yards": { title: "Sack-Adj Yds" },
         "TEPA": { title: "EPA" },
-        "yardsdropback": { title: "Yards/DB" },
-        "EPAplay": { title: "EPA/DB" },
-        "success": { title: "Pass SR%" },
+        "yardsdropback": { title: "Yards/DB", rate: true },
+        "EPAplay": { title: "EPA/DB", rate: true },
+        "success": { title: "Pass SR%", rate: true },
     }, 
     "rushing": {
         "plays": { title: "Carries", counting: true },
         "yards": { title: "Yards" },
         "TEPA": { title: "EPA" },
-        "yardsplay": { title: "Yards/Rush" },
-        "EPAplay": { title: "EPA/Rush" },
-        "success": { title: "Rush SR%" },
+        "yardsplay": { title: "Yards/Rush", rate: true },
+        "EPAplay": { title: "EPA/Rush", rate: true },
+        "success": { title: "Rush SR%", rate: true },
     }, 
     "receiving": {
         "comp": { title: "Catches", counting: true },
         "targets": { title: "Targets", counting: true },
-        "catchpct": { title: "Catch %" },
+        "catchpct": { title: "Catch %", rate: true },
         "yards": { title: "Yards" },
         "TEPA": { title: "EPA" },
-        "yardsplay": { title: "Yards/Tgt" },
-        "EPAplay": { title: "EPA/Tgt" },
-        "success": { title: "Rec SR%" },
+        "yardsplay": { title: "Yards/Tgt", rate: true },
+        "EPAplay": { title: "EPA/Tgt", rate: true },
+        "success": { title: "Rec SR%", rate: true },
     }
 };
+
+/**
+ * The all-time boards' sample floor on a rate metric (Nov 17 decision on #361): each
+ * player-season must clear it, on top of qualifying in its own season, so a short
+ * season's EPA/play cannot top a board of full seasons. Counting and total metrics
+ * (TEPA, yards) need none.
+ */
+export const ALL_TIME_MIN_SAMPLE: Record<string, { column: string; min: number; label: string }> = {
+    passing: { column: 'dropbacks', min: 150, label: 'dropbacks' },
+    rushing: { column: 'plays', min: 75, label: 'carries' },
+    receiving: { column: 'targets', min: 40, label: 'targets' },
+};
+
+/**
+ * The all-time board's metrics for a category. The NFL board hides Catch % until the
+ * NFL 2003 receiving rows are fixed upstream (Nov 17 decision on #361); the season
+ * boards keep it.
+ */
+export function allTimeMetrics(category: string, league: string): Record<string, PlayerMetric> {
+    const metrics = SDV_PLAYER_METRIC_CATEGORIES[category] ?? {};
+    if (league !== 'nfl' || category !== 'receiving') return metrics;
+    const { catchpct: _hidden, ...rest } = metrics;
+    return rest;
+}
 
 export const SDV_PLAYER_METRIC_FORMATTING_VALUES: Record<string, Record<string, number[]>> = {
     "passing": {

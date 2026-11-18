@@ -1,7 +1,7 @@
-// From the 2025 passing board, pick "All-time" in the season dropdown and land on the
+// From the 2025 passing board, pick "All-Time" in the season dropdown and land on the
 // all-time board (S17): a Season column, each row in its own season. Switch the metric to
 // EPA/DB, then the category to Rushing, both staying all-time. The evidence build forces
-// every 'preview' flag on, so the All-time option and the board render.
+// every 'preview' flag on, so the All-Time option and the board render.
 export default async (page, base) => {
   await page.goto(base + '/year/2025/players/passing', { waitUntil: 'networkidle', timeout: 90_000 });
   // the dropdown is a client:idle island; a change before it hydrates does nothing
@@ -9,7 +9,7 @@ export default async (page, base) => {
   await selects.first().waitFor({ state: 'attached', timeout: 30_000 });
   await page.waitForTimeout(1500);
   const season = selects.nth(0);
-  if ((await season.locator('option[value="all-time"]').count()) !== 1) throw new Error('no All-time option in the season dropdown');
+  if ((await season.locator('option[value="all-time"]').count()) !== 1) throw new Error('no All-Time option in the season dropdown');
   await Promise.all([page.waitForURL(/\/all-time\/players\/passing/, { timeout: 60_000 }), season.selectOption('all-time')]);
   await page.waitForLoadState('networkidle');
   const seasonHeader = page.locator('th', { hasText: 'Season' });
