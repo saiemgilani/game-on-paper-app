@@ -82,6 +82,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // for a final. Off: the chart island's props are today's. A Data API-served game page still has no GEI
     // (resources/nbaGame.ts fromDataApi).
     'bball-gei': 'preview',
+    // Basketball game link previews (nba/wnba/mbb/wbb, so inside each league's flag), as 'share-card' is for football:
+    // a live or final game page's og:image is its 1200x630 card (`/<league>/game/<id>/card.png`, routes/basketball/
+    // shareCard.ts, python/share_card.py render_basketball): the score, the teams, the WP line and, on a final, the GEI.
+    // Off: the head is today's, byte for byte. The card endpoint itself is not gated (a crawler carries no cookie).
+    'bball-share-card': 'preview',
     // The Best Games board (BB-G29): /<league>/best-games and its Header entry, inside each league's flag. sdv-db's
     // `{lg}.game_excitement` by season, day range and team. Its own flag, so promoting the game pages' GEI line does not
     // ship the board. Off: the board is the site's 404 and the Header is today's.

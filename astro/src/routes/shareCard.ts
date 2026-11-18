@@ -65,7 +65,7 @@ export function cardKey(league: League, id: string | number, state: CardState, v
 }
 
 /** The card kept in KV, or null on a miss or any KV failure (fail-open: the route draws one). */
-async function keptCard(key: string): Promise<ArrayBuffer | null> {
+export async function keptCard(key: string): Promise<ArrayBuffer | null> {
     try {
         return await env.ESPN_API_CACHE.get(key, 'arrayBuffer');
     } catch (e) {
@@ -142,7 +142,7 @@ export function shareCardRoute(league: League): APIRoute {
     };
 }
 
-function cardResponse(png: ArrayBuffer, state: CardState, keep: boolean, cache: APIContext['cache']): Response {
+export function cardResponse(png: ArrayBuffer, state: CardState, keep: boolean, cache: APIContext['cache']): Response {
     try {
         if (!keep) cache?.set(false);
         else cache?.set({ maxAge: CARD_MAX_AGE[state], tags: ['share-card'] });

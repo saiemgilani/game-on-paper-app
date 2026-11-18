@@ -139,7 +139,7 @@ class _Card:
 
     def logo(self, team, league, logo_fetch, cx, cy, size):
         # the art the Worker chose (GOP's own where the site overrides ESPN's), else ESPN's
-        url = team.get("logo") or f"https://a.espncdn.com/i/teamlogos/{'nfl' if league == 'nfl' else 'ncaa'}/500/{team['id']}.png"
+        url = team.get("logo") or f"https://a.espncdn.com/i/teamlogos/{league if league in ('nfl', 'nba', 'wnba') else 'ncaa'}/500/{team['id']}.png"
         img = None
         raw = logo_fetch(url)
         if raw:
@@ -183,6 +183,10 @@ class _Card:
             after = (plays[-1].get("winProbability") or {}).get("after")
             if after is not None:
                 pts.append((pts[-1][0], after if str(plays[-1].get("pos_team")) == home["id"] else 1 - after))
+        self.line(pts, home, away, elapsed, top, bottom, lambda period: f"Q{period}" if period <= 4 else "OT")
+
+    def line(self, pts, home, away, elapsed, top, bottom, label_of):
+        """The home side's WP line over `pts` ((period, home WP) per play), a rule and label at each new period."""
         ax = self.fig.add_axes(
             [PAD / W, 1 - bottom / H, (W - 2 * PAD) / W, (bottom - top) / H]
         )
@@ -194,7 +198,7 @@ class _Card:
         ax.axhline(0.5, color=RULE, lw=1.5, ls=(0, (4, 4)))
         seen = set()
         for i, (period, _) in enumerate(pts):
-            label = f"Q{period}" if period <= 4 else "OT"
+            label = label_of(period)
             if i and period > pts[i - 1][0] and label not in seen and period >= 2:
                 seen.add(label)
                 ax.axvline(i, color=RULE, lw=1)
@@ -421,5 +425,63 @@ def render(
                     BOLD,
                     ha="left",
                 )
+    card.text(W - PAD, 590, "gameonpaper.com", 26, color=MUTED, ha="right")
+    return card.png()
+
+
+def _period_label(regulation):
+    """Basketball's period names: Q2..Q4 for quarters, H2 for halves, OT past regulation."""
+    return lambda p: "OT" if p > regulation else (f"H{p}" if regulation == 2 else f"Q{p}")
+
+
+def _bball_elapsed(plays, regulation):
+    """Share of regulation played, from the plays' game seconds remaining (1 once overtime starts)."""
+    left = [p[2] for p in plays if p[2] is not None]
+    if not left or int(plays[-1][0] or 0) > regulation or max(left) <= 0:
+        return 1.0
+    return min(1.0, (max(left) - left[-1]) / max(left))
+
+
+def render_basketball(
+    game: dict,
+    league: str,
+    state: str,
+    logo_fetch,
+    now: datetime,
+    drawn: list | None = None,
+) -> bytes:
+    """A basketball game's card (nba/wnba/mbb/wbb) as PNG bytes, in the football card's layout.
+
+    `game` is the body the Worker builds from the page's own game (astro basketball/shareCard.ts): each side's
+    names, score, colors and logo URL, ESPN's status detail, the date, the regulation periods, the plays as
+    [period, home WP, game seconds remaining] and, on a final, the game excitement index. Live or final only:
+    a pregame page keeps the site's social card.
+    """
+    if state not in ("live", "final"):
+        raise ValueError(f"state {state!r}")
+    home, away = ({**game[s], "id": str(game[s].get("id")), "color": _color(game[s])} for s in ("home", "away"))
+    regulation = int(game.get("regulation") or 4)
+    kickoff = _kickoff(game)
+    detail = (game.get("detail") or "").strip()
+    card = _Card(drawn)
+    if state == "live":
+        stamp = " / ".join(x for x in ("Live", detail, f"as of {_clock12(now.astimezone(ET))} ET") if x)
+    else:
+        day = f"{kickoff:%b} {kickoff.day}, {kickoff.year}" if kickoff else ""
+        stamp = " / ".join(x for x in (detail if detail.startswith("Final") else "Final", day) if x)
+    card.text(W / 2, 58, stamp, 26, color=MUTED, max_w=W - 2 * PAD)
+    title = f"{away['name']} {away['score']} @ {home['name']} {home['score']}"
+    card.text(W / 2, 138, title, 52, BOLD, max_w=W - 2 * (PAD + 96 + 24))
+    card.logo(away, league, logo_fetch, PAD + 48, 120, 96)
+    card.logo(home, league, logo_fetch, W - PAD - 48, 120, 96)
+    plays = game.get("plays") or []
+    pts = [(int(p[0] or 0), float(p[1])) for p in plays if p[1] is not None]
+    final = state == "final"
+    if pts and final:
+        pts.append((pts[-1][0], _result(home, away)))  # the result, as the page's chart ends
+    card.line(pts, home, away, 1.0 if final else _bball_elapsed(plays, regulation), 190, 530, _period_label(regulation))
+    # the game excitement index, a final's only (the Worker sends none for a live game)
+    if final and game.get("gei") is not None:
+        card.text(PAD, 590, f"Game Excitement Index: {float(game['gei']):.2f}", 26, BOLD, ha="left")
     card.text(W - PAD, 590, "gameonpaper.com", 26, color=MUTED, ha="right")
     return card.png()
