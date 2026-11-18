@@ -37,11 +37,13 @@ import { retrieveGameLine } from '../src/resources/gameLines';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
 import { bballOnly } from './helpers/flags';
-import { LINES_FROM, UPSET_WP, cover, lineSpread, lineTotal, moneylineText, overUnder, pace, spreadText, upset, type GameLine } from '../src/utils/gameLines';
+import { LINES_FROM, cover, hasLine, lineSpread, lineTotal, moneylineText, overUnder, pace, spreadText, upset, type GameLine } from '../src/utils/gameLines';
 
 const FX = JSON.parse(readFileSync(new URL('./fixtures/game-lines.json', import.meta.url)).toString()) as { game_lines: GameLine[]; schedule: { league: string; id: number; home_score: number; away_score: number; home_abbreviation: string; away_abbreviation: string }[] };
 const row = (id: number) => FX.game_lines.find((r) => Number(r.game_id) === id)!;
 const score = (id: number) => FX.schedule.find((s) => s.id === id)!;
+/** A real row with every quote nulled: a game that never had a line. */
+const noLine = (): GameLine => ({ ...row(401909088), spread_home_open: null, spread_home_close: null, total_open: null, total_close: null, ml_home_open: null, ml_away_open: null, ml_home_close: null, ml_away_close: null, market_home_wp_open: null, market_away_wp_open: null, market_home_wp_close: null, market_away_wp_close: null });
 const gameApi = () => JSON.parse(readFileSync(new URL('./fixtures/nba/game_401766458_api.json', import.meta.url)).toString());
 
 describe('results agree with the producer', () => {
@@ -60,19 +62,38 @@ describe('results agree with the producer', () => {
         expect(lineSpread(row(401909088))).toBe(-1.5); // a 2026-27 row: open only
         expect(lineTotal(row(401805007))).toBeNull();
     });
-    test("the game page's upset tag: the winner under 35% in the market (Q38; the hub's cut is the market underdog since #458)", () => {
-        expect(UPSET_WP).toBe(0.35);
-        const tags = played.map(({ s, l }) => [s.id, upset(l, s.home_score, s.away_score)]).filter(([, u]) => u);
-        // WSH (+8, 26.5%) beat ATL; NY (+1.5, 46.8%) over CLE and SA (40.5%) at DAL were under 50% but are not upsets at 35%
-        expect(tags.map(([id]) => id)).toEqual([401736112]);
-        expect(tags[0][1]).toEqual({ side: 'home', wp: row(401736112).market_home_wp_close });
-        expect(upset(row(401809234), 119, 111)).toBeNull();
-        expect(upset(row(401809235), 92, 125)).toBeNull();
-        // the cut itself: 34.9% tags, 35% does not
-        const at = (hw: number) => upset({ ...row(401809234), market_home_wp_close: hw }, 1, 0);
-        expect(at(0.349)?.wp).toBe(0.349);
-        expect(at(0.35)).toBeNull();
+    test('the upset tag (Nov 17 decisions, #459): the market underdog won', () => {
+        const tags = played.map(({ s, l }) => [s.id, upset(l, s.home_score, s.away_score)] as const).filter(([, u]) => u);
+        // NY (+1.5) over CLE, SA (DAL -3.5) at DAL, DEL (WKU -3.5, no moneyline) at WKU, WSH (+8) over ATL
+        expect(tags.map(([id]) => id)).toEqual([401809234, 401809235, 401805007, 401736112]);
+        expect(Object.fromEntries(tags)).toEqual({
+            401809234: { side: 'home', wp: row(401809234).market_home_wp_close },
+            401809235: { side: 'away', wp: 1 - row(401809235).market_home_wp_close! },
+            401805007: { side: 'away', wp: null },
+            401736112: { side: 'home', wp: row(401736112).market_home_wp_close },
+        });
+        // favourites' wins (FIU +4.5 lost, MIN won as the -4.5 road favourite) are not upsets
+        expect(upset(row(401804831), 94, 97)).toBeNull();
+        expect(upset(row(401736113), 84, 99)).toBeNull();
+        // a pick'em falls back to the no-vig WP; a pick'em with no market, or a coin flip, has no underdog
+        const pk = (hw: number | null) => ({ ...row(401809234), spread_home_open: 0, spread_home_close: 0, market_home_wp_open: hw, market_home_wp_close: hw });
+        expect(upset(pk(0.49), 1, 0)).toEqual({ side: 'home', wp: 0.49 });
+        expect(upset(pk(0.49), 0, 1)).toBeNull();
+        expect(upset(pk(0.5), 1, 0)).toBeNull();
+        expect(upset(pk(null), 1, 0)).toBeNull();
+        // the cut reads the winner's printed percent: 50.5 / 49.5 print 51% / 50% (toFixed), so the away side is no underdog
+        expect(upset(pk(0.505), 0, 1)).toBeNull();
+        expect(upset(pk(0.51), 0, 1)).toEqual({ side: 'away', wp: 1 - 0.51 });
         expect(upset(row(401736112), 100, 100)).toBeNull(); // no winner
+        // the WP decides when the line and the WP disagree, so the tag matches the percent it prints; a printed 50% has no underdog
+        expect(upset({ ...pk(0.55), spread_home_open: 1, spread_home_close: null }, 1, 0)).toBeNull();
+        expect(upset({ ...pk(0.496), spread_home_close: -2 }, 0, 1)).toBeNull();
+    });
+    test('hasLine: a row with every quote null never had a line', () => {
+        for (const l of FX.game_lines) expect(hasLine(l), String(l.game_id)).toBe(true);
+        const none = noLine();
+        expect(hasLine(none)).toBe(false);
+        expect(hasLine({ ...none, total_open: 220 })).toBe(true);
     });
     test('the text', () => {
         expect(spreadText(-5.5, 'NY', 'CLE')).toBe('NY -5.5');
@@ -171,6 +192,12 @@ describe('prepareBasketballGame', () => {
             expect((recent.cache.at(-1) as any).maxAge).toBe(6 * 60 * 60);
         }
     });
+    test('on, a row with no quote at all (never had a line): no key, no panel (Nov 17 decisions, #459)', async () => {
+        api.rows = [noLine()]; ingested();
+        const r = await prepareBasketballGame(fakeAstro({ preview: true }).astro, 'nba');
+        expect('game' in r && 'lines' in r).toBe(false);
+        expect(api.calls).toHaveLength(1);
+    });
     test('on, a failed read: lines null, the page renders, nothing is cached', async () => {
         api.fail = true; ingested();
         const { astro, cache, headers } = fakeAstro({ preview: true });
@@ -210,13 +237,21 @@ describe('NbaGamePage', () => {
         expect(t).toMatch(/Spread CLE -1\.5 Total 229 Moneyline CLE -125 Moneyline NY \+105 Win % CLE \(no vig\) 53% Win % NY \(no vig\) 47%/);
         expect(t).toMatch(/Market pregame: CLE 53%; our pregame prior: (NY|CLE) \d+%/);
         expect(t).toContain('NY covered CLE -1.5; over 229 (230)');
-        expect(t).not.toContain('Upset'); // NY at 47% is under 50% but not under 35%
+        expect(t).toContain('Upset NY won at 47% pregame'); // NY, getting 1.5, was the market underdog
         expect(t).toContain('Consensus of 11 books.');
         for (const bad of ['NaN', 'undefined', 'null']) expect(t).not.toContain(bad);
     });
-    test('the Upset tag on a real under-35% win: WSH over ATL at 27% pregame', async () => {
+    test('the Upset tag on a real underdog win: WSH over ATL at 27% pregame; DEL with no moneyline', async () => {
         const t = lines(await page(gameAs(401736112), row(401736112)));
         expect(t).toMatch(/Upset WSH won at 2[67]% pregame/);
+        expect(lines(await page(gameAs(401805007), row(401805007)))).toContain('Upset DEL won as the underdog');
+        // moneylines only (no spread, no total): the result line still carries the upset
+        const ml = { ...row(401736112), spread_home_open: null, spread_home_close: null, total_open: null, total_close: null };
+        const html = await page(gameAs(401736112), ml);
+        expect(html).toContain('id="lines-result"');
+        expect(plain(html.split('id="lines-result"')[1].split('</p>')[0])).toMatch(/^> Upset WSH won at 2[67]% pregame$/);
+        // a favourite's win: no tag
+        expect(lines(await page(gameAs(401736113), row(401736113)))).not.toContain('Upset');
     });
     test('open and latest when they differ; a missing total leaves its row out', async () => {
         const l = { ...row(401805007), spread_home_open: -2.5 };
@@ -263,6 +298,8 @@ describe('NbaPreGamePage', () => {
         expect(t).toContain('Market pregame: ORL 53%');
         for (const gone of ['prior', 'pace', 'covered', 'Consensus']) expect(t).not.toContain(gone);
         api.rows = [];
+        expect(await render()).not.toContain('id="lines"');
+        api.rows = [noLine()]; // a row that never had a quote: no panel either
         expect(await render()).not.toContain('id="lines"');
         api.calls = [];
         expect(await render({ 'bball-lines': false })).not.toContain('id="lines"');

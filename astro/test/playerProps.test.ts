@@ -35,7 +35,7 @@ import { retrievePlayerProps, type PropRow } from '../src/resources/playerProps'
 import { prepareBasketballGame } from '../src/routes/basketball/game';
 import { FLAGS } from '../src/utils/features';
 import { bballOnly } from './helpers/flags';
-import { actualStat, propResult, propsView } from '../src/utils/playerProps';
+import { actualStat, impliedProb, noVigOver, propResult, propsView } from '../src/utils/playerProps';
 
 const PROPS = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/player-props.json.gz', import.meta.url))).toString()) as Record<string, { league: string; season: number; rows: PropRow[] }>;
 const json = (path: string) => JSON.parse(readFileSync(new URL(`./fixtures/${path}.json`, import.meta.url)).toString());
@@ -66,27 +66,60 @@ describe('propsView on real lines and the same games\' box scores', () => {
         expect(v.final).toBe(true);
         expect(v.stats).toEqual(['points', 'rebounds', 'assists', 'threes', 'pra']);
         const boxOf = (id: number | null) => [...game.home.players, ...game.away.players].find((p) => p.athlete_id === id && !p.did_not_play);
-        // three of the lines are for players out that night (no box row): void at the books, left out
+        // three of the lines are for players out that night (no box row): void at the books, kept greyed with no count (#456)
         const played = NBA.filter((r) => boxOf(r.athlete_id));
         expect(NBA.length - played.length).toBeGreaterThan(0);
-        const shown = [...v.home, ...v.away].reduce((n, p) => n + Object.keys(p.cells).length, 0);
-        expect(shown).toBe(played.length);
+        const all = [...v.home, ...v.away];
+        const shown = all.reduce((n, p) => n + Object.keys(p.cells).length, 0);
+        expect(shown).toBe(NBA.length);
+        for (const p of all.filter((x) => x.dnp)) for (const c of Object.values(p.cells)) { expect(c.actual).toBeNull(); expect(c.result).toBeNull(); }
+        expect(all.filter((x) => x.dnp).map((x) => x.name).sort()).toEqual([...v.voided].sort());
         for (const r of played) {
             const s = game.home.players.some((p) => p.athlete_id === r.athlete_id) ? 'home' : 'away';
             const box = boxOf(r.athlete_id)!;
-            const cell = v[s].find((p) => p.athleteId === r.athlete_id)!.cells[r.stat as 'points']!;
+            const player = v[s].find((p) => p.athleteId === r.athlete_id)!;
+            expect(player.dnp).toBe(false);
+            const cell = player.cells[r.stat as 'points']!;
             const actual = r.stat === 'threes' ? Number(box.fg3.split('-')[0]) : r.stat === 'pra' ? box.points! + box.rebounds! + box.assists! : (box as any)[r.stat];
             expect(cell.actual, `${r.player_name} ${r.stat}`).toBe(actual);
             expect(cell.result).toBe(actual > r.line! ? 'over' : actual < r.line! ? 'under' : 'push');
-            expect(cell.overProb).toBeCloseTo(r.over_prob!, 12);
+            // the no-vig chance from the two prices shown, within a point of the producer's (a median across books)
+            expect(cell.overProb).toBeCloseTo(noVigOver(r.over_price, r.under_price)!, 12);
+            expect(Math.abs(cell.overProb! - r.over_prob!)).toBeLessThan(0.01);
         }
-        // the books' biggest points line leads its side
+        // the books' biggest points line leads its side; DNPs last
         for (const s of ['home', 'away'] as const) {
-            const pts = v[s].map((p) => p.cells.points?.line ?? -1);
+            const pts = v[s].filter((p) => !p.dnp).map((p) => p.cells.points?.line ?? -1);
             expect(pts).toEqual([...pts].sort((a, b) => b - a));
+            const d = v[s].map((p) => p.dnp);
+            expect(d).toEqual([...d].sort((a, b) => Number(a) - Number(b)));
         }
     });
-    test("Q34: the void players are named once each, the ones whose lines were left out", () => {
+    test('noVigOver: the implied probabilities normalised to sum to 1', () => {
+        expect(impliedProb(-110)).toBeCloseTo(110 / 210, 12);
+        expect(impliedProb(150)).toBeCloseTo(100 / 250, 12);
+        expect(noVigOver(-110, -110)).toBe(0.5);
+        expect(noVigOver(-125, -109)).toBeCloseTo((125 / 225) / (125 / 225 + 109 / 209), 12);
+        expect(noVigOver(-130, 100)! + noVigOver(100, -130)!).toBeCloseTo(1, 12);
+        expect(noVigOver(null, -110)).toBeNull();
+        expect(noVigOver(-110, 50)).toBeNull(); // not an American price
+        // a side with no price falls back to the producer's over_prob
+        const r = NBA[0];
+        const cells = (rs: PropRow[]) => { const v = propsView(rs, nbaGame())!; return [...v.home, ...v.away].flatMap((p) => Object.values(p.cells)); };
+        expect(cells([{ ...r, under_price: null, over_prob: 0.42 }])[0].overProb).toBe(0.42);
+    });
+    test('live: a DNP is greyed with no count; a player with no box row yet is not', () => {
+        const game = live(nbaGame());
+        const out = game.home.players.find((p) => !p.did_not_play)!;
+        const benched = { ...game, home: { ...game.home, players: game.home.players.map((p) => (p === out ? { ...p, did_not_play: true } : p)) } };
+        const v = propsView([{ ...NBA[0], athlete_id: out.athlete_id, team_id: Number(game.home.team.id) }], benched)!;
+        expect(v.home[0]).toMatchObject({ dnp: true });
+        expect(v.home[0].cells[NBA[0].stat as 'points']).toMatchObject({ actual: null, result: null });
+        expect(v.voided).toEqual([]);
+        const missing = propsView(NBA, game)!;
+        expect([...missing.home, ...missing.away].some((p) => p.dnp)).toBe(false);
+    });
+    test("Q34: the void players are named once each: the ones on a side who never played", () => {
         const game = nbaGame(), v = propsView(NBA, game)!;
         const inBox = (id: number | null) => [...game.home.players, ...game.away.players].some((p) => p.athlete_id === id && !p.did_not_play);
         const onSide = (r: (typeof NBA)[number]) => [game.home, game.away].some((s) => Number(s.team.id) === Number(r.team_id) || s.players.some((p) => p.athlete_id === r.athlete_id));
@@ -210,6 +243,15 @@ describe('NbaGamePage', () => {
         for (const n of v.voided) expect(line).toContain(n);
         expect(html.indexOf('id="props-home"')).toBeLessThan(html.indexOf('id="props-void"'));
         expect(await page(live(nbaGame()), 'nba', NBA)).not.toContain('id="props-void"');
+    });
+    test('#456: the void players stay in the tables, greyed with a DNP mark', async () => {
+        const v = propsView(NBA, nbaGame())!;
+        const html = await page(nbaGame(), 'nba', NBA);
+        const panel = html.split('id="player-props"')[1].split('id="props-void"')[0]; // the box score has DNP rows of its own
+        const grey = panel.match(/<tr class="text-muted">[\s\S]*?<\/tr>/g) ?? [];
+        expect(grey).toHaveLength(v.voided.length);
+        for (const n of v.voided) expect(grey.some((r) => r.includes(n) && r.includes(' DNP</span>')), n).toBe(true);
+        for (const r of grey) expect(r).not.toMatch(/title="(Over|Under|Push)"/);
     });
     test('live: progress bars, no U marks', async () => {
         const html = await page(live(nbaGame()), 'nba', NBA);

@@ -10,7 +10,7 @@ import { exportTime, wpExportFooter } from '../../utils/chartExport'
 import { momentText, stretchText } from '../../utils/wpLenses'
 
 // lenses / moments: basketball's 'bball-wp-lenses' (BB-G45) only; absent, the chart is football's and today's basketball's
-const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, showGei = false, spanShade = null, colors = null, showOdds = true, allPeriodMarkers = false, regulationPeriods = 4, periodKind = 'quarter', season = null, exportMeta = null, lenses = null, moments = null } = $props()
+const { id, homeComp, awayComp, gameStatus, homeTeamSpread, overUnder, plays, percentiles, gei, showGei = false, geiExtras = null, spanShade = null, colors = null, showOdds = true, allPeriodMarkers = false, regulationPeriods = 4, periodKind = 'quarter', season = null, exportMeta = null, lenses = null, moments = null } = $props()
 const homeTeam = homeComp.team;
 const awayTeam = awayComp.team;
 
@@ -585,6 +585,10 @@ if (document.readyState !== 'loading') {
             {:else if showGei && !gameInProgress}
             <!-- basketball ('bball-gei'): the GEI alone; no season percentiles to ramp it against yet -->
             <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/" title="Measures 'game excitement' by absolute changes in win probability. May not match eye-test in games with heavy favorites.">Game Excitement Index:</a> <span class="px-1">{ roundNumber(geiVal, 2, 2) }</span>
+            {#if geiExtras}
+            <!-- Nov 17 decisions (#391): the processor's lead changes and largest single-play WP swing beside it, labelled as football's share card -->
+            | Lead changes: {geiExtras.leadChanges} | <span title="The largest single-play change in win probability">Biggest WP swing:</span> {geiExtras.maxSwingPts == null ? '—' : `${roundNumber(geiExtras.maxSwingPts, 0, 0)}%`}
+            {/if}
             {/if}
             {#if gameInProgress}
                 {#if (lastPlay.winProbability.before >= 0.5) }

@@ -81,7 +81,7 @@ export const FLAGS: Record<string, FeatureState> = {
     'bball-hub-dashboards': 'preview',
     // The game excitement index on the basketball game pages (nba/wnba/mbb/wbb, so inside each league's flag): the
     // processor's GEI (python/nba_game.py, sdv-py game_excitement) on the WP chart's line, as football prints it
-    // for a final. Off: the chart island's props are today's. A Data API-served game page still has no GEI
+    // for a final, with its lead changes and biggest WP swing beside it. Off: the chart island's props are today's. A Data API-served game page still has no GEI
     // (resources/nbaGame.ts fromDataApi).
     'bball-gei': 'preview',
     // Basketball game link previews (nba/wnba/mbb/wbb, so inside each league's flag), as 'share-card' is for football:
@@ -236,7 +236,8 @@ export const FLAGS: Record<string, FeatureState> = {
     'bball-shift-chart': 'preview',
     // BB-G41's Latest strip on /<league>/game/[id] for a live game only (in progress, halftime, end of a period): the
     // last five plays newest first with their WP change, beside a half court drawing the last few located shots with
-    // the older ones faded. No read: it is the page's own plays. Off, or a final: the game page is today's, byte for byte.
+    // the older ones faded. No read: it is the page's own plays, and while live a script refetches the page every 30 s to
+    // swap the strip in, stopping at the final. Off, or a final: the game page is today's, byte for byte.
     'bball-latest-strip': 'preview',
     // BB-G32's team stats grid on /<league>/game/[id], live or final: the four factors and the team box in one panel, two
     // columns at lg; the better side tinted with the gap printed, sdv-py's counted possessions (BB-D31, the processor

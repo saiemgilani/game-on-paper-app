@@ -20,8 +20,26 @@ export default async (page, base) => {
     for (const h of hrefs) if ((found = await open(h))) break;
   }
   if (!found) { console.log('latest-strip: no live game found; nothing to record'); return; }
-  await page.click('a[href="#latest"]');
+  // #445: the strip refetches the page every 30 s while live. Watch for the swap before the nav steps, so a first poll that
+  // lands during them is still seen: the strip's content replaced, or the panel gone at the final, within ~35 s
+  const swapped = page.evaluate(() => new Promise((resolve) => {
+    const strip = document.querySelector('[data-latest-poll]');
+    if (!strip) return resolve('no strip');
+    const first = strip.firstElementChild;
+    const done = (what) => { clearTimeout(t); obs.disconnect(); resolve(what); };
+    const obs = new MutationObserver(() => {
+      if (!strip.isConnected) done('panel removed (final)');
+      else if (strip.firstElementChild !== first) done('strip swapped');
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+    const t = setTimeout(() => done(null), 35_000);
+  }));
+  // the page nav's link is hidden at phone width (the mobile run timed out on it): click it where it shows, else scroll
+  const nav = page.locator('a[href="#latest"]').first();
+  if (await nav.isVisible().catch(() => false)) await nav.click();
   await page.locator('#latest svg').scrollIntoViewIfNeeded();
   await page.hover('#latest svg g:last-of-type').catch(() => {}); // the newest mark's title
+  const seen = await swapped.catch(() => null);
+  console.log(seen ? `latest-strip: ${seen}` : 'latest-strip: no swap within 35 s');
   await page.waitForTimeout(1500);
 };

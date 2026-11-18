@@ -47,16 +47,34 @@ export function spreadText(spreadHome: number, home: string, away: string): stri
 
 export const moneylineText = (ml: number) => (ml > 0 ? `+${ml}` : String(ml));
 
-/** Q38: the game page's Upset cut: the winner's no-vig pregame market WP under 35%. The hub's own cut (basketball/hub.ts `UPSET_WP`) is the market underdog since the Nov 17 decisions (#458). */
-export const UPSET_WP = 0.35;
+/** A row with a quote of any kind; a game that never had a line (every quote null) gets no panel (Nov 17 decisions, #459). */
+export const hasLine = (l: GameLine): boolean => [l.spread_home_open, l.spread_home_close, l.total_open, l.total_close,
+    l.ml_home_open, l.ml_away_open, l.ml_home_close, l.ml_away_close,
+    l.market_home_wp_open, l.market_away_wp_open, l.market_home_wp_close, l.market_away_wp_close].some((v) => v != null);
 
-/** The winner's pregame market WP when it was under UPSET_WP; null for a favourite's or a near coin flip's win, a tie or no market. */
-export function upset(l: GameLine, home: number, away: number): { side: 'home' | 'away'; wp: number } | null {
+/**
+ * The market underdog: the side whose no-vig market WP (the close, else the open), as the whole percent printed for it, is
+ * under 50%, so the tag never contradicts the percent beside it; with no WP, the side getting points on the line. null: no
+ * underdog (neither side prints under 50%, a pick'em with no WP, or no market). The league hub's card (basketball/hub.ts)
+ * uses the same rule on the one percent it prints, the favourite's.
+ */
+export function underdog(l: GameLine): 'home' | 'away' | null {
     const hw = marketHomeWp(l);
-    if (hw == null || home === away) return null;
-    const side = home > away ? 'home' : 'away';
-    const wp = side === 'home' ? hw : 1 - hw;
-    return wp < UPSET_WP ? { side, wp } : null;
+    if (hw != null) {
+        // each side's percent as the panel prints it (fmtPct, toFixed(0)): 50.5 / 49.5 can print 51% / 50%, and that is no underdog
+        const printed = (wp: number) => Number((wp * 100).toFixed(0));
+        return printed(hw) < 50 ? 'home' : printed(1 - hw) < 50 ? 'away' : null;
+    }
+    const s = lineSpread(l);
+    return s == null || s === 0 ? null : s > 0 ? 'home' : 'away';
+}
+
+/** Nov 17 decisions (#459): an Upset is the market underdog winning; `wp` its pregame no-vig market WP, null without one. */
+export function upset(l: GameLine, home: number, away: number): { side: 'home' | 'away'; wp: number | null } | null {
+    const dog = underdog(l);
+    if (dog == null || home === away || (dog === 'home') !== (home > away)) return null;
+    const hw = marketHomeWp(l);
+    return { side: dog, wp: hw == null ? null : dog === 'home' ? hw : 1 - hw };
 }
 
 export interface Pace { home: number; away: number; total: number; elapsed: number }
