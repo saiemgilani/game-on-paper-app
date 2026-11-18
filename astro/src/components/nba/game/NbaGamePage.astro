@@ -50,6 +50,7 @@ import type { GameShotQuality } from '../../../utils/shotQuality';
 import type { GameSituationsTab } from '../../../utils/situations';
 import NbaLatest from './NbaLatest.astro';
 import { latestStrip } from '../../../basketball/latest';
+import { basketballShareImage } from '../../../basketball/shareCard';
 
 interface Props {
   game: NbaGame;
@@ -115,8 +116,10 @@ const withLeaders = isFeatureEnabled('bball-game-leaders', Astro.locals);
 if (withLeaders) items.splice(items.findIndex((i) => i.href === '#shots'), 0, { href: '#leaders', title: 'Leaders' });
 // BB-G34: the player box views; `?garbage=out` keeps BB-G2's whole-game note above them
 const boxViews = isFeatureEnabled('bball-player-box-views', Astro.locals);
+// 'bball-share-card' (preview): the game's card as og:image (basketball/shareCard.ts); off, the head is today's
+const shareImage = isFeatureEnabled('bball-share-card', Astro.locals) ? basketballShareImage(game, league) : undefined;
 ---
-<GenericPage title={title} subtitle={description} slug={gameHref(league, game.id)} breadcrumbs={breadcrumbs} description={description} jsonLd={[jsonLd]}>
+<GenericPage title={title} subtitle={description} slug={gameHref(league, game.id)} breadcrumbs={breadcrumbs} description={description} jsonLd={[jsonLd]} image={shareImage}>
   <link href="/assets/css/sticky-table.css" rel="stylesheet">
   <div class="container">
     <NbaGameHeader game={game} />{sourceTools && <NbaAdminSourceTools game={game} tools={sourceTools} />}{info && !game.status.completed && <NbaGameInfo info={info} home={game.home.team} away={game.away.team} season={game.season} part="summary" />}
