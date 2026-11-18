@@ -47,16 +47,28 @@ export function spreadText(spreadHome: number, home: string, away: string): stri
 
 export const moneylineText = (ml: number) => (ml > 0 ? `+${ml}` : String(ml));
 
-/** Q38: the Upset cut, the league hub's (#458's `UPSET_WP` in basketball/hub.ts): the winner's no-vig pregame market WP under 35%. */
-export const UPSET_WP = 0.35;
+/** A row with a quote of any kind; a game that never had a line (every quote null) gets no panel (Nov 17 decisions, #459). */
+export const hasLine = (l: GameLine): boolean => [l.spread_home_open, l.spread_home_close, l.total_open, l.total_close,
+    l.ml_home_open, l.ml_away_open, l.ml_home_close, l.ml_away_close,
+    l.market_home_wp_open, l.market_away_wp_open, l.market_home_wp_close, l.market_away_wp_close].some((v) => v != null);
 
-/** The winner's pregame market WP when it was under UPSET_WP; null for a favourite's or a near coin flip's win, a tie or no market. */
-export function upset(l: GameLine, home: number, away: number): { side: 'home' | 'away'; wp: number } | null {
+/**
+ * The market underdog: the side getting points on the line (the close, else the open); a pick'em or no spread falls back
+ * to the no-vig market WP under 50%. null: no underdog (a coin flip, or no market).
+ */
+export function underdog(l: GameLine): 'home' | 'away' | null {
+    const s = lineSpread(l);
+    if (s != null && s !== 0) return s > 0 ? 'home' : 'away';
     const hw = marketHomeWp(l);
-    if (hw == null || home === away) return null;
-    const side = home > away ? 'home' : 'away';
-    const wp = side === 'home' ? hw : 1 - hw;
-    return wp < UPSET_WP ? { side, wp } : null;
+    return hw == null || hw === 0.5 ? null : hw < 0.5 ? 'home' : 'away';
+}
+
+/** Nov 17 decisions (#459): an Upset is the market underdog winning; `wp` its pregame no-vig market WP, null without one. */
+export function upset(l: GameLine, home: number, away: number): { side: 'home' | 'away'; wp: number | null } | null {
+    const dog = underdog(l);
+    if (dog == null || home === away || (dog === 'home') !== (home > away)) return null;
+    const hw = marketHomeWp(l);
+    return { side: dog, wp: hw == null ? null : dog === 'home' ? hw : 1 - hw };
 }
 
 export interface Pace { home: number; away: number; total: number; elapsed: number }

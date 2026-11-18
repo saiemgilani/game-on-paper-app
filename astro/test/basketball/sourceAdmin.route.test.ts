@@ -134,6 +134,25 @@ describe('prepareBasketballGame: admin + source-switch', () => {
         expect(r.sourceTools).toEqual({ sources: ['espn'], selected: 'live', espn: null });
         expect(r.game.provenance.source).toBe('live');
     });
+    // Nov 17 decisions (#385): as on football, a source the registry does not list is Game Not Found, not the 503 page
+    test.each(['nba', 'wnba', 'mbb', 'wbb'] as const)('%s: an unknown ?source= is notFound, uncacheable, with no feed read', async (league) => {
+        procBySource();
+        const { astro, cache } = fakeAstro(league, '?source=bogus', ADMIN);
+        const { prepareBasketballGame } = await import('../../src/routes/basketball/game');
+        const r: any = await prepareBasketballGame(astro, league);
+        expect(r).toEqual({ notFound: true });
+        expect(cache).toEqual([false]);
+        expect(sources).toHaveBeenCalledTimes(1);
+        expect(sched).not.toHaveBeenCalled(); expect(espn).not.toHaveBeenCalled(); expect(proc).not.toHaveBeenCalled();
+    });
+    test('a listed source reads the registry once (the tool reuses it)', async () => {
+        espn.mockResolvedValueOnce(finalPage()); procBySource();
+        sources.mockResolvedValue({ sources: ['live', 'espn'], contract_version: '0.1.0', contract_sha: 'abcdef1234567' });
+        const { prepareBasketballGame } = await import('../../src/routes/basketball/game');
+        const r: any = await prepareBasketballGame(fakeAstro('nba', '?source=live', ADMIN).astro, 'nba');
+        expect(sources).toHaveBeenCalledTimes(1);
+        expect(r.sourceTools.sources).toEqual(['live', 'espn']);
+    });
 });
 
 describe('the tool on the page', () => {

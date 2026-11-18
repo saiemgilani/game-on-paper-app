@@ -5,7 +5,8 @@ import { readFileSync } from 'node:fs';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
-import { beforeAll, describe, expect, test } from 'vitest';
+import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
+import { LATEST_POLL_MS, pollLatest } from '../src/basketball/latestPoll';
 import NbaGamePage from '../src/components/nba/game/NbaGamePage.astro';
 import { fromProcessor, type NbaGame } from '../src/resources/nbaGame';
 import { isLiveGame, latestStrip, RECENT_SHOTS } from '../src/basketball/latest';
@@ -60,6 +61,42 @@ describe('latestStrip', () => {
         expect(latestStrip(g)!.shots.length).toBe(RECENT_SHOTS);
     });
 
+    describe('pollLatest (#445)', () => {
+        afterEach(() => { vi.useRealTimers(); });
+        test('every 30 s while live; stops once the page has no strip (final)', async () => {
+            vi.useFakeTimers();
+            const answers = [true, true, false];
+            const next = vi.fn(async () => answers.shift()!);
+            pollLatest(next);
+            await vi.advanceTimersByTimeAsync(LATEST_POLL_MS - 1);
+            expect(next).not.toHaveBeenCalled();
+            expect(LATEST_POLL_MS).toBe(30_000);
+            await vi.advanceTimersByTimeAsync(1);
+            expect(next).toHaveBeenCalledTimes(1);
+            await vi.advanceTimersByTimeAsync(2 * LATEST_POLL_MS);
+            expect(next).toHaveBeenCalledTimes(3); // the third saw a final
+            await vi.advanceTimersByTimeAsync(10 * LATEST_POLL_MS);
+            expect(next).toHaveBeenCalledTimes(3);
+        });
+        test('a failed refetch keeps polling; a hidden tab skips its turns; stop() ends it', async () => {
+            vi.useFakeTimers();
+            let hidden = false;
+            const next = vi.fn(async () => { throw new Error('offline'); });
+            const stop = pollLatest(next, { hidden: () => hidden });
+            await vi.advanceTimersByTimeAsync(2 * LATEST_POLL_MS);
+            expect(next).toHaveBeenCalledTimes(2);
+            hidden = true;
+            await vi.advanceTimersByTimeAsync(3 * LATEST_POLL_MS);
+            expect(next).toHaveBeenCalledTimes(2);
+            hidden = false;
+            await vi.advanceTimersByTimeAsync(LATEST_POLL_MS);
+            expect(next).toHaveBeenCalledTimes(3);
+            stop();
+            await vi.advanceTimersByTimeAsync(5 * LATEST_POLL_MS);
+            expect(next).toHaveBeenCalledTimes(3);
+        });
+    });
+
     test('a heave from past the drawn court is skipped before the count, so the newest drawn shot is age 0 and ringed', () => {
         const g = live('nba');
         const last = g.plays.filter((p) => p.xLegacy != null).at(-1)!;
@@ -89,6 +126,14 @@ describe('the game page', () => {
             expect(s).not.toMatch(/NaN|undefined|Infinity/);
         });
     }
+    test('#445: the live strip carries the poll hook and its script; a final has neither', async () => {
+        const html = await page(live('nba'), 'nba');
+        expect(strip(html)).toContain('data-latest-poll');
+        expect(html).toMatch(/<script type="module" src="[^"]*NbaLatest\.astro\?astro&type=script/);
+        const done = await page(final('nba'), 'nba');
+        expect(done).not.toContain('data-latest-poll');
+        expect(done).not.toContain('NbaLatest.astro?astro&type=script');
+    });
     test('flag off, a live game: no panel and no nav item', async () => {
         const html = await page(live('nba'), 'nba', false);
         expect(html).not.toContain('id="latest"');

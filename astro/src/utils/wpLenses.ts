@@ -91,8 +91,8 @@ export interface FlowExtras {
     runs: Run[];
     /** the longer of the two sides' longest gaps between two of their own scores; null before either scored twice */
     drought: Drought | null;
-    /** Q40, the clutch clock: points each side scored in the last 5:00 of regulation plus every overtime (the producer's
-     * clutch split's window, #416); finals only */
+    /** points each side scored in the last 5:00 of the final period played, overtime included: in an overtime game, the
+     * whole of the last five-minute OT (Nov 17 decisions, #462; it was Q40's clutch window); finals only */
     last5: { home: number; away: number } | null;
     /** each side's highest WP before the game was over (the settled 1 / 0 rows are not a peak) */
     peak: { home: Peak | null; away: Peak | null };
@@ -133,9 +133,11 @@ export function flowExtras(game: NbaGame, periodSeconds: number): FlowExtras {
     const winner = !done ? null : game.home.winner ? 'home' : game.away.winner ? 'away' : null;
     let last5: FlowExtras['last5'] = null;
     if (done && series.length > 1) {
-        // the last 5:00 of regulation, then every overtime to the end
-        const cut = gameSeconds(reg, reg, periodSeconds) - LAST_WINDOW;
-        const before = [...series].reverse().find((p) => p.t < cut) ?? series[0];
+        // Nov 17 decisions (#462): the last 5:00 of the final period played, overtime included (all of a five-minute OT)
+        const cut = total - LAST_WINDOW;
+        // in overtime the cut is the period's start: a score at the previous period's buzzer belongs to that period
+        const ot = game.periods > reg;
+        const before = [...series].reverse().find((p) => p.t < cut || (ot && p.t === cut)) ?? series[0];
         const end = series[series.length - 1];
         last5 = { home: end.home - before.home, away: end.away - before.away };
     }

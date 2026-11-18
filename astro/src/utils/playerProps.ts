@@ -26,7 +26,8 @@ export interface PropCell {
     /** final: where it landed; live: 'over' once the line is cleared (it cannot come back), else null */
     result: PropResult | null
 }
-export interface PropPlayer { athleteId: number; name: string; cells: Partial<Record<PropStat, PropCell>> }
+/** `dnp`: never checked in (ESPN's DNP; on a final, no box row too); the row is greyed, its lines void (Nov 17 decisions, #456) */
+export interface PropPlayer { athleteId: number; name: string; dnp: boolean; cells: Partial<Record<PropStat, PropCell>> }
 export interface PropsView {
     final: boolean; stats: PropStat[]; away: PropPlayer[]; home: PropPlayer[]
     /** Q34: a final's players whose lines are void (they never checked in), named once each; empty live */
@@ -34,6 +35,18 @@ export interface PropsView {
 }
 
 const num = (v: unknown): number | null => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+
+/** An American price's implied probability (vig included); null for no price or a malformed one. */
+export function impliedProb(price: number | null): number | null {
+    if (price == null || !Number.isFinite(price) || Math.abs(price) < 100) return null;
+    return price < 0 ? -price / (-price + 100) : 100 / (price + 100);
+}
+
+/** The over's no-vig chance from the two-sided prices: the implied probabilities normalised to sum to 1 (multiplicative). */
+export function noVigOver(overPrice: number | null, underPrice: number | null): number | null {
+    const o = impliedProb(overPrice), u = impliedProb(underPrice);
+    return o == null || u == null ? null : o / (o + u);
+}
 
 /** The box score's count for a stat; threes from the "made-attempted" pair, P+R+A only when all three are there. */
 export function actualStat(p: NbaPlayerRow, stat: PropStat): number | null {
@@ -71,17 +84,21 @@ export function propsView(rows: PropRow[], game: NbaGame): PropsView | null {
         const def = PROP_STATS.find((d) => d.stat === r.stat);
         if (id == null || line == null || !s || !def) continue;
         const box = game[s].players.find((p) => p.athlete_id === id);
-        // a final's line for a player who never checked in (out, or a DNP row) is void at the books: left out
-        if (final && (!box || box.did_not_play)) { voided.set(id, box?.name ?? r.player_name); continue; }
-        const player = players[s].get(id) ?? { athleteId: id, name: box?.name ?? r.player_name, cells: {} };
-        const actual = box ? actualStat(box, def.stat) : null;
-        player.cells[def.stat] = { line, overProb: num(r.over_prob), actual, result: propResult(actual, line, final) };
+        // a player who never checked in (a DNP row; on a final, no box row either) keeps the row, greyed, with no count; a
+        // final's lines for them are void at the books, named under the tables
+        const dnp = box?.did_not_play === true || (final && !box);
+        if (final && dnp) voided.set(id, box?.name ?? r.player_name);
+        const player = players[s].get(id) ?? { athleteId: id, name: box?.name ?? r.player_name, dnp, cells: {} };
+        const actual = box && !dnp ? actualStat(box, def.stat) : null;
+        // Nov 17 decisions (#456): the no-vig chance from the two prices shown; the producer's over_prob when a side is missing
+        player.cells[def.stat] = { line, overProb: noVigOver(num(r.over_price), num(r.under_price)) ?? num(r.over_prob), actual, result: propResult(actual, line, final) };
         players[s].set(id, player);
         seen.add(def.stat);
     }
     if (!seen.size) return null;
-    // the books' biggest lines first: points, then the next stat for a player with no points line
+    // the books' biggest lines first: points, then the next stat for a player with no points line; DNPs last
     const order = (m: Map<number, PropPlayer>) => [...m.values()].sort((a, b) => {
+        if (a.dnp !== b.dnp) return a.dnp ? 1 : -1;
         for (const { stat } of PROP_STATS) { const d = (b.cells[stat]?.line ?? -1) - (a.cells[stat]?.line ?? -1); if (d) return d; }
         return a.name.localeCompare(b.name);
     });
