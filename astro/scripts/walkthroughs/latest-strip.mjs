@@ -20,7 +20,9 @@ export default async (page, base) => {
     for (const h of hrefs) if ((found = await open(h))) break;
   }
   if (!found) { console.log('latest-strip: no live game found; nothing to record'); return; }
-  await page.click('a[href="#latest"]');
+  // the page nav's link is hidden at phone width (the mobile run timed out on it): click it where it shows, else scroll
+  const nav = page.locator('a[href="#latest"]').first();
+  if (await nav.isVisible().catch(() => false)) await nav.click();
   await page.locator('#latest svg').scrollIntoViewIfNeeded();
   await page.hover('#latest svg g:last-of-type').catch(() => {}); // the newest mark's title
   // #445: the strip refetches the page every 30 s while live; wait for one refetch (within ~35 s) and the swap after it
