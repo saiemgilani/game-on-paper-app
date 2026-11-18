@@ -11,6 +11,7 @@ import orjson
 
 import os
 import logging
+import threading
 import base64
 import urllib.parse
 import urllib.request
@@ -156,6 +157,30 @@ def require_auth_token(func):
             return jsonify({"status": "bad", "message": "Access denied"}), 401
 
     return check_token
+
+
+# One heavy /process per worker at a time. gunicorn runs `threads = 2` so a light request
+# (/healthcheck, /gop/ingest) always finds a free thread, but nothing enforced that spare: on
+# 2026-11-16 a crawl of ~4,800 cold games (one user agent, ~4,200 IPs) filled every thread,
+# /healthcheck queued behind them and the uptime probe paged "down in all regions" three times.
+# A second /process in the same worker answers 503 at once; the Worker retries it, usually onto
+# an idle worker (resources/python.ts requestProcessor).
+_HEAVY = threading.BoundedSemaphore(1)
+
+
+def one_heavy_at_a_time(func):
+    @wraps(func)
+    def run(*args, **kwargs):
+        if not _HEAVY.acquire(blocking=False):
+            resp = jsonify({"status": "busy", "message": "Processor busy, retry shortly."})
+            resp.headers["Retry-After"] = "5"
+            return resp, 503
+        try:
+            return func(*args, **kwargs)
+        finally:
+            _HEAVY.release()
+
+    return run
 
 
 # Flat columns sdv-py adds that the site rebuilds as nested objects below;
@@ -699,12 +724,14 @@ def _process_game(league: str, game_id: int, source: str | None = None):
 
 @app.route("/cfb/<int:game_id>/process", methods=["GET"])
 @require_auth_token
+@one_heavy_at_a_time
 def process(game_id: int):
     return _process_game("cfb", game_id, request.args.get("source"))
 
 
 @app.route("/nfl/<int:game_id>/process", methods=["GET"])
 @require_auth_token
+@one_heavy_at_a_time
 def process_nfl(game_id: int):
     return _process_game("nfl", game_id, request.args.get("source"))
 
@@ -855,9 +882,9 @@ for _league in BASKETBALL_PROCESSORS:
     app.add_url_rule(
         f"/{_league}/<int(min=100000,max=999999999999):game_id>/process",
         endpoint=f"process_{_league}",
-        view_func=require_auth_token(
+        view_func=require_auth_token(one_heavy_at_a_time(
             lambda game_id, _lg=_league: _process_basketball(_lg, game_id, request.args.get("source"))
-        ),
+        )),
         methods=["GET"],
     )
     app.add_url_rule(

@@ -1416,7 +1416,23 @@ export class ProcessorError extends Error {
  * the deploy version (`?v=...&query`), never a second `?`. A non-2xx answer throws `ProcessorError`;
  * `timeoutMs` (the NBA path only) aborts a slow fetch as `ProcessorError(504)`.
  */
+// The processor answers 503 `busy` when the worker that took the request is already running one
+// /process (python/app.py one_heavy_at_a_time). Another worker is usually idle, so try again.
+const BUSY_RETRIES = 2;
+const BUSY_DELAY_MS = 300;
+
 export async function requestProcessor(path: string, cacheTTL: number, query = '', timeoutMs?: number): Promise<string> {
+    for (let attempt = 0; ; attempt++) {
+        try {
+            return await requestProcessorOnce(path, cacheTTL, query, timeoutMs);
+        } catch (e) {
+            if (!(e instanceof ProcessorError) || e.status !== 503 || attempt >= BUSY_RETRIES) throw e;
+            await new Promise((r) => setTimeout(r, BUSY_DELAY_MS * (attempt + 1)));
+        }
+    }
+}
+
+async function requestProcessorOnce(path: string, cacheTTL: number, query = '', timeoutMs?: number): Promise<string> {
     if (!PYTHON_HTTP_TOKEN) {
         throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")
     }
@@ -1433,7 +1449,9 @@ export async function requestProcessor(path: string, cacheTTL: number, query = '
             },
             cf: {
                 cacheEverything: true,
-                cacheTtlByStatus: { "200-299": cacheTTL, 404: 1, "500-599": 0 },
+                // a 404 is "no source has this game": for a final that answer stands, so hold it up to an
+                // hour (a live game's TTL is a minute) instead of re-processing it on every hit
+                cacheTtlByStatus: { "200-299": cacheTTL, 404: Math.min(cacheTTL, 60 * 60), "500-599": 0 },
                 // A completed game's API response is cached for a year. Keying it on the
                 // processor version means a deploy that changes python/ or picks up a new
                 // sportsdataverse-py main invalidates it without any zone purge, and one
