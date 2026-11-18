@@ -81,7 +81,7 @@ describe('the all-time read', () => {
         expect(allTimePlayerQuery('receiving', 'catchpct').get('targets__gte')).toBe('40');
         expect(allTimePlayerQuery('receiving', 'EPAplay', 'nfl').get('targets__gte')).toBe('40');
         for (const [c, m] of [['passing', 'TEPA'], ['passing', 'dropbacks'], ['passing', 'sack_adj_yards'], ['rushing', 'yards'], ['receiving', 'targets']]) {
-            expect([...allTimePlayerQuery(c, m).keys()].some((k) => /^(dropbacks|plays|targets)__gte$/.test(k)), `${c} ${m}`).toBe(false);
+            expect([...allTimePlayerQuery(c, m).keys()].some((k) => /^(dropbacks|plays|targets)__/.test(k)), `${c} ${m}`).toBe(false);
         }
     });
 
