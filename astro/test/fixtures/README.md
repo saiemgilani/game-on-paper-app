@@ -1333,12 +1333,12 @@ sequentially, the `data` array of each response, no edits other than the filter 
 **To regenerate:** rerun the same six reads (season filter and limit as above, never unfiltered), keep the team's games in `lines`, wrap and gzip.
 
 ## `schedule-context-proj-nba-2026.json.gz`, `schedule-context-proj-mbb-2026.json.gz`
-The rated pregame projections for the schedule's projection column (Q21 on GOP#457), as `{proj}`: the module's two columns,
-`game_id` and the projected home margin. MBB (`exp_home_margin`) captured live on 2026-11-13 from the served table
+The rated pregame projections for the schedule's projection column (Q21 on GOP#457), as `{proj}`: the module's three columns,
+`game_id`, `home_team_id` (the producer's home side, checked against ESPN's) and the projected home margin. MBB (`exp_home_margin`) captured live on 2026-11-13 from the served table
 (sportsdataverse-py#1193, sdv-db#229): `mbb/rated_priors?season=2026&select=game_id,home_team_id,away_team_id,exp_home_margin&limit=8000`
 (6,318 rows), kept to games with `home_team_id` or `away_team_id` 150 (Duke, 38 games, all rated). NBA (the rated prior's
 `wp_prior_exp_home_margin`, sdv-db#236) re-captured live on 2026-11-18 the same way (1,330 rows), kept to team 17 (the
-Nets, 82 games, all rated: the rated prior rates a team from opening night). No other edits.
+Nets, 82 games, all rated: the rated prior rates a team from opening night). No other edits. Both re-captured live on 2026-11-18 to keep `home_team_id`; every margin was unchanged.
 
 **Used by:** `test/bballScheduleContext.test.ts`.
 

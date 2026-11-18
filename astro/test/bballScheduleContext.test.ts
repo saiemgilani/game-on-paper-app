@@ -45,7 +45,7 @@ vi.mock('../src/resources/sdv', async (orig) => {
         sdv.calls.push(key);
         if (q.season !== '2026') throw new Error(`unfiltered ${key}`);
         // the pros read the rated prior's margin, college the row's own
-        if (table === 'rated_priors' && q.select !== `game_id,${src.schema === 'nba' ? 'wp_prior_exp_home_margin' : 'exp_home_margin'}`) throw new Error(`select ${key} ${q.select}`);
+        if (table === 'rated_priors' && q.select !== `game_id,home_team_id,${src.schema === 'nba' ? 'wp_prior_exp_home_margin' : 'exp_home_margin'}`) throw new Error(`select ${key} ${q.select}`);
         if (sdv.fail.has(key)) throw new Error(`503 ${key}`);
         if (!rows[key]) throw new Error(`unexpected ${key} ${JSON.stringify(q)}`);
         return rows[key];
@@ -142,6 +142,21 @@ for (const [lg, c, proj, espnId, unrated, col] of [['nba', NETS_BLOCK, NETS_PROJ
         });
     });
 }
+
+test("a row whose home side is not ESPN's gets no projection; the rest keep theirs", async () => {
+    const rows = sched(NETS_BLOCK, NETS_ESPN);
+    const home = listed(NETS_BLOCK, NETS_ESPN);
+    const raw = (g: { gameId: string }) => NETS_PROJ.proj.find((p: any) => String(p.game_id) === g.gameId);
+    // every captured row already agrees with ESPN's listed home
+    for (const g of rows) expect(raw(g).home_team_id === NETS_ESPN).toBe(home.get(g.gameId));
+    const r0 = raw(rows[0]), keep = r0.home_team_id;
+    r0.home_team_id = keep === NETS_ESPN ? rows[0].oppId : NETS_ESPN; // the producer's home side flipped
+    try {
+        const ctx = scheduleContext(rows, home, await retrieveScheduleContext('nba', 2026, NETS_ESPN), ET);
+        expect([ctx.get(rows[0].gameId)!.proj, ctx.get(rows[0].gameId)!.vsProj]).toEqual([null, null]);
+        expect(rows.slice(1).every((g) => ctx.get(g.gameId)!.proj !== null)).toBe(true);
+    } finally { r0.home_team_id = keep; }
+});
 
 test('a failed rated_priors read: no projection columns, and the page is not cached', async () => {
     sdv.fail.add('mbb.rated_priors');

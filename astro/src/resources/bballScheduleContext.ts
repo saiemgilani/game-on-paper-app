@@ -43,8 +43,9 @@ export interface ScheduleContextReads {
     strength: Map<string, OppStrength> | null;
     /** null: the read failed */
     box: RotationBoxRow[] | null;
-    /** each game's projected home margin (the pros' wp_prior_exp_home_margin, college exp_home_margin) by ESPN game id; null: the read failed */
-    proj: Map<string, number> | null;
+    /** each game's projected home margin (the pros' wp_prior_exp_home_margin, college exp_home_margin) and whether the producer
+     *  has this team at home, by ESPN game id; null: the read failed */
+    proj: Map<string, { margin: number; teamHome: boolean }> | null;
 }
 
 const settled = <T>(r: PromiseSettledResult<T>, what: string): T | null => {
@@ -64,7 +65,7 @@ export async function retrieveScheduleContext(league: BasketballLeague, season: 
             { season: s, select: 'team_id,adj_net_rtg,adj_net_rtg_rank', limit: STRENGTH_LIMIT }, TTL, true),
         retrieveRowsFrom<RotationBoxRow>(games, 'player_box',
             { season: s, team_id: String(espnId), ...(pro ? { season_type: '2' } : {}), select: 'game_id,athlete_id,athlete_short_name,minutes,starter,did_not_play', limit: BOX_LIMIT }, TTL, true),
-        retrieveRowsFrom<Record<string, number | string | null>>(games, 'rated_priors', { season: s, select: `game_id,${margin}`, limit: LINES_LIMIT }, TTL, true),
+        retrieveRowsFrom<Record<string, number | string | null>>(games, 'rated_priors', { season: s, select: `game_id,home_team_id,${margin}`, limit: LINES_LIMIT }, TTL, true),
     ]);
     const projRows = settled(proj, 'projections');
     const lineRows = settled(lines, 'game lines');
@@ -78,6 +79,6 @@ export async function retrieveScheduleContext(league: BasketballLeague, season: 
             return e ? [[String(e), { rating: r.adj_net_rtg, rank: r.adj_net_rtg_rank }] as const] : [];
         })),
         box: settled(box, 'player box'),
-        proj: projRows && new Map(projRows.flatMap((r) => (r[margin] == null ? [] : [[String(r.game_id), Number(r[margin])] as const]))),
+        proj: projRows && new Map(projRows.flatMap((r) => (r[margin] == null ? [] : [[String(r.game_id), { margin: Number(r[margin]), teamHome: String(r.home_team_id) === String(espnId) }] as const]))),
     };
 }

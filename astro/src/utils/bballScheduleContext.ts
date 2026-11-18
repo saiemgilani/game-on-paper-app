@@ -61,6 +61,10 @@ export function teamProj(expHome: number | undefined, listedHome: boolean, g: Pi
     return { proj, vsProj: d > 0 ? 'W' : d < 0 ? 'L' : 'P' };
 }
 
+/** The producer's home margin, only when its home side is ESPN's (as the game page's card checks). */
+const homeMargin = (p: { margin: number; teamHome: boolean } | undefined, listedHome: boolean): number | undefined =>
+    p && p.teamHome === listedHome ? p.margin : undefined;
+
 /** Every schedule game's context by game id. `rows` in date order (scheduleRows); `listedHome` by game id. */
 export function scheduleContext(rows: ScheduleRow[], listedHome: Map<string, boolean>, reads: ScheduleContextReads, zone: string): Map<string, GameContext> {
     const out = new Map<string, GameContext>();
@@ -85,7 +89,7 @@ export function scheduleContext(rows: ScheduleRow[], listedHome: Map<string, boo
             trip: tripOf[i],
             opp: reads.strength?.get(String(g.oppId)) ?? null,
             ...teamAts(reads.lines?.get(g.gameId), listedHome.get(g.gameId) ?? g.venue === 'home'),
-            ...teamProj(reads.proj?.get(g.gameId), listedHome.get(g.gameId) ?? g.venue === 'home', g),
+            ...teamProj(homeMargin(reads.proj?.get(g.gameId), listedHome.get(g.gameId) ?? g.venue === 'home'), listedHome.get(g.gameId) ?? g.venue === 'home', g),
         });
     });
     return out;
