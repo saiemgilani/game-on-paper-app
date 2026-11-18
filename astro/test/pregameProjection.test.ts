@@ -133,9 +133,19 @@ describe('prepareBasketballGame: the pregame card', () => {
         const lines = { ...ON.flagOverrides, 'bball-lines': true };
         const { r } = await prep('nba', '401909994', FX.pages['401909994'], { preview: true, flagOverrides: lines });
         expect(r.ourHomeWp).toBe(row('nba.2027.401909994').wp_prior_home_prob);
+        expect(r.projection).toEqual(servedPrior(row('nba.2027.401909994')));
+        expect(api.calls.filter((c) => c.table === 'rated_priors')).toHaveLength(1); // the card and the panel share one read
+        api.calls = [];
         const { r: noCard } = await prep('nba', '401909994', FX.pages['401909994'], { preview: true, flagOverrides: { ...lines, 'bball-pregame-projection': false } });
         expect('projection' in noCard).toBe(false);
         expect(noCard.ourHomeWp).toBe(row('nba.2027.401909994').wp_prior_home_prob);
+        expect(api.calls.filter((c) => c.table === 'rated_priors')).toHaveLength(1);
+    });
+    test("'bball-lines' on: a row with a win chance and no margin still feeds the panel, and shows no card", async () => {
+        api.rows['nba.2027.401909994'] = [{ ...row('nba.2027.401909994'), wp_prior_exp_home_margin: null }];
+        const { r } = await prep('nba', '401909994', FX.pages['401909994'], { preview: true, flagOverrides: { ...ON.flagOverrides, 'bball-lines': true } });
+        expect(r.projection).toBeNull();
+        expect(r.ourHomeWp).toBe(row('nba.2027.401909994').wp_prior_home_prob);
     });
     test('on, no row (a preseason game): no card, and the page keeps its cache', async () => {
         const { r, headers } = await prep('nba', '401898403', NBA_PRESEASON);

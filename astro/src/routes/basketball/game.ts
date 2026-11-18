@@ -199,7 +199,8 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     const failed = Object.values(p).some((x) => x === null || (x && typeof x === 'object' && 'reads' in x && x.reads === null));
     const recent = Date.now() - Date.parse(game.date) < LINES_RECENT_MS;
     if (info === null || read === null || read?.ours === null || rows === null) uncacheable(Astro);
-    else if (game.source === 'data_api' && !failed && (info !== undefined || (read !== undefined && recent && !settled(read.row)) || (rows !== undefined && !built(rows)))) setCache(Astro, seasonCache(league));
+    // (a recent lined final with no WP of ours yet waits for the nightly rated_priors build the same way)
+    else if (game.source === 'data_api' && !failed && (info !== undefined || (read !== undefined && recent && (!settled(read.row) || read.ours?.wp === null)) || (rows !== undefined && !built(rows)))) setCache(Astro, seasonCache(league));
     // a row that never had a quote is no line: no panel (Nov 17 decisions, #459)
     const lines = read === null ? null : read?.row && hasLine(read.row) ? read.row : undefined;
     // BB-G45: an ingested final whose season the nightly has not rebuilt with the variants yet (sdv-db #217's backfill) waits too
@@ -236,8 +237,8 @@ async function finalPanels(Astro: AstroGlobal, league: BasketballLeague, r: Bask
         const card = isFeatureEnabled('bball-pregame-projection', Astro.locals);
         const withLines = isFeatureEnabled('bball-lines', Astro.locals);
         if (!card && !withLines) return r;
-        const projection = await readProjection(Astro, league, r.espnGame);
-        return { ...r, ...(card ? { projection } : {}), ...(withLines ? { ourHomeWp: projection?.rated_home_prob ?? null } : {}) };
+        const { projection, wp } = await readProjection(Astro, league, r.espnGame);
+        return { ...r, ...(card ? { projection } : {}), ...(withLines ? { ourHomeWp: wp } : {}) };
     }
     if (!('game' in r)) return r;
     // BB-G38's shot filters draw on a live game too; only their ON/OFF filter reads, and only a final's stints
@@ -306,27 +307,31 @@ async function finalPanels(Astro: AstroGlobal, league: BasketballLeague, r: Bask
 }
 
 /**
- * The pregame card's data: the game's `rated_priors` row by the ESPN season and game id, as published. null (no card) when
+ * The pregame card's data, and its home win chance for the Lines panel (#459, `wp`, which needs no margin): the game's
+ * `rated_priors` row by the ESPN season and game id, as published. `projection` null (no card) when
  * the producer has no row (a preseason game), its prediction is null (a college side yet to play, a pro game the rated prior
  * did not match), its home side is not ESPN's,
  * or the read failed; a failed read is never held. No hold for the college prior: the producer's college rating already
  * blends it in.
  */
-async function readProjection(Astro: AstroGlobal, league: BasketballLeague, espnGame: ESPNPlayByPlayResponse): Promise<PregameProjection | null> {
+async function readProjection(Astro: AstroGlobal, league: BasketballLeague, espnGame: ESPNPlayByPlayResponse): Promise<{ projection: PregameProjection | null; wp: number | null }> {
+    const none = { projection: null, wp: null };
     const header = espnGame.gamepackageJSON.header;
     const comp: any = header.competitions[0];
     const season = Number(header.season?.year);
-    if (!Number.isInteger(season)) return null;
+    if (!Number.isInteger(season)) return none;
     let row: RatedPrior | null;
     try {
         row = await retrieveRatedPrior(league, season, String(espnGame.gameId));
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} rated prior for game ${espnGame.gameId}: ${e}, ${e?.stack}`);
         uncacheable(Astro);
-        return null;
+        return none;
     }
     const espnHome = comp.competitors.find((c: any) => c.homeAway === 'home')?.team?.id;
-    return ourHomeWp(row, espnHome) != null && ok(row!.exp_home_margin) ? row as PregameProjection : null;
+    // the Lines panel takes the win chance alone; the card also needs the margin
+    const wp = ourHomeWp(row, espnHome);
+    return { projection: wp != null && ok(row!.exp_home_margin) ? row as PregameProjection : null, wp };
 }
 
 const ok = (x: number | null | undefined): x is number => x != null && Number.isFinite(x);

@@ -34,6 +34,7 @@ vi.mock('../src/resources/nbaShots', async (orig) => ({ ...(await orig<typeof im
 
 import NbaGamePage from '../src/components/nba/game/NbaGamePage.astro';
 import NbaPreGamePage from '../src/components/nba/game/NbaPreGamePage.astro';
+import NbaGameRoute from '../src/components/routes/NbaGameRoute.astro';
 import { fromDataApi, type NbaGame } from '../src/resources/nbaGame';
 import { retrieveGameLine } from '../src/resources/gameLines';
 import { prepareBasketballGame } from '../src/routes/basketball/game';
@@ -185,7 +186,19 @@ describe('prepareBasketballGame', () => {
     });
     test("on, the rated prior: no row or a home side that is not ESPN's, no WP of ours; a failed read, none and never cached", async () => {
         api.rows = [row(401809235)]; ingested();
-        expect((await prepareBasketballGame(fakeAstro({ preview: true }).astro, 'nba') as any).ourHomeWp).toBeNull();
+        const old = fakeAstro({ preview: true });
+        expect((await prepareBasketballGame(old.astro, 'nba') as any).ourHomeWp).toBeNull();
+        expect((old.cache.at(-1) as any).maxAge).toBeGreaterThan(YEAR); // an old final: no row is coming
+        vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2025-05-01T00:00Z'));
+        ingested();
+        const recent = fakeAstro({ preview: true });
+        await prepareBasketballGame(recent.astro, 'nba');
+        expect((recent.cache.at(-1) as any).maxAge).toBe(6 * 60 * 60); // a recent one waits for the nightly build
+        api.prior = FX.rated_priors['401766458']; ingested();
+        const withRow = fakeAstro({ preview: true });
+        await prepareBasketballGame(withRow.astro, 'nba');
+        expect((withRow.cache.at(-1) as any).maxAge).toBeGreaterThan(YEAR); // settled line and a row: its year
+        vi.useRealTimers();
         const g = FX.rated_priors['401766458'][0];
         api.prior = [{ ...g, home_team_id: g.away_team_id, away_team_id: g.home_team_id }]; ingested();
         expect((await prepareBasketballGame(fakeAstro({ preview: true }).astro, 'nba') as any).ourHomeWp).toBeNull();
@@ -338,9 +351,10 @@ describe('NbaPreGamePage', () => {
         api.fail = true;
         expect(await render()).toContain('id="lines-unavailable"');
     });
-    test("the route's WP of ours reaches the pregame panel", async () => {
+    test("the route's WP of ours reaches the pregame panel through NbaGameRoute", async () => {
         api.rows = [row(401909088)];
-        const html = await container.renderToString(NbaPreGamePage, { props: { espnGame, ourHomeWp: 0.556 }, locals: { league: 'nba', preview: true, flagOverrides: {} } as App.Locals });
+        const data = { pregame: true, espnGame, ourHomeWp: 0.556 };
+        const html = await container.renderToString(NbaGameRoute, { props: { data }, locals: { league: 'nba', preview: true, flagOverrides: {} } as App.Locals });
         expect(lines(html)).toContain('Pregame win % Market Ours ATL 47% 44% ORL 53% 56%');
     });
 });

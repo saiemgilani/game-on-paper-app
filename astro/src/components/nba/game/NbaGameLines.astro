@@ -59,7 +59,7 @@ const round = (v: number) => String(Math.round(v));
     </table>
     {wpCols.length > 0 && (<table class="table table-sm w-auto numeral mb-2" aria-label="Pregame win %" id="lines-wp">
         <thead><tr><th scope="col">Pregame win %</th>{wpCols.map((c) => <th scope="col" class="text-end">{c.label}</th>)}</tr></thead>
-        <tbody>{[{ t: A, home: false }, { t: H, home: true }].map((r) => (<tr><th scope="row" class="fw-normal">{r.t}</th>{wpCols.map((c) => <td class="text-end">{pct(r.home ? c.home : 1 - c.home)}</td>)}</tr>))}</tbody>
+        <tbody>{[{ t: A, home: false }, { t: H, home: true }].map((r) => (<tr><th scope="row" class="fw-normal">{r.t}</th>{wpCols.map((c) => <td class="text-end numeral">{pct(r.home ? c.home : 1 - c.home)}</td>)}</tr>))}</tbody>
     </table>)}
     {scored && (spread != null || total != null || up) && <p class="m-0" id="lines-result">{[spread != null ? coverText(spread, hs!, as!, true) : null, total != null ? `${ouText(total, hs!, as!)} (${hs! + as!})` : null].filter(Boolean).join('; ')}{up && <Fragment>{spread != null || total != null ? ' ' : ''}<span class="badge bg-warning text-dark">Upset</span> {side(up.side)} won {up.wp != null ? `at ${pct(up.wp)} pregame` : 'as the underdog'}</Fragment>}</p>}
     {p && <p class="m-0" id="lines-pace">{`At this pace: ${A} ${round(p.away)}, ${H} ${round(p.home)}`}{total != null && `; a total of ${round(p.total)}, ${ouText(total, p.home, p.away)}`}{spread != null && `; ${coverText(spread, p.home, p.away, false)}`}</p>}
