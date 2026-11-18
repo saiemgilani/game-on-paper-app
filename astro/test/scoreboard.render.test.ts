@@ -339,7 +339,7 @@ describe('spice cues', () => {
         ]);
     });
 
-    test('flag off: no cue anywhere and the legend keeps its wording', async () => {
+    test('flag off: no cue anywhere; the legend reads Upset watch', async () => {
         for (const html of [await page({}), await page({ preview: true, flagOverrides: { 'spice-cues': false } })]) {
             expect(html).toContain('spice-level-ranked-upset'); // the border itself is public
             expect(html).not.toContain('aria-label="Upset watch"');

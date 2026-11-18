@@ -112,7 +112,7 @@ describe('Orange - ranked opponents + close game late', () => {
     });
 });
 
-describe('Yellow - ranked upset', () => {
+describe('Yellow - Upset watch', () => {
     test('ranked v unranked within one or two scores, 3rd/4th quarter, <= 7:30 left', () => {
         expect(calculateSpiceLevel(game({ period: 3, clock: 6 * MIN, home: { score: 17, rank: 8 }, away: { score: 20 } }))).toBe(SpiceLevel.CAYENNE);
         expect(calculateSpiceLevel(game({ period: 4, clock: 7 * MIN, home: { score: 10 }, away: { score: 14, rank: 2 } }))).toBe(SpiceLevel.CAYENNE);
