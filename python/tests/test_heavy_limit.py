@@ -27,7 +27,7 @@ def test_second_heavy_request_is_busy(app_mod, path):
         assert r.status_code == 503
         assert r.headers["Retry-After"] == "5"
         assert r.get_json()["status"] == "busy"
-        # the light routes never wait on it
+        # the light routes never take the slot (this in-process client cannot show a gunicorn thread stays free)
         assert app_mod.app.test_client().get("/healthcheck").status_code == 200
     finally:
         app_mod._HEAVY.release()

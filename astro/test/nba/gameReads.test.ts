@@ -148,12 +148,14 @@ describe('typed processor errors', () => {
         await expect(requestProcessor('cfb/401520150/process', 60)).rejects.toMatchObject({ name: 'ProcessorError', status: 503 });
         expect(n).toBe(3);
     });
-    test('a 404 is cached up to an hour: a final keeps its answer, a live game only its minute', async () => {
+    test('a 404 is held ten minutes for a year-cached final only; a live game or a day-long final keeps the second', async () => {
         const { requestProcessor } = await import('../../src/resources/python');
         await requestProcessor('cfb/401520160/process', YEAR);
         await requestProcessor('cfb/401520161/process', 60);
-        expect(inits['http://python:5000/cfb/401520160/process'].cf.cacheTtlByStatus).toEqual({ '200-299': YEAR, 404: HOUR, '500-599': 0 });
-        expect(inits['http://python:5000/cfb/401520161/process'].cf.cacheTtlByStatus[404]).toBe(60);
+        await requestProcessor('nba/401766458/process', 24 * HOUR);
+        expect(inits['http://python:5000/cfb/401520160/process'].cf.cacheTtlByStatus).toEqual({ '200-299': YEAR, 404: 600, '500-599': 0 });
+        expect(inits['http://python:5000/cfb/401520161/process'].cf.cacheTtlByStatus[404]).toBe(1);
+        expect(inits['http://python:5000/nba/401766458/process'].cf.cacheTtlByStatus[404]).toBe(1);
     });
     test('a 200 without plays is a 502 ProcessorError', async () => {
         respond = (u) => (u.startsWith('http://python:5000/') ? new Response('{"status":"bad","message":"nope"}', { status: 200 }) : undefined);

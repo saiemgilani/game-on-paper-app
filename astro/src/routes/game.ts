@@ -12,7 +12,7 @@ import type { AstroGlobal } from 'astro';
 import { GAME_PAGE_MANIFEST, evaluateManifest } from '../utils/manifest';
 import { ESPN_INVALID_GAME_STATUS_NAMES, retrieveGamePageGuarded, type ESPNPlayByPlayResponse } from '../resources/espn';
 import { gopStorage } from '../utils/telemetry';
-import { retrieveProcessedGame, type ProcessedGame } from '../resources/python';
+import { ProcessorError, retrieveProcessedGame, type ProcessedGame } from '../resources/python';
 import { getGameCacheConfig } from '../utils/config';
 import { isFeatureEnabled } from '../utils/features';
 import { SOURCE_PARAM } from '../utils/adminView';
@@ -139,6 +139,11 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
         console.error(`ERROR while retrieving game data: ${e}, ${e.stack}`);
         Astro.cache.set(false);
         Astro.response.headers.set("Cache-Control", "no-store");
+        // a processor outage (a busy worker after its retries, a 5xx) is a 503, as basketball's, never a 200 error page
+        if (e instanceof ProcessorError && e.status >= 500) {
+            Astro.response.status = 503;
+            Astro.response.headers.set("Retry-After", "60");
+        }
     }
 
     const statusName = espnGame?.gamepackageJSON?.header?.competitions?.[0]?.status?.type?.name;

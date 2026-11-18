@@ -1449,9 +1449,10 @@ async function requestProcessorOnce(path: string, cacheTTL: number, query = '', 
             },
             cf: {
                 cacheEverything: true,
-                // a 404 is "no source has this game": for a final that answer stands, so hold it up to an
-                // hour (a live game's TTL is a minute) instead of re-processing it on every hit
-                cacheTtlByStatus: { "200-299": cacheTTL, 404: Math.min(cacheTTL, 60 * 60), "500-599": 0 },
+                // a 404 can be transient (an ESPN outage, a partial payload: python/app.py), so only a
+                // year-cached football final holds one, ten minutes, against a crawl of dead old games;
+                // anything else (a live or scheduled game, a basketball final's day) keeps the second
+                cacheTtlByStatus: { "200-299": cacheTTL, 404: cacheTTL > 24 * 60 * 60 ? 10 * 60 : 1, "500-599": 0 },
                 // A completed game's API response is cached for a year. Keying it on the
                 // processor version means a deploy that changes python/ or picks up a new
                 // sportsdataverse-py main invalidates it without any zone purge, and one

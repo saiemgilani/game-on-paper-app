@@ -150,6 +150,18 @@ describe('the game page honours the pin', () => {
         expect(processCalls().map((c) => c.url.split('/process')[1])).toEqual(['?source=cbs']);
     });
 
+    test('a processor outage (busy after its retries) renders as a 503 with Retry-After, never cached', async () => {
+        respond = (url) => url.includes('/process') ? new Response('{"status":"busy"}', { status: 503 }) : ok();
+        const { loadGameRoute } = await import('../src/routes/game');
+        const astro = fakeAstro('https://gameonpaper.com/nfl/game/401772944', {});
+        const r: any = await loadGameRoute(astro, 'nfl');
+        expect(r.game).toBeNull();
+        expect(processCalls()).toHaveLength(3);
+        expect(astro.response.status).toBe(503);
+        expect(astro.response.headers.get('Retry-After')).toBe('60');
+        expect(astro.response.headers.get('Cache-Control')).toBe('no-store');
+    });
+
     test('the share card asks for the same request, so it shares the page entry', async () => {
         const { retrieveCardPage } = await import('../src/resources/python');
         await retrieveCardPage('401772944', 'nfl', 30, 'shield');
