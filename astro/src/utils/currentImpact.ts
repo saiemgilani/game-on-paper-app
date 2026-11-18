@@ -18,10 +18,10 @@ export interface CurrentImpactPanel {
 }
 
 /**
- * Under this many possessions a side this season, the current rating is mostly its prior: 0 on opening night, about two
- * weeks of a starter's games. ponytail: one cut for both sides; a weight from the producer would replace it if one ships.
+ * Under this many possessions a side this season, the current rating is mostly its prior (Nov 17 decisions, #463): 0 on
+ * opening night, about three games of a starter's. ponytail: one cut for both sides.
  */
-export const EARLY_POSS = 1000;
+export const EARLY_POSS = 300;
 
 const trio = (o: unknown, d: unknown, n: unknown): Trio => ({ off: numberOrNull(o), def: numberOrNull(d), net: numberOrNull(n) });
 const empty = (t: Trio) => t.off == null && t.def == null && t.net == null;

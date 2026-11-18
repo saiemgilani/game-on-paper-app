@@ -15,12 +15,12 @@ export interface HubLine {
     wp: string | null;
     /** finals: who covered the closing spread ('BOS covered', 'Push') */
     cover: string | null;
-    /** finals: the winner's no-vig pregame win probability was under UPSET_WP (35%) */
+    /** finals: the market underdog won (the winner's no-vig pregame win probability was under UPSET_WP, 50%) */
     upset: boolean;
 }
 
-/** An upset is a final whose winner the market gave under this no-vig pregame win probability (Saiem, 2026-11-13). */
-export const UPSET_WP = 0.35;
+/** An upset is a final the market underdog won: its no-vig pregame win probability under 50% (Nov 17 decisions, #458). */
+export const UPSET_WP = 0.5;
 
 const num = (v: unknown): number | null => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
 

@@ -1,6 +1,8 @@
 // BB-G18 with 'bball-pregame-projection' off: the pregame page and the bracketology bracket render byte for byte what the
 // base branch (feat/basketball-game-flow 150dc978) rendered. The snapshots in __pregame_projection__/ were captured by this
-// file on that commit, unchanged; never regenerate them from this branch. Every network read is mocked.
+// file on that commit, unchanged; never regenerate them from this branch. Every network read is mocked. bracket-off-mbb was
+// re-captured once for the Nov 17 decisions (#394: Bracketology under the Header's Tools, the held snapshot's
+// "final projection" label); nothing else in it moved.
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';

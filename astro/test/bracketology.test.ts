@@ -131,8 +131,10 @@ const render = (p: BracketologyParams) =>
 describe('BracketologyRoute', () => {
     test("the bracket view: last season's labelled fallback, the field on the bracket component, the bubble, the seed table", async () => {
         const html = await render(params());
-        expect(html).toContain("Men's College Basketball Bracketology, 2025-26");
-        expect(html).toMatch(/id="bracketology-fallback">The 2026-27 season has no projections yet\. This is the 2025-26 season's last snapshot, from April 7, 2026\./);
+        // Nov 17 decisions (#394): the held snapshot is named for its season in the title and the notice
+        expect(html).toContain("Men's College Basketball Bracketology, 2025-26 final projection");
+        expect(html).toContain('Bracketology, 2025-26 final projection</h1>');
+        expect(html).toMatch(/id="bracketology-fallback"><span class="fw-bold">2025-26 final projection\.<\/span> The 2026-27 season has no projections yet\. This is the 2025-26 season's last snapshot, from April 7, 2026\./);
         const [graphic] = html.split('bracket-table');
         expect([...graphic.matchAll(/bracket-round-name[^>]*>([^<]+)</g)].map((m) => m[1])).toEqual(['First Four', 'Region 1', 'Region 2', 'Region 3', 'Region 4']);
         expect(graphic.match(/table-bordered/g)).toHaveLength(4 + 32);
@@ -186,10 +188,12 @@ describe("the 'bball-bracketology' flag", () => {
     test('ships as preview', () => {
         expect(FLAGS['bball-bracketology']).toBe('preview');
     });
-    test('the college Header lists Bracketology only with the flag', async () => {
+    test('the college Header lists Bracketology under Tools, only with the flag (Nov 17 decisions, #394)', async () => {
         for (const league of ['mbb', 'wbb'] as const) {
             const on = await container.renderToString(Header, { locals: { league, preview: true } as App.Locals });
-            expect(on).toContain(`<a href="/${league}/bracketology" class="nav-link px-2 link-secondary">Bracketology</a>`);
+            const tools = on.split('Tools')[1];
+            expect(tools).toContain(`<li><a href="/${league}/bracketology" class="dropdown-item">Bracketology</a></li>`);
+            expect(on).not.toContain(`<a href="/${league}/bracketology" class="nav-link`);
             const off = await container.renderToString(Header, { locals: { league, preview: true, flagOverrides: { 'bball-bracketology': false } } as any });
             expect(off).not.toContain(`/${league}/bracketology"`);
         }
