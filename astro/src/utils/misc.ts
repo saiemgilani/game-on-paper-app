@@ -32,7 +32,7 @@ export const SPICE_LABEL: Record<SpiceLevel, string | null> = {
     [SpiceLevel.WATER]: null,
     [SpiceLevel.BELL]: null,
     [SpiceLevel.SERRANO]: 'Close late',
-    [SpiceLevel.CAYENNE]: 'Ranked upset',
+    [SpiceLevel.CAYENNE]: 'Upset watch',
     [SpiceLevel.GHOST]: 'Ranked, close late',
     [SpiceLevel.REAPER]: 'FCS upset',
 };
