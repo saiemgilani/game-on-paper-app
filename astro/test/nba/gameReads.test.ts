@@ -137,24 +137,26 @@ describe('typed processor errors', () => {
             expect(err.status).toBe(status);
         }
     });
-    test('a busy 503 is retried (another worker is usually idle); a persistent one throws after 3 tries', async () => {
+    test('a busy 503 is retried with a 0.5/1/2/4 s backoff (another worker is usually idle); a persistent one throws after 5 tries', async () => {
         const { requestProcessor } = await import('../../src/resources/python');
+        const waits: number[] = [];
+        vi.spyOn(globalThis, 'setTimeout').mockImplementation(((fn: () => void, ms: number) => { waits.push(ms); fn(); return 0; }) as any);
         let n = 0;
         respond = (u) => (u.startsWith('http://python:5000/') && n++ === 0 ? new Response('{"status":"busy"}', { status: 503 }) : undefined);
         await expect(requestProcessor('cfb/401520150/process', 60)).resolves.toContain('plays');
-        expect(n).toBe(2);
-        n = 0;
+        expect([n, waits]).toEqual([2, [500]]);
+        n = 0; waits.length = 0;
         respond = (u) => (u.startsWith('http://python:5000/') ? (n++, new Response('{"status":"busy"}', { status: 503 })) : undefined);
         await expect(requestProcessor('cfb/401520150/process', 60)).rejects.toMatchObject({ name: 'ProcessorError', status: 503 });
-        expect(n).toBe(3);
+        expect([n, waits]).toEqual([5, [500, 1000, 2000, 4000]]);
     });
-    test('a 404 is held ten minutes for a year-cached final only; a live game or a day-long final keeps the second', async () => {
+    test('a 404 is held a second unless the caller says otherwise, whatever the 2xx TTL', async () => {
         const { requestProcessor } = await import('../../src/resources/python');
         await requestProcessor('cfb/401520160/process', YEAR);
-        await requestProcessor('cfb/401520161/process', 60);
+        await requestProcessor('cfb/401520161/process', YEAR, '', undefined, 600);
         await requestProcessor('nba/401766458/process', 24 * HOUR);
-        expect(inits['http://python:5000/cfb/401520160/process'].cf.cacheTtlByStatus).toEqual({ '200-299': YEAR, 404: 600, '500-599': 0 });
-        expect(inits['http://python:5000/cfb/401520161/process'].cf.cacheTtlByStatus[404]).toBe(1);
+        expect(inits['http://python:5000/cfb/401520160/process'].cf.cacheTtlByStatus).toEqual({ '200-299': YEAR, 404: 1, '500-599': 0 });
+        expect(inits['http://python:5000/cfb/401520161/process'].cf.cacheTtlByStatus[404]).toBe(600);
         expect(inits['http://python:5000/nba/401766458/process'].cf.cacheTtlByStatus[404]).toBe(1);
     });
     test('a 200 without plays is a 502 ProcessorError', async () => {

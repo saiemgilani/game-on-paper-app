@@ -100,7 +100,7 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
 
         const config = getGameCacheConfig(espnGame.gamepackageJSON.header.competitions[0].date, espnGame.gamepackageJSON.header.competitions[0].status)
         if (!game && !ESPN_INVALID_GAME_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name)) {
-            game = await retrieveProcessedGame(id, config.maxAge || 30, league, source, pinned);
+            game = await retrieveProcessedGame(id, config.maxAge || 30, league, source, pinned, notFoundTtl(espnGame.gamepackageJSON.header.competitions[0]));
         }
 
         // 'final-score-first' (preview): the chip's lookup runs here, before the cache policy,
@@ -153,6 +153,17 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
         && (!game || !Array.isArray(game.plays) || game.plays.length === 0);
     const gameRenderable = !!game && evaluateManifest(GAME_PAGE_MANIFEST, game).requiredMissing.length === 0;
     return { league, id, espnGame, game, pregameState, gameRenderable, statusName, headerFallback };
+}
+
+/**
+ * How long the edge holds this game's processor 404: ten minutes for a final that kicked off two
+ * days ago or more (a crawl of dead old games re-asks for them), a second for anything newer, since
+ * ESPN can serve a partial payload right at the final whistle and the next request should retry.
+ * ponytail: kickoff + 2 days stands in for "ended over a day ago"; ESPN gives no end time here.
+ */
+export function notFoundTtl(comp: { date?: string; status?: { type?: { completed?: boolean } } }): number {
+    const old = Date.now() - Date.parse(comp.date ?? '') >= 2 * 24 * 60 * 60 * 1000;
+    return comp.status?.type?.completed === true && old ? 10 * 60 : 1;
 }
 
 export const espnPathFor = (league: League) => LEAGUES[league].espnPath;
