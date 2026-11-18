@@ -142,10 +142,12 @@ export function shareCardRoute(league: League): APIRoute {
     };
 }
 
-export function cardResponse(png: ArrayBuffer, state: CardState, keep: boolean, cache: APIContext['cache']): Response {
+/** `maxAge`: a shorter hold than the state's (a basketball processor final follows its page's day); not immutable then. */
+export function cardResponse(png: ArrayBuffer, state: CardState, keep: boolean, cache: APIContext['cache'], maxAge = CARD_MAX_AGE[state]): Response {
     try {
         if (!keep) cache?.set(false);
-        else cache?.set({ maxAge: CARD_MAX_AGE[state], tags: ['share-card'] });
+        else cache?.set({ maxAge, tags: ['share-card'] });
     } catch { /* cache provider absent in dev and tests */ }
-    return new Response(png, { headers: { 'Content-Type': 'image/png', 'Cache-Control': keep ? cardCacheControl(state) : 'no-store' } });
+    const control = maxAge === CARD_MAX_AGE[state] ? cardCacheControl(state) : `public, max-age=${maxAge}`;
+    return new Response(png, { headers: { 'Content-Type': 'image/png', 'Cache-Control': keep ? control : 'no-store' } });
 }

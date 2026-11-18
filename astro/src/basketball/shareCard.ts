@@ -7,6 +7,7 @@
  * A live or final game only: a pregame page keeps the site's social card. One variant: no `?spoilers=off` yet.
  */
 import type { NbaGame, NbaSide } from '../resources/nbaGame';
+import { isFeatureEnabled } from '../utils/features';
 import { cleanAbbreviation, cleanLocation } from '../utils/misc';
 import { gameTitleText } from '../utils/gameTitle';
 import { leaguePath, teamLogoUrl, type BasketballLeague } from '../utils/league';
@@ -46,10 +47,14 @@ function side(s: NbaSide, league: BasketballLeague, season: number | null): Bask
     };
 }
 
-/** The WP chart's own rule ('bball-gei', NbaWinProbability.astro): a final whose excitement sdv-py also called complete. */
+/**
+ * The WP chart's own rule (NbaWinProbability.astro): a final whose excitement sdv-py also called complete, and only once
+ * 'bball-gei' is 'on': the card is one image for every viewer (KV, the Workers cache, link previews), so it cannot follow a
+ * preview cookie. A promotion is a deploy, and the deploy is in the card key, so kept cards redraw with it.
+ */
 function cardGei(game: NbaGame): number | null {
     const ex = game.excitement;
-    return game.status.completed && ex?.completed ? ex.gei : null;
+    return isFeatureEnabled('bball-gei', undefined) && game.status.completed && ex?.completed ? ex.gei : null;
 }
 
 export function basketballCardBody(game: NbaGame, league: BasketballLeague): BasketballCardBody {

@@ -9,6 +9,12 @@ import { basketballCardBody, basketballShareImage } from '../../src/basketball/s
 import { fromDataApi, fromProcessor } from '../../src/resources/nbaGame';
 import { ProcessorError } from '../../src/resources/python';
 import { cardKey } from '../../src/routes/shareCard';
+import { FLAGS } from '../../src/utils/features';
+
+// the card draws the GEI only once 'bball-gei' is 'on' (one image for every viewer); these tests draw it, one turns it back
+const GEI_FLAG = FLAGS['bball-gei'];
+beforeEach(() => { FLAGS['bball-gei'] = 'on'; });
+afterEach(() => { FLAGS['bball-gei'] = GEI_FLAG; });
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/nba/${name}.json`, import.meta.url)).toString());
 const ID = '401766458';
@@ -70,6 +76,13 @@ describe('the card body and the head tags', () => {
         expect(basketballCardBody(live, 'nba').gei).toBeNull();
     });
 
+    test("'bball-gei' still preview: no GEI on the card or in its alt text, since the card cannot follow a preview cookie", () => {
+        FLAGS['bball-gei'] = 'preview';
+        const game = fromProcessor(proc, 'nba');
+        expect(basketballCardBody(game, 'nba').gei).toBeNull();
+        expect(basketballShareImage(game, 'nba').alt).not.toContain('excitement');
+    });
+
     test('a Data API final has no excitement yet, so no GEI (as the page)', () => {
         expect(basketballCardBody(fromDataApi(api, 'nba'), 'nba').gei).toBeNull();
     });
@@ -113,21 +126,21 @@ describe('the card route', () => {
         return { res, set, draw, body: draw ? JSON.parse(draw.init.body) : undefined };
     }
 
-    test('a final the Data API has not ingested: drawn from the processor payload, with the GEI, kept for a year', async () => {
+    test('a final the Data API has not ingested: drawn from the processor payload, with the GEI, kept a day as its page', async () => {
         up.schedule.mockResolvedValue(null);
         up.page.mockResolvedValue(espnPage(proc));
         up.proc.mockResolvedValue(proc);
         const { res, set, draw, body } = await get(`/nba/game/${ID}/card.png?state=final`);
         expect(res.status).toBe(200);
         expect(res.headers.get('Content-Type')).toBe('image/png');
-        expect(res.headers.get('Cache-Control')).toBe('public, max-age=31536000, immutable');
-        expect(set).toHaveBeenCalledWith({ maxAge: 31536000, tags: ['share-card'] });
+        expect(res.headers.get('Cache-Control')).toBe('public, max-age=86400');
+        expect(set).toHaveBeenCalledWith({ maxAge: 86400, tags: ['share-card'] });
         expect(draw!.url).toMatch(new RegExp(`/nba/${ID}/card\\.png\\?state=final$`));
         expect(draw!.init.method).toBe('POST');
         expect(body.gei).toBe(3.54);
         // the page's own processor request: a final's day-long TTL, so the page's cache entry is the one hit
         expect(up.proc).toHaveBeenCalledWith(ID, 86400, 'nba');
-        expect(puts).toEqual([{ key: cardKey('nba', ID, 'final', 'full'), ttl: 31536000 }]);
+        expect(puts).toEqual([{ key: cardKey('nba', ID, 'final', 'full'), ttl: 86400 }]);
     });
 
     test('an ingested final: drawn from the Data API, no ESPN and no processor', async () => {
@@ -158,7 +171,7 @@ describe('the card route', () => {
         store.set(cardKey('nba', ID, 'final', 'full'), KEPT.buffer);
         r = await get(`/nba/game/${ID}/card.png`);
         expect(new Uint8Array(await r.res.arrayBuffer())).toEqual(KEPT);
-        expect(r.res.headers.get('Cache-Control')).toBe('public, max-age=31536000, immutable');
+        expect(r.res.headers.get('Cache-Control')).toBe('public, max-age=86400');
         expect(up.proc).not.toHaveBeenCalled();
     });
 
@@ -200,11 +213,14 @@ describe('the card route', () => {
         expect(r.res.status).toBe(502);
     });
 
-    test('the draw is bounded by a timeout', async () => {
+    test('the draw is bounded by a 15 s timeout', async () => {
         up.schedule.mockResolvedValue(api.schedule[0]);
         up.rows.mockResolvedValue(api);
+        const timeout = vi.spyOn(AbortSignal, 'timeout');
         const { draw } = await get(`/nba/game/${ID}/card.png`);
-        expect(draw!.init.signal).toBeInstanceOf(AbortSignal);
+        expect(draw!.init.signal).toBe(timeout.mock.results.at(-1)!.value);
+        expect(timeout).toHaveBeenLastCalledWith(15000);
+        timeout.mockRestore();
     });
 
     test('a live game: the state is the game\'s, not the URL\'s, and the card is kept a minute', async () => {
