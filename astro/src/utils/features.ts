@@ -65,7 +65,8 @@ export const FLAGS: Record<string, FeatureState> = {
     // BB-G47's league hub at /nba, /wnba, /mbb and /wbb: today's games (the scoreboard's own read and cards, live first, then
     // upcoming, then final) with the market line and win probability from `{league}.game_lines` (BB-D33) where it has the
     // game, and an index of the league's pages. Off: the landing is today's (the NBA's featured team, the others' teams
-    // index), byte for byte, and no game_lines read is made.
+    // index), byte for byte, and no game_lines read is made. On, the NBA's Nets landing moves to /nba/roster (Nov 17, #458;
+    // /nba?season= redirects there), a new public URL on promotion: smoke it, and purge /nba/roster's cached 404.
     'bball-hub': 'preview',
     // BB-G48's "Tonight" on that hub (so it shows only where 'bball-hub' is on too): the night's five best games by game score
     // from `{league}.player_box` (the board's day once the nightly has its finals, else the day before), linked to their game

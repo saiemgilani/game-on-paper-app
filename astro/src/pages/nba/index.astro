@@ -7,7 +7,12 @@ import { NBA_UNAVAILABLE } from '../../routes/nba/cache';
 import { isFeatureEnabled } from '../../utils/features';
 
 // BB-G47: behind 'bball-hub' the landing is the league hub; off, it is the featured team's page, unchanged
-const hub = isFeatureEnabled('bball-hub', Astro.locals) ? await prepareBasketballHub(Astro, 'nba') : null;
+const hubOn = isFeatureEnabled('bball-hub', Astro.locals);
+// the hub has no season: an old season link to the Nets landing (/nba?season=2024) goes to that landing's new home, /nba/roster
+if (hubOn && Astro.url.searchParams.has('season')) {
+    return Astro.redirect(`${Astro.url.pathname.replace(/\/?$/, '/roster')}${Astro.url.search}`, 302);
+}
+const hub = hubOn ? await prepareBasketballHub(Astro, 'nba') : null;
 const r = hub ? null : await prepareNbaHome(Astro);
 if (r && 'unavailable' in r) {
     return NBA_UNAVAILABLE();

@@ -63,4 +63,10 @@ describe('/nba/roster behind bball-hub', () => {
         expect(r.status).toBe(404);
         expect(await r.text()).toContain('This page could not be found.');
     });
+    test('on: an old season link to the landing (/nba?season=) redirects to /nba/roster; off, it renders as today', async () => {
+        const on = await render('/nba', true);
+        expect(on.status).toBe(302);
+        expect(on.headers.get('location')).toBe('/nba/roster?season=2026');
+        expect((await render('/nba', false)).status).toBe(200);
+    });
 });

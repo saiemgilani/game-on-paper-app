@@ -62,15 +62,15 @@ const BLURBS: Record<string, string> = {
 };
 
 /**
- * The hub's page index: the league's Header pages, so a page lands here when it lands in the Header. The NBA's featured-team
- * entry ('/') is the landing the hub replaces, so it is left out, and that landing's own page, /nba/roster (Nov 17, #458), is
- * listed last instead. It keys off `featuredTeam`, not the Header entry, so it stays when #438 drops that entry. A page that is not in the Header (behind its own flag on
+ * The hub's page index: the league's Header pages, so a page lands here when it lands in the Header. The featured team's
+ * landing, /nba/roster (Nov 17, #458), is listed last; it keys off `featuredTeam`, since the Header has no entry for it (#438
+ * dropped the Nets entry). A page that is not in the Header (behind its own flag on
  * the stack: standings, bracketology, the Cup, best games) is added here with its flag when it reaches main.
  */
 export function hubIndex(league: BasketballLeague): HubLink[] {
     const ft = BASKETBALL[league].featuredTeam;
     return [
-        ...BASKETBALL[league].headerMenu.filter((m) => m.path !== '/').map((m) => ({ ...m, ...(BLURBS[m.path] ? { blurb: BLURBS[m.path] } : {}) })),
+        ...BASKETBALL[league].headerMenu.map((m) => ({ ...m, ...(BLURBS[m.path] ? { blurb: BLURBS[m.path] } : {}) })),
         ...(ft ? [{ label: ft.menuLabel, path: '/roster', blurb: `Shot charts and shooting lines for every ${ft.menuLabel} player this season.` }] : []),
     ];
 }
