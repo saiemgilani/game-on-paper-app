@@ -10,7 +10,7 @@ import { isFeatureEnabled } from '../../utils/features';
 if (!isFeatureEnabled('bball-hub', Astro.locals)) {
     return Astro.rewrite('/404');
 }
-const r = await prepareNbaHome(Astro);
+const r = await prepareNbaHome(Astro, '/roster');
 if ('unavailable' in r) {
     return NBA_UNAVAILABLE();
 }
