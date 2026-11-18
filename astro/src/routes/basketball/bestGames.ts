@@ -19,8 +19,8 @@ import { seasonCache, setCache, uncacheable } from './cache';
  */
 export const GEI_FIRST_SEASON: Record<BasketballLeague, number> = { nba: 2002, wnba: 2002, mbb: 2003, wbb: 2004 };
 
-/** The default board shows last season while the current one has fewer ranked games than this (early November in college). */
-export const FALLBACK_BELOW = 50;
+/** The default board shows last season while the current one has fewer ranked games (finals) than this (Nov 17 decisions, #397). */
+export const FALLBACK_BELOW = 25;
 
 export interface BestGamesParams {
     league: BasketballLeague;

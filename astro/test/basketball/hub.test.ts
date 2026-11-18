@@ -53,18 +53,18 @@ describe('hubLine: a game_lines row as card copy', () => {
         expect(l.cover).toBeNull(); // not final
         expect(l.upset).toBe(false);
     });
-    test('a final: who covered, and an upset only when the winner had a pregame WP under 35%', () => {
-        expect(UPSET_WP).toBe(0.35);
+    test('a final: who covered, and an upset only when the market underdog won (pregame WP under 50%)', () => {
+        expect(UPSET_WP).toBe(0.5);
         for (const lg of ['nba', 'wnba', 'mbb', 'wbb'] as const) for (const e of events(lg)) {
             const r = LINES[lg].find((x) => String(x.game_id) === e.id)!;
             const { home, away } = sides(e);
             const hs = Number(home.score), as = Number(away.score);
             const l = hubLine(r, { home: 'H', away: 'A' }, hs > as ? 'home' : 'away')!;
-            expect(l.upset, e.id).toBe((hs > as ? r.market_home_wp_close : 1 - r.market_home_wp_close) < UPSET_WP);
+            expect(l.upset, e.id).toBe(Math.round((hs > as ? r.market_home_wp_close : 1 - r.market_home_wp_close) * 100) < UPSET_WP * 100);
             expect(l.cover, e.id).toBe(r.ats_result == null ? null : r.ats_result === 'push' ? 'Push' : `${r.ats_result === 'home' ? 'H' : 'A'} covered`);
         }
     });
-    test('the 35% cut on real finals: an underdog at 36-45% is no upset, 34.9% and below is', () => {
+    test('the underdog rule on real finals (Nov 17 decisions, #458): every market underdog that won is an upset, 36-45% too', () => {
         const winnerWp = (lg: 'wnba' | 'mbb', id: string) => {
             const e = events(lg).find((x) => x.id === id)!;
             const { home, away } = sides(e);
@@ -72,12 +72,24 @@ describe('hubLine: a game_lines row as card copy', () => {
             const won = Number(home.score) > Number(away.score) ? 'home' : 'away';
             return { up: hubLine(r, { home: 'H', away: 'A' }, won)!.upset, wp: won === 'home' ? r.market_home_wp_close : 1 - r.market_home_wp_close };
         };
-        // market underdogs that won, so the old under-50% rule tagged all five
-        for (const [lg, id, upset] of [['mbb', '401708409', false], ['wnba', '401736285', false], ['mbb', '401708411', false], ['wnba', '401736289', true], ['mbb', '401721447', true]] as const) {
+        // market underdogs that won: the 35% cut of 2026-11-13 tagged only the last two
+        for (const [lg, id] of [['mbb', '401708409'], ['wnba', '401736285'], ['mbb', '401708411'], ['wnba', '401736289'], ['mbb', '401721447']] as const) {
             const { up, wp } = winnerWp(lg, id);
             expect(wp, id).toBeLessThan(0.5);
-            expect(up, id).toBe(upset);
+            expect(up, id).toBe(true);
         }
+        // a coin flip has no underdog
+        expect(hubLine({ ...LINES['nba-open-only'][0], market_home_wp_close: 0.5 }, { home: 'H', away: 'A' }, 'away')!.upset).toBe(false);
+        // nor does a card that prints 50%, whichever side won
+        for (const won of ['home', 'away'] as const) {
+            const l = hubLine({ ...LINES['nba-open-only'][0], market_home_wp_close: 0.496 }, { home: 'H', away: 'A' }, won)!;
+            expect(l.wp).toBe('A 50%');
+            expect(l.upset, won).toBe(false);
+        }
+        // no market WP: the side getting points is the underdog
+        const noWp = { ...LINES['nba-open-only'][0], market_home_wp_open: null, market_home_wp_close: null, market_away_wp_open: null, market_away_wp_close: null };
+        expect(hubLine(noWp, { home: 'H', away: 'A' }, 'away')!.upset).toBe(true); // home -1.5 open: away getting points won
+        expect(hubLine(noWp, { home: 'H', away: 'A' }, 'home')!.upset).toBe(false);
     });
     test('no book closed: the opening line and WP stand in', () => {
         const [r] = LINES['nba-open-only'];

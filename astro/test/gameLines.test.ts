@@ -60,7 +60,7 @@ describe('results agree with the producer', () => {
         expect(lineSpread(row(401909088))).toBe(-1.5); // a 2026-27 row: open only
         expect(lineTotal(row(401805007))).toBeNull();
     });
-    test("the upset tag: the winner under 35% in the market, the hub's cut (Q38)", () => {
+    test("the game page's upset tag: the winner under 35% in the market (Q38; the hub's cut is the market underdog since #458)", () => {
         expect(UPSET_WP).toBe(0.35);
         const tags = played.map(({ s, l }) => [s.id, upset(l, s.home_score, s.away_score)]).filter(([, u]) => u);
         // WSH (+8, 26.5%) beat ATL; NY (+1.5, 46.8%) over CLE and SA (40.5%) at DAL were under 50% but are not upsets at 35%

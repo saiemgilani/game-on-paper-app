@@ -107,6 +107,12 @@ export function projectedField<T extends FieldRow>(rows: T[]): ProjectedField<T>
     return { firstFour, regions };
 }
 
+/**
+ * A snapshot taken after its season's games ended: dated April 1 of the END year or later (the title game is in early
+ * April, Selection Sunday mid-March). ponytail: a fixed calendar cut; read the producer's season-end day if it ships one.
+ */
+export const isFinalSnapshot = (s: Snapshot): boolean => s.as_of_date >= `${s.season}-04-01`;
+
 /** A snapshot day as the page prints it: "November 3, 2026". */
 export const snapshotDay = (isoDate: string): string =>
     new Date(`${isoDate}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
