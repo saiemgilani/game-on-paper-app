@@ -46,14 +46,18 @@ function side(s: NbaSide, league: BasketballLeague, season: number | null): Bask
     };
 }
 
-export function basketballCardBody(game: NbaGame, league: BasketballLeague): BasketballCardBody {
+/** The WP chart's own rule ('bball-gei', NbaWinProbability.astro): a final whose excitement sdv-py also called complete. */
+function cardGei(game: NbaGame): number | null {
     const ex = game.excitement;
+    return game.status.completed && ex?.completed ? ex.gei : null;
+}
+
+export function basketballCardBody(game: NbaGame, league: BasketballLeague): BasketballCardBody {
     return {
         home: side(game.home, league, game.season), away: side(game.away, league, game.season),
         detail: game.status.detail, date: game.date, regulation: game.regulation,
         plays: game.plays.filter((p) => p.homeWinProb != null).map((p) => [p.period, p.homeWinProb as number, p.secondsRemaining]),
-        // the WP chart's own rule ('bball-gei', NbaWinProbability.astro): a final whose excitement sdv-py also called complete
-        gei: game.status.completed && ex?.completed ? ex.gei : null,
+        gei: cardGei(game),
     };
 }
 
@@ -66,8 +70,10 @@ export function basketballShareImage(game: NbaGame, league: BasketballLeague, no
     const query = new URLSearchParams({ state });
     if (state === 'live') query.set('v', `live-${Math.floor(now / 1000 / 300)}`);
     const scored = gameTitleText(game.away.team, game.home.team, game.away.score, game.home.score);
+    // says what the card draws: the GEI only where the card has one
+    const final = cardGei(game) == null ? `${scored}, final: win probability chart` : `${scored}, final: win probability chart and game excitement index`;
     return {
         url: `https://gameonpaper.com${leaguePath(league, `/game/${game.id}`)}/card.png?${query}`,
-        alt: state === 'final' ? `${scored}, final: win probability chart and game excitement` : `${scored}, live: win probability so far`,
+        alt: state === 'final' ? final : `${scored}, live: win probability so far`,
     };
 }

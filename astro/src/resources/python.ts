@@ -1407,6 +1407,7 @@ export async function retrieveShareCard(gameId: string | number, league: League,
  * bytes, or null when the API cannot draw one. Always a POST of `body`, built from the game the page renders
  * (basketball/shareCard.ts), so a card costs drawing and never a play-by-play run; the route keeps it (routes/basketball/shareCard.ts).
  */
+const BASKETBALL_CARD_TIMEOUT_MS = 15000;
 export async function retrieveBasketballShareCard(gameId: string | number, league: League, state: 'live' | 'final', body: unknown): Promise<ArrayBuffer | null> {
     if (!PYTHON_HTTP_TOKEN) return null;
     try {
@@ -1414,6 +1415,8 @@ export async function retrieveBasketballShareCard(gameId: string | number, leagu
             method: 'POST',
             headers: { "Authorization": `Bearer ${btoa(PYTHON_HTTP_TOKEN)}`, "Referer": "gameonpaper.com", "Content-Type": "application/json" },
             body: JSON.stringify(body),
+            // drawing takes about a second: a stalled API becomes the route's handled 502, not a hung crawler fetch
+            signal: AbortSignal.timeout(BASKETBALL_CARD_TIMEOUT_MS),
         });
         if (!req.ok) {
             console.error(`ERROR share card ${league} ${gameId} ${state}: HTTP ${req.status}`);

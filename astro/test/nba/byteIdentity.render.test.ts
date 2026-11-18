@@ -186,7 +186,7 @@ describe('PR 0 byte-identity: every /nba route state', () => {
         games.proc.mockResolvedValueOnce(proc);
         const on = await page('game/[id].astro', '/nba/game/401766458', { id: '401766458' }, { 'bball-share-card': true });
         const card = 'https://gameonpaper.com/nba/game/401766458/card.png?state=final';
-        expect(on).toContain(`<meta property="og:image" content="${card}"><meta property="og:image:alt" content="Atlanta 95 @ Orlando 120, final: win probability chart and game excitement">`);
+        expect(on).toContain(`<meta property="og:image" content="${card}"><meta property="og:image:alt" content="Atlanta 95 @ Orlando 120, final: win probability chart">`);
         expect(on).toContain(`<meta name="twitter:image" content="${card}">`);
         const social = 'https://gameonpaper.com/assets/img/social-card.png';
         const off = on.replace(/<meta property="og:image:alt" content="[^"]*">/, '').replaceAll(card, social);

@@ -77,7 +77,9 @@ describe('the card body and the head tags', () => {
     test('the image URL names the state; a live one carries a five-minute bucket', () => {
         const final = basketballShareImage(fromProcessor(proc, 'nba'), 'nba');
         expect(final.url).toBe(`https://gameonpaper.com/nba/game/${ID}/card.png?state=final`);
-        expect(final.alt).toBe('Atlanta 95 @ Orlando 120, final: win probability chart and game excitement');
+        expect(final.alt).toBe('Atlanta 95 @ Orlando 120, final: win probability chart and game excitement index');
+        // the description says what the card draws: no GEI on a Data API final
+        expect(basketballShareImage(fromDataApi(api, 'nba'), 'nba').alt).toBe('Atlanta 95 @ Orlando 120, final: win probability chart');
         const now = Date.UTC(2026, 10, 17, 1, 41);
         const live = basketballShareImage(fromProcessor(liveProc(), 'mbb'), 'mbb', now);
         expect(live.url).toBe(`https://gameonpaper.com/mbb/game/${ID}/card.png?state=live&v=live-${Math.floor(now / 300_000)}`);
@@ -137,16 +139,72 @@ describe('the card route', () => {
         expect(body.plays.length).toBeGreaterThan(100);
         expect(up.page).not.toHaveBeenCalled();
         expect(up.proc).not.toHaveBeenCalled();
+        // kept apart from a processor-drawn final, which carries a GEI the Data API page has not
+        expect(puts).toEqual([{ key: cardKey('nba', ID, 'final', 'full', 'data_api'), ttl: 31536000 }]);
+        expect(cardKey('nba', ID, 'final', 'full', 'data_api')).not.toBe(cardKey('nba', ID, 'final', 'full'));
     });
 
-    test('a hit is the kept card: no game read past the state, no draw', async () => {
+    const KEPT = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
+    test('a hit is the kept card, checked after the state read (as football) and before the game is loaded', async () => {
+        up.schedule.mockResolvedValue(api.schedule[0]);
+        store.set(cardKey('nba', ID, 'final', 'full', 'data_api'), KEPT.buffer);
+        let r = await get(`/nba/game/${ID}/card.png?state=final`);
+        expect(new Uint8Array(await r.res.arrayBuffer())).toEqual(KEPT);
+        expect(r.draw).toBeUndefined();
+        expect(up.rows).not.toHaveBeenCalled();
+        // a processor game: ESPN's page for the state, then KV, and no processor read on a hit
+        up.schedule.mockResolvedValue(null);
+        up.page.mockResolvedValue(espnPage(proc));
+        store.set(cardKey('nba', ID, 'final', 'full'), KEPT.buffer);
+        r = await get(`/nba/game/${ID}/card.png`);
+        expect(new Uint8Array(await r.res.arrayBuffer())).toEqual(KEPT);
+        expect(r.res.headers.get('Cache-Control')).toBe('public, max-age=31536000, immutable');
+        expect(up.proc).not.toHaveBeenCalled();
+    });
+
+    test('a kept card on a load that may not be kept (a stale ESPN payload, a failed Data API gate) is served no-store', async () => {
+        up.schedule.mockResolvedValue(null);
+        up.page.mockResolvedValue(espnPage(proc, { regressed: true }));
+        store.set(cardKey('nba', ID, 'final', 'full'), KEPT.buffer);
+        let r = await get(`/nba/game/${ID}/card.png`);
+        expect(r.res.headers.get('Cache-Control')).toBe('no-store');
+        expect(r.set).toHaveBeenCalledWith(false);
+        up.schedule.mockRejectedValue(new Error('data api down'));
+        up.page.mockResolvedValue(espnPage(proc));
+        r = await get(`/nba/game/${ID}/card.png`);
+        expect(r.res.headers.get('Cache-Control')).toBe('no-store');
+    });
+
+    test.each(['STATUS_POSTPONED', 'STATUS_ABANDONED', 'STATUS_DELAYED'])('%s: no card, and no processor read', async (name) => {
+        up.schedule.mockResolvedValue(null);
+        const p = structuredClone(proc);
+        p.header.competitions[0].status.type = { ...p.header.competitions[0].status.type, completed: false, state: 'post', name };
+        up.page.mockResolvedValue(espnPage(p));
+        const r = await get(`/nba/game/${ID}/card.png`);
+        expect(r.res.status).toBe(404);
+        expect(r.res.headers.get('Cache-Control')).toBe('no-store');
+        expect(up.proc).not.toHaveBeenCalled();
+    });
+
+    test('no plays yet on a live game (the processor\'s 404) is "no card yet", not an outage', async () => {
+        const p = liveProc();
+        up.schedule.mockResolvedValue(null);
+        up.page.mockResolvedValue(espnPage(p));
+        up.proc.mockRejectedValue(new ProcessorError(404, 'no plays'));
+        let r = await get(`/nba/game/${ID}/card.png`);
+        expect(r.res.status).toBe(404);
+        expect(r.res.headers.get('Cache-Control')).toBe('no-store');
+        // on a final it is a broken payload, as on the page
+        up.page.mockResolvedValue(espnPage(proc));
+        r = await get(`/nba/game/${ID}/card.png`);
+        expect(r.res.status).toBe(502);
+    });
+
+    test('the draw is bounded by a timeout', async () => {
         up.schedule.mockResolvedValue(api.schedule[0]);
         up.rows.mockResolvedValue(api);
-        const KEPT = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
-        store.set(cardKey('nba', ID, 'final', 'full'), KEPT.buffer);
-        const { res, draw } = await get(`/nba/game/${ID}/card.png?state=final`);
-        expect(new Uint8Array(await res.arrayBuffer())).toEqual(KEPT);
-        expect(draw).toBeUndefined();
+        const { draw } = await get(`/nba/game/${ID}/card.png`);
+        expect(draw!.init.signal).toBeInstanceOf(AbortSignal);
     });
 
     test('a live game: the state is the game\'s, not the URL\'s, and the card is kept a minute', async () => {
