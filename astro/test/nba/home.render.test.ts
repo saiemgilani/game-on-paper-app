@@ -34,3 +34,39 @@ describe('/nba', () => {
         expect(html).not.toContain('undefined');
     });
 });
+
+// Nov 17 (#458): the hub takes /nba behind 'bball-hub', so the Nets landing moves to /nba/roster, same read and template.
+describe('/nba/roster behind bball-hub', () => {
+    const pages = { '/nba': () => import('../../src/pages/nba/index.astro'), '/nba/roster': () => import('../../src/pages/nba/roster.astro') };
+    const render = async (url: keyof typeof pages, hub: boolean) => {
+        const { default: Page } = await pages[url]();
+        return container.renderToResponse(Page, { request: new Request(`https://gameonpaper.com${url}?season=2026`), locals: { preview: true, flagOverrides: { 'bball-hub': hub } } as App.Locals });
+    };
+    test("on: the landing's roster, with its season picker and canonical on /nba/roster", async () => {
+        const r = await render('/nba/roster', true);
+        expect(r.status).toBe(200);
+        const html = await r.text();
+        const landing = await (await render('/nba', false)).text();
+        const cards = (h: string) => h.slice(h.indexOf('id="nba-roster"'), h.indexOf('</main>'));
+        expect(cards(html).length).toBeGreaterThan(100);
+        expect(cards(html)).toBe(cards(landing));
+        expect(html).toContain('value="/nba/roster');
+        expect(html).not.toMatch(/value="\/nba(\?|")/);
+        expect(html).toContain('<link rel="canonical" href="https://gameonpaper.com/nba/roster');
+        expect(html.split('<h1').length - 1).toBe(1);
+        expect(html).not.toContain('undefined');
+    });
+    test("off: the site's 404", async () => {
+        const { default: NotFound } = await import('../../src/pages/404.astro');
+        container.insertPageRoute('/404', NotFound);
+        const r = await render('/nba/roster', false);
+        expect(r.status).toBe(404);
+        expect(await r.text()).toContain('This page could not be found.');
+    });
+    test('on: an old season link to the landing (/nba?season=) redirects to /nba/roster; off, it renders as today', async () => {
+        const on = await render('/nba', true);
+        expect(on.status).toBe(302);
+        expect(on.headers.get('location')).toBe('/nba/roster?season=2026');
+        expect((await render('/nba', false)).status).toBe(200);
+    });
+});
