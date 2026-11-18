@@ -134,11 +134,12 @@ export function flowExtras(game: NbaGame, periodSeconds: number): FlowExtras {
     let last5: FlowExtras['last5'] = null;
     if (done && series.length > 1) {
         // Nov 17 decisions (#462): the last 5:00 of the final period played, overtime included (all of a five-minute OT)
-        const cut = total - LAST_WINDOW;
-        // in overtime the cut is the period's start: a score at the previous period's buzzer belongs to that period
-        const ot = game.periods > reg;
-        const before = [...series].reverse().find((p) => p.t < cut || (ot && p.t === cut)) ?? series[0];
         const end = series[series.length - 1];
+        // in overtime the window is the whole final period, read by the plays' own period (the previous period's buzzer and
+        // the OT's 5:00 share one elapsed time): the score at the last play before it is the baseline
+        const prior = game.periods > reg ? game.plays.findLast((p) => p.period < game.periods) : undefined;
+        const cut = total - LAST_WINDOW;
+        const before = prior ? { home: prior.homeScore, away: prior.awayScore } : [...series].reverse().find((p) => p.t < cut) ?? series[0];
         last5 = { home: end.home - before.home, away: end.away - before.away };
     }
     return {

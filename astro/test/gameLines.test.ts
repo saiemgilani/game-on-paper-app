@@ -239,6 +239,11 @@ describe('NbaGamePage', () => {
         const t = lines(await page(gameAs(401736112), row(401736112)));
         expect(t).toMatch(/Upset WSH won at 2[67]% pregame/);
         expect(lines(await page(gameAs(401805007), row(401805007)))).toContain('Upset DEL won as the underdog');
+        // moneylines only (no spread, no total): the result line still carries the upset
+        const ml = { ...row(401736112), spread_home_open: null, spread_home_close: null, total_open: null, total_close: null };
+        const html = await page(gameAs(401736112), ml);
+        expect(html).toContain('id="lines-result"');
+        expect(plain(html.split('id="lines-result"')[1].split('</p>')[0])).toMatch(/^> Upset WSH won at 2[67]% pregame$/);
         // a favourite's win: no tag
         expect(lines(await page(gameAs(401736113), row(401736113)))).not.toContain('Upset');
     });

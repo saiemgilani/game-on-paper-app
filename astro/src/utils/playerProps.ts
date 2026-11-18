@@ -1,8 +1,10 @@
 /**
  * The game page's player props panel (BB-G44, behind 'bball-props'): each player's closing line per stat with the
- * implied over probability (sdv-db's `{nba,wnba,mbb}.player_props`, BB-D33: medians across books, no vig), beside the
- * box score's number. After the final, which side of the line it landed on; live, the count so far against the line.
- * Nothing is modelled: the line and probability are the books', the count is the box score's.
+ * over's no-vig chance (sdv-db's `{nba,wnba,mbb}.player_props`, BB-D33: medians across books), beside the box score's
+ * number. The chance is computed here from the row's two prices (each implied probability normalised to sum to 1); a row
+ * missing a price falls back to the table's own `over_prob` (its median no-vig chance). After the final, which side of
+ * the line it landed on; live, the count so far against the line. Nothing is modelled: the line and prices are the
+ * books', the count is the box score's.
  */
 import type { NbaGame, NbaPlayerRow } from '../resources/nbaGame';
 import type { PropRow, PropStat } from '../resources/playerProps';
@@ -19,7 +21,7 @@ export const PROP_STATS: { stat: PropStat; label: string; title: string }[] = [
 export type PropResult = 'over' | 'under' | 'push';
 export interface PropCell {
     line: number
-    /** the books' no-vig over probability; null when a side had no price */
+    /** the over's no-vig chance from the row's two prices, else the table's over_prob; null with neither */
     overProb: number | null
     /** the box score's count (so far, when live); null when the player has no box row or did not play */
     actual: number | null

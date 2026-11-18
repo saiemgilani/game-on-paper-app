@@ -23,5 +23,9 @@ export default async (page, base) => {
   await page.click('a[href="#latest"]');
   await page.locator('#latest svg').scrollIntoViewIfNeeded();
   await page.hover('#latest svg g:last-of-type').catch(() => {}); // the newest mark's title
+  // #445: the strip refetches the page every 30 s while live; wait for one refetch (within ~35 s) and the swap after it
+  const here = page.url().split('#')[0];
+  const refetch = await page.waitForResponse((r) => r.request().resourceType() === 'fetch' && r.url().split('#')[0] === here, { timeout: 35_000 }).catch(() => null);
+  console.log(refetch ? `latest-strip: refetched (${refetch.status()})` : 'latest-strip: no refetch within 35 s');
   await page.waitForTimeout(1500);
 };

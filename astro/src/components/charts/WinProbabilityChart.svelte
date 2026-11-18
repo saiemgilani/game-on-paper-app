@@ -587,7 +587,7 @@ if (document.readyState !== 'loading') {
             <a href="https://www.opensourcefootball.com/posts/2020-08-21-game-excitement-and-win-probability-in-the-nfl/" title="Measures 'game excitement' by absolute changes in win probability. May not match eye-test in games with heavy favorites.">Game Excitement Index:</a> <span class="px-1">{ roundNumber(geiVal, 2, 2) }</span>
             {#if geiExtras}
             <!-- Nov 17 decisions (#391): the processor's lead changes and largest single-play WP swing beside it, labelled as football's share card -->
-            | Lead changes: {geiExtras.leadChanges} | <span title="The largest single-play change in win probability">Biggest WP swing:</span> {geiExtras.maxSwingPts == null ? '—' : `${Math.round(geiExtras.maxSwingPts)}%`}
+            | Lead changes: {geiExtras.leadChanges} | <span title="The largest single-play change in win probability">Biggest WP swing:</span> {geiExtras.maxSwingPts == null ? '—' : `${roundNumber(geiExtras.maxSwingPts, 0, 0)}%`}
             {/if}
             {/if}
             {#if gameInProgress}

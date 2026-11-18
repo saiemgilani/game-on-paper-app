@@ -102,6 +102,14 @@ describe('the extras agree with the rows', () => {
         const want = { home: end.home_score - otStart.home_score, away: end.away_score - otStart.away_score };
         expect(want.home + want.away).toBeGreaterThan(0);
         expect(flowExtras(ot, 720).last5).toEqual(want);
+        // a score at exactly 5:00 of the OT (the previous buzzer's elapsed time) counts; the regulation buzzer's does not
+        const ps = ot.plays;
+        const i4 = ps.findLastIndex((p) => p.period === 4);
+        const buzzer = { ...ps[i4], id: 'buzzer', n: ps[i4].n + 0.1, clock: '0.0', secondsRemaining: 0, homeScore: ps[i4].homeScore + 2, scoringPlay: true, scoreValue: 2 };
+        const opener = { ...ps[i4 + 1], id: 'opener', n: ps[i4].n + 0.2, period: 5, clock: '5:00', secondsRemaining: 300, homeScore: buzzer.homeScore + 1, awayScore: ps[i4].awayScore, scoringPlay: true, scoreValue: 1 };
+        const after = ps.slice(i4 + 1).map((p) => ({ ...p, homeScore: p.homeScore + 3 }));
+        const edge = { ...ot, plays: [...ps.slice(0, i4 + 1), buzzer, opener, ...after] };
+        expect(flowExtras(edge, 720).last5).toEqual({ home: want.home + 1, away: want.away });
         // not the clutch window (regulation's last 5:00 plus the OT, Q40's old reading)
         const clutch = plays.filter((p) => p.period_number === 4 && clockSeconds(p.clock_display_value)! > 300).at(-1)!;
         expect(want.home + want.away).toBeLessThan((end.home_score - clutch.home_score) + (end.away_score - clutch.away_score));

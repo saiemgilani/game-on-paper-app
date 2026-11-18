@@ -6,7 +6,8 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
-import { LATEST_POLL_MS, pollLatest } from '../src/basketball/latestPoll';
+import { JSDOM } from 'jsdom';
+import { LATEST_DEADLINE_MS, LATEST_POLL_MS, pollLatest, swapLatest } from '../src/basketball/latestPoll';
 import NbaGamePage from '../src/components/nba/game/NbaGamePage.astro';
 import { fromProcessor, type NbaGame } from '../src/resources/nbaGame';
 import { isLiveGame, latestStrip, RECENT_SHOTS } from '../src/basketball/latest';
@@ -95,6 +96,18 @@ describe('latestStrip', () => {
             await vi.advanceTimersByTimeAsync(5 * LATEST_POLL_MS);
             expect(next).toHaveBeenCalledTimes(3);
         });
+        test('a stalled refetch is aborted at the deadline and the poll goes on', async () => {
+            vi.useFakeTimers();
+            const signals: AbortSignal[] = [];
+            const next = vi.fn((signal: AbortSignal) => { signals.push(signal); return new Promise<boolean>(() => {}); }); // never settles
+            pollLatest(next);
+            await vi.advanceTimersByTimeAsync(LATEST_POLL_MS + LATEST_DEADLINE_MS - 1);
+            expect(signals[0].aborted).toBe(false);
+            await vi.advanceTimersByTimeAsync(1);
+            expect(signals[0].aborted).toBe(true);
+            await vi.advanceTimersByTimeAsync(LATEST_POLL_MS);
+            expect(next).toHaveBeenCalledTimes(2);
+        });
     });
 
     test('a heave from past the drawn court is skipped before the count, so the newest drawn shot is age 0 and ringed', () => {
@@ -133,6 +146,19 @@ describe('the game page', () => {
         const done = await page(final('nba'), 'nba');
         expect(done).not.toContain('data-latest-poll');
         expect(done).not.toContain('NbaLatest.astro?astro&type=script');
+    });
+    test('#445 swapLatest on real renders: a later live page swaps the plays in; the final removes the panel and its nav item', async () => {
+        const dom = (html: string) => new JSDOM(html).window.document;
+        const now = dom(await page(live('nba', GAMES.nba, 0.5), 'nba'));
+        const later = live('nba', GAMES.nba, 0.6);
+        expect(now.querySelector('#latest-panel [data-latest-poll]')).not.toBeNull();
+        expect(swapLatest(now, dom(await page(later, 'nba')))).toBe(true);
+        expect(now.querySelector('[data-latest-poll] tbody tr td:nth-child(4)')!.textContent).toBe(later.plays.at(-1)!.text);
+        expect(swapLatest(now, dom(await page(final('nba'), 'nba')))).toBe(false);
+        expect(now.querySelector('#latest-panel')).toBeNull();
+        expect(now.querySelector('[data-latest-poll]')).toBeNull();
+        expect(now.querySelector('a[href="#latest"]')).toBeNull();
+        expect(now.querySelector('#wp')).not.toBeNull(); // the rest of the page stays
     });
     test('flag off, a live game: no panel and no nav item', async () => {
         const html = await page(live('nba'), 'nba', false);

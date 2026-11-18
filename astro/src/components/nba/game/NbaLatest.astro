@@ -66,15 +66,11 @@ const R = 6;
   </div>
 </div>
 <script>
-    // #445: refetch this page (its live cache) every 30 s and swap the strip in; a final page has no strip, so it stops
-    import { pollLatest } from '../../../basketball/latestPoll';
-    const el = document.querySelector<HTMLElement>('[data-latest-poll]');
-    if (el) pollLatest(async () => {
-        const res = await fetch(location.href, { cache: 'no-cache' });
+    // #445: refetch this page (its live cache) every 30 s and swap the strip in; at the final the stale strip goes and it stops
+    import { pollLatest, swapLatest } from '../../../basketball/latestPoll';
+    if (document.querySelector('[data-latest-poll]')) pollLatest(async (signal) => {
+        const res = await fetch(location.href, { cache: 'no-cache', signal });
         if (!res.ok) return true;
-        const next = new DOMParser().parseFromString(await res.text(), 'text/html').querySelector('[data-latest-poll]');
-        if (!next) return false;
-        el.innerHTML = next.innerHTML;
-        return true;
+        return swapLatest(document, new DOMParser().parseFromString(await res.text(), 'text/html'));
     }, { hidden: () => document.hidden });
 </script>
