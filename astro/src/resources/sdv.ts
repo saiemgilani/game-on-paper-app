@@ -1,6 +1,6 @@
 import { getSecret } from "astro:env/server";
 import { URLSearchParams } from "node:url";
-import { CURRENT_YEAR, MIN_PERCENTILE_WEEK, SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES, TEAM_SEASON_PCTILES } from "../utils/constants";
+import { ALL_TIME_MIN_SAMPLE, CURRENT_YEAR, MIN_PERCENTILE_WEEK, SDV_PLAYER_METRIC_CATEGORIES, SDV_RADAR_COLUMNS, SDV_TEAM_CARD_COLUMNS, SDV_TEAM_METRIC_CATEGORIES, TEAM_SEASON_PCTILES } from "../utils/constants";
 import type { ESPNGameHeader } from "./espn";
 import { env } from "cloudflare:workers";
 import { calculateNormCdf, cleanUpParams, safeCachePut } from "../utils/misc";
@@ -1064,10 +1064,14 @@ export async function retrievePlayerSummaries(season: number, category: SummaryT
  * Seasons before the league's first site season are left out (the NFL tables hold
  * qualified rows from 1999, the site's NFL seasons start in 2002): their season and
  * team links would land on pages the site does not serve, and they would take top-100 places.
+ * A rate metric also needs ALL_TIME_MIN_SAMPLE in the season (`dropbacks__gte=150` etc.).
  */
 export function allTimePlayerQuery(category: string, metric: string, league: League = 'cfb'): URLSearchParams {
     const qualifier = playerBoardSort(category, metric).ranked ? metric : 'TEPA';
-    return new URLSearchParams({ order: `-${metric}`, [`${qualifier}_rank__gte`]: '1', season__gte: String(LEAGUES[league].seasons[0]), limit: '100' });
+    const q = new URLSearchParams({ order: `-${metric}`, [`${qualifier}_rank__gte`]: '1', season__gte: String(LEAGUES[league].seasons[0]), limit: '100' });
+    const floor = ALL_TIME_MIN_SAMPLE[category];
+    if (floor && SDV_PLAYER_METRIC_CATEGORIES[category]?.[metric]?.rate) q.set(`${floor.column}__gte`, String(floor.min));
+    return q;
 }
 
 /** A cold all-time read sorts the whole table; past this the page says the board is unavailable instead of hanging. */

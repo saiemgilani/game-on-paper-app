@@ -9,7 +9,7 @@
 import type { AstroGlobal } from 'astro';
 import type { League } from '../utils/league';
 import { PLAYER_LEADERBOARD_CATEGORIES } from '../utils/seo';
-import { SDV_PLAYER_METRIC_CATEGORIES } from '../utils/constants';
+import { allTimeMetrics } from '../utils/constants';
 import { retrieveAllTimePlayerSeasons, sdvIngestStamp, sdvPin, type SDVPlayerSummary, type SummaryType } from '../resources/sdv';
 import { freshnessStamp } from '../utils/freshness';
 
@@ -32,7 +32,8 @@ export const ALL_TIME_DEFAULT_METRIC = 'TEPA';
 export type AllTimePrep = { notFound: true } | { category: string; metric: string };
 
 // An unknown category is a 404 (as on the season boards); a `?sort=` the category does
-// not have falls back to the default, since it would name a column the API rejects.
+// not have falls back to the default, since it would name a column the API rejects; so does one the
+// league's board hides (NFL Catch %, Nov 17 decision on #361).
 export function prepareAllTime(Astro: AstroGlobal, league: League): AllTimePrep {
     Astro.locals.league = league;
     const { category } = Astro.params;
@@ -40,7 +41,7 @@ export function prepareAllTime(Astro: AstroGlobal, league: League): AllTimePrep 
         return { notFound: true };
     }
     const sort = Astro.url.searchParams.get('sort');
-    const metric = sort && Object.hasOwn(SDV_PLAYER_METRIC_CATEGORIES[category], sort) ? sort : ALL_TIME_DEFAULT_METRIC;
+    const metric = sort && Object.hasOwn(allTimeMetrics(category, league), sort) ? sort : ALL_TIME_DEFAULT_METRIC;
     return { category, metric };
 }
 
