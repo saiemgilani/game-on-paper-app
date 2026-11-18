@@ -5,8 +5,10 @@
  * tab skips its turns.
  */
 export const LATEST_POLL_MS = 30_000;
-// a cold live render reads ESPN, then waits up to 25 s on the processor (NBA_PROCESSOR_TIMEOUT_MS); the next turn waits for this one
-export const LATEST_DEADLINE_MS = 30_000;
+// the slowest render that still succeeds: an ESPN read (ESPN_TIMEOUT_MS, 10 s) then the processor (NBA_PROCESSOR_TIMEOUT_MS,
+// 25 s), plus 5 s for the rest. Not imported, so the client bundle stays free of the server modules; keep it in step with them.
+// A render past it was a 503 anyway. The next turn waits for this one, so refetches never overlap.
+export const LATEST_DEADLINE_MS = 40_000;
 
 /**
  * Swap the refetched page's strip into this one; true while the poll should go on. A refetched page with no strip that is

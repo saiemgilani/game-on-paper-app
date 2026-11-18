@@ -14,6 +14,8 @@ import { isLiveGame, latestStrip, RECENT_SHOTS } from '../src/basketball/latest'
 import { FLAGS } from '../src/utils/features';
 import { courtFor } from '../src/basketball/config';
 import { onDrawnCourt } from '../src/nba/charts/gameShotChart';
+import { ESPN_TIMEOUT_MS } from '../src/resources/espn';
+import { NBA_PROCESSOR_TIMEOUT_MS } from '../src/resources/nbaGames';
 
 type League = 'nba' | 'wnba' | 'mbb' | 'wbb';
 const raw = (league: League, id: string) => JSON.parse(readFileSync(new URL(`./fixtures/${league}/game_${id}_processor.json`, import.meta.url)).toString());
@@ -95,6 +97,9 @@ describe('latestStrip', () => {
             stop();
             await vi.advanceTimersByTimeAsync(5 * LATEST_POLL_MS);
             expect(next).toHaveBeenCalledTimes(3);
+        });
+        test('the deadline outlasts the slowest render that still succeeds (an ESPN read, then the processor)', () => {
+            expect(LATEST_DEADLINE_MS).toBeGreaterThanOrEqual(ESPN_TIMEOUT_MS + NBA_PROCESSOR_TIMEOUT_MS);
         });
         test('a stalled refetch is aborted at the deadline and the poll goes on', async () => {
             vi.useFakeTimers();
