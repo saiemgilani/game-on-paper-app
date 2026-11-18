@@ -60,7 +60,7 @@ describe('hubLine: a game_lines row as card copy', () => {
             const { home, away } = sides(e);
             const hs = Number(home.score), as = Number(away.score);
             const l = hubLine(r, { home: 'H', away: 'A' }, hs > as ? 'home' : 'away')!;
-            expect(l.upset, e.id).toBe((hs > as ? r.market_home_wp_close : 1 - r.market_home_wp_close) < UPSET_WP);
+            expect(l.upset, e.id).toBe(Math.round((hs > as ? r.market_home_wp_close : 1 - r.market_home_wp_close) * 100) < UPSET_WP * 100);
             expect(l.cover, e.id).toBe(r.ats_result == null ? null : r.ats_result === 'push' ? 'Push' : `${r.ats_result === 'home' ? 'H' : 'A'} covered`);
         }
     });
@@ -80,6 +80,16 @@ describe('hubLine: a game_lines row as card copy', () => {
         }
         // a coin flip has no underdog
         expect(hubLine({ ...LINES['nba-open-only'][0], market_home_wp_close: 0.5 }, { home: 'H', away: 'A' }, 'away')!.upset).toBe(false);
+        // nor does a card that prints 50%, whichever side won
+        for (const won of ['home', 'away'] as const) {
+            const l = hubLine({ ...LINES['nba-open-only'][0], market_home_wp_close: 0.496 }, { home: 'H', away: 'A' }, won)!;
+            expect(l.wp).toBe('A 50%');
+            expect(l.upset, won).toBe(false);
+        }
+        // no market WP: the side getting points is the underdog
+        const noWp = { ...LINES['nba-open-only'][0], market_home_wp_open: null, market_home_wp_close: null, market_away_wp_open: null, market_away_wp_close: null };
+        expect(hubLine(noWp, { home: 'H', away: 'A' }, 'away')!.upset).toBe(true); // home -1.5 open: away getting points won
+        expect(hubLine(noWp, { home: 'H', away: 'A' }, 'home')!.upset).toBe(false);
     });
     test('no book closed: the opening line and WP stand in', () => {
         const [r] = LINES['nba-open-only'];

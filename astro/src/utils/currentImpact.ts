@@ -19,7 +19,7 @@ export interface CurrentImpactPanel {
 
 /**
  * Under this many possessions a side this season, the current rating is mostly its prior (Nov 17 decisions, #463): 0 on
- * opening night, about three games of a starter's. ponytail: one cut for both sides.
+ * opening night, about four of an NBA starter's games (five or six in college). ponytail: one cut for both sides.
  */
 export const EARLY_POSS = 300;
 

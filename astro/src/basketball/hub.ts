@@ -15,14 +15,25 @@ export interface HubLine {
     wp: string | null;
     /** finals: who covered the closing spread ('BOS covered', 'Push') */
     cover: string | null;
-    /** finals: the market underdog won (the winner's no-vig pregame win probability was under UPSET_WP, 50%) */
+    /** finals: the market underdog won (see `hubLine`) */
     upset: boolean;
 }
 
-/** An upset is a final the market underdog won: its no-vig pregame win probability under 50% (Nov 17 decisions, #458). */
+/**
+ * An upset is a final the market underdog won (Nov 17 decisions, #458): its no-vig pregame win probability under 50% as the card
+ * prints it (a whole percent, so a card reading 50% has no underdog); with no market WP, the side getting points.
+ */
 export const UPSET_WP = 0.5;
 
 const num = (v: unknown): number | null => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+
+function underdog(homeWp: number | null, spread: number | null): 'home' | 'away' | null {
+    if (homeWp !== null) {
+        const pct = Math.round(homeWp * 100);
+        return pct === UPSET_WP * 100 ? null : pct < UPSET_WP * 100 ? 'home' : 'away';
+    }
+    return spread === null || spread === 0 ? null : spread > 0 ? 'home' : 'away';
+}
 
 /**
  * A game_lines row as card copy. `abbr` names ESPN's home and away sides (every `_home` column is ESPN's home team);
@@ -39,7 +50,7 @@ export function hubLine(row: GameLineRow | undefined, abbr: { home: string; away
         total,
         wp: homeWp === null ? null : homeWp >= 0.5 ? `${abbr.home} ${Math.round(homeWp * 100)}%` : `${abbr.away} ${Math.round((1 - homeWp) * 100)}%`,
         cover: winner === null || row.ats_result == null ? null : row.ats_result === 'push' ? 'Push' : `${abbr[row.ats_result]} covered`,
-        upset: winner !== null && homeWp !== null && (winner === 'home' ? homeWp : 1 - homeWp) < UPSET_WP,
+        upset: winner !== null && winner === underdog(homeWp, spread),
     };
     return out.spread === null && out.total === null && out.wp === null ? null : out;
 }
