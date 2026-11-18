@@ -152,12 +152,14 @@ describe('the game page', () => {
         const now = dom(await page(live('nba', GAMES.nba, 0.5), 'nba'));
         const later = live('nba', GAMES.nba, 0.6);
         expect(now.querySelector('#latest-panel [data-latest-poll]')).not.toBeNull();
+        expect(now.querySelector('#game-section-picker option[value="#latest"]')).not.toBeNull();
         expect(swapLatest(now, dom(await page(later, 'nba')))).toBe(true);
         expect(now.querySelector('[data-latest-poll] tbody tr td:nth-child(4)')!.textContent).toBe(later.plays.at(-1)!.text);
         expect(swapLatest(now, dom(await page(final('nba'), 'nba')))).toBe(false);
         expect(now.querySelector('#latest-panel')).toBeNull();
         expect(now.querySelector('[data-latest-poll]')).toBeNull();
         expect(now.querySelector('a[href="#latest"]')).toBeNull();
+        expect(now.querySelector('#game-section-picker option[value="#latest"]')).toBeNull();
         expect(now.querySelector('#wp')).not.toBeNull(); // the rest of the page stays
     });
     test('flag off, a live game: no panel and no nav item', async () => {

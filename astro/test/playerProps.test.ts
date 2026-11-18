@@ -119,7 +119,7 @@ describe('propsView on real lines and the same games\' box scores', () => {
         const missing = propsView(NBA, game)!;
         expect([...missing.home, ...missing.away].some((p) => p.dnp)).toBe(false);
     });
-    test("Q34: the void players are named once each, the ones whose lines were left out", () => {
+    test("Q34: the void players are named once each: the ones on a side who never played", () => {
         const game = nbaGame(), v = propsView(NBA, game)!;
         const inBox = (id: number | null) => [...game.home.players, ...game.away.players].some((p) => p.athlete_id === id && !p.did_not_play);
         const onSide = (r: (typeof NBA)[number]) => [game.home, game.away].some((s) => Number(s.team.id) === Number(r.team_id) || s.players.some((p) => p.athlete_id === r.athlete_id));

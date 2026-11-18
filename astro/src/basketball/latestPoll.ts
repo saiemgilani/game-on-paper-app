@@ -9,7 +9,7 @@ export const LATEST_DEADLINE_MS = 10_000;
 
 /**
  * Swap the refetched page's strip into this one; true while live. A refetched page with no strip (the game went final):
- * this page's stale live panel and its nav item are removed and false stops the poll (a reload shows the final's panels).
+ * this page's stale live panel and its nav entries (the link and the phone-width picker's option) are removed and false stops the poll (a reload shows the final's panels).
  */
 export function swapLatest(page: Document, fetched: Document): boolean {
     const el = page.querySelector('[data-latest-poll]');
@@ -19,6 +19,7 @@ export function swapLatest(page: Document, fetched: Document): boolean {
         (el.closest('#latest-panel') ?? el).remove();
         const nav = page.querySelector('a[href="#latest"]');
         (nav?.closest('li') ?? nav)?.remove();
+        page.querySelector('#game-section-picker option[value="#latest"]')?.remove(); // the phone-width section picker's entry
         return false;
     }
     el.replaceChildren(...Array.from(next.childNodes, (n) => page.importNode(n, true)));

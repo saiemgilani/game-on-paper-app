@@ -53,14 +53,18 @@ export const hasLine = (l: GameLine): boolean => [l.spread_home_open, l.spread_h
     l.market_home_wp_open, l.market_away_wp_open, l.market_home_wp_close, l.market_away_wp_close].some((v) => v != null);
 
 /**
- * The market underdog: the side getting points on the line (the close, else the open); a pick'em or no spread falls back
- * to the no-vig market WP under 50%. null: no underdog (a coin flip, or no market).
+ * The market underdog: the side whose no-vig market WP (the close, else the open), as a whole percent, is under 50%, so the
+ * tag never contradicts the percent beside it; with no WP, the side getting points on the line. null: no underdog (a
+ * printed 50%, a pick'em with no WP, or no market). The league hub's card (basketball/hub.ts) uses the same rule.
  */
 export function underdog(l: GameLine): 'home' | 'away' | null {
-    const s = lineSpread(l);
-    if (s != null && s !== 0) return s > 0 ? 'home' : 'away';
     const hw = marketHomeWp(l);
-    return hw == null || hw === 0.5 ? null : hw < 0.5 ? 'home' : 'away';
+    if (hw != null) {
+        const pct = Math.round(hw * 100);
+        return pct === 50 ? null : pct < 50 ? 'home' : 'away';
+    }
+    const s = lineSpread(l);
+    return s == null || s === 0 ? null : s > 0 ? 'home' : 'away';
 }
 
 /** Nov 17 decisions (#459): an Upset is the market underdog winning; `wp` its pregame no-vig market WP, null without one. */

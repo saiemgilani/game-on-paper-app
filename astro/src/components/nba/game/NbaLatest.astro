@@ -66,7 +66,7 @@ const R = 6;
   </div>
 </div>
 <script>
-    // #445: refetch this page (its live cache) every 30 s and swap the strip in; at the final the stale strip goes and it stops
+    // #445: refetch this page every 30 s (a full render: every viewer of this preview strip is uncacheable) and swap the strip in; at the final the stale strip goes and it stops
     import { pollLatest, swapLatest } from '../../../basketball/latestPoll';
     if (document.querySelector('[data-latest-poll]')) pollLatest(async (signal) => {
         const res = await fetch(location.href, { cache: 'no-cache', signal });

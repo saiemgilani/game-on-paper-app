@@ -62,7 +62,7 @@ describe('results agree with the producer', () => {
         expect(lineSpread(row(401909088))).toBe(-1.5); // a 2026-27 row: open only
         expect(lineTotal(row(401805007))).toBeNull();
     });
-    test('the upset tag (Nov 17 decisions, #459): the market underdog by the line won', () => {
+    test('the upset tag (Nov 17 decisions, #459): the market underdog won', () => {
         const tags = played.map(({ s, l }) => [s.id, upset(l, s.home_score, s.away_score)] as const).filter(([, u]) => u);
         // NY (+1.5) over CLE, SA (DAL -3.5) at DAL, DEL (WKU -3.5, no moneyline) at WKU, WSH (+8) over ATL
         expect(tags.map(([id]) => id)).toEqual([401809234, 401809235, 401805007, 401736112]);
@@ -82,6 +82,9 @@ describe('results agree with the producer', () => {
         expect(upset(pk(0.5), 1, 0)).toBeNull();
         expect(upset(pk(null), 1, 0)).toBeNull();
         expect(upset(row(401736112), 100, 100)).toBeNull(); // no winner
+        // the WP decides when the line and the WP disagree, so the tag matches the percent it prints; a printed 50% has no underdog
+        expect(upset({ ...pk(0.55), spread_home_open: 1, spread_home_close: null }, 1, 0)).toBeNull();
+        expect(upset({ ...pk(0.496), spread_home_close: -2 }, 0, 1)).toBeNull();
     });
     test('hasLine: a row with every quote null never had a line', () => {
         for (const l of FX.game_lines) expect(hasLine(l), String(l.game_id)).toBe(true);
