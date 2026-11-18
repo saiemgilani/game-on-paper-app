@@ -1,7 +1,8 @@
 // BB-G43: the Lines and markets panel behind 'bball-lines'. The cover and total results against the producer's own
 // (sdv-db game_lines' ats_result / total_result on real rows, fixtures/README.md: game-lines.json), the upset tag, the live
 // "at this pace" projection on a real play's clock, the read, the route's gate and cache, and the panel: final, live,
-// a failed read and the flag-off page byte for byte. Every Data API read here is mocked.
+// a failed read and the flag-off page byte for byte; our pregame WP (the game's rated prior) beside the market's (#459).
+// Every Data API read here is mocked.
 import { readFileSync } from 'node:fs';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
@@ -14,13 +15,14 @@ const fetched: string[] = [];
 vi.stubGlobal('fetch', async (input: RequestInfo | URL) => { fetched.push(String(input instanceof Request ? input.url : input)); throw new Error('no network in tests'); });
 afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 
-const api = vi.hoisted(() => ({ calls: [] as { schema: string; table: string; query: Record<string, string>; ttl: unknown }[], rows: [] as any[], fail: false }));
+const api = vi.hoisted(() => ({ calls: [] as { schema: string; table: string; query: Record<string, string>; ttl: unknown }[], rows: [] as any[], prior: [] as any[], fail: false, failPrior: false }));
 vi.mock('../src/resources/sdv', async (orig) => ({
     ...(await orig<typeof import('../src/resources/sdv')>()),
     retrieveRowsFrom: async (source: { schema: string }, table: string, query: Record<string, string>, ttl: unknown) => {
         api.calls.push({ schema: source.schema, table, query, ttl });
         if (api.fail) throw new Error('down');
         if (table === 'game_lines') return api.rows;
+        if (table === 'rated_priors') { if (api.failPrior) throw new Error('prior down'); return api.prior; }
         throw new Error(`unexpected table ${table}`);
     },
 }));
@@ -39,7 +41,7 @@ import { FLAGS } from '../src/utils/features';
 import { bballOnly } from './helpers/flags';
 import { LINES_FROM, cover, hasLine, lineSpread, lineTotal, moneylineText, overUnder, pace, spreadText, upset, type GameLine } from '../src/utils/gameLines';
 
-const FX = JSON.parse(readFileSync(new URL('./fixtures/game-lines.json', import.meta.url)).toString()) as { game_lines: GameLine[]; schedule: { league: string; id: number; home_score: number; away_score: number; home_abbreviation: string; away_abbreviation: string }[] };
+const FX = JSON.parse(readFileSync(new URL('./fixtures/game-lines.json', import.meta.url)).toString()) as { game_lines: GameLine[]; schedule: { league: string; id: number; home_score: number; away_score: number; home_abbreviation: string; away_abbreviation: string }[]; rated_priors: Record<string, any[]> };
 const row = (id: number) => FX.game_lines.find((r) => Number(r.game_id) === id)!;
 const score = (id: number) => FX.schedule.find((s) => s.id === id)!;
 /** A real row with every quote nulled: a game that never had a line. */
@@ -158,7 +160,7 @@ function fakeAstro(locals: Record<string, unknown>) {
 
 describe('prepareBasketballGame', () => {
     const ingested = () => { sched.mockResolvedValueOnce(gameApi().schedule[0]); rows.mockResolvedValueOnce(gameApi()); };
-    beforeEach(() => { [sched, rows].forEach((f) => f.mockReset()); api.calls = []; api.rows = []; api.fail = false; });
+    beforeEach(() => { [sched, rows].forEach((f) => f.mockReset()); api.calls = []; api.rows = []; api.prior = []; api.fail = false; api.failPrior = false; });
     afterEach(() => { vi.useRealTimers(); });
     const YEAR = 60 * 60 * 24 * 300;
     test("'bball-lines' is a preview flag", () => { expect(FLAGS['bball-lines']).toBe('preview'); });
@@ -170,14 +172,29 @@ describe('prepareBasketballGame', () => {
         expect('lines' in (await prepareBasketballGame(fakeAstro({}).astro, 'nba'))).toBe(false); // no preview cookie
         expect(api.calls).toEqual([]);
     });
-    test('on, a row: lines, the year-long final cache kept', async () => {
-        api.rows = [row(401809235)]; ingested();
+    test("on, a row: lines and our pregame WP (the rated prior's, not the closed form's), the year-long final cache kept", async () => {
+        api.rows = [row(401809235)]; api.prior = FX.rated_priors['401766458']; ingested();
         const { astro, cache } = fakeAstro({ preview: true });
-        const r = await prepareBasketballGame(astro, 'nba');
-        expect('game' in r && r.lines).toEqual(row(401809235));
-        expect(api.calls[0].query).toMatchObject({ season: '2025', game_id: '401766458' });
+        const r = await prepareBasketballGame(astro, 'nba') as any;
+        expect(r.lines).toEqual(row(401809235));
+        expect(r.ourHomeWp).toBe(FX.rated_priors['401766458'][0].wp_prior_home_prob);
+        expect(r.ourHomeWp).not.toBe(FX.rated_priors['401766458'][0].rated_home_prob);
+        expect(api.calls.map((c) => [c.table, c.query])).toEqual([['game_lines', { season: '2025', game_id: '401766458', limit: '2' }], ['rated_priors', { season: '2025', game_id: '401766458', limit: '1' }]]);
         expect(cache).toHaveLength(1);
         expect((cache[0] as any).maxAge).toBeGreaterThan(YEAR);
+    });
+    test("on, the rated prior: no row or a home side that is not ESPN's, no WP of ours; a failed read, none and never cached", async () => {
+        api.rows = [row(401809235)]; ingested();
+        expect((await prepareBasketballGame(fakeAstro({ preview: true }).astro, 'nba') as any).ourHomeWp).toBeNull();
+        const g = FX.rated_priors['401766458'][0];
+        api.prior = [{ ...g, home_team_id: g.away_team_id, away_team_id: g.home_team_id }]; ingested();
+        expect((await prepareBasketballGame(fakeAstro({ preview: true }).astro, 'nba') as any).ourHomeWp).toBeNull();
+        api.failPrior = true; ingested();
+        const { astro, headers } = fakeAstro({ preview: true });
+        const r = await prepareBasketballGame(astro, 'nba') as any;
+        expect(r.lines).toEqual(row(401809235));
+        expect(r.ourHomeWp).toBeNull();
+        expect(headers.get('Cache-Control')).toBe('no-store');
     });
     test('on, no row: no key; an old final keeps its year, a recent one follows the nightly', async () => {
         ingested();
@@ -196,7 +213,8 @@ describe('prepareBasketballGame', () => {
         api.rows = [noLine()]; ingested();
         const r = await prepareBasketballGame(fakeAstro({ preview: true }).astro, 'nba');
         expect('game' in r && 'lines' in r).toBe(false);
-        expect(api.calls).toHaveLength(1);
+        expect(api.calls.map((c) => c.table)).toEqual(['game_lines']); // no line, no panel: our WP is never read
+        expect('ourHomeWp' in r).toBe(false);
     });
     test('on, a failed read: lines null, the page renders, nothing is cached', async () => {
         api.fail = true; ingested();
@@ -218,7 +236,7 @@ function gameAs(id: number, over: Partial<NbaGame['status']> = {}, scores?: [num
     const t = (side: typeof g.home, abbr: string, sc: number) => ({ ...side, score: sc, team: { ...side.team, abbreviation: abbr, displayName: abbr } });
     return { ...g, status: { ...g.status, ...over }, home: t(g.home, s.home_abbreviation, h), away: t(g.away, s.away_abbreviation, a) };
 }
-const page = async (game: NbaGame, lines?: GameLine | null) => container.renderToString(NbaGamePage, { props: { game, ...(lines !== undefined ? { lines } : {}) }, locals: { league: 'nba' } as App.Locals });
+const page = async (game: NbaGame, lines?: GameLine | null, ourHomeWp?: number | null) => container.renderToString(NbaGamePage, { props: { game, ...(lines !== undefined ? { lines } : {}), ...(ourHomeWp !== undefined ? { ourHomeWp } : {}) }, locals: { league: 'nba' } as App.Locals });
 const lines = (html: string) => plain(html.split('id="lines-body"')[1].split('</div>')[0]);
 
 describe('NbaGamePage', () => {
@@ -228,14 +246,17 @@ describe('NbaGamePage', () => {
         expect(off).not.toContain('id="lines"');
         expect(await page(g, undefined)).toBe(off);
     });
-    test('a final: one column (open = close), the market beside our prior, the cover, the total and the upset', async () => {
-        const html = await page(gameAs(401809234), row(401809234));
+    test('a final: one column (open = close), the market and our pregame WP side by side, the cover, the total and the upset', async () => {
+        const ours = FX.rated_priors['401809234'][0].wp_prior_home_prob; // NY 44%: CLE was our favourite too
+        const html = await page(gameAs(401809234), row(401809234), ours);
         expect(html).toContain('href="#lines"');
         const t = lines(html);
         expect(t).toContain('Line');
         expect(t).not.toContain('Open');
         expect(t).toMatch(/Spread CLE -1\.5 Total 229 Moneyline CLE -125 Moneyline NY \+105 Win % CLE \(no vig\) 53% Win % NY \(no vig\) 47%/);
-        expect(t).toMatch(/Market pregame: CLE 53%; our pregame prior: (NY|CLE) \d+%/);
+        expect(t).toContain('Pregame win % Market Ours CLE 53% 56% NY 47% 44%');
+        expect(t).toContain('Ours is the pregame chance from our team ratings.');
+        expect(t).not.toContain('prior');
         expect(t).toContain('NY covered CLE -1.5; over 229 (230)');
         expect(t).toContain('Upset NY won at 47% pregame'); // NY, getting 1.5, was the market underdog
         expect(t).toContain('Consensus of 11 books.');
@@ -276,6 +297,15 @@ describe('NbaGamePage', () => {
         expect(t).not.toContain('Latest');
         expect(t).not.toContain('Consensus');
     });
+    test('no WP of ours: the market column alone, no note; no market WP either: no table', async () => {
+        const t = lines(await page(gameAs(401809234), row(401809234), null));
+        expect(t).toContain('Pregame win % Market CLE 53% NY 47%');
+        expect(t).not.toContain('Ours');
+        const bare = { ...row(401809234), market_home_wp_open: null, market_away_wp_open: null, market_home_wp_close: null, market_away_wp_close: null };
+        expect(await page(gameAs(401809234), bare, null)).not.toContain('id="lines-wp"');
+        // ours alone, with no market WP
+        expect(lines(await page(gameAs(401809234), bare, 0.6))).toContain('Pregame win % Ours CLE 40% NY 60%');
+    });
     test('a failed read says so', async () => {
         const html = await page(gameAs(401809234), null);
         expect(html).toContain('id="lines-unavailable"');
@@ -295,7 +325,8 @@ describe('NbaPreGamePage', () => {
         expect(api.calls.map((c) => c.query)).toEqual([{ season: '2027', game_id: '401909088', limit: '2' }]);
         const t = lines(html);
         expect(t).toContain('Spread ORL -1.5 Total 221.5 Moneyline ATL +105 Moneyline ORL -125');
-        expect(t).toContain('Market pregame: ORL 53%');
+        expect(t).toContain('Pregame win % Market ATL 47% ORL 53%');
+        expect(t).not.toContain('Ours');
         for (const gone of ['prior', 'pace', 'covered', 'Consensus']) expect(t).not.toContain(gone);
         api.rows = [];
         expect(await render()).not.toContain('id="lines"');
@@ -306,5 +337,10 @@ describe('NbaPreGamePage', () => {
         expect(api.calls).toEqual([]);
         api.fail = true;
         expect(await render()).toContain('id="lines-unavailable"');
+    });
+    test("the route's WP of ours reaches the pregame panel", async () => {
+        api.rows = [row(401909088)];
+        const html = await container.renderToString(NbaPreGamePage, { props: { espnGame, ourHomeWp: 0.556 }, locals: { league: 'nba', preview: true, flagOverrides: {} } as App.Locals });
+        expect(lines(html)).toContain('Pregame win % Market Ours ATL 47% 44% ORL 53% 56%');
     });
 });

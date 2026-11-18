@@ -5,7 +5,7 @@
  * capped at REST_CAP, a season opener capped; a third in four nights is a game whose second-previous game was at most three
  * days earlier. Days are the tip's day where the league keeps its scoreboard. A road trip is a run of games away from home
  * (a neutral site counts as away). The ATS result and the line are the producer's (game_lines); this only turns home/away
- * into the team's side. The projection is the producer's (rated_priors' exp_home_margin), turned to the team's side; the
+ * into the team's side. The projection is the producer's (rated_priors: the pros' rated prior, college's exp_home_margin), turned to the team's side; the
  * result against it (W: won by more than projected, or lost by less) and its W-L are counted here (Q21 on GOP#457).
  */
 import { DateTime } from 'luxon';

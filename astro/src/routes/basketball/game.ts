@@ -54,8 +54,9 @@ export interface BasketballSourceTools {
 }
 
 export type BasketballGamePrep = { notFound: true } | { unavailable: true }
-    /** `projection`: BB-G18, only with 'bball-pregame-projection' on; null when the read failed or a side has no rating (no card) */
-    | { pregame: true; espnGame: ESPNPlayByPlayResponse; projection?: PregameProjection | null } | {
+    /** `projection`: BB-G18, only with 'bball-pregame-projection' on; null when the read failed or a side has no rating (no card).
+     * `ourHomeWp`: the same row's home win chance for the Lines panel (#459), only with 'bball-lines' on; null: none to show */
+    | { pregame: true; espnGame: ESPNPlayByPlayResponse; projection?: PregameProjection | null; ourHomeWp?: number | null } | {
     game: NbaGame;
     sourceTools?: BasketballSourceTools;
     /** BB-G25, only with 'bball-situational' on and a final: the Situations panel; `reads` null when a read failed */
@@ -88,6 +89,8 @@ export type BasketballGamePrep = { notFound: true } | { unavailable: true }
     playerProps?: PropRow[] | null;
     /** BB-G43, only with 'bball-lines' on, live or final, and only when the game has a row; null when the read failed */
     lines?: GameLine | null;
+    /** #459, beside `lines` only: our pregame home win chance (the game's rated prior, BB-G18's number); null: none to show */
+    ourHomeWp?: number | null;
 };
 
 /**
@@ -181,7 +184,9 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
             console.error(`ERROR while loading the ${league} game info for game ${game.id}: ${e}, ${e?.stack}`);
             return null;
         }) : undefined,
-        withLines ? retrieveGameLine(league, game.season, game.id).then((row) => ({ row }), (e: any) => {
+        // #459: a line the panel will show reads our pregame WP too (BB-G18's row); no line, no panel and no second read.
+        // `ours` null: that read failed (the panel keeps the market alone, never cached)
+        withLines ? retrieveGameLine(league, game.season, game.id).then(async (row) => ({ row, ours: row && hasLine(row) ? await readOurs(league, game) : undefined }), (e: any) => {
             console.error(`ERROR while loading the ${league} game lines for game ${game.id}: ${e}, ${e?.stack}`);
             return null;
         }) : undefined,
@@ -193,13 +198,24 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     // ponytail: "recent" is the game date within LINES_RECENT_MS, not the season; an older unmapped game keeps its year
     const failed = Object.values(p).some((x) => x === null || (x && typeof x === 'object' && 'reads' in x && x.reads === null));
     const recent = Date.now() - Date.parse(game.date) < LINES_RECENT_MS;
-    if (info === null || read === null || rows === null) uncacheable(Astro);
+    if (info === null || read === null || read?.ours === null || rows === null) uncacheable(Astro);
     else if (game.source === 'data_api' && !failed && (info !== undefined || (read !== undefined && recent && !settled(read.row)) || (rows !== undefined && !built(rows)))) setCache(Astro, seasonCache(league));
     // a row that never had a quote is no line: no panel (Nov 17 decisions, #459)
     const lines = read === null ? null : read?.row && hasLine(read.row) ? read.row : undefined;
     // BB-G45: an ingested final whose season the nightly has not rebuilt with the variants yet (sdv-db #217's backfill) waits too
     const q = p as Extract<BasketballGamePrep, { game: NbaGame }>;
-    return { ...q, ...(rows && built(rows) ? { game: { ...q.game, wpLenses: rows } } : {}), ...(info !== undefined ? { info } : {}), ...(lines !== undefined ? { lines } : {}) };
+    return { ...q, ...(rows && built(rows) ? { game: { ...q.game, wpLenses: rows } } : {}), ...(info !== undefined ? { info } : {}), ...(lines !== undefined ? { lines, ourHomeWp: read?.ours?.wp ?? null } : {}) };
+}
+
+/** #459's WP of ours for a lined game: `wp` null with no row or prediction; null when the read failed. */
+async function readOurs(league: BasketballLeague, game: NbaGame): Promise<{ wp: number | null } | null> {
+    try {
+        // a row means a season: retrieveGameLine reads nothing without one
+        return { wp: ourHomeWp(await retrieveRatedPrior(league, game.season as number, game.id), game.home.team.id) };
+    } catch (e: any) {
+        console.error(`ERROR while loading the ${league} rated prior for game ${game.id}: ${e}, ${e?.stack}`);
+        return null;
+    }
 }
 
 /** BB-G45's variant rows; null when the read failed (the chart keeps our model alone). */
@@ -214,10 +230,14 @@ async function readWpLenses(league: BasketballLeague, game: NbaGame, season: num
 
 /** The final's panels (BB-G1, BB-G28, BB-G2): read only once a final will render. */
 async function finalPanels(Astro: AstroGlobal, league: BasketballLeague, r: BasketballGamePrep): Promise<BasketballGamePrep> {
-    // BB-G18: a pregame page with the flag on spends one season ratings read; off, nothing is read and the page is today's
+    // BB-G18: a pregame page with the flag on spends one rated_priors read; off, nothing is read and the page is today's. The
+    // Lines panel ('bball-lines', #459) sets the same row's win chance beside the market's, so either flag reads it.
     if ('pregame' in r) {
-        if (!isFeatureEnabled('bball-pregame-projection', Astro.locals)) return r;
-        return { ...r, projection: await readProjection(Astro, league, r.espnGame) };
+        const card = isFeatureEnabled('bball-pregame-projection', Astro.locals);
+        const withLines = isFeatureEnabled('bball-lines', Astro.locals);
+        if (!card && !withLines) return r;
+        const projection = await readProjection(Astro, league, r.espnGame);
+        return { ...r, ...(card ? { projection } : {}), ...(withLines ? { ourHomeWp: projection?.rated_home_prob ?? null } : {}) };
     }
     if (!('game' in r)) return r;
     // BB-G38's shot filters draw on a live game too; only their ON/OFF filter reads, and only a final's stints
@@ -287,7 +307,8 @@ async function finalPanels(Astro: AstroGlobal, league: BasketballLeague, r: Bask
 
 /**
  * The pregame card's data: the game's `rated_priors` row by the ESPN season and game id, as published. null (no card) when
- * the producer has no row (a preseason game), its prediction is null (a pro side yet to play), its home side is not ESPN's,
+ * the producer has no row (a preseason game), its prediction is null (a college side yet to play, a pro game the rated prior
+ * did not match), its home side is not ESPN's,
  * or the read failed; a failed read is never held. No hold for the college prior: the producer's college rating already
  * blends it in.
  */
@@ -305,10 +326,13 @@ async function readProjection(Astro: AstroGlobal, league: BasketballLeague, espn
         return null;
     }
     const espnHome = comp.competitors.find((c: any) => c.homeAway === 'home')?.team?.id;
-    if (!row || String(row.home_team_id) !== String(espnHome)) return null;
-    const ok = (x: number | null): x is number => x != null && Number.isFinite(x);
-    return ok(row.exp_home_margin) && ok(row.rated_home_prob) ? row as PregameProjection : null;
+    return ourHomeWp(row, espnHome) != null && ok(row!.exp_home_margin) ? row as PregameProjection : null;
 }
+
+const ok = (x: number | null | undefined): x is number => x != null && Number.isFinite(x);
+/** The row's home win chance when its home side is ESPN's (never a flipped one); null with no row or no prediction. */
+const ourHomeWp = (row: RatedPrior | null, espnHomeId: unknown): number | null =>
+    row && String(row.home_team_id) === String(espnHomeId) && ok(row.rated_home_prob) ? row.rated_home_prob : null;
 
 
 /** A final from the last three days: the nightly season products (game_stints) may not have reached it yet. */

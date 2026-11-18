@@ -1333,15 +1333,16 @@ sequentially, the `data` array of each response, no edits other than the filter 
 **To regenerate:** rerun the same six reads (season filter and limit as above, never unfiltered), keep the team's games in `lines`, wrap and gzip.
 
 ## `schedule-context-proj-nba-2026.json.gz`, `schedule-context-proj-mbb-2026.json.gz`
-The rated pregame projections for the schedule's projection column (Q21 on GOP#457), as `{proj}`: `game_id, exp_home_margin`.
-Captured live on 2026-11-13 from the served table (sportsdataverse-py#1193, sdv-db#229):
-`{nba,mbb}/rated_priors?season=2026&select=game_id,home_team_id,away_team_id,exp_home_margin&limit=8000` (1,330 / 6,318 rows),
-kept to games with `home_team_id` or `away_team_id` 17 (the Nets, 82 games; the opener has no rating yet, so its margin is
-null) or 150 (Duke, 38 games, all rated), then the module's two columns. No other edits.
+The rated pregame projections for the schedule's projection column (Q21 on GOP#457), as `{proj}`: the module's two columns,
+`game_id` and the projected home margin. MBB (`exp_home_margin`) captured live on 2026-11-13 from the served table
+(sportsdataverse-py#1193, sdv-db#229): `mbb/rated_priors?season=2026&select=game_id,home_team_id,away_team_id,exp_home_margin&limit=8000`
+(6,318 rows), kept to games with `home_team_id` or `away_team_id` 150 (Duke, 38 games, all rated). NBA (the rated prior's
+`wp_prior_exp_home_margin`, sdv-db#236) re-captured live on 2026-11-18 the same way (1,330 rows), kept to team 17 (the
+Nets, 82 games, all rated: the rated prior rates a team from opening night). No other edits.
 
 **Used by:** `test/bballScheduleContext.test.ts`.
 
-**To regenerate:** once sdv-db serves it, `nba/rated_priors?season=2026&select=game_id,exp_home_margin&limit=8000`, kept to the Nets' games.
+**To regenerate:** `nba/rated_priors?season=2026&select=game_id,home_team_id,away_team_id,wp_prior_exp_home_margin&limit=8000`, kept to the Nets' games and the two columns.
 ## BB-G12 nearby ranks (`nba/rank_neighbors_teams_2026.json`, `mbb/rank_neighbors_teams_2026_top12.json`)
 
 Live Data API reads, 2026-11-13, each filtered by season and unedited. Each uses the `select` the page sends: `team_id` plus each of the twelve measures and its `_rank` (`net_rtg, off_rtg, def_rtg, adj_net_rtg, efg_pct, opp_efg_pct, pace, tov_pct, orb_pct, ft_rate, sos, sov`).
@@ -1442,9 +1443,10 @@ limits 80 and 2), wrap them as above and gzip.
 ## `pregame-projection.json.gz`
 The Data API reads behind BB-G18's pregame projection (`resources/pregameProjection.ts`). `rated_priors` holds, keyed
 `<schema>.<season>.<game_id>`, the `data` array of `GET /v1/<lg>/rated_priors?season=…&game_id=…&limit=1`, captured
-live on 2026-11-13 with no edits: MARQ at MICH (mbb 401909524, 2 and 2 games in), UK v IU at a neutral site (mbb
+live with no edits (college on 2026-11-13; the three pro rows re-captured on 2026-11-18 for the rated prior's `wp_prior_*`
+columns, sdv-db#236, which the pros' card reads in place of the team_strength closed form): MARQ at MICH (mbb 401909524, 2 and 2 games in), UK v IU at a neutral site (mbb
 401916290), CONN at OSU women (wbb 401911739), ORL at BOS (nba 401909994), CLE at ORL (nba 401898403, a preseason game:
-no row, `[]`), an opening-night game with a null prediction (nba 2026 401809243) and a 2026 WNBA game (401856990).
+no row, `[]`), an opening-night game (nba 2026 401809243: the closed form's prediction is null, the rated prior's is not) and a 2026 WNBA game (401856990).
 `pages` are four real scheduled ESPN captures (`cdn.espn.com/core/<sport>/playbyplay?gameId=…&xhr=1`, trimmed to
 `{gameId, gamepackageJSON: {header}}`, the part the pregame page reads): the three college games (captured 2026-11-08)
 and ORL at BOS (2026-11-13).
@@ -1647,6 +1649,10 @@ panel (`utils/gameLines.ts`). Read from the Data API on 2026-11-10 as `{game_lin
   WKU-DEL (wbb, 401805007) has a spread but no total and no moneylines.
 - **`schedule`**: `GET /v1/{lg}/schedule?id=<game_id>&select=id,season,home_score,away_score,home_abbreviation,away_abbreviation`
   for the eight finals, with `league` added.
+- **`rated_priors`** (added 2026-11-18, #459's side-by-side WP): `GET /v1/nba/rated_priors?season=S&game_id=G&limit=1`'s
+  `data`, as served, keyed by game id: ATL at ORL (401766458, 2025, the game page fixture `nba/game_401766458_api.json`) and
+  CLE at NY (401809234, 2026; a 2025-26 opener, so the team_strength closed form `rated_home_prob` is null and the rated
+  prior `wp_prior_home_prob` is 0.441).
 
 **Used by:** `test/gameLines.test.ts` (the cover and total results against the rows' own `ats_result` / `total_result`).
 

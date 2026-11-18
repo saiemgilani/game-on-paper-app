@@ -201,8 +201,8 @@ export const FLAGS: Record<string, FeatureState> = {
     // page is today's.
     'bball-game-flow': 'preview',
     // BB-G18's pregame projection: on /<league>/game/[id] before tip, a Projection card (the favourite, the expected margin
-    // and its win chance) read as published from the game's {lg}.rated_priors row (sdv-py#1193, sdv-db#229); no card when
-    // the row is missing or its prediction is null. The bracketology bracket keeps its bid chances. Off: no read, and the
+    // and its win chance) read as published from the game's {lg}.rated_priors row (sdv-py#1193, sdv-db#229; the pros' rated
+    // prior, the wp_prior_* columns, sdv-db#236); no card when the row is missing or its prediction is null. The bracketology bracket keeps its bid chances. Off: no read, and the
     // pregame page is today's, byte for byte.
     'bball-pregame-projection': 'preview',
     // BB-G2's garbage-time toggle on /<league>/game/[id] for a final, beside the Impact box (so only with 'bball-impact-box'
@@ -279,7 +279,8 @@ export const FLAGS: Record<string, FeatureState> = {
     // panel when the game has no matched lines. Off: no read and the game page is today's, byte for byte.
     'bball-props': 'preview',
     // BB-G43's Lines and markets on /<league>/game/[id], pregame, live and final: the game's open and close spread, total
-    // and moneylines with the no-vig market win % (sdv-db game_lines, BB-D33) beside our pregame prior; a final's cover,
+    // and moneylines with the no-vig market win % (sdv-db game_lines, BB-D33) side by side with ours (the game's rated_priors
+    // row, BB-G18's number, #459); a final's cover,
     // total and upset; a live game's "at this pace" projection against the line. A game with no row (the current season is
     // mostly unmapped) gets no panel. Off: no read, and the pregame and game pages are today's.
     'bball-lines': 'preview',
