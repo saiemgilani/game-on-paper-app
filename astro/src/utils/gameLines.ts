@@ -47,7 +47,7 @@ export function spreadText(spreadHome: number, home: string, away: string): stri
 
 export const moneylineText = (ml: number) => (ml > 0 ? `+${ml}` : String(ml));
 
-/** Q38: the Upset cut, the league hub's (#458's `UPSET_WP` in basketball/hub.ts): the winner's no-vig pregame market WP under 35%. */
+/** Q38: the game page's Upset cut: the winner's no-vig pregame market WP under 35%. The hub's own cut (basketball/hub.ts `UPSET_WP`) is the market underdog since the Nov 17 decisions (#458). */
 export const UPSET_WP = 0.35;
 
 /** The winner's pregame market WP when it was under UPSET_WP; null for a favourite's or a near coin flip's win, a tie or no market. */

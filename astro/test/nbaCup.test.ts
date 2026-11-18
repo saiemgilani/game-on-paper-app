@@ -236,8 +236,10 @@ describe('NbaCupRoute', () => {
         expect(sf).toMatch(/title="Chance to win the Cup"[^>]*>60%</);
         expect(sf).toMatch(/title="Chance to win the Cup"[^>]*>21%</);
         expect(fin).toMatch(/title="Chance to win the Cup"[^>]*>60%</);
+        // the phone table prints the same numbers
         const phone = html.split('bracket-table')[1];
-        expect(phone).toContain('title="Chance to win the Cup"');
+        expect(phone).toMatch(/title="Chance to win the Cup"[^>]*>60%</);
+        expect(phone).toMatch(/title="Chance to win the Cup"[^>]*>21%</);
         expect(phone).not.toContain('Chance to reach');
     });
     test('the odds view: 30 rows by title chance, one number per cell', async () => {

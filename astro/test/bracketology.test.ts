@@ -131,10 +131,16 @@ const render = (p: BracketologyParams) =>
 describe('BracketologyRoute', () => {
     test("the bracket view: last season's labelled fallback, the field on the bracket component, the bubble, the seed table", async () => {
         const html = await render(params());
-        // Nov 17 decisions (#394): the held snapshot is named for its season in the title and the notice
+        // Nov 17 decisions (#394): the held snapshot is named for its season in the title, once
         expect(html).toContain("Men's College Basketball Bracketology, 2025-26 final projection");
         expect(html).toContain('Bracketology, 2025-26 final projection</h1>');
-        expect(html).toMatch(/id="bracketology-fallback"><span class="fw-bold">2025-26 final projection\.<\/span> The 2026-27 season has no projections yet\. This is the 2025-26 season's last snapshot, from April 7, 2026\./);
+        expect(html).toMatch(/id="bracketology-fallback">The 2026-27 season has no projections yet\. This is the 2025-26 season's last snapshot, from April 7, 2026\./);
+        // shown once on the page: the <h1> carries it, the notice does not repeat it
+        expect(html.split('<body')[1].match(/final projection/g)).toHaveLength(1);
+        // a held snapshot from before its season ended is "latest", not "final"
+        const early = await render(params({ pick: { snapshot: { season: 2026, as_of_date: '2026-03-10' }, season: 2026, fallback: true } }));
+        expect(early).toContain('Bracketology, 2025-26 latest projection</h1>');
+        expect(early).not.toContain('final projection');
         const [graphic] = html.split('bracket-table');
         expect([...graphic.matchAll(/bracket-round-name[^>]*>([^<]+)</g)].map((m) => m[1])).toEqual(['First Four', 'Region 1', 'Region 2', 'Region 3', 'Region 4']);
         expect(graphic.match(/table-bordered/g)).toHaveLength(4 + 32);
