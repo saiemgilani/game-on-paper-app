@@ -21,7 +21,7 @@ export function swapLatest(page: Document, fetched: Document): boolean {
         (nav?.closest('li') ?? nav)?.remove();
         return false;
     }
-    el.innerHTML = next.innerHTML;
+    el.replaceChildren(...Array.from(next.childNodes, (n) => page.importNode(n, true)));
     return true;
 }
 
