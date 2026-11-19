@@ -91,19 +91,33 @@ describe('the extras agree with the rows', () => {
         expect(x.last5).toEqual({ home: s.home_score - before.home_score, away: s.away_score - before.away_score });
         expect(x.last5).toEqual({ home: 10, away: 9 });
     });
-    test('Q40, the clutch clock: an overtime final counts the last 5:00 of regulation plus the overtime', () => {
+    test('Nov 17 decisions (#462): an overtime final counts the last 5:00 of the final period played, all of the OT', () => {
         // a real 2024-25 overtime final (the byte-identity fixture): five periods
         const raw = JSON.parse(readFileSync(new URL('./fixtures/nba/game_401705127_processor.json', import.meta.url)).toString());
         const ot = fromProcessor(raw, 'nba');
         expect(ot.periods).toBe(5);
         const plays = raw.plays as { period_number: number; clock_display_value: string; home_score: number; away_score: number }[];
-        const before = plays.filter((p) => p.period_number === 4 && clockSeconds(p.clock_display_value)! > 300).at(-1)!;
         const end = plays.at(-1)!;
-        const want = { home: end.home_score - before.home_score, away: end.away_score - before.away_score };
-        expect(flowExtras(ot, 720).last5).toEqual(want);
-        // more than the overtime alone (the old reading)
         const otStart = plays.filter((p) => p.period_number < 5).at(-1)!;
-        expect(want.home + want.away).toBeGreaterThan((end.home_score - otStart.home_score) + (end.away_score - otStart.away_score));
+        const want = { home: end.home_score - otStart.home_score, away: end.away_score - otStart.away_score };
+        expect(want.home + want.away).toBeGreaterThan(0);
+        expect(flowExtras(ot, 720).last5).toEqual(want);
+        // a score at exactly 5:00 of the OT (the previous buzzer's elapsed time) counts; the regulation buzzer's does not
+        const ps = ot.plays;
+        const i4 = ps.findLastIndex((p) => p.period === 4);
+        const buzzer = { ...ps[i4], id: 'buzzer', n: ps[i4].n + 0.1, clock: '0.0', secondsRemaining: 0, homeScore: ps[i4].homeScore + 2, scoringPlay: true, scoreValue: 2 };
+        const opener = { ...ps[i4 + 1], id: 'opener', n: ps[i4].n + 0.2, period: 5, clock: '5:00', secondsRemaining: 300, homeScore: buzzer.homeScore + 1, awayScore: ps[i4].awayScore, scoringPlay: true, scoreValue: 1 };
+        const after = ps.slice(i4 + 1).map((p) => ({ ...p, homeScore: p.homeScore + 3 }));
+        const edge = { ...ot, plays: [...ps.slice(0, i4 + 1), buzzer, opener, ...after] };
+        expect(flowExtras(edge, 720).last5).toEqual({ home: want.home + 1, away: want.away });
+        // a log that starts in the final OT has no real baseline: no last 5:00, never the whole final score (leadSeries' 0-0)
+        expect(flowExtras({ ...ot, plays: ps.filter((p) => p.period === 5) }, 720).last5).toBeNull();
+        // nor does a regulation final whose log starts inside its last 5:00
+        const reg4 = ps.slice(0, i4 + 1).filter((p) => p.period === 4 && (p.secondsRemaining ?? 0) < 300);
+        expect(flowExtras({ ...ot, periods: 4, plays: reg4 }, 720).last5).toBeNull();
+        // not the clutch window (regulation's last 5:00 plus the OT, Q40's old reading)
+        const clutch = plays.filter((p) => p.period_number === 4 && clockSeconds(p.clock_display_value)! > 300).at(-1)!;
+        expect(want.home + want.away).toBeLessThan((end.home_score - clutch.home_score) + (end.away_score - clutch.away_score));
     });
     test('runs of 8-0 or better, with their clock stamps', () => {
         expect(x.runs.map((u) => `${u.side} ${u.points}-0 ${at(u.from)} to ${at(u.to)} (${u.away}-${u.home})`)).toEqual([
@@ -251,6 +265,11 @@ describe('the WP panel', () => {
         expect(p).toContain('"moments"');
         expect(html).not.toContain('Lenses:');
         expect(html).toContain('id="wp-extras"');
+    });
+    test('#462: the row reads "Last 5:00" in regulation and names the final period in overtime', async () => {
+        expect(await render(game(LINE), { preview: true })).toMatch(/>Last 5:00<\/abbr>/);
+        const raw = JSON.parse(readFileSync(new URL('./fixtures/nba/game_401705127_processor.json', import.meta.url)).toString());
+        expect(await render(fromProcessor(raw, 'nba'), { preview: true })).toMatch(/>Last 5:00 \(OT\)<\/abbr>/);
     });
     for (const [league, file] of [['wnba', 'game_401736287_api'], ['mbb', 'game_401744223_api'], ['wbb', 'game_401805076_api']] as const) {
         test(`on, ${league} (no variant rows): the overlay and the extras in the league's periods, nothing blank`, async () => {

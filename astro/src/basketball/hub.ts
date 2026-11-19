@@ -15,14 +15,25 @@ export interface HubLine {
     wp: string | null;
     /** finals: who covered the closing spread ('BOS covered', 'Push') */
     cover: string | null;
-    /** finals: the winner's no-vig pregame win probability was under UPSET_WP (35%) */
+    /** finals: the market underdog won (see `hubLine`) */
     upset: boolean;
 }
 
-/** An upset is a final whose winner the market gave under this no-vig pregame win probability (Saiem, 2026-11-13). */
-export const UPSET_WP = 0.35;
+/**
+ * An upset is a final the market underdog won (Nov 17 decisions, #458): its no-vig pregame win probability under 50% as the card
+ * prints it (a whole percent, so a card reading 50% has no underdog); with no market WP, the side getting points.
+ */
+export const UPSET_WP = 0.5;
 
 const num = (v: unknown): number | null => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+
+function underdog(homeWp: number | null, spread: number | null): 'home' | 'away' | null {
+    if (homeWp !== null) {
+        const pct = Math.round(homeWp * 100);
+        return pct === UPSET_WP * 100 ? null : pct < UPSET_WP * 100 ? 'home' : 'away';
+    }
+    return spread === null || spread === 0 ? null : spread > 0 ? 'home' : 'away';
+}
 
 /**
  * A game_lines row as card copy. `abbr` names ESPN's home and away sides (every `_home` column is ESPN's home team);
@@ -39,7 +50,7 @@ export function hubLine(row: GameLineRow | undefined, abbr: { home: string; away
         total,
         wp: homeWp === null ? null : homeWp >= 0.5 ? `${abbr.home} ${Math.round(homeWp * 100)}%` : `${abbr.away} ${Math.round((1 - homeWp) * 100)}%`,
         cover: winner === null || row.ats_result == null ? null : row.ats_result === 'push' ? 'Push' : `${abbr[row.ats_result]} covered`,
-        upset: winner !== null && homeWp !== null && (winner === 'home' ? homeWp : 1 - homeWp) < UPSET_WP,
+        upset: winner !== null && winner === underdog(homeWp, spread),
     };
     return out.spread === null && out.total === null && out.wp === null ? null : out;
 }
@@ -62,17 +73,16 @@ const BLURBS: Record<string, string> = {
 };
 
 /**
- * The hub's page index: the league's Header pages, so a page lands here when it lands in the Header. The NBA's featured-team
- * entry ('/') is the landing the hub replaces, so it is left out, and the featured team's page is listed last instead
- * (/nba/team/17 holds the roster and shot chart the landing had). It keys off `featuredTeam`, not the Header entry, so it
- * stays when #438 drops that entry. A page that is not in the Header (behind its own flag on
+ * The hub's page index: the league's Header pages, so a page lands here when it lands in the Header. The featured team's
+ * landing, /nba/roster (Nov 17, #458), is listed last; it keys off `featuredTeam`, since the Header has no entry for it (#438
+ * dropped the Nets entry). A page that is not in the Header (behind its own flag on
  * the stack: standings, bracketology, the Cup, best games) is added here with its flag when it reaches main.
  */
 export function hubIndex(league: BasketballLeague): HubLink[] {
     const ft = BASKETBALL[league].featuredTeam;
     return [
-        ...BASKETBALL[league].headerMenu.filter((m) => m.path !== '/').map((m) => ({ ...m, ...(BLURBS[m.path] ? { blurb: BLURBS[m.path] } : {}) })),
-        ...(ft ? [{ label: ft.menuLabel, path: `/team/${ft.espnTeamId}`, blurb: `The ${ft.menuLabel} roster's shooting, with the team shot chart.` }] : []),
+        ...BASKETBALL[league].headerMenu.map((m) => ({ ...m, ...(BLURBS[m.path] ? { blurb: BLURBS[m.path] } : {}) })),
+        ...(ft ? [{ label: ft.menuLabel, path: '/roster', blurb: `Shot charts and shooting lines for every ${ft.menuLabel} player this season.` }] : []),
     ];
 }
 

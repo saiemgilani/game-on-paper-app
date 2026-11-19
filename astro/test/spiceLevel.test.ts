@@ -3,7 +3,7 @@ import { calculateSpiceLevel, SPICE_LABEL, SpiceLevel } from '../src/utils/misc'
 
 // G12, Akshay's sign-off note: "add tests that the border logic works as the
 // scoreboard states it". The scoreboard's legend (SchedulePage.astro) says:
-//   Gray - normal | Green - close game late | Yellow - ranked upset |
+//   Gray - normal | Green - close game late | Yellow - upset watch |
 //   Orange - ranked opponents + close game late | Red - FCS upset
 // Each block below pins one of those claims to calculateSpiceLevel, plus the
 // order the checks run in when a game qualifies for more than one colour.
@@ -112,7 +112,7 @@ describe('Orange - ranked opponents + close game late', () => {
     });
 });
 
-describe('Yellow - ranked upset', () => {
+describe('Yellow - Upset watch', () => {
     test('ranked v unranked within one or two scores, 3rd/4th quarter, <= 7:30 left', () => {
         expect(calculateSpiceLevel(game({ period: 3, clock: 6 * MIN, home: { score: 17, rank: 8 }, away: { score: 20 } }))).toBe(SpiceLevel.CAYENNE);
         expect(calculateSpiceLevel(game({ period: 4, clock: 7 * MIN, home: { score: 10 }, away: { score: 14, rank: 2 } }))).toBe(SpiceLevel.CAYENNE);
@@ -123,9 +123,9 @@ describe('Yellow - ranked upset', () => {
         expect(calculateSpiceLevel(game({ period: 3, clock: 6 * MIN, home: { score: 3, rank: 8 }, away: { score: 20 } }))).toBe(SpiceLevel.BELL);
     });
 
-    // AS THE LOGIC STANDS (open question for Akshay on the G12 PR): "upset"
-    // here means upset WATCH. The check never asks who leads, so a ranked team
-    // AHEAD of an unranked one by a score is yellow too.
+    // Decided Nov 17 (on #360): the logic stays, and yellow is labelled "Upset
+    // watch". The check never asks who leads, so a ranked team AHEAD of an
+    // unranked one by a score is yellow too.
     test('current behaviour: a ranked team leading an unranked one by 8 is yellow', () => {
         expect(calculateSpiceLevel(game({ period: 4, clock: 6 * MIN, home: { score: 28, rank: 3 }, away: { score: 20 } }))).toBe(SpiceLevel.CAYENNE);
     });
@@ -178,7 +178,7 @@ describe('SPICE_LABEL: the words for each colour', () => {
             testing: null,
             none: null,
             'close-late': 'Close late',
-            'ranked-upset': 'Ranked upset',
+            'ranked-upset': 'Upset watch',
             'ranked-close-late': 'Ranked, close late',
             'fcs-upset': 'FCS upset',
         });

@@ -47,6 +47,16 @@ describe('WinProbabilityChart server markup', () => {
         expect(h).toContain('<a id="wp-download"');
         expect(h).not.toMatch(/\| <a id="wp-download"/);
     });
+    test("basketball GEI (Nov 17, #391): lead changes and the biggest WP swing beside it on a final, never live", () => {
+        const extra = { showOdds: false, overUnder: null, showGei: true, geiExtras: { leadChanges: 6, maxSwingPts: 9.34 } };
+        const h = renderChart(props({ completed: true, extra }));
+        expect(h).toMatch(/Game Excitement Index:<\/a> <span class="px-1">3\.2<\/span> \| Lead changes: 6 \| <span title="[^"]+">Biggest WP swing:<\/span> 9\.34% \| <a id="wp-download"/); // the stub's roundNumber is String
+        expect(renderChart(props({ completed: true, extra: { ...extra, geiExtras: { leadChanges: 0, maxSwingPts: null } } }))).toContain('Biggest WP swing:</span> —');
+        const live = renderChart(props({ completed: false, extra }));
+        for (const bad of ['Game Excitement', 'Lead changes', 'Biggest WP swing']) expect(live).not.toContain(bad);
+        // without the extras the GEI line is today's
+        expect(renderChart(props({ completed: true, extra: { showOdds: false, overUnder: null, showGei: true } }))).not.toContain('Lead changes');
+    });
     test('a live NBA game reads "Current: … | Download"', () => {
         const h = renderChart(props({ completed: false, wp: 0.7, extra: { showOdds: false, overUnder: null, gei: null } }));
         expect(h).toMatch(/Current: \w+ [\d.]+% \| <a id="wp-download"/);

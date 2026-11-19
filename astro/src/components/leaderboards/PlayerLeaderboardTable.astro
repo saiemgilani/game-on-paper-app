@@ -3,7 +3,7 @@ import { roundNumber, cleanField, retrieveValue, generateColorRampValue, isTeamF
 import { espnLogoLeague, leaguePath } from '../../utils/league';
 import { retrievePlayerSummaries, type SDVPlayerSummary, SummaryType }  from '../../resources/sdv';
 import { playerBoardSort } from '../../utils/players';
-import { SDV_PLAYER_METRIC_CATEGORIES, SDV_PLAYER_METRIC_FORMATTING_VALUES, SDV_PLAYER_PERCENT_COLUMNS, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
+import { allTimeMetrics, SDV_PLAYER_METRIC_CATEGORIES, SDV_PLAYER_METRIC_FORMATTING_VALUES, SDV_PLAYER_PERCENT_COLUMNS, SESSION_FAVORITES_DEFAULT } from '../../utils/constants';
 import DarkModeLogos from '../DarkModeLogos.astro';
 import { isFeatureEnabled } from '../../utils/features';
 import { metricHelpButton, metricHelpPopovers } from '../../utils/metricHelp';
@@ -42,7 +42,8 @@ content = content.toSorted((a, b) => {
     return (-1 * compVal)
 })
 
-const columns = SDV_PLAYER_METRIC_CATEGORIES[category];
+// the all-time board drops what its league hides (NFL Catch %); the season boards show every column
+const columns = allTime ? allTimeMetrics(category, Astro.locals.league) : SDV_PLAYER_METRIC_CATEGORIES[category];
 // the glossary is the college one (FBS-only copy, links to the cfb boards), so the NFL twin gets no help yet
 const help = isFeatureEnabled('metric-help', Astro.locals) && Astro.locals.league !== 'nfl';
 

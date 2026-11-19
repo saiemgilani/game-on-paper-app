@@ -119,6 +119,13 @@ describe('currentImpactPanel', () => {
             asOf: NOW.as_of, lastGame: NOW.last_game_date, offPoss: NOW.off_poss, defPoss: NOW.def_poss, early: false,
         });
     });
+    test('the "mostly prior" cut is under 300 possessions on either side (Nov 17 decisions, #463)', () => {
+        expect(EARLY_POSS).toBe(300);
+        const early = (off: number, def: number) => currentImpactPanel(CI.season, [{ ...NOW, off_poss: off, def_poss: def }])!.current!.early;
+        expect(early(299, 300)).toBe(true);
+        expect(early(300, 299)).toBe(true);
+        expect(early(300, 300)).toBe(false);
+    });
     test('opening night is mostly prior; either side alone still makes a panel; neither, no panel', () => {
         expect(currentImpactPanel(CI.season, CI.opening)!.current!.early).toBe(true);
         expect(currentImpactPanel(CI.season, [{ ...NOW, off_poss: null, def_poss: null }])!.current!.early).toBe(false);

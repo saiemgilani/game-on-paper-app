@@ -1,6 +1,6 @@
 <script>
     import { toTitleCase } from "../../utils/misc";
-    import { SDV_PLAYER_METRIC_CATEGORIES } from "../../utils/constants";
+    import { SDV_PLAYER_METRIC_CATEGORIES, allTimeMetrics } from "../../utils/constants";
     import { LEAGUES, leaguePath } from "../../utils/league";
 
     // `league` is passed by the SSR page (Astro.locals.league); cfb default
@@ -33,7 +33,7 @@
             <select class="form-select form-select-md" onchange={onChangeSeason}>
 				<option value="-1" disabled>Choose Season...</option>
 				{#if allTime}
-					<option value={ALL_TIME} selected={season == null}>All-time</option>
+					<option value={ALL_TIME} selected={season == null}>All-Time</option>
 				{/if}
 				{#each seasons as s}
 					<option value={s} selected={(season == s)}>{s}</option>
@@ -54,7 +54,7 @@
                 {#each Object.entries(SDV_PLAYER_METRIC_CATEGORIES) as [c, metrics]}
 					{#if category == c}
                     <optgroup label={toTitleCase(c)}>
-                        {#each Object.entries(metrics) as [key, m]}
+                        {#each Object.entries(allTime && season == null ? allTimeMetrics(c, league) : metrics) as [key, m]}
                             <option value={key} selected={(metric == key)}>{m.title}</option>
                         {/each}
                     </optgroup>

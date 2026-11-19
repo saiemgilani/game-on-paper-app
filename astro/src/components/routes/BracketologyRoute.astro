@@ -8,7 +8,7 @@ import DarkModeLogos from '../DarkModeLogos.astro';
 import PlayoffBracket from '../PlayoffBracket.astro';
 import { VIEWS, type BracketologyParams } from '../../routes/basketball/bracketology';
 import type { BracketologyRow, SeasonSimRow, TeamResumeRow } from '../../resources/bracketology';
-import { bubbleGroups, projectedField, record, snapshotDay, type FieldUnit } from '../../utils/bracketology';
+import { bubbleGroups, isFinalSnapshot, projectedField, record, snapshotDay, type FieldUnit } from '../../utils/bracketology';
 import { oddsShade, pct, type BracketSlot } from '../../utils/playoff';
 import { generateColorRampValue, generateMarginalString, roundNumber } from '../../utils/misc';
 import { LEAGUES, leaguePath, teamLogoUrl } from '../../utils/league';
@@ -21,7 +21,10 @@ const lp = (p: string) => leaguePath(league, p);
 const path = lp('/bracketology');
 const label = seasonLabelFor(league, pick.season);
 const name = LEAGUES[league].name;
-const title = `${name} Bracketology, ${label}`;
+// before the current season's first snapshot the page holds an earlier season's last one, named for its season in the title
+// (Nov 17 decisions, #394): "final" only when it postdates that season's games, else "latest" (the notice gives its date)
+const held = pick.fallback && pick.snapshot ? (isFinalSnapshot(pick.snapshot) ? ' final projection' : ' latest projection') : '';
+const title = `${name} Bracketology, ${label}${held}`;
 const description = `The projected NCAA tournament field, the bubble, conference standings with projected records and title chances, and team sheets for ${name.toLowerCase()}.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: lp('/'), active: false }, { title: 'Bracketology', active: true }];
 

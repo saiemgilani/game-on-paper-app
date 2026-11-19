@@ -7,7 +7,7 @@ import { gameHref } from '../../nba/links';
 import { retrieveNbaGameRows, retrieveNbaProcessedGame, retrieveNbaSchedule } from '../../resources/nbaGames';
 import { fromDataApi, fromProcessor, isTrue, requiredPeriods, scheduleRegulation, type DataApiGameRows, type NbaGame } from '../../resources/nbaGame';
 import { ESPN_INVALID_GAME_STATUS_NAMES, retrieveGamePageGuarded, type ESPNPlayByPlayResponse } from '../../resources/espn';
-import { ProcessorError, retrieveGameSources } from '../../resources/python';
+import { ProcessorError, retrieveGameSources, type GameSources } from '../../resources/python';
 import { retrieveGameShotQuality } from '../../resources/shotQuality';
 import { getBasketballGameCacheConfig } from '../../utils/config';
 import { isFeatureEnabled } from '../../utils/features';
@@ -33,7 +33,7 @@ import { retrieveTeamGridFinal, retrieveTeamGridSeason, type TeamGridSeason, ret
 import type { GameInfoReads } from '../../utils/gameInfo';
 import type { SeasonAverage } from '../../utils/gameLeaders';
 import { retrieveGameLine, settled } from '../../resources/gameLines';
-import type { GameLine } from '../../utils/gameLines';
+import { hasLine, type GameLine } from '../../utils/gameLines';
 import { built, retrieveWpLenses } from '../../resources/wpLenses';
 import type { WpLensRow } from '../../utils/wpLenses';
 import { seasonCache, setCache, uncacheable } from './cache';
@@ -123,10 +123,10 @@ export const GARBAGE_PARAM = 'garbage';
  * the same cache entry a public render of a live or un-ingested game fills. Fail-open: a missing registry is ESPN alone, a
  * failed ESPN side an empty column, never a failed page.
  */
-async function sourceTools(id: string, league: BasketballLeague, cacheTTL: number, source: string | undefined): Promise<BasketballSourceTools> {
+async function sourceTools(id: string, league: BasketballLeague, cacheTTL: number, source: string | undefined, known?: GameSources | null): Promise<BasketballSourceTools> {
     const selected = source ?? null;
     const [registry, espn] = await Promise.all([
-        retrieveGameSources(id, league),
+        known !== undefined ? known : retrieveGameSources(id, league),
         !selected || selected === 'espn' ? null : retrieveNbaProcessedGame(id, cacheTTL, league).then((j) => fromProcessor(j, league)).catch(() => null),
     ]);
     return { sources: registry?.sources ?? ['espn'], selected, espn };
@@ -195,7 +195,8 @@ export async function prepareBasketballGame(Astro: AstroGlobal, league: Basketba
     const recent = Date.now() - Date.parse(game.date) < LINES_RECENT_MS;
     if (info === null || read === null || rows === null) uncacheable(Astro);
     else if (game.source === 'data_api' && !failed && (info !== undefined || (read !== undefined && recent && !settled(read.row)) || (rows !== undefined && !built(rows)))) setCache(Astro, seasonCache(league));
-    const lines = read === null ? null : read?.row ?? undefined;
+    // a row that never had a quote is no line: no panel (Nov 17 decisions, #459)
+    const lines = read === null ? null : read?.row && hasLine(read.row) ? read.row : undefined;
     // BB-G45: an ingested final whose season the nightly has not rebuilt with the variants yet (sdv-db #217's backfill) waits too
     const q = p as Extract<BasketballGamePrep, { game: NbaGame }>;
     return { ...q, ...(rows && built(rows) ? { game: { ...q.game, wpLenses: rows } } : {}), ...(info !== undefined ? { info } : {}), ...(lines !== undefined ? { lines } : {}) };
@@ -335,6 +336,10 @@ async function prepareGame(Astro: AstroGlobal, league: BasketballLeague): Promis
     // already (middleware withPreviewCacheGuard).
     const sourceSwitch = isFeatureEnabled('source-switch', Astro.locals) && Astro.locals.adminAuthed === true;
     const source = sourceSwitch ? Astro.url.searchParams.get(SOURCE_PARAM) || undefined : undefined;
+    // Nov 17 decisions (#385): a `?source=` the game's registry does not list is Game Not Found, as on football (whose
+    // processor refuses it). A registry that cannot answer (null) keeps the request: fail-open, as the tool is.
+    const registry = source ? await retrieveGameSources(id, league) : undefined;
+    if (source && registry && !registry.sources.includes(source)) { uncacheable(Astro); return { notFound: true }; }
 
     let fellThrough = false;
     // 1. the Data API knows the game and says it is final: render from it, no ESPN. An explicit `?source=` skips it: the
@@ -399,7 +404,7 @@ async function prepareGame(Astro: AstroGlobal, league: BasketballLeague): Promis
         const [payload, tools] = await Promise.all([
             // an admin source request holds a minute at most: a failed-over (ESPN) answer must not outlive the outage by a day
             retrieveNbaProcessedGame(id, source ? Math.min(ttl, 60) : ttl, league, source),
-            sourceSwitch ? sourceTools(id, league, ttl, source) : undefined,
+            sourceSwitch ? sourceTools(id, league, ttl, source, registry) : undefined,
         ]);
         const game = fromProcessor(payload, league);
         // a sanity-gate fall-through must not be pinned, nor a live payload the processor cached

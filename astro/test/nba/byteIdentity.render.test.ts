@@ -125,7 +125,7 @@ async function page(path: string, url: string, params: Record<string, string> = 
     // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture', BB-G30's (NBA Cup, November and December only)
     // behind 'bball-nba-cup' and BB-G10's scatter views behind 'bball-impact-scatter': all off here, so these pages stay byte
     // for byte main's on any day
-    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-hub': false, 'bball-lineup-shotchart': false, 'bball-playoff-picture': false, 'bball-best-games': false, 'bball-nba-cup': false, 'bball-rolling-movers': false, 'bball-team-season': false, 'bball-lineups': false, 'bball-on-off': false, 'bball-situational': false, 'bball-poe': false, 'bball-impact': false, 'bball-player-on-off': false, 'bball-play-styles': false, 'bball-war': false, 'bball-compare': false, 'bball-play-types': false, 'bball-career': false, 'bball-shot-profile': false, 'bball-current-impact': false, 'bball-game-set': false, 'bball-game-logs': false, 'bball-rank-neighbors': false, 'bball-coaches': false, 'bball-impact-box': false, 'bball-game-flow': false, 'bball-epv': false, 'bball-pregame-projection': false, 'bball-garbage-time': false, 'bball-pbp-controls': false, 'bball-game-leaders': false, 'bball-game-shooting': false, 'bball-shot-filters': false, 'bball-shift-chart': false, 'bball-team-grid': false, 'bball-situational-box': false, 'bball-player-box-views': false, 'bball-game-info': false, 'bball-props': false, 'bball-lines': false, 'bball-wp-lenses': false, 'bball-league-shots': false, 'bball-leaderboards-v2': false, 'bball-impact-scatter': false, ...flagOverrides } } as App.Locals }));
+    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-hub': false, 'bball-lineup-shotchart': false, 'bball-playoff-picture': false, 'bball-best-games': false, 'bball-nba-cup': false, 'bball-rolling-movers': false, 'bball-team-season': false, 'bball-lineups': false, 'bball-on-off': false, 'bball-situational': false, 'bball-poe': false, 'bball-impact': false, 'bball-player-on-off': false, 'bball-play-styles': false, 'bball-war': false, 'bball-compare': false, 'bball-play-types': false, 'bball-career': false, 'bball-shot-profile': false, 'bball-current-impact': false, 'bball-game-set': false, 'bball-game-logs': false, 'bball-rank-neighbors': false, 'bball-coaches': false, 'bball-impact-box': false, 'bball-game-flow': false, 'bball-epv': false, 'bball-pregame-projection': false, 'bball-garbage-time': false, 'bball-pbp-controls': false, 'bball-game-leaders': false, 'bball-game-shooting': false, 'bball-shot-filters': false, 'bball-shift-chart': false, 'bball-team-grid': false, 'bball-situational-box': false, 'bball-player-box-views': false, 'bball-game-info': false, 'bball-props': false, 'bball-lines': false, 'bball-wp-lenses': false, 'bball-league-shots': false, 'bball-leaderboards-v2': false, 'bball-impact-scatter': false, 'bball-share-card': false, ...flagOverrides } } as App.Locals }));
 }
 const snap = (name: string) => `./__byte_identity__/${name}.html`;
 const finalPage = { gameId: 401766458, gamepackageJSON: { header: proc.header } };
@@ -179,6 +179,23 @@ describe('PR 0 byte-identity: every /nba route state', () => {
         espn.page.mockResolvedValueOnce({ page: finalPage, regressed: false, fetchFailed: false });
         games.proc.mockResolvedValueOnce({ ...proc, excitement: { gei: 3.54, lead_changes: 6, max_swing_pts: 9.34, completed: true } });
         await expect(await page('game/[id].astro', '/nba/game/401766458', { id: '401766458' }, { 'bball-gei': false })).toMatchFileSnapshot(snap('game-processor'));
+    });
+    test("game: 'bball-share-card' on changes the head's image tags and nothing else", async () => {
+        games.schedule.mockResolvedValueOnce(null);
+        espn.page.mockResolvedValueOnce({ page: finalPage, regressed: false, fetchFailed: false });
+        games.proc.mockResolvedValueOnce(proc);
+        const on = await page('game/[id].astro', '/nba/game/401766458', { id: '401766458' }, { 'bball-share-card': true });
+        const card = 'https://gameonpaper.com/nba/game/401766458/card.png?state=final';
+        expect(on).toContain(`<meta property="og:image" content="${card}"><meta property="og:image:alt" content="Atlanta 95 @ Orlando 120, final: win probability chart">`);
+        expect(on).toContain(`<meta name="twitter:image" content="${card}">`);
+        const social = 'https://gameonpaper.com/assets/img/social-card.png';
+        const off = on.replace(/<meta property="og:image:alt" content="[^"]*">/, '').replaceAll(card, social);
+        await expect(off).toMatchFileSnapshot(snap('game-processor'));
+    });
+    // the #470 stack merge left four copies of the season block on the team page (one per stacked branch); one, with every flag's props
+    test("team: 'bball-team-season' on renders the season block once", async () => {
+        const on = await page('team/[id].astro', '/nba/team/1610612751?season=2026', { id: '1610612751' }, { 'bball-team-season': true });
+        expect(on.match(/<section id="season"/g)).toHaveLength(1);
     });
     test('game: an ingested final, from the Data API', async () => {
         games.schedule.mockResolvedValueOnce(api.schedule[0]);

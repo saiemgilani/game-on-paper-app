@@ -5,13 +5,17 @@ import { readFileSync } from 'node:fs';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
-import { beforeAll, describe, expect, test } from 'vitest';
+import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
+import { JSDOM } from 'jsdom';
+import { LATEST_DEADLINE_MS, LATEST_POLL_MS, pollLatest, swapLatest } from '../src/basketball/latestPoll';
 import NbaGamePage from '../src/components/nba/game/NbaGamePage.astro';
 import { fromProcessor, type NbaGame } from '../src/resources/nbaGame';
 import { isLiveGame, latestStrip, RECENT_SHOTS } from '../src/basketball/latest';
 import { FLAGS } from '../src/utils/features';
 import { courtFor } from '../src/basketball/config';
 import { onDrawnCourt } from '../src/nba/charts/gameShotChart';
+import { ESPN_TIMEOUT_MS } from '../src/resources/espn';
+import { NBA_PROCESSOR_TIMEOUT_MS } from '../src/resources/nbaGames';
 
 type League = 'nba' | 'wnba' | 'mbb' | 'wbb';
 const raw = (league: League, id: string) => JSON.parse(readFileSync(new URL(`./fixtures/${league}/game_${id}_processor.json`, import.meta.url)).toString());
@@ -60,6 +64,57 @@ describe('latestStrip', () => {
         expect(latestStrip(g)!.shots.length).toBe(RECENT_SHOTS);
     });
 
+    describe('pollLatest (#445)', () => {
+        afterEach(() => { vi.useRealTimers(); });
+        test('every 30 s while live; stops once the page has no strip (final)', async () => {
+            vi.useFakeTimers();
+            const answers = [true, true, false];
+            const next = vi.fn(async () => answers.shift()!);
+            pollLatest(next);
+            await vi.advanceTimersByTimeAsync(LATEST_POLL_MS - 1);
+            expect(next).not.toHaveBeenCalled();
+            expect(LATEST_POLL_MS).toBe(30_000);
+            await vi.advanceTimersByTimeAsync(1);
+            expect(next).toHaveBeenCalledTimes(1);
+            await vi.advanceTimersByTimeAsync(2 * LATEST_POLL_MS);
+            expect(next).toHaveBeenCalledTimes(3); // the third saw a final
+            await vi.advanceTimersByTimeAsync(10 * LATEST_POLL_MS);
+            expect(next).toHaveBeenCalledTimes(3);
+        });
+        test('a failed refetch keeps polling; a hidden tab skips its turns; stop() ends it', async () => {
+            vi.useFakeTimers();
+            let hidden = false;
+            const next = vi.fn(async () => { throw new Error('offline'); });
+            const stop = pollLatest(next, { hidden: () => hidden });
+            await vi.advanceTimersByTimeAsync(2 * LATEST_POLL_MS);
+            expect(next).toHaveBeenCalledTimes(2);
+            hidden = true;
+            await vi.advanceTimersByTimeAsync(3 * LATEST_POLL_MS);
+            expect(next).toHaveBeenCalledTimes(2);
+            hidden = false;
+            await vi.advanceTimersByTimeAsync(LATEST_POLL_MS);
+            expect(next).toHaveBeenCalledTimes(3);
+            stop();
+            await vi.advanceTimersByTimeAsync(5 * LATEST_POLL_MS);
+            expect(next).toHaveBeenCalledTimes(3);
+        });
+        test('the deadline outlasts the slowest render that still succeeds (an ESPN read, then the processor)', () => {
+            expect(LATEST_DEADLINE_MS).toBeGreaterThanOrEqual(ESPN_TIMEOUT_MS + NBA_PROCESSOR_TIMEOUT_MS);
+        });
+        test('a stalled refetch is aborted at the deadline and the poll goes on', async () => {
+            vi.useFakeTimers();
+            const signals: AbortSignal[] = [];
+            const next = vi.fn((signal: AbortSignal) => { signals.push(signal); return new Promise<boolean>(() => {}); }); // never settles
+            pollLatest(next);
+            await vi.advanceTimersByTimeAsync(LATEST_POLL_MS + LATEST_DEADLINE_MS - 1);
+            expect(signals[0].aborted).toBe(false);
+            await vi.advanceTimersByTimeAsync(1);
+            expect(signals[0].aborted).toBe(true);
+            await vi.advanceTimersByTimeAsync(LATEST_POLL_MS);
+            expect(next).toHaveBeenCalledTimes(2);
+        });
+    });
+
     test('a heave from past the drawn court is skipped before the count, so the newest drawn shot is age 0 and ringed', () => {
         const g = live('nba');
         const last = g.plays.filter((p) => p.xLegacy != null).at(-1)!;
@@ -89,17 +144,52 @@ describe('the game page', () => {
             expect(s).not.toMatch(/NaN|undefined|Infinity/);
         });
     }
+    test('#445: the live strip carries the poll hook and its script; a final has neither', async () => {
+        const html = await page(live('nba'), 'nba');
+        expect(strip(html)).toContain('data-latest-poll');
+        expect(html).toMatch(/<script type="module" src="[^"]*NbaLatest\.astro\?astro&type=script/);
+        const done = await page(final('nba'), 'nba');
+        expect(done).not.toContain('data-latest-poll');
+        expect(done).not.toContain('NbaLatest.astro?astro&type=script');
+    });
+    test('#445 swapLatest on real renders: a later live page swaps the plays in; the final removes the panel and its nav item', async () => {
+        const dom = (html: string) => new JSDOM(html).window.document;
+        const now = dom(await page(live('nba', GAMES.nba, 0.5), 'nba'));
+        const later = live('nba', GAMES.nba, 0.6);
+        expect(now.querySelector('#latest-panel [data-latest-poll]')).not.toBeNull();
+        expect(now.querySelector('#game-section-picker option[value="#latest"]')).not.toBeNull();
+        expect(swapLatest(now, dom(await page(later, 'nba')))).toBe(true);
+        expect(now.querySelector('[data-latest-poll] tbody tr td:nth-child(4)')!.textContent).toBe(later.plays.at(-1)!.text);
+        // a refetched page not final but with no strip (suspended) keeps this strip and the poll
+        const suspended = dom(await page(live('nba', GAMES.nba, 0.6, 'STATUS_SUSPENDED'), 'nba'));
+        expect(suspended.querySelector('[data-latest-poll]')).toBeNull();
+        expect(swapLatest(now, suspended)).toBe(true);
+        expect(now.querySelector('#latest-panel [data-latest-poll]')).not.toBeNull();
+        // a selected Latest hands the phone-width picker back to its placeholder
+        const picker = now.querySelector<HTMLSelectElement>('#game-section-picker')!;
+        picker.querySelector<HTMLOptionElement>('option[value="#latest"]')!.selected = true;
+        expect(swapLatest(now, dom(await page(final('nba'), 'nba')))).toBe(false);
+        expect(picker.selectedIndex).toBe(0);
+        expect(now.querySelector('#latest-panel')).toBeNull();
+        expect(now.querySelector('[data-latest-poll]')).toBeNull();
+        expect(now.querySelector('a[href="#latest"]')).toBeNull();
+        expect(now.querySelector('#game-section-picker option[value="#latest"]')).toBeNull();
+        expect(now.querySelector('#wp')).not.toBeNull(); // the rest of the page stays
+    });
     test('flag off, a live game: no panel and no nav item', async () => {
         const html = await page(live('nba'), 'nba', false);
         expect(html).not.toContain('id="latest"');
         expect(html).not.toContain('href="#latest"');
     });
-    test('a final with the flag on renders byte for byte as with it off; so does a suspended game', async () => {
-        for (const g of [final('nba'), live('nba', GAMES.nba, 0.6, 'STATUS_SUSPENDED')]) {
-            const on = await page(g, 'nba', true);
-            expect(on).not.toContain('id="latest"');
-            expect(on).toBe(await page(g, 'nba', false));
-        }
+    test('a final with the flag on renders byte for byte as with it off; a suspended game adds only the pending marker', async () => {
+        const on = await page(final('nba'), 'nba', true);
+        expect(on).not.toContain('id="latest"');
+        expect(on).toBe(await page(final('nba'), 'nba', false));
+        const g = live('nba', GAMES.nba, 0.6, 'STATUS_SUSPENDED');
+        const sus = await page(g, 'nba', true);
+        expect(sus).not.toContain('id="latest"');
+        expect(sus).toContain('<template data-latest-pending></template>');
+        expect(sus.replace('<template data-latest-pending></template>', '')).toBe(await page(g, 'nba', false));
     });
     test("end of regulation: the End Period row's change is the settle (wnba 401736289: -60.3 into OT), so a dash", async () => {
         const g0 = final('wnba');

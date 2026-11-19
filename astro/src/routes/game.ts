@@ -168,7 +168,7 @@ export function notFoundTtl(comp: GameComp): number {
 
 type GameComp = { date?: string; status?: { type?: { completed?: boolean } } };
 
-/** A final that kicked off two days ago or more. Its processed payload is kept for good (resources/python.ts processPlays). */
+/** A final that kicked off two days ago or more. Its processed payload is kept for good (resources/python.ts retrieveProcessedGame). */
 export function isSettledFinal(comp: GameComp): boolean {
     return comp.status?.type?.completed === true && Date.now() - Date.parse(comp.date ?? '') >= 2 * 24 * 60 * 60 * 1000;
 }
