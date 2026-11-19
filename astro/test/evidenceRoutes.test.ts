@@ -6,6 +6,8 @@ import { describe, expect, test } from 'vitest';
 import { pageKey, slug, slugger } from '../scripts/lib/browser.mjs';
 // @ts-ignore -- plain .mjs script module, no type declarations
 import { serveStatic } from '../scripts/lib/serve-static.mjs';
+// @ts-ignore -- plain .mjs script module, no type declarations
+import { checkEvidenceRoutes, isBasketballFile, isBasketballRoute } from '../scripts/lib/evidence-routes.mjs';
 
 // the exact filter pr-evidence.yml applies to the PR body's `Evidence routes:` tokens
 const workflow = readFileSync(new URL('../../.github/workflows/pr-evidence.yml', import.meta.url), 'utf8');
@@ -78,5 +80,49 @@ describe('pageKey (saved-page lookup)', () => {
     } finally {
       server.close();
     }
+  });
+});
+
+describe('basketball evidence-route check (pr-evidence.yml)', () => {
+  const defaultRoutes = [workflow.match(/DEFAULT_ROUTES: (\S+)/)?.[1] ?? '(missing)'];
+  // #458's files: shot on the template's football route before its description was fixed
+  const pr458 = [
+    'astro/src/basketball/hub.ts', 'astro/src/components/nba/NbaGameCard.astro',
+    'astro/src/components/routes/BasketballHubRoute.astro', 'astro/src/pages/nba/index.astro',
+    'astro/src/resources/gameLines.ts', 'astro/src/routes/basketball/hub.ts',
+  ];
+  test('the workflow default is the football game page', () => {
+    expect(defaultRoutes).toEqual(['/game/401856682']);
+  });
+  test.each(['/nba', '/wnba/', '/mbb/players/5105337?season=2026', '/wbb?x=1', '/preview/nba/game/401909088'])(
+    'basketball route %s', (r) => expect(isBasketballRoute(r)).toBe(true),
+  );
+  test.each(['/', '/nfl', '/game/401856682', '/nbax', '/players/1?league=nba'])(
+    'not a basketball route %s', (r) => expect(isBasketballRoute(r)).toBe(false),
+  );
+  test('basketball files, and shared or football ones that are not', () => {
+    expect(pr458.filter(isBasketballFile)).toHaveLength(5);
+    expect(isBasketballFile('astro/src/pages/wbb/game/[id].astro')).toBe(true);
+    expect(isBasketballFile('astro/src/components/routes/NbaGameRoute.astro')).toBe(true);
+    expect(isBasketballFile('python/nba_game.py')).toBe(true);
+    expect(isBasketballFile('astro/src/components/routes/GameRoute.astro')).toBe(false);
+    expect(isBasketballFile('astro/src/components/Header.astro')).toBe(false);
+    expect(isBasketballFile('astro/test/nbaHeaderOverride.test.ts')).toBe(false);
+  });
+  test('a basketball PR left on the default football page fails, naming the default', () => {
+    const reason = checkEvidenceRoutes({ files: pr458, routes: defaultRoutes, defaultRoutes });
+    expect(reason).toMatch(/default football page \(\/game\/401856682\)/);
+    expect(reason).toMatch(/Evidence routes: \/nba/);
+  });
+  test('a basketball PR with only football routes fails', () => {
+    expect(checkEvidenceRoutes({ files: pr458, routes: ['/', '/nfl'], defaultRoutes }))
+      .toMatch(/none of its evidence routes \(\/ \/nfl\) is a basketball page/);
+  });
+  test('one basketball route is enough', () => {
+    expect(checkEvidenceRoutes({ files: pr458, routes: ['/game/401856682', '/mbb'], defaultRoutes })).toBeNull();
+  });
+  test('a PR with no basketball files passes on any route', () => {
+    expect(checkEvidenceRoutes({ files: ['astro/src/components/Header.astro'], routes: defaultRoutes, defaultRoutes })).toBeNull();
+    expect(checkEvidenceRoutes({ files: [], routes: [], defaultRoutes })).toBeNull();
   });
 });

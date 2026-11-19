@@ -14,6 +14,7 @@
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { loadChromium, launchOptions, newThemedContext, DEVICES, SCHEMES, slugger } from './lib/browser.mjs';
+import { isBasketballRoute } from './lib/evidence-routes.mjs';
 
 const BASE = process.env.BASE ?? 'http://localhost:4321';
 const OUT = process.env.OUT ?? 'img/visual';
@@ -71,6 +72,12 @@ try {
         try {
           const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 });
           if (res && res.status() >= 400) failures.push(`${where}: HTTP ${res.status()}`);
+          // a basketball route that redirected off basketball would publish some other page
+          // (the football default, say) as this route's evidence
+          const landed = new URL(page.url());
+          if (isBasketballRoute(route) && !isBasketballRoute(landed.pathname + landed.search)) {
+            failures.push(`${where}: a basketball route landed on ${landed.pathname}, not a basketball page`);
+          }
           await page.waitForTimeout(1200); // let islands hydrate + charts draw
         } catch (e) {
           failures.push(`${where}: ${e.message}`);
