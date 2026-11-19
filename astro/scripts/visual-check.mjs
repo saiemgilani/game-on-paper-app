@@ -14,6 +14,7 @@
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { loadChromium, launchOptions, newThemedContext, DEVICES, SCHEMES, slugger } from './lib/browser.mjs';
+import { landedOffBasketball } from './lib/evidence-routes.mjs';
 
 const BASE = process.env.BASE ?? 'http://localhost:4321';
 const OUT = process.env.OUT ?? 'img/visual';
@@ -91,6 +92,10 @@ try {
           }, EXPAND);
           await page.waitForTimeout(300); // let lazy islands inside the panel paint
         }
+        // checked last, right before the shot: a basketball route that redirected off basketball
+        // (even late, after networkidle) would publish some other page as this route's evidence
+        const off = landedOffBasketball(route, page.url(), BASE);
+        if (off) { failures.push(`${where}: ${off}`); continue; }
         const stem = join(OUT, `${slug(route)}-${device.name}-${colorScheme}`);
         try {
           await page.screenshot({ ...shotOpts, path: `${stem}.${ext}`, fullPage: true });

@@ -114,6 +114,19 @@ jobs:
           echo "steps=${steps#,}" >> "$GITHUB_OUTPUT"
           echo "steps: ${steps:-(none)}"
 
+      - name: Basketball changes need basketball evidence routes
+        # fails fast, before the hour of screenshots: a basketball PR left on the template's
+        # football route would otherwise publish evidence of a page it never changed.
+        # Runs the PR's script, so it gets no token.
+        env:
+          ROUTES: ${{ steps.routes.outputs.routes }}
+        run: |
+          # --no-renames: a moved file lists both its old and new path, so moving basketball code out still counts
+          reason="$(CHANGED="$(git diff --name-only --no-renames HEAD^1 HEAD)" node astro/scripts/lib/evidence-routes.mjs)" && exit 0
+          printf '%s\n' "$reason" > "$RUNNER_TEMP/route-check.txt"
+          echo "::error title=Evidence routes::$reason"
+          exit 1
+
       - name: Screenshots + Lighthouse comparison
         id: compare
         working-directory: astro
@@ -231,6 +244,7 @@ jobs:
           else
             printf '<!-- pr-evidence -->\n## PR evidence: `%s`\n\nThe evidence run failed before producing results. See the [run log](%s).\n' \
               "${PR_HEAD_SHA:0:7}" "$RUN_URL" > "$body"
+            if [ -f "$RUNNER_TEMP/route-check.txt" ]; then { echo; cat "$RUNNER_TEMP/route-check.txt"; } >> "$body"; fi
           fi
 
       - name: Post or update the evidence comment
