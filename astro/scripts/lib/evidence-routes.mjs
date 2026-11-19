@@ -13,6 +13,8 @@ const BASKETBALL_FILE = [
   /^astro\/src\/(basketball|nba|routes\/basketball|components\/nba)\//,
   /^astro\/src\/pages\/(nba|wnba|mbb|wbb)\//,
   /^astro\/src\/components\/routes\/(Basketball|Nba)[^/]*$/,
+  // basketball-named reads and helpers (resources/bballScheduleContext.ts, utils/nbaCup.ts); shared ones stay unclassified
+  /^astro\/src\/(resources|utils)\/(bball|nba|wnba|mbb|wbb)[A-Z][^/]*$/,
   /^astro\/public\/assets\/css\/nba\.css$/,
   /^python\/nba_game\.py$/,
 ];

@@ -121,7 +121,8 @@ jobs:
         env:
           ROUTES: ${{ steps.routes.outputs.routes }}
         run: |
-          reason="$(CHANGED="$(git diff --name-only HEAD^1 HEAD)" node astro/scripts/lib/evidence-routes.mjs)" && exit 0
+          # --no-renames: a moved file lists both its old and new path, so moving basketball code out still counts
+          reason="$(CHANGED="$(git diff --name-only --no-renames HEAD^1 HEAD)" node astro/scripts/lib/evidence-routes.mjs)" && exit 0
           printf '%s\n' "$reason" > "$RUNNER_TEMP/route-check.txt"
           echo "::error title=Evidence routes::$reason"
           exit 1

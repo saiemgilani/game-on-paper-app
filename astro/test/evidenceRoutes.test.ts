@@ -105,7 +105,9 @@ describe('basketball evidence-route check (pr-evidence.yml)', () => {
     expect(isBasketballFile('astro/src/pages/wbb/game/[id].astro')).toBe(true);
     expect(isBasketballFile('astro/src/components/routes/NbaGameRoute.astro')).toBe(true);
     expect(isBasketballFile('python/nba_game.py')).toBe(true);
-    expect(isBasketballFile('astro/src/components/routes/GameRoute.astro')).toBe(false);
+    expect(isBasketballFile('astro/src/resources/bballScheduleContext.ts')).toBe(true);
+    expect(isBasketballFile('astro/src/utils/nbaCup.ts')).toBe(true);
+    expect(isBasketballFile('astro/src/resources/teamSeason.ts')).toBe(false);    expect(isBasketballFile('astro/src/components/routes/GameRoute.astro')).toBe(false);
     expect(isBasketballFile('astro/src/components/Header.astro')).toBe(false);
     expect(isBasketballFile('astro/test/nbaHeaderOverride.test.ts')).toBe(false);
   });

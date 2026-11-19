@@ -75,8 +75,8 @@ try {
           // a basketball route that redirected off basketball would publish some other page
           // (the football default, say) as this route's evidence
           const landed = new URL(page.url());
-          if (isBasketballRoute(route) && !isBasketballRoute(landed.pathname + landed.search)) {
-            failures.push(`${where}: a basketball route landed on ${landed.pathname}, not a basketball page`);
+          if (isBasketballRoute(route) && (landed.origin !== new URL(BASE).origin || !isBasketballRoute(landed.pathname + landed.search))) {
+            failures.push(`${where}: a basketball route landed on ${landed.origin}${landed.pathname}, not this site's basketball page`);
           }
           await page.waitForTimeout(1200); // let islands hydrate + charts draw
         } catch (e) {
