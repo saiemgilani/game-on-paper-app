@@ -107,19 +107,27 @@ describe('the card route', async () => {
         expect(up.fetched[0].body).toEqual(playerCardBody(LUKA, 'nba', 2027));
     });
     test("a team's card reads team_strength for the team the season knows", async () => {
+        up.players.mockResolvedValue([]);
         up.strength.mockResolvedValue(NETS);
         const r = await call('nba', 'team', '1610612751', '?season=2027').res;
         expect(r.status).toBe(200);
         expect(up.strength).toHaveBeenCalledWith('nba', 2027, 1610612751);
         expect(up.fetched[0].body.title).toBe('Brooklyn Nets');
     });
+    test("a team only the season's rows name gets a card, as its page does (teamsFromSeasonRows)", async () => {
+        up.players.mockResolvedValue([{ ...LUKA, team_id: 42, team_tricode: 'XYZ' }]);
+        up.strength.mockResolvedValue(NETS);
+        const r = await call('nba', 'team', '42', '?season=2027').res;
+        expect(r.status).toBe(200);
+        expect(up.fetched[0].body.title).toBe('XYZ');
+    });
     test('no row is a 404, no card drawn', async () => {
         up.players.mockResolvedValue([]);
         up.strength.mockResolvedValue(null);
         expect((await call('nba', 'players', '1', '?season=2027').res).status).toBe(404);
         expect((await call('nba', 'team', '1610612751', '?season=2027').res).status).toBe(404);
-        expect((await call('nba', 'team', '42', '?season=2027').res).status).toBe(404); // a team the season does not know: no read
-        expect(up.strength).toHaveBeenCalledTimes(1);
+        up.strength.mockResolvedValue(NETS);
+        expect((await call('nba', 'team', '42', '?season=2027').res).status).toBe(404); // neither the rows nor the module know it
         expect(up.fetched).toHaveLength(0);
     });
     test('a failed read or draw is a 502 that is never kept; a malformed id a 400', async () => {

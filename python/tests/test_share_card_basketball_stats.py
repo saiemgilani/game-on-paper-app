@@ -85,6 +85,28 @@ def test_route_draws_the_body_it_is_sent(client, league, kind):
     assert app_mod._LOGO_OPENER.opened == [LOGO]
 
 
+def test_route_draws_each_body_not_a_fixed_card(client, monkeypatch):
+    app_mod, c = client
+    seen = []
+    real = share_card.render_basketball_stats
+    monkeypatch.setattr(
+        share_card,
+        "render_basketball_stats",
+        lambda body, league, fetch: seen.append(body) or real(body, league, fetch),
+    )
+    team = {
+        "title": "Brooklyn Nets",
+        "team": {"id": "17", "abbr": "BKN", "logo": LOGO},
+        "tiles": [{"value": "+4.1", "label": "Adj. net rating", "rank": None}],
+    }
+    pngs = [
+        c.post(f"/nba/{k}/1/card.png", json=b, headers=_auth()).get_data()
+        for k, b in (("players", _player()), ("team", team))
+    ]
+    assert seen == [_player(), team]
+    assert pngs[0] != pngs[1]
+
+
 @pytest.mark.parametrize(
     "body",
     [

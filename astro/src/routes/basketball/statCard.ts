@@ -15,6 +15,7 @@ import type { APIContext, APIRoute } from 'astro';
 import { BASKETBALL } from '../../basketball/config';
 import { playerCardBody, playerRow, teamCardBody, type StatCardBody, type StatCardKind } from '../../basketball/statCard';
 import { parseSeason } from '../../nba/seasons';
+import { teamsFromSeasonRows } from '../../nba/tables';
 import { retrieveSeasonPlayerRows } from '../../resources/nbaShots';
 import { retrieveBasketballStatCard } from '../../resources/python';
 import { retrieveTeamStrength } from '../../resources/teamSeason';
@@ -37,10 +38,10 @@ export async function statCardBody(league: BasketballLeague, kind: StatCardKind,
         const row = playerRow(await retrieveSeasonPlayerRows(season, league), id);
         return row ? playerCardBody(row, league, season) : null;
     }
-    const team = BASKETBALL[league].teams.inSeason(id, season);
-    if (!team) return null;
-    const row = await retrieveTeamStrength(league, season, id);
-    return row ? teamCardBody(row, league, season, team) : null;
+    // the team as the team page names it (routes/basketball/team.ts): the season's rows first, then the league's module
+    const [rows, row] = await Promise.all([retrieveSeasonPlayerRows(season, league), retrieveTeamStrength(league, season, id)]);
+    const team = teamsFromSeasonRows(rows, season, league).find((t) => t.team_id === id) ?? BASKETBALL[league].teams.inSeason(id, season);
+    return row && team ? teamCardBody(row, league, season, team) : null;
 }
 
 export function basketballStatCardRoute(league: BasketballLeague, kind: StatCardKind): APIRoute {
