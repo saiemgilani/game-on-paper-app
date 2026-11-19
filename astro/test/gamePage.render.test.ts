@@ -74,7 +74,7 @@ describe('GamePage renders a finished game end to end', () => {
         // 274 with a long of 36, McIvor 20/32 for 153 with a long of 18. The line
         // is the row under his name row (name + five numbers), not a column in it.
         const statLineUnder = (name: string) => html.match(new RegExp(
-            `<td style="text-align: left;">${name}</td>(?:<td class="numeral"[^>]*>[^<]*</td>){5}</tr><tr class="stat-line-row">(.*?)</tr>`))?.[1];
+            `<td style="text-align: left;">(?:<a [^>]*>)?${name}(?:</a>)?</td>(?:<td class="numeral"[^>]*>[^<]*</td>){5}</tr><tr class="stat-line-row">(.*?)</tr>`))?.[1];
         expect(statLineUnder('Cam Miller')).toMatch(/^<td colspan="6" class="text-muted">20\/29, 274 yds,[^<]*<span[\s\S]*, 36 LNG,/);
         expect(statLineUnder('Maverick McIvor')).toMatch(/^<td colspan="6" class="text-muted">20\/32, 153 yds,[^<]*<span[\s\S]*, 18 LNG,/);
     });

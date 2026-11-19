@@ -493,6 +493,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // axes and opens on O-RAPM against D-RAPM with the median crosshair; `?view=teams` plots team_strength's ratings
     // and four factors. Off: no read and the scatter page is today's, byte for byte. College is unchanged either way.
     'bball-impact-scatter': 'preview',
+    // The football game page's Team Stats panel gets a traditional "Box Score" table (first downs,
+    // total / pass / rush yards, C/ATT, 3rd and 4th down, penalties, turnovers, possession) read from
+    // ESPN's box (utils/officialBox.ts officialTeamBox), full game only. Off: the panel is unchanged.
+    // The player lines' ESPN counts are a fix and are not behind this flag.
+    'official-team-box': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
