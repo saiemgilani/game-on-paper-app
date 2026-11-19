@@ -150,6 +150,33 @@ describe('the game page honours the pin', () => {
         expect(processCalls().map((c) => c.url.split('/process')[1])).toEqual(['?source=cbs']);
     });
 
+    test('a processor outage (busy after its retries) renders as a 503 with Retry-After, never cached', async () => {
+        respond = (url) => url.includes('/process') ? new Response('{"status":"busy"}', { status: 503 }) : ok();
+        vi.spyOn(globalThis, 'setTimeout').mockImplementation(((fn: () => void) => { fn(); return 0; }) as any);
+        const { loadGameRoute } = await import('../src/routes/game');
+        const astro = fakeAstro('https://gameonpaper.com/nfl/game/401772944', {});
+        const r: any = await loadGameRoute(astro, 'nfl');
+        expect(r.game).toBeNull();
+        expect(processCalls()).toHaveLength(5);
+        expect(astro.response.status).toBe(503);
+        expect(astro.response.headers.get('Retry-After')).toBe('60');
+        expect(astro.response.headers.get('Cache-Control')).toBe('no-store');
+    });
+
+    test('the page holds a processor 404 ten minutes for a final two days old, a second for a fresh final or a live game', async () => {
+        const { loadGameRoute } = await import('../src/routes/game');
+        const held = async (date: string, completed: boolean) => {
+            calls.length = 0;
+            const comp = { ...HEADER.competitions[0], date, status: { type: { ...HEADER.competitions[0].status.type, completed } } };
+            guardedPage = { gameId: 401772944, gamepackageJSON: { header: { ...HEADER, competitions: [comp] } } };
+            await loadGameRoute(fakeAstro('https://gameonpaper.com/nfl/game/401772944', {}), 'nfl');
+            return processCalls()[0].init.cf.cacheTtlByStatus[404];
+        };
+        expect(await held('2025-11-02T17:00Z', true)).toBe(600);
+        expect(await held(new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), true)).toBe(1);
+        expect(await held('2025-11-02T17:00Z', false)).toBe(1);
+    });
+
     test('the share card asks for the same request, so it shares the page entry', async () => {
         const { retrieveCardPage } = await import('../src/resources/python');
         await retrieveCardPage('401772944', 'nfl', 30, 'shield');
