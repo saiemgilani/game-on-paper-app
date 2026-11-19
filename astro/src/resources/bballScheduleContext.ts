@@ -7,7 +7,8 @@
  *   the stats.nba.com / stats.wnba.com id, mapped here to ESPN's; college is ESPN-keyed.
  * - `player_box`: the team's minutes and starts per game, the rotation strip (the pros' regular season, as the block).
  * - `rated_priors` (sdv-py#1193, sdv-db#229; the game page's pregame projection): each game's projected home margin by
- *   ESPN game id in all four leagues, one season-wide read like the lines (MBB 6,318 rows in 2025-26).
+ *   ESPN game id in all four leagues, one season-wide read like the lines (MBB 6,318 rows in 2025-26). The pros read the
+ *   rated prior's (`wp_prior_exp_home_margin`, BB-D25, sdv-db#236), the number the pregame card shows; college the row's.
  * A failed read is null (its columns are left out) and the page is not cached.
  */
 import { retrieveRowsFrom } from './sdv';
@@ -42,8 +43,9 @@ export interface ScheduleContextReads {
     strength: Map<string, OppStrength> | null;
     /** null: the read failed */
     box: RotationBoxRow[] | null;
-    /** each game's projected home margin (exp_home_margin) by ESPN game id; null: the read failed */
-    proj: Map<string, number> | null;
+    /** each game's projected home margin (the pros' wp_prior_exp_home_margin, college exp_home_margin) and whether the producer
+     *  has this team at home, by ESPN game id; null: the read failed */
+    proj: Map<string, { margin: number; teamHome: boolean }> | null;
 }
 
 const settled = <T>(r: PromiseSettledResult<T>, what: string): T | null => {
@@ -56,13 +58,14 @@ export async function retrieveScheduleContext(league: BasketballLeague, season: 
     const s = String(season);
     const games = BASKETBALL[league].gamesSource;
     const pro = PRO_LEAGUES.includes(league);
+    const margin = pro ? 'wp_prior_exp_home_margin' : 'exp_home_margin';
     const [lines, strength, box, proj] = await Promise.allSettled([
         retrieveRowsFrom<LineRow>(games, 'game_lines', { season: s, select: 'game_id,spread_home_close,ats_result', limit: LINES_LIMIT }, TTL, true),
         retrieveRowsFrom<{ team_id: number | string; adj_net_rtg: number | null; adj_net_rtg_rank: number | null }>(leagueSource(league), 'team_strength',
             { season: s, select: 'team_id,adj_net_rtg,adj_net_rtg_rank', limit: STRENGTH_LIMIT }, TTL, true),
         retrieveRowsFrom<RotationBoxRow>(games, 'player_box',
             { season: s, team_id: String(espnId), ...(pro ? { season_type: '2' } : {}), select: 'game_id,athlete_id,athlete_short_name,minutes,starter,did_not_play', limit: BOX_LIMIT }, TTL, true),
-        retrieveRowsFrom<{ game_id: number | string; exp_home_margin: number | null }>(games, 'rated_priors', { season: s, select: 'game_id,exp_home_margin', limit: LINES_LIMIT }, TTL, true),
+        retrieveRowsFrom<Record<string, number | string | null>>(games, 'rated_priors', { season: s, select: `game_id,home_team_id,${margin}`, limit: LINES_LIMIT }, TTL, true),
     ]);
     const projRows = settled(proj, 'projections');
     const lineRows = settled(lines, 'game lines');
@@ -76,6 +79,6 @@ export async function retrieveScheduleContext(league: BasketballLeague, season: 
             return e ? [[String(e), { rating: r.adj_net_rtg, rank: r.adj_net_rtg_rank }] as const] : [];
         })),
         box: settled(box, 'player box'),
-        proj: projRows && new Map(projRows.flatMap((r) => (r.exp_home_margin == null ? [] : [[String(r.game_id), Number(r.exp_home_margin)] as const]))),
+        proj: projRows && new Map(projRows.flatMap((r) => (r[margin] == null ? [] : [[String(r.game_id), { margin: Number(r[margin]), teamHome: String(r.home_team_id) === String(espnId) }] as const]))),
     };
 }

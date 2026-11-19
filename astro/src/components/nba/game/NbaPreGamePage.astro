@@ -20,9 +20,9 @@ import { retrieveGameSummary, type ESPNPlayByPlayResponse } from '../../../resou
 import NbaPregameProjection from './NbaPregameProjection.astro';
 import type { PregameProjection } from '../../../routes/basketball/game';
 
-/** `projection`: BB-G18, set only with 'bball-pregame-projection' on (null: no card) */
-interface Props { espnGame: ESPNPlayByPlayResponse; projection?: PregameProjection | null }
-const { espnGame, projection } = Astro.props;
+/** `projection`: BB-G18, set only with 'bball-pregame-projection' on (null: no card); `ourHomeWp`: its win chance for the Lines panel (#459) */
+interface Props { espnGame: ESPNPlayByPlayResponse; projection?: PregameProjection | null; ourHomeWp?: number | null }
+const { espnGame, projection, ourHomeWp } = Astro.props;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
 const comp = espnGame.gamepackageJSON.header.competitions[0];
@@ -64,6 +64,6 @@ const jsonLd = basketballEventJsonLd({
     {projection && <NbaPregameProjection projection={projection} homeTeam={home.team} awayTeam={away.team} />}
     {season !== null && <NbaPlayersToWatch homeTeam={home.team} awayTeam={away.team} season={season} />}
     <RecentForm summary={summary} homeTeam={home.team} awayTeam={away.team} />
-    {info !== undefined && (<section id="info" class="mt-3"><h2 class="h5">Game info</h2><NbaGameInfo info={info} home={home.team} away={away.team} season={season} /></section>)}{lines !== undefined && (<section id="lines" class="mt-3"><h2 class="h5">Lines and markets</h2><NbaGameLines line={lines} home={home.team} away={away.team} /></section>)}
+    {info !== undefined && (<section id="info" class="mt-3"><h2 class="h5">Game info</h2><NbaGameInfo info={info} home={home.team} away={away.team} season={season} /></section>)}{lines !== undefined && (<section id="lines" class="mt-3"><h2 class="h5">Lines and markets</h2><NbaGameLines line={lines} home={home.team} away={away.team} ours={ourHomeWp ?? null} /></section>)}
   </div>
 </GenericPage>

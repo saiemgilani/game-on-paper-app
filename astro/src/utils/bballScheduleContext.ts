@@ -5,7 +5,7 @@
  * capped at REST_CAP, a season opener capped; a third in four nights is a game whose second-previous game was at most three
  * days earlier. Days are the tip's day where the league keeps its scoreboard. A road trip is a run of games away from home
  * (a neutral site counts as away). The ATS result and the line are the producer's (game_lines); this only turns home/away
- * into the team's side. The projection is the producer's (rated_priors' exp_home_margin), turned to the team's side; the
+ * into the team's side. The projection is the producer's (rated_priors: the pros' rated prior, college's exp_home_margin), turned to the team's side; the
  * result against it (W: won by more than projected, or lost by less) and its W-L are counted here (Q21 on GOP#457).
  */
 import { DateTime } from 'luxon';
@@ -61,6 +61,10 @@ export function teamProj(expHome: number | undefined, listedHome: boolean, g: Pi
     return { proj, vsProj: d > 0 ? 'W' : d < 0 ? 'L' : 'P' };
 }
 
+/** The producer's home margin, only when its home side is ESPN's (as the game page's card checks). */
+const homeMargin = (p: { margin: number; teamHome: boolean } | undefined, listedHome: boolean): number | undefined =>
+    p && p.teamHome === listedHome ? p.margin : undefined;
+
 /** Every schedule game's context by game id. `rows` in date order (scheduleRows); `listedHome` by game id. */
 export function scheduleContext(rows: ScheduleRow[], listedHome: Map<string, boolean>, reads: ScheduleContextReads, zone: string): Map<string, GameContext> {
     const out = new Map<string, GameContext>();
@@ -85,7 +89,7 @@ export function scheduleContext(rows: ScheduleRow[], listedHome: Map<string, boo
             trip: tripOf[i],
             opp: reads.strength?.get(String(g.oppId)) ?? null,
             ...teamAts(reads.lines?.get(g.gameId), listedHome.get(g.gameId) ?? g.venue === 'home'),
-            ...teamProj(reads.proj?.get(g.gameId), listedHome.get(g.gameId) ?? g.venue === 'home', g),
+            ...teamProj(homeMargin(reads.proj?.get(g.gameId), listedHome.get(g.gameId) ?? g.venue === 'home'), listedHome.get(g.gameId) ?? g.venue === 'home', g),
         });
     });
     return out;

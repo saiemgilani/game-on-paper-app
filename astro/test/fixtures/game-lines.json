@@ -284,5 +284,71 @@
       "home_abbreviation": "DAL",
       "away_abbreviation": "MIN"
     }
-  ]
+  ],
+  "rated_priors": {
+    "401766458": [
+      {
+        "season": 2025,
+        "game_id": 401766458,
+        "game_date": "2025-04-15",
+        "as_of_date": "2025-04-14",
+        "home_team_id": 19,
+        "away_team_id": 1,
+        "neutral_site": false,
+        "stats_game_id": "0052400101",
+        "home_rating": -0.7933369503357586,
+        "away_rating": -1.131395037740292,
+        "home_rank": 18,
+        "away_rank": 19,
+        "home_games": 82,
+        "away_games": 82,
+        "home_pace": 95.82776832385305,
+        "away_pace": 102.65016233766234,
+        "hfa": 2.184,
+        "exp_home_margin": 2.5182098643193833,
+        "rated_home_prob": 0.5689186312620828,
+        "wp_prior_home_rating": -0.8321981870587578,
+        "wp_prior_away_rating": -1.4137140697133503,
+        "wp_prior_home_rank": 18,
+        "wp_prior_away_rank": 19,
+        "wp_prior_poss": 99.07926829268293,
+        "wp_prior_hfa": 1.7541232123300166,
+        "wp_prior_margin_sd": 13.3,
+        "wp_prior_exp_home_margin": 2.330284893869923,
+        "wp_prior_home_prob": 0.5695424470479671
+      }
+    ],
+    "401809234": [
+      {
+        "season": 2026,
+        "game_id": 401809234,
+        "game_date": "2025-10-22",
+        "as_of_date": "2025-10-22",
+        "home_team_id": 18,
+        "away_team_id": 5,
+        "neutral_site": false,
+        "stats_game_id": "0022500003",
+        "home_rating": null,
+        "away_rating": null,
+        "home_rank": null,
+        "away_rank": null,
+        "home_games": null,
+        "away_games": null,
+        "home_pace": null,
+        "away_pace": null,
+        "hfa": 2.184,
+        "exp_home_margin": null,
+        "rated_home_prob": null,
+        "wp_prior_home_rating": 2.5159718874043393,
+        "wp_prior_away_rating": 6.014001309570893,
+        "wp_prior_home_rank": 10,
+        "wp_prior_away_rank": 2,
+        "wp_prior_poss": 106,
+        "wp_prior_hfa": 1.729730634647615,
+        "wp_prior_margin_sd": 13.3,
+        "wp_prior_exp_home_margin": -1.978180552848932,
+        "wp_prior_home_prob": 0.4408812213010976
+      }
+    ]
+  }
 }
