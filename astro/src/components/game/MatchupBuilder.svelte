@@ -8,7 +8,7 @@
     const { teamSeasons, homeTeamId, homeSeason, awayTeamId, awaySeason, projection, league = leagueFromLocation() } = $props();
 
     let selectedHomeTeamId = $state(homeTeamId || "59")
-    let selectedHomeSeason = $state(homeSeason || "2025")
+    let selectedHomeSeason = $state(homeSeason)  // the page defaults it (routes/matchup.ts)
     let availableHomeTeamSeasons = $derived(teamSeasons.filter((t: TeamIndex) => String(t.team_id) == String(selectedHomeTeamId)).flatMap((t: TeamIndex) => t.seasons))
 
     function onChangeHomeTeam(e: Event) {
@@ -25,7 +25,7 @@
 
 
     let selectedAwayTeamId = $state(awayTeamId || "52")
-    let selectedAwaySeason = $state(awaySeason || "2025")
+    let selectedAwaySeason = $state(awaySeason)
     let availableAwayTeamSeasons = $derived(teamSeasons.filter((t: TeamIndex) => String(t.team_id) == String(selectedAwayTeamId)).flatMap((t: TeamIndex) => t.seasons))
 
     function onChangeAwayTeam(e: Event) {

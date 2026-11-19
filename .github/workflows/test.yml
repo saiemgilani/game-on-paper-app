@@ -42,3 +42,18 @@ jobs:
         working-directory: python
         env:
           PYTHON_HTTP_TOKEN: test
+  teams-index:
+    # astro/src/static/teams.json (the matchup builder's selects, /teams, the sitemap) is a
+    # snapshot of cfb.team_summaries' team-seasons. It drifted by hand every season (#333,
+    # #338); this fails when the two differ. Fix: `uv run scripts/update_teams.py`.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v6
+      - name: teams.json matches cfb.team_summaries
+        env:
+          SDV_AUTH_TOKEN: ${{ secrets.SDV_AUTH_TOKEN }}
+        run: |
+          # a fork PR gets no secrets: nothing to read the Data API with
+          if [ -z "$SDV_AUTH_TOKEN" ]; then echo "::notice::no SDV_AUTH_TOKEN (fork PR); teams.json drift check skipped"; exit 0; fi
+          uv run scripts/update_teams.py --check
