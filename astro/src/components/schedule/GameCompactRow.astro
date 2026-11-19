@@ -69,7 +69,7 @@ const side = (c: any, score: number, other: number) => ({
 // only a long ESPN note truncates (bowl notes) and the cue never shrinks.
 // The cue is its own span after a ps-2 gap, as on the desktop card (its
 // "ms-auto ps-2" cue span), with no separator glyph; the space between the
-// spans only keeps the link name from running "Iron BowlRanked upset"
+// spans only keeps the link name from running "Iron BowlUpset watch"
 const spiceLabel = isFeatureEnabled('spice-cues', Astro.locals) ? SPICE_LABEL[calculateSpiceLevel(game)] : null;
 const away = side(awayComp, awayScore, homeScore);
 const home = side(homeComp, homeScore, awayScore);

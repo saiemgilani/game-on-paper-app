@@ -2,6 +2,7 @@
 // BB-G41, behind 'bball-latest-strip' and a live game only (basketball/latest.ts picks the plays): the last five plays newest
 // first with the home WP and its change, beside a server-drawn half court with the last few located shots, the newest
 // ringed and the older ones faded. Only field goals carry a location; the list beside it has every other event.
+// While live the strip refreshes itself every 30 s from the page's own render (basketball/latestPoll.ts) and stops at the final.
 import type { NbaGame } from '../../../resources/nbaGame';
 import { RECENT_SHOTS, type Latest } from '../../../basketball/latest';
 import { basketball, courtFor } from '../../../basketball/config';
@@ -30,7 +31,7 @@ const made = marks.filter((m) => m.play.scoringPlay).length;
 const desc = marks.length === 0 ? 'No located shots yet.' : `The last ${marks.length} located shots, newest ringed: ${made} made, ${marks.length - made} missed.`;
 const R = 6;
 ---
-<div class="row">
+<div class="row" data-latest-poll>
   <div class="col-12 col-lg-7">
     <div class="table-responsive">
     <table class="table table-sm numeral" aria-label="Latest plays, newest first">
@@ -64,3 +65,12 @@ const R = 6;
     </figure>
   </div>
 </div>
+<script>
+    // #445: refetch this page every 30 s (a full render: every viewer of this preview strip is uncacheable) and swap the strip in; at the final the stale strip goes and it stops
+    import { pollLatest, swapLatest } from '../../../basketball/latestPoll';
+    if (document.querySelector('[data-latest-poll]')) pollLatest(async (signal) => {
+        const res = await fetch(location.href, { cache: 'no-cache', signal });
+        if (!res.ok) throw new Error(`refetch answered ${res.status}`); // logged by pollLatest, which keeps polling
+        return swapLatest(document, new DOMParser().parseFromString(await res.text(), 'text/html'));
+    }, { hidden: () => document.hidden });
+</script>

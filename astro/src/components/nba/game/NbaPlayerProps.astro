@@ -2,6 +2,7 @@
 // src/components/nba/game/NbaPlayerProps.astro
 // BB-G44, behind 'bball-props': each player's closing line per stat with the books' no-vig over probability, beside
 // the box score's count. Final: O / U / P where it landed. Live: the count so far against the line, O once it is cleared.
+// A player who did not play keeps the row, greyed as the box score's DNP rows are, with no count (Nov 17 decisions, #456).
 // The view is utils/playerProps.ts's; null `view` is a failed read.
 import type { NbaGame } from '../../../resources/nbaGame';
 import { PROP_STATS, type PropPlayer, type PropsView, type PropResult } from '../../../utils/playerProps';
@@ -30,8 +31,8 @@ const pct = (line: number, actual: number) => Math.max(0, Math.min(100, Math.rou
       <thead><tr><th scope="col" class="text-start">{abbr}</th>{cols.map((c) => <th scope="col" class="text-end" title={c.title}>{c.label}</th>)}</tr></thead>
       <tbody>
         {players.map((p) => (
-          <tr>
-            <th scope="row" class="text-start fw-normal text-nowrap">{p.name}</th>
+          <tr class={p.dnp ? 'text-muted' : undefined}>
+            <th scope="row" class="text-start fw-normal text-nowrap">{p.name}{p.dnp && <span class="small" title={view.final ? 'Did not play: the lines are void' : 'Has not played'}> DNP</span>}</th>
             {cols.map(({ stat }) => { const c = p.cells[stat]; return (
               <td class="text-end text-nowrap">{c ? (
                 <Fragment>

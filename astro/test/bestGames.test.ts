@@ -126,6 +126,10 @@ describe('the reads and the loader', () => {
         expect(sched[2]).toMatchObject({ season: '2025' });
         expect(gei[4]).toBe(true); // strict: an outage is never an empty season
         expect(gei[5]).toBe(8000); // the game reads' timeout
+        // Nov 17 decisions (#397): the whole season in one read per table, no top-N cap; a truncated read is an error
+        for (const c of [gei, sched]) expect(c[2]).toMatchObject({ limit: '50000' });
+        reads.mockImplementation(async () => Array.from({ length: 50000 }, () => ({})));
+        expect(await prepareBestGames(fakeAstro('/wnba/best-games?season=2025').astro, 'wnba', MARCH)).toEqual({ unavailable: true });
     });
     test('the default season with no completed games falls back to last season, labelled and cached', async () => {
         const { astro, cache } = fakeAstro('/wnba/best-games');
@@ -138,6 +142,7 @@ describe('the reads and the loader', () => {
         expect(await prepareBestGames(fakeAstro('/wnba/best-games?season=2026').astro, 'wnba', MARCH)).toMatchObject({ season: 2025, fallback: true, currentTotal: 0 });
     });
     test(`the default URL falls back while the current season has fewer than ${FALLBACK_BELOW} ranked games`, async () => {
+        expect(FALLBACK_BELOW).toBe(25); // Nov 17 decisions (#397): last season until this one has 25 finals
         serveThinCurrent(FALLBACK_BELOW - 1);
         expect(await prepareBestGames(fakeAstro('/wnba/best-games').astro, 'wnba', MARCH)).toMatchObject({ season: 2025, fallback: true, currentTotal: FALLBACK_BELOW - 1, total: 312 });
         serveThinCurrent(FALLBACK_BELOW);
