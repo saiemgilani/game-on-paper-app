@@ -10,7 +10,7 @@ import Panel from '../../layouts/panel/GenericPanel.astro';
 import ProNav from '../../components/pro/ProNav.astro';
 import { cleanTextForTeam, roundNumber } from '../../utils/misc';
 import {
-    compareMetricRows, formatOdds, formatProDelta, formatProMetric, formatUsd, parseCompareIds, PRO_COMPARE_MAX,
+    compareHasValue, compareMetricRows, formatOdds, formatProDelta, formatProMetric, formatUsd, parseCompareIds, PRO_COMPARE_MAX,
     type CompareProfile,
 } from '../../utils/pro';
 import { PRO_SEASON, proObject } from '../../resources/pro';
@@ -31,6 +31,9 @@ const hits = (index?.players ?? [])
     .filter((r) => !shown.includes(String(r.espn_id)) && `${r.name ?? ''} ${r.team ?? ''}`.toLowerCase().includes(q.toLowerCase()))
     .slice(0, HITS);
 const rows = compareMetricRows(docs);
+// A PFF-free build carries no grades and no valuation (gop-pro docs/contract.md).
+const hasGrades = docs.some((d) => d.pff !== undefined);
+const hasValue = compareHasValue(docs);
 const name = (d: CompareProfile) => cleanTextForTeam(d.player.name ?? `Player ${d.player.espn_id}`, d.player.team_id);
 const r0 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : roundNumber(v, 0, 0));
 const valueRows: [string, (d: CompareProfile) => string][] = [
@@ -51,7 +54,7 @@ const valueRows: [string, (d: CompareProfile) => string][] = [
             <h1 class="fs-3 mb-0">Compare players</h1>
             {docs.length > 0 && <a class="btn btn-sm btn-outline-secondary text-nowrap" href={`/pro/export?ids=${shown.join(',')}`} id="pro-export">Download CSV</a>}
         </div>
-        <p class="text-muted text-small">Up to {PRO_COMPARE_MAX} players, {PRO_SEASON}. The CSV holds the derived metrics, percentile bands and valuation; PFF grades stay on the profiles.</p>
+        <p class="text-muted text-small">Up to {PRO_COMPARE_MAX} players, {PRO_SEASON}. The CSV holds the derived metrics, percentile bands{hasValue ? ' and valuation' : ''}{hasGrades ? '; PFF grades stay on the profiles' : ''}.</p>
 
         {full
             ? <p class="text-muted text-small" id="pro-compare-full">{PRO_COMPARE_MAX} players is the most a comparison holds. Remove one to add another.</p>
@@ -133,6 +136,7 @@ const valueRows: [string, (d: CompareProfile) => string][] = [
                         </div>
                     </Fragment>
                 </Panel>
+                {hasValue && (
                 <Panel id="pro-compare-value" title="Valuation" show={true} class="mb-md-3">
                     <p slot="panel-subtitle" class="m-0 text-muted text-small">Model estimates at revenue-share rates, not reported deals. <a href="/pro/methodology#valuation">How they are made</a>.</p>
                     <Fragment slot="panel-body">
@@ -150,6 +154,7 @@ const valueRows: [string, (d: CompareProfile) => string][] = [
                         </div>
                     </Fragment>
                 </Panel>
+                )}
             </Fragment>
             )}
     </div>

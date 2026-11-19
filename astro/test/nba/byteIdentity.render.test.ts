@@ -192,6 +192,36 @@ describe('PR 0 byte-identity: every /nba route state', () => {
         const off = on.replace(/<meta property="og:image:alt" content="[^"]*">/, '').replaceAll(card, social);
         await expect(off).toMatchFileSnapshot(snap('game-processor'));
     });
+    // G-R5: the player and team pages under 'bball-share-card': the head's image tags and a Share island, and nothing else
+    const social = 'https://gameonpaper.com/assets/img/social-card.png';
+    const shareIsland = /<astro-island uid="" component-url="<astro-root>\/src\/components\/game\/ShareButton\.svelte"[\s\S]*?<\/astro-island>/;
+    // the client:load directive script rides before the page's first client:load island, which the Share button becomes
+    const loadScript = /<script>\(function\(\)\{let e=async e=>\{await\(await e\(\)\)\(\)\};\(self\.Astro\|\|\(self\.Astro=\{\}\)\)\.load=e[^<]*<\/script>/;
+    // and the snapshot file's line ends are the checkout's (toMatchFileSnapshot ignores them too)
+    const withoutShare = (html: string) => html.replaceAll('\r\n', '\n').replace(shareIsland, '').replace(loadScript, '');
+    const snapshotOf = (name: string) => readFileSync(new URL(snap(name), import.meta.url), 'utf8');
+    test("player: 'bball-share-card' on adds the card as og:image and a Share button, and nothing else", () => withPlayers(seasonPlayerRows, async () => {
+        const on = await page('players/[id].astro', `/nba/players/${PID}?season=2026`, { id: String(PID) }, { 'bball-share-card': true });
+        const card = `https://gameonpaper.com/nba/players/${PID}/card.png?season=2026&amp;v=2026-10-12`;
+        expect(on).toContain(`<meta property="og:image" content="${card}"><meta property="og:image:alt" content="`);
+        expect(on).toContain(`<meta name="twitter:image" content="${card}">`);
+        expect(on).toMatch(shareIsland);
+        const off = on.replace(/<meta property="og:image:alt" content="[^"]*">/, '').replaceAll(card, social);
+        expect(withoutShare(off)).toBe(withoutShare(snapshotOf('player')));
+    }));
+    test("team: 'bball-share-card' on adds the card as og:image and a Share button, and nothing else", async () => {
+        const on = await page('team/[id].astro', '/nba/team/1610612751?season=2026', { id: '1610612751' }, { 'bball-share-card': true });
+        const card = 'https://gameonpaper.com/nba/team/1610612751/card.png?season=2026&amp;v=2026-10-12';
+        expect(on).toContain(`<meta property="og:image" content="${card}"><meta property="og:image:alt" content="Brooklyn Nets, 2025-26: record and adjusted ratings, with league ranks">`);
+        expect(on).toMatch(shareIsland);
+        const off = on.replace(/<meta property="og:image:alt" content="[^"]*">/, '').replaceAll(card, social);
+        expect(withoutShare(off)).toBe(withoutShare(snapshotOf('team')));
+    });
+    // the #470 stack merge left four copies of the season block on the team page (one per stacked branch); one, with every flag's props
+    test("team: 'bball-team-season' on renders the season block once", async () => {
+        const on = await page('team/[id].astro', '/nba/team/1610612751?season=2026', { id: '1610612751' }, { 'bball-team-season': true });
+        expect(on.match(/<section id="season"/g)).toHaveLength(1);
+    });
     test('game: an ingested final, from the Data API', async () => {
         games.schedule.mockResolvedValueOnce(api.schedule[0]);
         games.rows.mockResolvedValueOnce(api);

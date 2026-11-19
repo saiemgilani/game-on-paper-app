@@ -1198,9 +1198,12 @@ function cleanUpBoxScores(baseData: any[], pbp: ProcessedGame): any[] {
     return baseData
 }
 
-/** `fallbackOnRetired`: `source` is a pin (utils/sourceOverride.ts), so a 400 falls back to ESPN; see requestProcess. */
-export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string, fallbackOnRetired = false): Promise<ProcessedGame> {
-    const processed: ProcessedGame = await processPlays(gameId, cacheTTL, league, source, fallbackOnRetired);
+/**
+ * `fallbackOnRetired`: `source` is a pin (utils/sourceOverride.ts), so a 400 falls back to ESPN; see requestProcess.
+ * `notFoundTtl`: how long the edge holds a processor 404 (requestProcessor).
+ */
+export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string, fallbackOnRetired = false, notFoundTtl = 1): Promise<ProcessedGame> {
+    const processed: ProcessedGame = await processPlays(gameId, cacheTTL, league, source, fallbackOnRetired, notFoundTtl);
 
     const pbp: ProcessedGame = {
         ...processed,
@@ -1429,6 +1432,30 @@ export async function retrieveBasketballShareCard(gameId: string | number, leagu
     }
 }
 
+/**
+ * 'bball-share-card' (preview), G-R5: a basketball player's or team's card (python/share_card.py render_basketball_stats) as PNG
+ * bytes, or null when the API cannot draw one. A POST of the strings the card draws (basketball/statCard.ts), so the API reads nothing.
+ */
+export async function retrieveBasketballStatCard(league: League, kind: 'players' | 'team', id: number, body: unknown): Promise<ArrayBuffer | null> {
+    if (!PYTHON_HTTP_TOKEN) return null;
+    try {
+        const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${kind}/${id}/card.png`, {
+            method: 'POST',
+            headers: { "Authorization": `Bearer ${btoa(PYTHON_HTTP_TOKEN)}`, "Referer": "gameonpaper.com", "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(BASKETBALL_CARD_TIMEOUT_MS),
+        });
+        if (!req.ok) {
+            console.error(`ERROR share card ${league} ${kind} ${id}: HTTP ${req.status}`);
+            return null;
+        }
+        return await req.arrayBuffer();
+    } catch (e) {
+        console.error(`ERROR while fetching share card for ${league} ${kind} ${id}: ${e}`);
+        return null;
+    }
+}
+
 /** A processor answer that was not a 2xx (or never arrived): `status` is the HTTP status, 504 for a timeout. */
 export class ProcessorError extends Error {
     constructor(public status: number, message: string) {
@@ -1443,7 +1470,25 @@ export class ProcessorError extends Error {
  * the deploy version (`?v=...&query`), never a second `?`. A non-2xx answer throws `ProcessorError`;
  * `timeoutMs` (the NBA path only) aborts a slow fetch as `ProcessorError(504)`.
  */
-export async function requestProcessor(path: string, cacheTTL: number, query = '', timeoutMs?: number): Promise<string> {
+// The processor answers 503 `busy` when the worker that took the request is already running one
+// /process (python/app.py one_heavy_at_a_time). Another worker is usually idle, so try again; when
+// every worker is busy, the backoff (0.5, 1, 2, 4 s: 7.5 s in all) waits here, in the Worker, where
+// waiting costs the processor nothing, instead of answering a peak with an error page at once.
+const BUSY_RETRIES = 4;
+const BUSY_DELAY_MS = 500;
+
+export async function requestProcessor(path: string, cacheTTL: number, query = '', timeoutMs?: number, notFoundTtl = 1): Promise<string> {
+    for (let attempt = 0; ; attempt++) {
+        try {
+            return await requestProcessorOnce(path, cacheTTL, query, timeoutMs, notFoundTtl);
+        } catch (e) {
+            if (!(e instanceof ProcessorError) || e.status !== 503 || attempt >= BUSY_RETRIES) throw e;
+            await new Promise((r) => setTimeout(r, BUSY_DELAY_MS * 2 ** attempt));
+        }
+    }
+}
+
+async function requestProcessorOnce(path: string, cacheTTL: number, query: string, timeoutMs: number | undefined, notFoundTtl: number): Promise<string> {
     if (!PYTHON_HTTP_TOKEN) {
         throw Error("PYTHON_HTTP_TOKEN not set, can not fire request")
     }
@@ -1460,7 +1505,11 @@ export async function requestProcessor(path: string, cacheTTL: number, query = '
             },
             cf: {
                 cacheEverything: true,
-                cacheTtlByStatus: { "200-299": cacheTTL, 404: 1, "500-599": 0 },
+                // a 404 can be transient (an ESPN outage, a partial payload at the final whistle:
+                // python/app.py), so it is held a second unless the caller knows better: the game page
+                // holds one ten minutes for a final days old, against a crawl of dead old games
+                // (routes/game.ts). No purge reaches this entry, only a deploy (PROCESSOR_VERSION).
+                cacheTtlByStatus: { "200-299": cacheTTL, 404: notFoundTtl, "500-599": 0 },
                 // A completed game's API response is cached for a year. Keying it on the
                 // processor version means a deploy that changes python/ or picks up a new
                 // sportsdataverse-py main invalidates it without any zone purge, and one
@@ -1487,23 +1536,23 @@ export async function requestProcessor(path: string, cacheTTL: number, query = '
  * rendered under that source's label (and compared with ESPN as if it were that source) would
  * be a wrong answer, where the error is a true one.
  */
-async function requestProcess(gameId: string | number, cacheTTL: number, league: League, source?: string, fallbackOnRetired = false): Promise<string> {
+async function requestProcess(gameId: string | number, cacheTTL: number, league: League, source?: string, fallbackOnRetired = false, notFoundTtl = 1): Promise<string> {
     const path = `${league}/${gameId}/process`;
     try {
-        return await requestProcessor(path, cacheTTL, source ? `source=${encodeURIComponent(source)}` : '');
+        return await requestProcessor(path, cacheTTL, source ? `source=${encodeURIComponent(source)}` : '', undefined, notFoundTtl);
     } catch (e) {
         if (!source || !fallbackOnRetired || !(e instanceof ProcessorError) || e.status !== 400) throw e;
         console.warn(`source ${source} rejected for ${league} ${gameId}; processing from ESPN: ${e.message}`);
-        return requestProcessor(path, cacheTTL);
+        return requestProcessor(path, cacheTTL, '', undefined, notFoundTtl);
     }
 }
 
-async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string, fallbackOnRetired = false): Promise<ProcessedGame> {
+async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string, fallbackOnRetired = false, notFoundTtl = 1): Promise<ProcessedGame> {
     // `source` only ever arrives from the 'source-switch' preview path. It has
     // to reach the cache key as well as the URL: two sources' payloads for one
     // game are different responses, and a shared key would pin whichever
     // landed first for the whole TTL (a year on a completed game).
-    const content = await requestProcess(gameId, cacheTTL, league, source, fallbackOnRetired);
+    const content = await requestProcess(gameId, cacheTTL, league, source, fallbackOnRetired, notFoundTtl);
 
     try {
         const resp: ProcessedGame = JSON.parse(content);
