@@ -131,8 +131,9 @@ export const FLAGS: Record<string, FeatureState> = {
     'bball-poe': 'preview',
     // The player page's Impact panel (BB-G6) inside each league's flag: RAPM, adjusted RAPM, SPM, BPM, BOBAN and WAR with
     // their possessions from sdv-db's player_impact (NBA/WNBA). Off: no read and the player page is today's, byte for byte.
-    // Stays 'preview' until the producer ships player_impact's <m>_rank / <m>_pct (Akshay on #408); the Rank columns and
-    // shading then appear with no GOP change. College's panel: RAPM (ncaa_rapm, through ncaa_player_crosswalk) and box BPM.
+    // player_impact's <m>_rank / <m>_pct have shipped (#408, landed in #470): nba 2026 and 2027 and wnba 2026 each carry 16
+    // _rank columns with _pct twins, so the Rank columns and shading render with no GOP change. The flag is still held at
+    // 'preview' pending promotion. College's panel: RAPM (ncaa_rapm, through ncaa_player_crosswalk) and box BPM.
     'bball-impact': 'preview',
     // The player page's On/Off section (BB-G7) on /<league>/players/[id], inside each league's flag: his team on and
     // off the floor and his top teammates with and without him (sdv-db's player_on_off and player_wowy). College's rows
