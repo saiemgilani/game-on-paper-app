@@ -36,8 +36,9 @@ export const CACHE_KEY_PARAMS: ReadonlySet<string> = new Set([
 ]);
 
 /** Left exactly as requested: Astro's own endpoints (server islands, actions, images) and the private,
- *  uncached /admin and /pro trees, which read or forward query strings wholesale. */
-const UNKEYED = /^\/(_|admin(\/|$)|pro(\/|$))/;
+ *  uncached /admin and /pro trees, which read or forward query strings wholesale, also as the admin
+ *  preview surface's /preview/admin and /preview/pro (middleware.ts rewrites those onto the trees). */
+const UNKEYED = /^\/(_|(preview\/)?(admin|pro)(\/|$))/;
 
 /** The request the cached entrypoint sees: unread query parameters dropped, the rest in name order. */
 export function keyedRequest(request: Request): Request {

@@ -19,7 +19,7 @@ describe('keyedRequest', () => {
         expect(keyed('/game/401856682?flags=bball-poe:on&view=public&source=shield&preview_key=k')).toBe('/game/401856682?flags=bball-poe%3Aon&preview_key=k&source=shield&view=public');
     });
     test("leaves Astro's endpoints, /admin, /pro and non-GET requests as sent", () => {
-        for (const u of ['/_server-islands/X?e=1&p=2&z=3', '/admin/api/purge-game?ids=1&z=1', '/pro/portal?metric=rapm&z=1'])
+        for (const u of ['/_server-islands/X?e=1&p=2&z=3', '/admin/api/purge-game?ids=1&z=1', '/pro/portal?metric=rapm&z=1', '/preview/pro/portal?pos=QB&metric=rapm'])
             expect(keyed(u)).toBe(u);
         expect(keyed('/api/search?z=1', { method: 'POST', body: 'x' })).toBe('/api/search?z=1');
         expect(keyed('/nba')).toBe('/nba');
@@ -42,15 +42,17 @@ describe('CACHE_KEY_PARAMS covers every parameter src/ reads', () => {
     const names = new Map<string, string>();
     const read = /\b(?:searchParams|sp|q|query|params)\.(?:get|has|getAll)\(\s*['"]([\w-]+)['"]/g;
     const constant = /export const \w+_PARAM = ['"]([\w-]+)['"]/g;
+    // routes/basketball/scoreboard.ts reads through a `param(k)` wrapper
+    const wrapped = /\bparam\(\s*['"]([\w-]+)['"]/g;
     for (const f of scanned) {
         const text = readFileSync(f, 'utf8');
         // client-side reads (window.location) see the browser's URL, not the keyed one, and are skipped
-        for (const re of [read, constant]) for (const m of text.matchAll(re)) names.set(m[1], f.slice(src.length));
+        for (const re of [read, constant, wrapped]) for (const m of text.matchAll(re)) names.set(m[1], f.slice(src.length));
     }
     for (const m of readFileSync(join(src, 'basketball/shotFilters.ts'), 'utf8').matchAll(/'(shot_\w+)'/g)) names.set(m[1], 'basketball/shotFilters.ts');
 
     test('the scan finds the reads it is meant to (a broken regex would pass vacuously)', () => {
-        for (const n of ['season', 'awaySeason', 'shot_zone', 'order', 'preview_key', 'flags', 'conference', 'impact']) expect(names.has(n), n).toBe(true);
+        for (const n of ['season', 'awaySeason', 'shot_zone', 'order', 'preview_key', 'flags', 'conference', 'impact', 'date']) expect(names.has(n), n).toBe(true);
     });
     test('every scanned name is kept', () => {
         const missing = [...names].filter(([n]) => !CACHE_KEY_PARAMS.has(n)).map(([n, f]) => `${n} (${f})`);
