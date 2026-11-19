@@ -25,6 +25,14 @@ export const isBasketballFile = (f) => BASKETBALL_FILE.some((re) => re.test(f));
 /** A route (path, optional query, optional /preview prefix) served by a basketball page. */
 export const isBasketballRoute = (r) => /^(\/preview)?\/(nba|wnba|mbb|wbb)(\/|\?|$)/.test(r);
 
+/** Why a basketball route's page, now at `landedUrl`, is not this site's basketball page; null when it is (or the route is not basketball). */
+export function landedOffBasketball(route, landedUrl, base) {
+  if (!isBasketballRoute(route)) return null;
+  const landed = new URL(landedUrl);
+  if (landed.origin === new URL(base).origin && isBasketballRoute(landed.pathname + landed.search)) return null;
+  return `a basketball route landed on ${landed.origin}${landed.pathname}, not this site's basketball page`;
+}
+
 /**
  * @param {{ files: string[], routes: string[], defaultRoutes: string[] }} pr
  * @returns {string | null} why the evidence would not show the change, or null when it would

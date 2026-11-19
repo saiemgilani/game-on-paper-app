@@ -7,7 +7,7 @@ import { pageKey, slug, slugger } from '../scripts/lib/browser.mjs';
 // @ts-ignore -- plain .mjs script module, no type declarations
 import { serveStatic } from '../scripts/lib/serve-static.mjs';
 // @ts-ignore -- plain .mjs script module, no type declarations
-import { checkEvidenceRoutes, isBasketballFile, isBasketballRoute } from '../scripts/lib/evidence-routes.mjs';
+import { checkEvidenceRoutes, isBasketballFile, isBasketballRoute, landedOffBasketball } from '../scripts/lib/evidence-routes.mjs';
 
 // the exact filter pr-evidence.yml applies to the PR body's `Evidence routes:` tokens
 const workflow = readFileSync(new URL('../../.github/workflows/pr-evidence.yml', import.meta.url), 'utf8');
@@ -122,6 +122,13 @@ describe('basketball evidence-route check (pr-evidence.yml)', () => {
   });
   test('one basketball route is enough', () => {
     expect(checkEvidenceRoutes({ files: pr458, routes: ['/game/401856682', '/mbb'], defaultRoutes })).toBeNull();
+  });
+  test('a basketball route must end on this site and on a basketball page', () => {
+    const base = 'http://localhost:4321';
+    expect(landedOffBasketball('/nba/', `${base}/nba/roster`, base)).toBeNull();
+    expect(landedOffBasketball('/game/401856682', `${base}/`, base)).toBeNull();
+    expect(landedOffBasketball('/nba', `${base}/game/401856682`, base)).toMatch(/landed on http:\/\/localhost:4321\/game\/401856682/);
+    expect(landedOffBasketball('/nba', 'https://evil.example/nba', base)).toMatch(/evil\.example/);
   });
   test('a PR with no basketball files passes on any route', () => {
     expect(checkEvidenceRoutes({ files: ['astro/src/components/Header.astro'], routes: defaultRoutes, defaultRoutes })).toBeNull();

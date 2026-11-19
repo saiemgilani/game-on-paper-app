@@ -14,7 +14,7 @@
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { loadChromium, launchOptions, newThemedContext, DEVICES, SCHEMES, slugger } from './lib/browser.mjs';
-import { isBasketballRoute } from './lib/evidence-routes.mjs';
+import { landedOffBasketball } from './lib/evidence-routes.mjs';
 
 const BASE = process.env.BASE ?? 'http://localhost:4321';
 const OUT = process.env.OUT ?? 'img/visual';
@@ -72,12 +72,6 @@ try {
         try {
           const res = await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 });
           if (res && res.status() >= 400) failures.push(`${where}: HTTP ${res.status()}`);
-          // a basketball route that redirected off basketball would publish some other page
-          // (the football default, say) as this route's evidence
-          const landed = new URL(page.url());
-          if (isBasketballRoute(route) && (landed.origin !== new URL(BASE).origin || !isBasketballRoute(landed.pathname + landed.search))) {
-            failures.push(`${where}: a basketball route landed on ${landed.origin}${landed.pathname}, not this site's basketball page`);
-          }
           await page.waitForTimeout(1200); // let islands hydrate + charts draw
         } catch (e) {
           failures.push(`${where}: ${e.message}`);
@@ -98,6 +92,10 @@ try {
           }, EXPAND);
           await page.waitForTimeout(300); // let lazy islands inside the panel paint
         }
+        // checked last, right before the shot: a basketball route that redirected off basketball
+        // (even late, after networkidle) would publish some other page as this route's evidence
+        const off = landedOffBasketball(route, page.url(), BASE);
+        if (off) { failures.push(`${where}: ${off}`); continue; }
         const stem = join(OUT, `${slug(route)}-${device.name}-${colorScheme}`);
         try {
           await page.screenshot({ ...shotOpts, path: `${stem}.${ext}`, fullPage: true });
