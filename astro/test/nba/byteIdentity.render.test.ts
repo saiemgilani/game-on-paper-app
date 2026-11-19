@@ -217,6 +217,11 @@ describe('PR 0 byte-identity: every /nba route state', () => {
         const off = on.replace(/<meta property="og:image:alt" content="[^"]*">/, '').replaceAll(card, social);
         expect(withoutShare(off)).toBe(withoutShare(snapshotOf('team')));
     });
+    // the #470 stack merge left four copies of the season block on the team page (one per stacked branch); one, with every flag's props
+    test("team: 'bball-team-season' on renders the season block once", async () => {
+        const on = await page('team/[id].astro', '/nba/team/1610612751?season=2026', { id: '1610612751' }, { 'bball-team-season': true });
+        expect(on.match(/<section id="season"/g)).toHaveLength(1);
+    });
     test('game: an ingested final, from the Data API', async () => {
         games.schedule.mockResolvedValueOnce(api.schedule[0]);
         games.rows.mockResolvedValueOnce(api);
