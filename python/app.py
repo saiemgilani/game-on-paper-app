@@ -12,6 +12,10 @@ import orjson
 import os
 import logging
 import threading
+try:
+    import fcntl
+except ImportError:  # Windows: no cross-worker lock, so no cap (tests/test_old_game_slots.py skips)
+    fcntl = None
 import base64
 import urllib.parse
 import urllib.request
@@ -172,15 +176,53 @@ def one_heavy_at_a_time(func):
     @wraps(func)
     def run(*args, **kwargs):
         if not _HEAVY.acquire(blocking=False):
-            resp = jsonify({"status": "busy", "message": "Processor busy, retry shortly."})
-            resp.headers["Retry-After"] = "5"
-            return resp, 503
+            return _busy()
         try:
             return func(*args, **kwargs)
         finally:
             _HEAVY.release()
 
     return run
+
+
+def _busy():
+    resp = jsonify({"status": "busy", "message": "Processor busy, retry shortly."})
+    resp.headers["Retry-After"] = "5"
+    return resp, 503
+
+
+# A football game from before 2010 (an old-format ESPN id, 24x-29x for 2004-2009) may hold at most
+# OLD_GAME_SLOTS of this host's workers at once; past that it answers busy like one_heavy_at_a_time,
+# so a crawl of old games leaves the other workers to this season's. The 2026-11-16 crawl was ~4,800
+# old games from ~4,200 IPs, one request each: no per-IP limit at the Worker sees it, and a
+# crawler behind a desktop Chrome user agent is unlikely to honour robots.txt. A settled final is served from R2 before it
+# gets here (astro resources/python.ts processPlays), so only a cold game takes a slot.
+# One lock file per slot, flock'd: the kernel drops a lock when its worker dies, SIGKILL included.
+OLD_GAME_SLOTS = 2
+_OLD_ID_CEILING = 300_000_000
+_SLOT_DIR = os.getenv("GOP_SLOT_DIR", "/tmp")
+
+
+def old_games_capped(func):
+    @wraps(func)
+    def run(*args, game_id: int, **kwargs):
+        if fcntl is None or game_id >= _OLD_ID_CEILING:
+            return func(*args, game_id=game_id, **kwargs)
+        for k in range(OLD_GAME_SLOTS):
+            fd = os.open(os.path.join(_SLOT_DIR, f"gop-old-game-{k}.lock"), os.O_CREAT | os.O_RDWR, 0o600)
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                os.close(fd)
+                continue
+            try:
+                return func(*args, game_id=game_id, **kwargs)
+            finally:
+                os.close(fd)  # closing the descriptor releases its lock
+        return _busy()
+
+    return run
+
 
 
 # Flat columns sdv-py adds that the site rebuilds as nested objects below;
@@ -725,6 +767,7 @@ def _process_game(league: str, game_id: int, source: str | None = None):
 @app.route("/cfb/<int:game_id>/process", methods=["GET"])
 @require_auth_token
 @one_heavy_at_a_time
+@old_games_capped
 def process(game_id: int):
     return _process_game("cfb", game_id, request.args.get("source"))
 
@@ -732,6 +775,7 @@ def process(game_id: int):
 @app.route("/nfl/<int:game_id>/process", methods=["GET"])
 @require_auth_token
 @one_heavy_at_a_time
+@old_games_capped
 def process_nfl(game_id: int):
     return _process_game("nfl", game_id, request.args.get("source"))
 
