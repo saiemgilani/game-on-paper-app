@@ -243,7 +243,7 @@ jobs:
           else
             printf '<!-- pr-evidence -->\n## PR evidence: `%s`\n\nThe evidence run failed before producing results. See the [run log](%s).\n' \
               "${PR_HEAD_SHA:0:7}" "$RUN_URL" > "$body"
-            [ -f "$RUNNER_TEMP/route-check.txt" ] && { echo; cat "$RUNNER_TEMP/route-check.txt"; } >> "$body"
+            if [ -f "$RUNNER_TEMP/route-check.txt" ]; then { echo; cat "$RUNNER_TEMP/route-check.txt"; } >> "$body"; fi
           fi
 
       - name: Post or update the evidence comment
