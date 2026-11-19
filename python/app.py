@@ -5,7 +5,10 @@ from typing import Any
 from flask import Flask, request, jsonify, Response, g
 from datetime import datetime as dt, timezone as tz
 from sportsdataverse.cfb import CFBPlayProcess
-from sportsdataverse.cfb.cfb_game_rosters import _game_roster_entries
+try:  # private to sportsdataverse-py, which the image tracks at main: a rename must not stop the app
+    from sportsdataverse.cfb.cfb_game_rosters import _game_roster_entries
+except ImportError:  # the processor then fetches the roster itself, unbounded, as before app._bounded_roster
+    _game_roster_entries = None
 from sportsdataverse.errors import NoDataError
 import requests
 import time
@@ -419,10 +422,12 @@ class _DeadlineSession(requests.Session):
     def __init__(self, seconds: float):
         super().__init__()
         self.deadline = time.monotonic() + seconds
+        self.skipped = 0  # requests refused after the deadline: one per athlete left without a name
 
     def request(self, method, url, *args, **kwargs):
         left = self.deadline - time.monotonic()
         if left <= 0:
+            self.skipped += 1
             raise NoDataError(f"roster budget of {ROSTER_BUDGET_S:.0f}s spent before {url}")
         kwargs["timeout"] = min(kwargs.get("timeout") or left, left)
         return super().request(method, url, *args, **kwargs)
@@ -434,7 +439,13 @@ def _bounded_roster(game_id: int):
     fetching the roster again with no budget."""
     try:
         with _DeadlineSession(ROSTER_BUDGET_S) as session:  # closed after: its pool's sockets go with it
-            return _game_roster_entries(game_id, session=session)
+            roster = _game_roster_entries(game_id, session=session)
+        if session.skipped:
+            # this payload is cached like any other (a year at the edge for a final): the log names the games
+            logging.getLogger("root").warning(
+                f"roster for {game_id}: budget of {ROSTER_BUDGET_S:.0f}s spent, {session.skipped} athletes left unnamed"
+            )
+        return roster
     except Exception as e:
         logging.getLogger("root").warning(f"roster for {game_id} not fetched in budget: {e}")
         return []
@@ -480,7 +491,12 @@ def _process_game(league: str, game_id: int, source: str | None = None):
             with stage(timings, "espn_fetch"):
                 getattr(game, fetch_name)()
             # the processor's own condition for fetching a roster (cfb_pbp __attach_player_ids)
-            if isinstance(game, CFBPlayProcess) and game.join_participants and game.game_roster is None:
+            if (
+                _game_roster_entries is not None
+                and isinstance(game, CFBPlayProcess)
+                and game.join_participants
+                and game.game_roster is None
+            ):
                 with stage(timings, "roster_fetch"):
                     game.game_roster = _bounded_roster(game_id)
             served, fallback_used, processed_game = "espn", False, None
