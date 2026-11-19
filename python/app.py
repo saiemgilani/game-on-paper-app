@@ -5,6 +5,10 @@ from typing import Any
 from flask import Flask, request, jsonify, Response, g
 from datetime import datetime as dt, timezone as tz
 from sportsdataverse.cfb import CFBPlayProcess
+from sportsdataverse.cfb.cfb_game_rosters import _game_roster_entries
+from sportsdataverse.errors import NoDataError
+import requests
+import time
 from sportsdataverse.nfl import NFLPlayProcess
 from flask_compress import Compress
 import orjson
@@ -397,6 +401,45 @@ _PROCESSORS = {
 }
 
 
+# A CFB game before 2014 has no names on its roster entries, so sportsdataverse-py fetches every
+# athlete's Core v2 resource one by one for them (cfb_game_rosters._game_roster_entries): ~70
+# requests for a 2005 game, against 3 for a current one, with no cap on their total. Each request
+# is bounded (Dockerfile: 10 s x 4 tries + 20 s of waits = 60 s), but under ESPN throttling, which
+# a crawl of old games brings on, 70 of them run for an hour. They all share this budget; past it,
+# the remaining athletes are skipped at once and the roster keeps its ids, teams and positions.
+ROSTER_BUDGET_S = 15.0
+
+
+class _DeadlineSession(requests.Session):
+    """A session whose requests fail fast as ESPN "no data" once `seconds` have passed.
+
+    NoDataError is the one failure sportsdataverse's download() neither retries nor sleeps on, and
+    the athlete fan-out skips an athlete on it, so an exhausted budget costs nothing more."""
+
+    def __init__(self, seconds: float):
+        super().__init__()
+        self.deadline = time.monotonic() + seconds
+
+    def request(self, method, url, *args, **kwargs):
+        left = self.deadline - time.monotonic()
+        if left <= 0:
+            raise NoDataError(f"roster budget of {ROSTER_BUDGET_S:.0f}s spent before {url}")
+        kwargs["timeout"] = min(kwargs.get("timeout") or left, left)
+        return super().request(method, url, *args, **kwargs)
+
+
+def _bounded_roster(game_id: int):
+    """The roster CFBPlayProcess would fetch for itself, inside ROSTER_BUDGET_S. `[]` when even the
+    three team pages fail: the processor then joins names from the box score alone, instead of
+    fetching the roster again with no budget."""
+    try:
+        with _DeadlineSession(ROSTER_BUDGET_S) as session:  # closed after: its pool's sockets go with it
+            return _game_roster_entries(game_id, session=session)
+    except Exception as e:
+        logging.getLogger("root").warning(f"roster for {game_id} not fetched in budget: {e}")
+        return []
+
+
 def _fill_success(plays):
     """CFBPlayProcess emits `success`; NFLPlayProcess does not. Same definition
     as nflfastR (EPA > 0) so the two leagues' play filters agree."""
@@ -436,6 +479,10 @@ def _process_game(league: str, game_id: int, source: str | None = None):
             game.resolve_missing = False
             with stage(timings, "espn_fetch"):
                 getattr(game, fetch_name)()
+            # the processor's own condition for fetching a roster (cfb_pbp __attach_player_ids)
+            if isinstance(game, CFBPlayProcess) and game.join_participants and game.game_roster is None:
+                with stage(timings, "roster_fetch"):
+                    game.game_roster = _bounded_roster(game_id)
             served, fallback_used, processed_game = "espn", False, None
             dispatch_prov = None
         else:
