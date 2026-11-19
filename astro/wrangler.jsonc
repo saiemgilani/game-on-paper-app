@@ -34,6 +34,13 @@
 	"cache": {
 		"enabled": true
 	},
+	// Workers Caching keys on path + query string. The default entrypoint (src/worker.ts) runs uncached and
+	// hands each request to Site with the query parameters no page reads dropped (src/utils/cacheKey.ts);
+	// Site is the cached one. A purge reaches only its caller's entrypoint, so every purge runs inside Site.
+	"exports": {
+		"default": { "type": "worker", "cache": { "enabled": false } },
+		"Site": { "type": "worker", "cache": { "enabled": true } }
+	},
 	"kv_namespaces": [
 		{
 			"binding": "SESSION",

@@ -6,7 +6,7 @@ import { PURGED_FOR_INGEST_KEY, PURGE_SETTLE_MS, SUMMARY_PAGE_TAGS, purgeTarget 
 const { purge, sdvPurgeTarget, getCurrentScoreboard } = vi.hoisted(() => ({
     purge: vi.fn(), sdvPurgeTarget: vi.fn(), getCurrentScoreboard: vi.fn(),
 }));
-vi.mock('cloudflare:workers', () => ({ cache: { purge }, env: {} }));
+vi.mock('cloudflare:workers', () => ({ cache: { purge }, env: {}, WorkerEntrypoint: class {} }));
 vi.mock('@astrojs/cloudflare/handler', () => ({ handle: vi.fn() }));
 vi.mock('../src/resources/sdv', () => ({ sdvPurgeTarget }));
 vi.mock('../src/resources/espn', () => ({ getCurrentScoreboard }));
@@ -60,7 +60,7 @@ describe('the scheduled purge', () => {
     async function runCron() {
         const waits: Promise<unknown>[] = [];
         await worker.scheduled!({ scheduledTime: Date.UTC(2026, 10, 1) } as ScheduledController,
-            { SDV_API_CACHE: kv } as unknown as Env, { waitUntil: (p: Promise<unknown>) => waits.push(p) } as unknown as ExecutionContext);
+            { SDV_API_CACHE: kv } as unknown as Env, { waitUntil: (p: Promise<unknown>) => waits.push(p), exports: { Site: { purge: (tags: string[]) => purge({ tags }) } } } as unknown as ExecutionContext);
         await Promise.all(waits);
     }
     beforeEach(() => {
@@ -96,7 +96,7 @@ describe('the scheduled purge', () => {
         purge.mockResolvedValue({ success: true, errors: [] });
         const waits: Promise<unknown>[] = [];
         void worker.scheduled!({ scheduledTime: Date.UTC(2026, 10, 1) } as ScheduledController,
-            { SDV_API_CACHE: kv } as unknown as Env, { waitUntil: (p: Promise<unknown>) => waits.push(p) } as unknown as ExecutionContext);
+            { SDV_API_CACHE: kv } as unknown as Env, { waitUntil: (p: Promise<unknown>) => waits.push(p), exports: { Site: { purge: (tags: string[]) => purge({ tags }) } } } as unknown as ExecutionContext);
         await Promise.all(waits);
         expect(getCurrentScoreboard).toHaveBeenCalled();
         expect(waits).toHaveLength(1);
@@ -104,8 +104,8 @@ describe('the scheduled purge', () => {
     });
     it('is registered before the scoreboard refresh is awaited', () => {
         const src = readFileSync(new URL('../src/worker.ts', import.meta.url), 'utf8');
-        expect(src.indexOf('ctx.waitUntil(purgePagesAfterIngest(env))')).toBeGreaterThan(-1);
-        expect(src.indexOf('ctx.waitUntil(purgePagesAfterIngest(env))')).toBeLessThan(src.indexOf('await getCurrentScoreboard'));
+        expect(src.indexOf('ctx.waitUntil(purgePagesAfterIngest(env, ctx))')).toBeGreaterThan(-1);
+        expect(src.indexOf('ctx.waitUntil(purgePagesAfterIngest(env, ctx))')).toBeLessThan(src.indexOf('await getCurrentScoreboard'));
     });
 });
 
