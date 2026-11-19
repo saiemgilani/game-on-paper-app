@@ -19,11 +19,14 @@ export default async (page, base) => {
     await page.waitForFunction(() => [...document.querySelectorAll('astro-island[component-url*="ShareButton"]')].every((i) => !i.hasAttribute('ssr')), null, { timeout: 30_000 });
     await button.scrollIntoViewIfNeeded();
     await page.waitForTimeout(800);
-    const want = `https://gameonpaper.com${path}`;
+    // the page's canonical link (its ?season= dropped for the current season), as the button builds it
+    const want = await page.evaluate(() => document.querySelector('link[rel="canonical"]')?.href);
+    if (!want?.startsWith('https://gameonpaper.com/nba/')) throw new Error(`${path}: canonical link ${want}`);
     const last = (list) => page.evaluate((l) => window[l].at(-1), list);
 
     await button.click();
-    if ((await page.locator('.dropdown-menu').count()) !== 0) throw new Error(`${path}: the Share button opened a menu`);
+    // the island renders no menu without a spoiler-free URL (the header's own menus are not the Share button's)
+    if ((await page.locator('astro-island[component-url*="ShareButton"] .dropdown-menu').count()) !== 0) throw new Error(`${path}: the Share button has a menu`);
     if ((await last('__shared')) !== want) throw new Error(`${path}: shared ${await last('__shared')}, expected ${want}`);
     await page.waitForTimeout(800);
 
