@@ -3,3 +3,5 @@
 // Worker runtime; nothing else on `env` is defined.
 const kv = { get: async () => null, getWithMetadata: async () => ({ value: null, metadata: null }), put: async () => {}, delete: async () => {} };
 export const env: Record<string, any> = new Proxy({}, { get: (_, k) => (typeof k === 'string' && k.endsWith('_CACHE')) ? kv : undefined });
+/** src/worker.ts's Site entrypoint extends this; the runtime sets ctx and env */
+export class WorkerEntrypoint<E = unknown> { constructor(public ctx: any, public env: E) {} }
