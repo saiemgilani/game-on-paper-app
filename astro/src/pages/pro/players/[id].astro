@@ -26,7 +26,8 @@ interface ProProfile {
     }
     metrics: { key: string; label: string; value: number | null; n: number | null; n_label: string; qualified: boolean
         band_lo: number | null; band_mid: number | null; band_hi: number | null; delta_eb: number | null }[]
-    pff: { key: string; label: string; value: number | null; pct: number | null }[]
+    /** absent in a PFF-free build (gop-pro docs/contract.md), as is player.pff_position */
+    pff?: { key: string; label: string; value: number | null; pct: number | null }[]
     volume: { label: string; value: number }[]
     notes: { key: string; text: string }[]
     value?: {
@@ -185,7 +186,7 @@ const breadcrumbs = [
             </Fragment>
         </Panel>
 
-        {doc.pff.length > 0 && (
+        {doc.pff && doc.pff.length > 0 && (
         <Panel id="pro-pff" title="PFF Season" show={true} class="mb-md-3">
             <p slot="panel-subtitle" class="m-0 text-muted text-small">Grades from PFF, with a percentile among rated {p.pff_position ?? ''} (100+ snaps).</p>
             <Fragment slot="panel-body">
@@ -235,8 +236,8 @@ const breadcrumbs = [
         </div>
 
         <p class="text-muted text-small" id="pro-provenance">
-            Data {doc.snapshot}, rendered {doc.rendered}. Play-by-play from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>;
-            grades from PFF. How every number is made: <a href="/pro/methodology">methodology</a>.
+            Data {doc.snapshot}, rendered {doc.rendered}. Play-by-play from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>{doc.pff ? '; grades from PFF' : ''}.
+            How every number is made: <a href="/pro/methodology">methodology</a>.
         </p>
     </div>
 </GenericPage>
