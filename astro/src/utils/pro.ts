@@ -226,8 +226,9 @@ export interface BoardEntrant {
     status: string
     /** band midpoint percentile per metric key */
     band_mid: Record<string, number>
-    pff_grade: number | null
-    pff_grade_pct: number | null
+    /** absent in a PFF-free build (gop-pro docs/contract.md) */
+    pff_grade?: number | null
+    pff_grade_pct?: number | null
     has_profile: boolean
     /** gop-pro valuation as of the cycle's season (contract: portal board `value`); null when unmatched */
     value?: BoardValue | null
@@ -291,7 +292,7 @@ export function sortBoard(rows: BoardEntrant[], sort: BoardSort | undefined, met
             case 'entered': return e.entered;
             case 'stars': return e.stars;
             case 'band': return e.band_mid?.[metric!] ?? null;
-            case 'pff': return e.pff_grade;
+            case 'pff': return e.pff_grade ?? null;
             case 'prod': return e.value?.prod_usd ?? null;
             case 'next': return e.value?.proj ?? null;
             case 'projusd': return e.value?.proj_usd ?? null;

@@ -12,7 +12,12 @@
  */
 import GenericPage from '../../layouts/GenericPage.astro';
 import ProNav from '../../components/pro/ProNav.astro';
-import { PRO_SEASON } from '../../resources/pro';
+import { PRO_SEASON, proObject } from '../../resources/pro';
+
+// A PFF-free build says so in the players index (gop-pro docs/contract.md): then this page makes
+// no claim about PFF figures.
+const playersIndex = await proObject<{ grades?: boolean }>(`pro/${PRO_SEASON}/players/index.json`);
+const hasGrades = playersIndex?.grades !== false;
 ---
 <GenericPage title="Methodology | Game on Paper Pro" subtitle="How the Pro numbers are made" slug="/pro/methodology"
     breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Methodology', active: true }]} heading="Game on Paper Pro methodology">
@@ -75,6 +80,7 @@ import { PRO_SEASON } from '../../resources/pro';
                     mid-season mover that is his busier stint. The change is in the shrunk estimate.
                 </p>
 
+                {hasGrades ? (<Fragment>
                 <h2 class="fs-4 mt-4">PFF figures</h2>
                 <p>
                     Grades and charting figures are from <a href="https://www.pff.com">PFF</a>, used under license, and are
@@ -85,6 +91,9 @@ import { PRO_SEASON } from '../../resources/pro';
                     snaps, has no grade, and his profile says so. We sell analysis, not PFF's data: no raw PFF export
                     leaves the site, and the portal board's CSV carries derived columns only.
                 </p>
+                </Fragment>) : (
+                <p id="pro-no-grades">This edition carries no third-party grades: every figure comes from play-by-play.</p>
+                )}
 
                 <h2 class="fs-4 mt-4">Data sources and refresh</h2>
                 <ul>
@@ -93,7 +102,7 @@ import { PRO_SEASON } from '../../resources/pro';
                         ESPN college football passing, rushing, receiving, percentile and roster releases, plus its recruiting
                         and team portal releases.
                     </li>
-                    <li><strong>PFF season figures</strong>: through the SportsDataverse Data API, matched to ESPN player ids.</li>
+                    {hasGrades && <li><strong>PFF season figures</strong>: through the SportsDataverse Data API, matched to ESPN player ids.</li>}
                     <li>
                         <strong>Refresh</strong>: each build reads one pinned snapshot of those inputs, copied with checksums, so
                         a report can be rebuilt exactly. Every page and PDF shows its snapshot id and the date it was rendered.
