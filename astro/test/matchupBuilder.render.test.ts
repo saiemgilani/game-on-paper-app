@@ -97,3 +97,29 @@ describe('MatchupBuilder lists 2026 FBS newcomers (#333)', () => {
         expect(selected(selects[3], 2026)).toBe(true);
     });
 });
+
+// #338: the index is regenerated from cfb.team_summaries (scripts/update_teams.py; CI's
+// teams-index job fails when the two differ), and the builder defaults to the latest season.
+describe('the team index follows cfb.team_summaries (#338)', () => {
+    test('Western Kentucky starts in 2008: 2007 was an FCS transition year with no team_summaries row', async () => {
+        const { retrieveAllTeams } = await import('../src/utils/teams');
+        expect(retrieveAllTeams('cfb').find((t) => t.team_id === 98)?.seasons[0]).toBe(2008);
+    });
+
+    test('with no season in the URL the builder defaults to METRIC_YEAR, not 2025', async () => {
+        const { prepareMatchup } = await import('../src/routes/matchup');
+        const { METRIC_YEAR } = await import('../src/utils/constants');
+        for (const league of ['cfb', 'nfl'] as const) {
+            const astro = { locals: {}, url: new URL('https://gameonpaper.com/game/matchup'), cache: { set: () => {} }, response: { headers: new Headers() } };
+            const r = prepareMatchup(astro as any, league) as any;
+            expect([r.awaySeason, r.homeSeason]).toEqual([String(METRIC_YEAR), String(METRIC_YEAR)]);
+            if (league !== 'cfb') continue;
+            // and the builder, handed those, selects that season in both season selects
+            const { retrieveAllTeams } = await import('../src/utils/teams');
+            const { default: MatchupBuilder } = await import('../src/components/game/MatchupBuilder.svelte');
+            const html = await container.renderToString(MatchupBuilder, { props: { teamSeasons: retrieveAllTeams('cfb'), league, projection: null, ...r } });
+            const seasons = [...html.matchAll(/<select\b[^>]*>([\s\S]*?)<\/select>/g)].map((m) => m[1]).filter((_, i) => i % 2 === 1);
+            for (const sel of seasons) expect(sel).toMatch(new RegExp(`<option(?=[^>]*value="${METRIC_YEAR}")(?=[^>]*\\bselected\\b)[^>]*>`));
+        }
+    });
+});
