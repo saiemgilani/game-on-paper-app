@@ -788,3 +788,87 @@ describe('tiers and add-ons (spec v2 section 3)', () => {
         expect([...PRO_BUCKET.m.keys()]).toEqual([expect.stringMatching(/^quota\/dl\/[0-9a-f]{64}\.json$/)]);  // no address in the key
     }, 30_000);
 });
+
+describe('a PFF-free build (gop-pro GOP_PRO_PFF=0)', () => {
+    // gop-pro's PFF-free artifacts leave the PFF fields out (contract.md "PFF-sourced fields"):
+    // the same fixtures with those fields deleted, served from the in-memory bucket.
+    const fixture = (rel: string) => JSON.parse(readFileSync(new URL(`./fixtures/pro/2026/${rel}`, import.meta.url)).toString());
+    const notes = [{ key: 'no_grades', text: 'Grades are not included in this edition: every figure here is from play-by-play.' },
+        { key: 'no_value', text: 'Valuation is not included in this edition.' }];
+    const profile = (id: string) => {
+        const d = fixture(`players/${id}.json`);
+        delete d.pff;
+        delete d.player.pff_position;
+        return { ...d, value: null, notes: [...d.notes.filter((n: { key: string }) => n.key !== 'no_pff'), ...notes] };
+    };
+    const b = fixture('portal/board.json');
+    const objects: Record<string, unknown> = {
+        'pro/2026/players/1.json': profile('1'),
+        'pro/2026/players/2.json': profile('2'),
+        'pro/2026/players/index.json': { ...fixture('players/index.json'), grades: false },
+        'pro/2026/portal/board.json': {
+            ...b, scarcity: [], check: [],
+            entrants: b.entrants.map(({ pff_grade_key, pff_grade, pff_grade_pct, ...e }: Record<string, unknown>) => ({ ...e, value: null })),
+        },
+    };
+    const pro = { email: 'coach@example.edu', ...live };
+    const render = async (file: string, url: string, params: Record<string, string> = {}) => {
+        const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
+        const { default: Page } = await import(/* @vite-ignore */ file);
+        return container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, pro } as any });
+    };
+
+    test('every Pro page renders without a PFF field and says what is not included', async () => {
+        for (const [k, v] of Object.entries(objects)) await PRO_BUCKET.put(k, JSON.stringify(v));
+        try {
+            const qb = await render('../src/pages/pro/players/[id].astro', '/pro/players/1', { id: '1' });
+            expect(qb).toContain('Fixture Player');
+            expect(qb).toContain('data-note="no_grades"');
+            expect(qb).toContain('data-note="no_value"');
+            expect(qb).not.toMatch(/PFF/);
+            const board = await render('../src/pages/pro/portal.astro', '/pro/portal?sort=pff');
+            expect(board).toContain('id="pro-board-edition"');
+            expect(board).toContain('Grades and valuation are not included in this edition.');
+            expect(board).not.toMatch(/PFF|Proj\. \$/);
+            // every row still has one cell per header
+            const table = board.split('id="pro-board-table"')[1].split('</table>')[0];
+            const heads = table.split('</thead>')[0].match(/<th[\s>]/g)?.length ?? 0;
+            const rows = table.split('data-key=').slice(1);
+            expect(heads).toBe(8);  // Player Pos From Entered Stars Status Band, Save
+            expect(rows.length).toBeGreaterThan(0);
+            for (const row of rows) expect(row.split('</tr>')[0].match(/<td[\s>]/g)?.length).toBe(heads);
+            const compare = await render('../src/pages/pro/compare.astro', '/pro/compare?ids=1,2');
+            expect(compare).toContain('Fixture Player');  // not the empty state
+            expect(compare).toContain('Fixture Receiver');
+            expect(compare).not.toContain('id="pro-compare-value"');
+            expect(compare).not.toMatch(/PFF|[Vv]aluation/);
+            const { compareCsv } = await import('../src/utils/pro');
+            expect(compareCsv([profile('1'), profile('2')]).split('\r\n')[0]).not.toMatch(/unit|usd/);
+            const method = await render('../src/pages/pro/methodology.astro', '/pro/methodology');
+            expect(method).toContain('id="pro-no-grades"');
+            expect(method).not.toMatch(/PFF|id="valuation"|valuation\.pdf|Valuation \(below\)|Dollar values/);
+        } finally {
+            await PRO_BUCKET.delete(Object.keys(objects));
+        }
+        // the licensed build still shows its PFF copy, and its valuation even when no row is valued
+        const method = await render('../src/pages/pro/methodology.astro', '/pro/methodology');
+        expect(method).toContain('PFF figures');
+        expect(method).toContain('valuation methodology PDF');
+        const unvalued = ['1', '2'].map((id) => ({ ...fixture(`players/${id}.json`), value: null }));
+        await PRO_BUCKET.put('pro/2026/players/1.json', JSON.stringify(unvalued[0]));
+        await PRO_BUCKET.put('pro/2026/players/2.json', JSON.stringify(unvalued[1]));
+        await PRO_BUCKET.put('pro/2026/portal/board.json', JSON.stringify({
+            ...b, entrants: b.entrants.map((e: Record<string, unknown>) => ({ ...e, pff_grade: null, pff_grade_pct: null })),
+        }));
+        try {
+            expect(await render('../src/pages/pro/compare.astro', '/pro/compare?ids=1,2')).toContain('id="pro-compare-value"');
+            const { compareCsv } = await import('../src/utils/pro');
+            expect(compareCsv(unvalued).split('\r\n')[0]).toContain('projected_usd');
+            const board = await render('../src/pages/pro/portal.astro', '/pro/portal');
+            expect(board).toContain('PFF grade');
+            expect(board).not.toContain('id="pro-board-edition"');
+        } finally {
+            await PRO_BUCKET.delete(['pro/2026/players/1.json', 'pro/2026/players/2.json', 'pro/2026/portal/board.json']);
+        }
+    }, 60_000);
+});

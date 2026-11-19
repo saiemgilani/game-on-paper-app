@@ -52,6 +52,11 @@ const bandOf = (e: BoardEntrant): { v: number; label: string } | null => {
     return best ? { v: best[1], label: PRO_METRIC_LABELS[best[0]] ?? best[0] } : null;
 };
 const showRealized = all.some((e) => e.value?.realized);
+// A PFF-free build has no grade and no valuation on any row (gop-pro docs/contract.md): drop the
+// columns and say so once, instead of a column of dashes.
+// The grade key's presence marks the edition (a licensed board keeps it, null when unmatched).
+const showGrades = all.some((e) => e.pff_grade !== undefined);
+const showValue = showGrades || all.some((e) => e.value);
 const r0 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : String(Math.round(v)));
 const columns: [BoardSort | null, string, string][] = [
     ['name', 'Player', 'text-left'],
@@ -61,10 +66,12 @@ const columns: [BoardSort | null, string, string][] = [
     ['stars', 'Stars', 'text-center d-none d-md-table-cell'],
     [null, 'Status', 'text-center d-none d-md-table-cell'],
     ['band', f.metric ? 'Band' : 'Best band', 'text-center'],
-    ['pff', 'PFF grade', 'text-center'],
-    ['prod', 'Prod. $', 'text-center d-none d-md-table-cell'],
-    ['next', 'Next yr', 'text-center'],
-    ['projusd', 'Proj. $', 'text-center'],
+    ...(showGrades ? [['pff', 'PFF grade', 'text-center'] as [BoardSort, string, string]] : []),
+    ...(showValue ? [
+        ['prod', 'Prod. $', 'text-center d-none d-md-table-cell'],
+        ['next', 'Next yr', 'text-center'],
+        ['projusd', 'Proj. $', 'text-center'],
+    ] as [BoardSort, string, string][] : []),
     ...(showRealized ? [[null, 'Next season, actual', 'text-center d-none d-lg-table-cell'] as [null, string, string]] : []),
     [null, '', 'text-center'],
 ];
@@ -111,6 +118,9 @@ const columns: [BoardSort | null, string, string][] = [
                         ))}
                     </div>
                 )}
+                {(!showGrades || !showValue) && all.length > 0 && (
+                    <p class="text-muted text-small mb-2" id="pro-board-edition">{!showGrades && !showValue ? 'Grades and valuation are' : !showGrades ? 'Grades are' : 'Valuation is'} not included in this edition.</p>
+                )}
                 <div class="table-responsive" id="pro-board-table">
                     <table class="table table-sm">
                         <thead>
@@ -137,10 +147,10 @@ const columns: [BoardSort | null, string, string][] = [
                                     <td class="text-center numeral d-none d-md-table-cell" colspan="1">{e.stars ?? '—'}</td>
                                     <td class="text-center d-none d-md-table-cell" colspan="1">{e.status}</td>
                                     <td class="text-center numeral" colspan="1">{band ? <abbr title={band.label}>{roundNumber(band.v, 0, 0)}</abbr> : '—'}</td>
-                                    <td class="text-center numeral" colspan="1">{e.pff_grade == null ? '—' : roundNumber(e.pff_grade, 1, 1)}</td>
-                                    <td class="text-center numeral d-none d-md-table-cell" colspan="1">{formatUsd(e.value?.prod_usd)}</td>
-                                    <td class="text-center numeral text-nowrap" colspan="1">{e.value ? <span>{r0(e.value.proj)} <span class="text-muted text-small">({r0(e.value.proj_lo)}–{r0(e.value.proj_hi)})</span></span> : '—'}</td>
-                                    <td class="text-center numeral" colspan="1">{e.value ? <abbr title={e.value.at_destination ? 'Projected at his destination' : 'Projected at an average destination'}>{formatUsd(e.value.proj_usd)}</abbr> : '—'}</td>
+                                    {showGrades && <td class="text-center numeral" colspan="1">{e.pff_grade == null ? '—' : roundNumber(e.pff_grade, 1, 1)}</td>}
+                                    {showValue && <td class="text-center numeral d-none d-md-table-cell" colspan="1">{formatUsd(e.value?.prod_usd)}</td>}
+                                    {showValue && <td class="text-center numeral text-nowrap" colspan="1">{e.value ? <span>{r0(e.value.proj)} <span class="text-muted text-small">({r0(e.value.proj_lo)}–{r0(e.value.proj_hi)})</span></span> : '—'}</td>}
+                                    {showValue && <td class="text-center numeral" colspan="1">{e.value ? <abbr title={e.value.at_destination ? 'Projected at his destination' : 'Projected at an average destination'}>{formatUsd(e.value.proj_usd)}</abbr> : '—'}</td>}
                                     {showRealized && <td class="text-center numeral text-nowrap d-none d-lg-table-cell" colspan="1">{e.value?.realized ? <span>{r0(e.value.realized.pct)} / {formatUsd(e.value.realized.prod_usd)}</span> : '—'}</td>}
                                     <td class="text-center" colspan="1">
                                         <form method="post" action="/pro/board" class="mb-0">

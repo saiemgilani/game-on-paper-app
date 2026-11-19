@@ -60,7 +60,7 @@ bind = "0.0.0.0:5000"
 # worker (2026-10-29: the deploy health gate failed and cold game pages
 # 524'd). A spare thread answers those light requests. A gthread worker's
 # stuck thread is never reaped by `timeout`, so every ESPN call in the request
-# path must stay bounded: the roster is 3 requests (app._game_roster) and the
+# path must stay bounded: the roster shares one budget (app._bounded_roster) and the
 # Dockerfile caps sportsdataverse's timeout and retries.
 worker_class = "gthread"
 threads = 2                  # a spare for the light requests above
