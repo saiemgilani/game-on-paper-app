@@ -212,3 +212,42 @@ describe('team box and the CFB era rules', () => {
         expect(t.possession).toEqual({ text: '—', pbp: false });
     });
 });
+
+describe('review fixes (#490)', () => {
+    test('an interceptor with two same-initial pbp defenders credits neither', () => {
+        const espn = [
+            { team_id: 5, category: 'defensive', athlete_id: '1', athlete: 'Other Guy', totalTackles: 1, soloTackles: 1 },
+            { team_id: 5, category: 'interceptions', athlete_id: '2', athlete: 'Jalen Smith', interceptions: 1 },
+        ] as EspnPlayerRow[];
+        const pbp = ['J.Smith', 'J. Smith'].map((name, i) => ({ jersey: i, name, TOT: 2, SOLO: 2, AST: 0, TFL: 0, SACK: 0, INT: 0, PBU: 0, QBH: 0 }));
+        const out = officialDefense(pbp, espn, 5, new Map(), 'cfb');
+        expect(out.filter((r) => r.name.includes('Smith') && r.INT > 0).map((r) => r.name)).toEqual(['Jalen Smith']);
+    });
+
+    test('id-less ESPN returners stay separate lines', () => {
+        const espn = ['A One', 'B Two'].map((athlete) => ({ team_id: 1, category: 'kickReturns', athlete_id: null, athlete, kickReturns: 1, kickReturnYards: 20 })) as EspnPlayerRow[];
+        expect(officialReturners([], espn, 1).map((r: any) => r.player_name)).toEqual(['A One', 'B Two']);
+    });
+
+    test('a returner ESPN lists for kicks only, with pbp punt returns, stays marked', () => {
+        const espn = [{ team_id: 1, category: 'kickReturns', athlete_id: '7', athlete: 'Ret Man', kickReturns: 2, kickReturnYards: 40 }] as EspnPlayerRow[];
+        const [r] = officialReturners([{ pos_team: 1, player_id: '7', player_name: 'Ret Man', kick_returns: 1, punt_returns: 3, punt_return_yards: 12 }], espn, 1);
+        expect(r).toMatchObject({ kick_returns: 2, kick_return_yards: 40, punt_returns: 3, source: 'pbp' });
+    });
+
+    test('ESPN leaving out a long keeps the play-by-play long', () => {
+        const espn = [
+            { team_id: 1, category: 'kicking', athlete_id: '9', athlete: 'K', 'fieldGoalsMade/fieldGoalAttempts': '1/1' },
+            { team_id: 1, category: 'kickReturns', athlete_id: '7', athlete: 'R', kickReturns: 1, kickReturnYards: 30 },
+        ] as EspnPlayerRow[];
+        expect(officialKickers([{ pos_team: 1, player_id: '9', player_name: 'K', fg_long: 44 }], espn, 1)[0].fg_long).toBe(44);
+        expect(officialReturners([{ pos_team: 1, player_id: '7', player_name: 'R', kick_return_long: 30 }], espn, 1)[0].kick_return_long).toBe(30);
+    });
+
+    test('an ESPN-only kicker prints no made-up range breakdown', async () => {
+        const { kickerStatLine } = await import('../src/utils/players');
+        const espn = [{ team_id: 1, category: 'kicking', athlete_id: '9', athlete: 'K', 'fieldGoalsMade/fieldGoalAttempts': '2/3', longFieldGoalMade: 41 }] as EspnPlayerRow[];
+        const [k] = officialKickers([], espn, 1);
+        expect(kickerStatLine(k as any)).toBe('<span>FG: 2/3, 41 LNG</span>');
+    });
+});

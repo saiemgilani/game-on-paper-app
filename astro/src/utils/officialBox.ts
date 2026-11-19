@@ -224,7 +224,7 @@ function kickerLines<T extends Row>(rows: T[], espn: EspnPlayerRow[] | undefined
             const long = n(e.longFieldGoalMade);
             return {
                 fg_made: keepOr(fgm, r?.fg_made), fg_attempts: keepOr(fga, r?.fg_attempts),
-                fg_long: fgm ? long : (fgm === 0 ? null : r?.fg_long ?? null),
+                fg_long: fgm ? (long ?? r?.fg_long ?? null) : (fgm === 0 ? null : r?.fg_long ?? null),
                 xp_made: keepOr(xpm, r?.xp_made), xp_attempts: keepOr(xpa, r?.xp_attempts),
             };
         },
@@ -260,22 +260,28 @@ export function officialReturners<T extends Row>(rows: T[], espn: EspnPlayerRow[
         ...base,
         ...(k ? {
             kick_returns: n(k.kickReturns) ?? 0, kick_return_yards: n(k.kickReturnYards) ?? 0, kick_return_avg: n(k.yardsPerKickReturn) ?? 0,
-            kick_return_long: n(k.longKickReturn), kick_return_tds: n(k.kickReturnTouchdowns) ?? 0,
+            kick_return_long: n(k.longKickReturn) ?? base.kick_return_long ?? null, kick_return_tds: n(k.kickReturnTouchdowns) ?? 0,
         } : {}),
         ...(p ? {
             punt_returns: n(p.puntReturns) ?? 0, punt_return_yards: n(p.puntReturnYards) ?? 0, punt_return_avg: n(p.yardsPerPuntReturn) ?? 0,
-            punt_return_long: n(p.longPuntReturn), punt_return_tds: n(p.puntReturnTouchdowns) ?? 0,
+            punt_return_long: n(p.longPuntReturn) ?? base.punt_return_long ?? null, punt_return_tds: n(p.puntReturnTouchdowns) ?? 0,
         } : {}),
     });
     const out: Sourced<T>[] = rows.map((r) => {
         const k = kr.find(r.player_name, r.player_id);
         const p = pr.find(r.player_name, r.player_id);
-        // a returner ESPN lists in only one category takes that one; the other stays pbp
-        return (k || p) ? { ...(fold(r, k, p) as T), source: 'espn', espn_athlete_id: (k ?? p)!.athlete_id } : { ...r, source: 'pbp' };
+        // a returner ESPN lists in only one category takes that one; the other keeps its pbp
+        // counts, and the line is marked when those are not zero (ESPN would have listed them)
+        const pbpLeft = (!k && (n(r.kick_returns) ?? 0) > 0) || (!p && (n(r.punt_returns) ?? 0) > 0);
+        return (k || p)
+            ? { ...(fold(r, k, p) as T), source: pbpLeft ? 'pbp' : 'espn', espn_athlete_id: (k ?? p)!.athlete_id }
+            : { ...r, source: 'pbp' };
     });
     const left = new Map<string, { k?: EspnPlayerRow, p?: EspnPlayerRow }>();
-    for (const k of kr.unclaimed()) left.set(String(k.athlete_id), { ...left.get(String(k.athlete_id)), k });
-    for (const p of pr.unclaimed()) left.set(String(p.athlete_id), { ...left.get(String(p.athlete_id)), p });
+    // keyed by athlete id, or by name when ESPN gives none, so two id-less players stay two lines
+    const key = (e: EspnPlayerRow) => (e.athlete_id != null ? `id:${e.athlete_id}` : `name:${nameKey(e.athlete)}`);
+    for (const k of kr.unclaimed()) left.set(key(k), { ...left.get(key(k)), k });
+    for (const p of pr.unclaimed()) left.set(key(p), { ...left.get(key(p)), p });
     for (const { k, p } of left.values()) {
         const e = (k ?? p)!;
         const zero = { kick_returns: 0, punt_returns: 0 };
@@ -320,8 +326,12 @@ export function officialDefense<T extends DefenseLike>(rows: T[], espn: EspnPlay
     // Only when ESPN has a defensive box for the team: without one a tackle count of 0 would be made up.
     const hasDefense = new EspnCategory(espn, teamId, 'defensive').rows.length > 0;
     for (const i of hasDefense ? ints.rows : []) {
-        if (out.some((r) => String(r.espn_athlete_id) === String(i.athlete_id))) continue;
-        const pbp = out.find((r) => r.source === 'pbp' && (nameKey(r.name) === nameKey(i.athlete) || initialKey(r.name) === initialKey(i.athlete)));
+        if (i.athlete_id != null && out.some((r) => String(r.espn_athlete_id) === String(i.athlete_id))) continue;
+        // credit a pbp defender only when exactly one matches, by full name and then by initial
+        const open = out.filter((r) => r.source === 'pbp');
+        const unique = (hits: typeof open) => (hits.length === 1 ? hits[0] : undefined);
+        const pbp = unique(open.filter((r) => nameKey(r.name) === nameKey(i.athlete)))
+            ?? unique(open.filter((r) => initialKey(r.name) === initialKey(i.athlete)));
         if (pbp) {
             Object.assign(pbp, { INT: n(i.interceptions) ?? 0, source: 'espn', espn_athlete_id: i.athlete_id });
         } else {
