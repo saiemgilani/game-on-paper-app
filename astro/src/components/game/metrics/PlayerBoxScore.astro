@@ -5,6 +5,8 @@ import { defensiveBox, playerExtremes } from "../../../utils/defensiveBox";
 import { num, playerIdsByName } from "../../../utils/usage";
 import { blockerStatLine, kickerStatLine, passingStatLine, punterStatLine, receivingStatLine, returnerStatLine, rushingStatLine } from "../../../utils/players";
 import PlayerLink from "../../player/PlayerLink.astro";
+import { officialDefense, officialKickers, officialPassing, officialPunters, officialReceiving, officialReturners, officialRushing, type EspnPlayerRow } from "../../../utils/officialBox";
+import type { League } from "../../../utils/league";
 
 interface Props {
     pass: ProcessedPassingBoxScore[],
@@ -22,8 +24,15 @@ interface Props {
     box?: Partial<ProcessedBoxScore>,
     /** The game's season, so a player link opens on the season being watched. */
     season?: number,
+    /**
+     * ESPN's player box (`advBoxScore.espn_players`) for a full-game render: the
+     * counting stats come from it (utils/officialBox.ts). Omit for a quarter or half,
+     * which ESPN does not publish, to keep the play-by-play counts.
+     */
+    espn?: EspnPlayerRow[],
+    league?: League,
 }
-let { pass, rush, receiver, kickers, punters, blocks, returners, plays = [], teamId, box, season } = Astro.props;
+let { pass, rush, receiver, kickers, punters, blocks, returners, plays = [], teamId, box, season, espn, league = 'cfb' } = Astro.props;
 
 // These rows carry a player NAME and no id, so a link to the player page has to
 // borrow the id from the usage/tackle sections of the same box -- the same
@@ -43,7 +52,8 @@ const playerIds = teamId == null ? new Map<string, string>() : playerIdsByName(b
 const passBest = playerExtremes(plays, "passer_player_name", "yds_receiving");
 const rushBest = playerExtremes(plays, "rusher_player_name", "yds_rushed");
 const recvBest = playerExtremes(plays, "receiver_player_name", "yds_receiving");
-const defense = teamId == null ? [] : defensiveBox(plays, teamId);
+const official = teamId == null ? undefined : espn;
+const defense = teamId == null ? [] : officialDefense(defensiveBox(plays, teamId), official, teamId, playerIds, league);
 
 /** "22 LNG · 2.10 best · 1.4% best" — the extremes tail on a stat line. */
 const bestTail = (m: Map<string, any>, id: unknown, showLng = true): string => {
@@ -61,12 +71,21 @@ const bestTail = (m: Map<string, any>, id: unknown, showLng = true): string => {
 const airLine = (p: { aDOT?: number | null, CompAirYds?: number | null, YAC?: number | null }): string =>
     p.aDOT == null ? "" : `, ${p.CompAirYds ?? 0} air yds / ${p.YAC ?? 0} YAC, ${roundNumber(p.aDOT, 2, 1)} aDOT`;
 
-pass = pass.filter(p => (p.passer_player_name?.length ?? 0) > 0).toSorted((a, b) => b.EPA - a.EPA);
-rush = rush.filter(p => (p.rusher_player_name?.length ?? 0) > 0).toSorted((a, b) => b.EPA - a.EPA);
-receiver = receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0).toSorted((a, b) => b.EPA - a.EPA);
-kickers = (kickers || []).filter(p => (p.player_name?.length ?? 0) > 0).toSorted((a, b) => b.fg_epa - a.fg_epa);
-punters = (punters || []).filter(p => (p.player_name?.length ?? 0) > 0).toSorted((a, b) => b.punt_epa - a.punt_epa);
-returners = (returners || []).filter(p => (p.player_name?.length ?? 0) > 0).toSorted((a, b) => b.kick_return_yards - a.kick_return_yards);
+// Highest first; a line only ESPN lists has no EPA and goes last.
+const byDesc = (k: string) => (a: any, b: any) => (Number.isFinite(b[k]) ? b[k] : -1e9) - (Number.isFinite(a[k]) ? a[k] : -1e9);
+const tid = teamId ?? '';
+const passLines: any[] = officialPassing(pass.filter(p => (p.passer_player_name?.length ?? 0) > 0), official, tid, playerIds).toSorted(byDesc('EPA'));
+const rushLines: any[] = officialRushing(rush.filter(p => (p.rusher_player_name?.length ?? 0) > 0), official, tid, playerIds).toSorted(byDesc('EPA'));
+const recvLines: any[] = officialReceiving(receiver.filter(p => (p.receiver_player_name?.length ?? 0) > 0), official, tid, playerIds).toSorted(byDesc('EPA'));
+kickers = officialKickers((kickers || []).filter(p => (p.player_name?.length ?? 0) > 0), official, tid).toSorted(byDesc('fg_epa'));
+punters = officialPunters((punters || []).filter(p => (p.player_name?.length ?? 0) > 0), official, tid).toSorted(byDesc('punt_epa'));
+returners = officialReturners((returners || []).filter(p => (p.player_name?.length ?? 0) > 0), official, tid).toSorted(byDesc('kick_return_yards'));
+/** A pbp-only line on a full-game box: ESPN does not list the player. */
+const PBP_NOTE = "Not in ESPN's box score: counted from the play-by-play.";
+const fromPbp = (p: any) => p?.source === 'pbp';
+const idOf = (name: unknown, p: any) => p?.player_id ?? playerIds.get(String(name ?? '')) ?? p?.espn_athlete_id ?? undefined;
+/** An advanced (play-by-play) cell; a line only ESPN lists has none. */
+const adv = (v: unknown, scale: number, digits: number, suffix = '') => Number.isFinite(v) ? `${roundNumber((v as number) * scale, 2, digits)}${suffix}` : '\u2014';
 blocks = (blocks || []).filter(p => (p.player_name?.length ?? 0) > 0);
 
 ---
@@ -84,73 +103,73 @@ blocks = (blocks || []).filter(p => (p.player_name?.length ?? 0) > 0);
         </thead>
         <tbody>
             {
-                (pass.length > 0) && (
+                (passLines.length > 0) && (
                     <tr>
                         <td colspan="6" class="gt_group_heading" style="color: black; font-weight: bold;" title="Includes pass attempts and sacks.">Dropbacks</td>
                     </tr>
                 )
             }
             {
-                (pass.length > 0) && (pass.map((p) => (
+                (passLines.length > 0) && (passLines.map((p) => (
                     <Fragment>
                     <tr>
-                        <td style="text-align: left;"><PlayerLink id={playerIds.get(String(p.passer_player_name ?? ''))} season={season}>{p.passer_player_name}</PlayerLink></td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.YPA || 0, 2, 2)}</td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.SR * 100, 2, 0)}%</td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.WPA * 100, 2, 1)}%</td>
+                        <td style="text-align: left;"><PlayerLink id={idOf(p.passer_player_name, p)} season={season}>{p.passer_player_name}</PlayerLink></td>
+                        <td class="numeral" style="text-align: center;">{adv(p.YPA ?? (Number.isFinite(p.EPA) ? 0 : null), 1, 2)}</td>
+                        <td class="numeral" style="text-align: center;">{adv(p.EPA_per_Play, 1, 2)}</td>
+                        <td class="numeral" style="text-align: center;">{adv(p.EPA, 1, 2)}</td>
+                        <td class="numeral" style="text-align: center;">{adv(p.SR, 100, 0, '%')}</td>
+                        <td class="numeral" style="text-align: center;">{adv(p.WPA, 100, 1, '%')}</td>
                     </tr>
                     <tr class="stat-line-row">
-                        <td colspan="6" class="text-muted">{passingStatLine({ comp: p.Comp, att: p.Att, yards: p.Yds, tds: p.Pass_TD, ints: p.Int })}, {p.Sck} Sck, {roundNumber(p.exp_qbr, 2, 1)} xQBR<span title="Air yards on completions / yards after catch; aDOT = average depth of target (air yards per attempt)">{airLine(p)}</span><span title="Longest completion, and this passer's single best play by EPA and by win probability added">{bestTail(passBest, p.passer_player_name)}</span></td>
+                        <td colspan="6" class="text-muted">{passingStatLine({ comp: p.Comp, att: p.Att, yards: p.Yds, tds: p.Pass_TD, ints: p.Int })}, {p.Sck ?? 0} Sck{Number.isFinite(p.exp_qbr) && `, ${roundNumber(p.exp_qbr, 2, 1)} xQBR`}{fromPbp(p) && <span title={PBP_NOTE}> (play-by-play)</span>}<span title="Air yards on completions / yards after catch; aDOT = average depth of target (air yards per attempt)">{airLine(p)}</span><span title="Longest completion, and this passer's single best play by EPA and by win probability added">{bestTail(passBest, p.passer_player_name)}</span></td>
                     </tr>
                     </Fragment>
                 )))
             }
             {
-                (rush.length > 0) && (
+                (rushLines.length > 0) && (
                     <tr>
                         <td colspan="6" class="gt_group_heading" style="color: black; font-weight: bold;">Rush attempts</td>
                     </tr>
                 )
             }
             {
-                (rush.length > 0) && (rush.map((p) => (
+                (rushLines.length > 0) && (rushLines.map((p) => (
                     <Fragment>
                     <tr>
-                        <td style="text-align: left;"><PlayerLink id={playerIds.get(String(p.rusher_player_name ?? ''))} season={season}>{p.rusher_player_name}</PlayerLink></td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.YPC || 0, 2, 2)}</td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.SR * 100, 2, 0)}%</td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.WPA * 100, 2, 1)}%</td>
+                        <td style="text-align: left;"><PlayerLink id={idOf(p.rusher_player_name, p)} season={season}>{p.rusher_player_name}</PlayerLink></td>
+                        <td class="numeral" style="text-align: center;">{adv(p.YPC ?? (Number.isFinite(p.EPA) ? 0 : null), 1, 2)}</td>
+                        <td class="numeral" style="text-align: center;">{adv(p.EPA_per_Play, 1, 2)}</td>
+                        <td class="numeral" style="text-align: center;">{adv(p.EPA, 1, 2)}</td>
+                        <td class="numeral" style="text-align: center;">{adv(p.SR, 100, 0, '%')}</td>
+                        <td class="numeral" style="text-align: center;">{adv(p.WPA, 100, 1, '%')}</td>
                     </tr>
                     <tr class="stat-line-row">
-                        <td colspan="6" class="text-muted">{rushingStatLine({ carries: p.Car, yards: p.Yds, tds: p.Rush_TD })}, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Longest carry, and this rusher's single best play by EPA and by win probability added">{bestTail(rushBest, p.rusher_player_name)}</span></td>
+                        <td colspan="6" class="text-muted">{rushingStatLine({ carries: p.Car, yards: p.Yds, tds: p.Rush_TD })}, {p.Fum ?? 0} Fum ({p.Fum_Lost ?? 0} lost){fromPbp(p) && <span title={PBP_NOTE}> (play-by-play)</span>}<span title="Longest carry, and this rusher's single best play by EPA and by win probability added">{bestTail(rushBest, p.rusher_player_name)}</span></td>
                     </tr>
                     </Fragment>
                 )))
             }
             {
-                (receiver.length > 0) && (
+                (recvLines.length > 0) && (
                     <tr>
                         <td colspan="6" class="gt_group_heading" style="color: black; font-weight: bold;">Pass targets</td>
                     </tr>
                 )
             }
             {
-                (receiver.length > 0) && (receiver.map((p) => (
+                (recvLines.length > 0) && (recvLines.map((p) => (
                     <Fragment>
                     <tr>
-                        <td style="text-align: left;"><PlayerLink id={playerIds.get(String(p.receiver_player_name ?? ''))} season={season}>{p.receiver_player_name}</PlayerLink></td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.YPT || 0, 2, 2)}</td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.EPA_per_Play, 2, 2)}</td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.EPA, 2, 2)}</td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.SR * 100, 2, 0)}%</td>
-                        <td class="numeral" style="text-align: center;">{roundNumber(p.WPA * 100, 2, 1)}%</td>
+                        <td style="text-align: left;"><PlayerLink id={idOf(p.receiver_player_name, p)} season={season}>{p.receiver_player_name}</PlayerLink></td>
+                        <td class="numeral" style="text-align: center;">{adv(p.YPT ?? (Number.isFinite(p.EPA) ? 0 : null), 1, 2)}</td>
+                        <td class="numeral" style="text-align: center;">{adv(p.EPA_per_Play, 1, 2)}</td>
+                        <td class="numeral" style="text-align: center;">{adv(p.EPA, 1, 2)}</td>
+                        <td class="numeral" style="text-align: center;">{adv(p.SR, 100, 0, '%')}</td>
+                        <td class="numeral" style="text-align: center;">{adv(p.WPA, 100, 1, '%')}</td>
                     </tr>
                     <tr class="stat-line-row">
-                        <td colspan="6" class="text-muted">{receivingStatLine({ receptions: p.Rec, targets: p.Tar, yards: p.Yds, tds: p.Rec_TD })}, {p.Fum} Fum ({p.Fum_Lost} lost)<span title="Air yards on catches / yards after catch; aDOT = average depth of target (air yards per target)">{airLine(p)}</span><span title="Longest catch, and this receiver's single best play by EPA and by win probability added">{bestTail(recvBest, p.receiver_player_name)}</span></td>
+                        <td colspan="6" class="text-muted">{receivingStatLine({ receptions: p.Rec, targets: p.Tar, yards: p.Yds, tds: p.Rec_TD })}, {p.Fum ?? 0} Fum ({p.Fum_Lost ?? 0} lost){fromPbp(p) && <span title={PBP_NOTE}> (play-by-play)</span>}<span title="Air yards on catches / yards after catch; aDOT = average depth of target (air yards per target)">{airLine(p)}</span><span title="Longest catch, and this receiver's single best play by EPA and by win probability added">{bestTail(recvBest, p.receiver_player_name)}</span></td>
                     </tr>
                     </Fragment>
                 )))
@@ -166,7 +185,7 @@ blocks = (blocks || []).filter(p => (p.player_name?.length ?? 0) > 0);
                 (defense.length > 0) && (defense.map((d) => (
                     <Fragment>
                     <tr>
-                        <td style="text-align: left;"><PlayerLink id={playerIds.get(String(d.name))} season={season}>{d.name}</PlayerLink></td>
+                        <td style="text-align: left;"><PlayerLink id={idOf(d.name, d)} season={season}>{d.name}</PlayerLink></td>
                         <td class="numeral" style="text-align: center;">&mdash;</td>
                         <td class="numeral" style="text-align: center;">&mdash;</td>
                         <td class="numeral" style="text-align: center;">&mdash;</td>
@@ -174,7 +193,7 @@ blocks = (blocks || []).filter(p => (p.player_name?.length ?? 0) > 0);
                         <td class="numeral" style="text-align: center;">&mdash;</td>
                     </tr>
                     <tr class="stat-line-row">
-                        <td colspan="6" class="text-muted">{d.TOT} tackle{(d.TOT == 1) ? "" : "s"} ({d.SOLO} solo, {d.AST} ast){(d.TFL > 0) ? `, ${d.TFL} TFL` : ""}{(d.SACK > 0) ? `, ${d.SACK} sack` : ""}{(d.INT > 0) ? `, ${d.INT} INT` : ""}{(d.PBU > 0) ? `, ${d.PBU} PBU` : ""}{(d.QBH > 0) ? `, ${d.QBH} QB hurr` : ""}</td>
+                        <td colspan="6" class="text-muted">{d.TOT} tackle{(d.TOT == 1) ? "" : "s"} ({d.SOLO} solo, {d.AST} ast){(d.TFL > 0) ? `, ${d.TFL} TFL` : ""}{(d.SACK > 0) ? `, ${d.SACK} sack` : ""}{(d.INT > 0) ? `, ${d.INT} INT` : ""}{(d.PBU > 0) ? `, ${d.PBU} PBU` : ""}{(d.QBH > 0) ? `, ${d.QBH} ${league === 'nfl' && d.source === 'espn' ? 'QB hit' : 'QB hurr'}` : ""}{fromPbp(d) && <span title={PBP_NOTE}> (play-by-play)</span>}</td>
                     </tr>
                     </Fragment>
                 )))
@@ -188,7 +207,7 @@ blocks = (blocks || []).filter(p => (p.player_name?.length ?? 0) > 0);
             }
             {punters.map((p: any) => (
                 <tr>
-                    <td><PlayerLink id={p.player_id ?? playerIds.get(String(p.player_name ?? ''))} season={season}>{p.player_name}</PlayerLink></td>
+                    <td><PlayerLink id={idOf(p.player_name, p)} season={season}>{p.player_name}</PlayerLink></td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                     <td class="numeral" style="text-align: center;">{num(p.punt_epa, 2)}</td>
@@ -196,7 +215,7 @@ blocks = (blocks || []).filter(p => (p.player_name?.length ?? 0) > 0);
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                 </tr>
                 <tr class="stat-line-row">
-                    <td colspan="6" class="text-muted"><Fragment set:html={punterStatLine(p)} /></td>
+                    <td colspan="6" class="text-muted"><Fragment set:html={punterStatLine(p)} />{fromPbp(p) && <span title={PBP_NOTE}> (play-by-play)</span>}</td>
                 </tr>
             ))}
             {
@@ -208,16 +227,16 @@ blocks = (blocks || []).filter(p => (p.player_name?.length ?? 0) > 0);
             }
             {kickers.map((k: any) => (
                 <tr>
-                    <td><PlayerLink id={k.player_id ?? playerIds.get(String(k.player_name ?? ''))} season={season}>{k.player_name}</PlayerLink></td>
+                    <td><PlayerLink id={idOf(k.player_name, k)} season={season}>{k.player_name}</PlayerLink></td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
-                    <td class="numeral" style="text-align: center;">{num((k.fg_epa ?? 0) + (k.kickoff_epa ?? 0), 2)}</td>
+                    <td class="numeral" style="text-align: center;">{(k.fg_epa == null && k.kickoff_epa == null) ? '\u2014' : num((k.fg_epa ?? 0) + (k.kickoff_epa ?? 0), 2)}</td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                 </tr>
                 <tr class="stat-line-row">
                     <td colspan="6" class="text-muted">
-                        <Fragment set:html={kickerStatLine(k)} />
+                        <Fragment set:html={kickerStatLine(k)} />{fromPbp(k) && <span title={PBP_NOTE}> (play-by-play)</span>}
                     </td>
                 </tr>
             ))}
@@ -230,16 +249,16 @@ blocks = (blocks || []).filter(p => (p.player_name?.length ?? 0) > 0);
             }
             {returners.map((r: any) => (
                 <tr>
-                    <td><PlayerLink id={r.player_id ?? playerIds.get(String(r.player_name ?? ''))} season={season}>{r.player_name}</PlayerLink></td>
+                    <td><PlayerLink id={idOf(r.player_name, r)} season={season}>{r.player_name}</PlayerLink></td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
-                    <td class="numeral" style="text-align: center;">{num((r.kick_return_epa ?? 0) + (r.punt_return_epa ?? 0), 2)}</td>
+                    <td class="numeral" style="text-align: center;">{(r.kick_return_epa == null && r.punt_return_epa == null) ? '\u2014' : num((r.kick_return_epa ?? 0) + (r.punt_return_epa ?? 0), 2)}</td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                     <td class="numeral" style="text-align: center;">&mdash;</td>
                 </tr>
                 <tr class="stat-line-row">
                     <td colspan="6" class="text-muted">
-                        <Fragment set:html={returnerStatLine(r)} />
+                        <Fragment set:html={returnerStatLine(r)} />{fromPbp(r) && <span title={PBP_NOTE}> (play-by-play)</span>}
                     </td>
                 </tr>
             ))}

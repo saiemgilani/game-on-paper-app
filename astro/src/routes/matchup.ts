@@ -4,6 +4,7 @@
  * the template live in `components/routes/MatchupRoute.astro`.
  */
 import type { AstroGlobal } from 'astro';
+import { METRIC_YEAR } from '../utils/constants';
 import { LEAGUES, type League } from '../utils/league';
 
 export interface MatchupParams {
@@ -25,9 +26,12 @@ export function prepareMatchup(Astro: AstroGlobal, league: League): MatchupPrep 
         return { notFound: true };
     }
     const query = Astro.url.searchParams;
-    const awaySeason = query.get("awaySeason") || "2025";
+    // no season in the URL: the latest season the season tables cover, the year the
+    // leaderboards and the sitemap read CURRENT_YEAR through (#338: was a literal 2025)
+    const season = String(METRIC_YEAR);
+    const awaySeason = query.get("awaySeason") || season;
     const awayTeamId = query.get("awayTeamId") || (league === 'nfl' ? "12" : "52");
-    const homeSeason = query.get("homeSeason") || "2025";
+    const homeSeason = query.get("homeSeason") || season;
     const homeTeamId = query.get("homeTeamId") || (league === 'nfl' ? "2" : "59");
     const canDisplayMatchupView = !!(awaySeason && homeSeason && awayTeamId && homeTeamId);
     if (canDisplayMatchupView) {

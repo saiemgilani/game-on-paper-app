@@ -2,6 +2,7 @@
 import { parseSpan } from '../../../utils/span';
 import TeamMetricsTable from './TeamMetricsTable.svelte';
 import BinionBoxScore from './BinionBoxScore.svelte';
+import { OFFICIAL_TEAM_ROWS } from '../../../utils/officialBox';
 
 const EMPTY_PROCESSED_BOX_SCORE = {
   defensive: [],
@@ -14,7 +15,8 @@ const EMPTY_PROCESSED_BOX_SCORE = {
   turnover: [],
 }
 
-const { season, advBoxScoreSpans, league, percentiles, teamIds } = $props();
+// officialTeam: utils/officialBox.ts officialTeamBox rows (the 'official-team-box' flag), full game only
+const { season, advBoxScoreSpans, league, percentiles, teamIds, officialTeam = null } = $props();
 const availableSpans = Object.keys(advBoxScoreSpans).map(parseSpan).filter(p => !!p)
 let selectedSpan = $state("all");
 let selectedBoxScore = $derived(advBoxScoreSpans[selectedSpan] || EMPTY_PROCESSED_BOX_SCORE)
@@ -36,6 +38,20 @@ function onChangeSpan(e: Event) {
 <div class="row">
     <div class="col-md-4 ms-sm-auto col-lg-4">
         <BinionBoxScore season={season} advancedBoxScore={selectedBoxScore} percentiles={percentiles} league={league} span={selectedSpan} />
+        {#if officialTeam && selectedSpan == "all"}
+        <TeamMetricsTable
+            title="Box Score"
+            league={league}
+            teamKey='pos_team'
+            teamIds={teamIds}
+            season={season}
+            columns={OFFICIAL_TEAM_ROWS.map(([k]) => `official.${k}`)}
+            box={{ official: officialTeam }}
+            useSuffix={false}
+            decimalPoints={0}
+            caption={officialTeam.some((r: any) => OFFICIAL_TEAM_ROWS.some(([k]) => r[k]?.pbp)) ? "From ESPN's box score. *Counted from the play-by-play." : "From ESPN's box score."}
+        />
+        {/if}
         <TeamMetricsTable 
             title="Expected Points"
             league={league}

@@ -1778,3 +1778,20 @@ Live Data API reads, unedited apart from the column selection.
 **Used by:** `test/nba/impactScatter.test.ts`.
 
 **To regenerate:** repeat the two reads (season filter, `limit=40`) and write each response's `data` array.
+
+## `official-box-2026.json.gz`
+
+Real `advBoxScore` sections for two 2026 games: 401856889 Alabama at Vanderbilt (CFB, 2026-11-14) and
+401873054 Buffalo at the Jets (NFL, 2026-11-15), the two worst football games in the 2026-11-19
+box-accuracy audit (QB sacks booked as rushes in the NCAA box; an interception booked as a completion).
+
+**Provenance (2026-11-19):** `CFBPlayProcess` / `NFLPlayProcess` at sportsdataverse-py `485a7c6b12` (the
+commit `python/uv.lock` pins) with `join_participants=True`, `resolve_missing=False`, then
+`run_processing_pipeline()["advBoxScore"]`, which is the processor's own path (`python/app.py`). Kept:
+`pass`, `rush`, `receiver`, `st_kickers`, `st_punters`, `st_returners`, `espn_team` and `espn_players`
+whole; `team`, `team_usage`, `turnover` and `player_usage` cut to the columns the official box reads.
+Keyed `cfb_401856889` / `nfl_401873054`. No hand edits.
+
+**Used by:** `test/officialBox.test.ts`, `test/officialBox.render.test.ts`.
+
+**To regenerate:** rerun the two processors on the same ids and keep the same sections and columns.

@@ -334,7 +334,7 @@ export function kickerStatLine(k: { fg_attempts: number, fg_made: number, fg_lon
     let content: string[] = []
     const fgByRange = (k: any) => `${madeOf(k.fg_0_39_made, k.fg_0_39_attempts)} / ${madeOf(k.fg_40_49_made, k.fg_40_49_attempts)} / ${madeOf(k.fg_50_plus_made, k.fg_50_plus_attempts)}`;
     if (k.fg_attempts) {
-        content = content.concat(`FG: ${madeOf(k.fg_made, k.fg_attempts)} <abbr title="Field goals by range: 0-39 / 40-49 / 50+.">(${fgByRange(k)})</abbr>${k.fg_long != null ? `, ${k.fg_long} LNG` : ''}${!!k.fg_blocked && k.fg_blocked > 0 ? `, ${k.fg_blocked} blocked` : ''}`)
+        content = content.concat(`FG: ${madeOf(k.fg_made, k.fg_attempts)}${k.fg_0_39_attempts == null ? '' : ` <abbr title="Field goals by range: 0-39 / 40-49 / 50+.">(${fgByRange(k)})</abbr>`}${k.fg_long != null ? `, ${k.fg_long} LNG` : ''}${!!k.fg_blocked && k.fg_blocked > 0 ? `, ${k.fg_blocked} blocked` : ''}`)
     }
     if (k.xp_attempts) {
         content = content.concat(`XP: ${madeOf(k.xp_made, k.xp_attempts)}`)

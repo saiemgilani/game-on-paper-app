@@ -4,6 +4,7 @@ import cacheGenerationFile from '../../../python/CACHE_GENERATION?raw'
 import type { ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNStatus, ESPNTeam, ESPNWinProbability } from "./espn"
 import { callerHeaders, wrappedFetch } from "../utils/telemetry"
 import { type League } from "../utils/league"
+import type { EspnPlayerRow, EspnTeamRow } from "../utils/officialBox"
 import { CARD_MAX_AGE, cardState, type CardState, type CardVariant } from "../utils/shareTags"
 
 export interface ProcessedModelInput {
@@ -562,6 +563,10 @@ export interface ProcessedBoxScore {
   st_returners?: ProcessedSTReturner[]
   st_blocks?: ProcessedSTBlock[]
   st_team?: ProcessedSTTeam[]
+  // ESPN's own summary box, parsed by sportsdataverse.football.espn_box: the source of
+  // the game page's counting stats (utils/officialBox.ts). Full-game only.
+  espn_team?: EspnTeamRow[]
+  espn_players?: EspnPlayerRow[]
 }
 
 /** Shared usage counters: one row per (team, player) or (team, position group). */
