@@ -251,3 +251,48 @@ describe('review fixes (#490)', () => {
         expect(kickerStatLine(k as any)).toBe('<span>FG: 2/3, 41 LNG</span>');
     });
 });
+
+describe('review fixes, round 2 (#490)', () => {
+    test('a matched line whose ESPN stat is blank keeps the pbp count and is marked', () => {
+        const espn = [{ team_id: 1, category: 'passing', athlete_id: '3', athlete: 'Q B', 'completions/passingAttempts': '10/20', passingYards: '--', passingTouchdowns: 1, interceptions: 0 }] as EspnPlayerRow[];
+        const [p] = officialPassing([{ pos_team: 1, passer_player_name: 'Q B', Comp: 9, Att: 20, Yds: 150, Pass_TD: 1, Int: 0 }], espn, 1, new Map());
+        expect([p.Comp, p.Yds, p.source]).toEqual([10, 150, 'pbp']);
+        const [full] = officialPassing([{ pos_team: 1, passer_player_name: 'Q B', Comp: 9 }], [{ ...espn[0], passingYards: 140 }], 1, new Map());
+        expect(full.source).toBe('espn');
+    });
+
+    test('a split punter keeps the net average of the row with more pbp punts, in either order', () => {
+        const a = { pos_team: 1, player_id: '5', player_name: 'Pete Punter', punts: 1, punt_net_avg: 30, punt_epa: -0.1 };
+        const b = { pos_team: 1, player_id: null, player_name: 'P.Punter', punts: 4, punt_net_avg: 41, punt_epa: 0.4 };
+        const espn = [{ team_id: 1, category: 'punting', athlete_id: '5', athlete: 'Pete Punter', punts: 5, puntYards: 220, grossAvgPuntYards: 44, touchbacks: 0, puntsInside20: 2, longPunt: 52 }] as EspnPlayerRow[];
+        for (const rows of [[a, b], [b, a]]) {
+            const out = officialPunters(rows, espn, 1);
+            expect(out).toHaveLength(1);
+            expect(out[0]).toMatchObject({ punts: 5, punt_net_avg: 41 });
+            expect(out[0].punt_epa).toBeCloseTo(0.3);
+        }
+    });
+
+    test('a return stat ESPN leaves blank keeps the pbp value, marked; an ESPN zero stays zero', () => {
+        const k = { team_id: 1, category: 'kickReturns', athlete_id: '7', athlete: 'R', kickReturns: 2, kickReturnYards: null, yardsPerKickReturn: 0, kickReturnTouchdowns: 0 } as EspnPlayerRow;
+        const [r] = officialReturners([{ pos_team: 1, player_id: '7', player_name: 'R', kick_returns: 2, kick_return_yards: 40, kick_return_avg: 20 }], [k], 1);
+        expect([r.kick_return_yards, r.kick_return_avg, r.source]).toEqual([40, 0, 'pbp']);
+    });
+
+    test('id-less defenders are not all credited with one id-less interception', () => {
+        const espn = [
+            { team_id: 5, category: 'defensive', athlete_id: null, athlete: 'Ann One', totalTackles: 3, soloTackles: 3 },
+            { team_id: 5, category: 'defensive', athlete_id: null, athlete: 'Bob Two', totalTackles: 2, soloTackles: 2 },
+            { team_id: 5, category: 'interceptions', athlete_id: null, athlete: 'Bob Two', interceptions: 1 },
+        ] as EspnPlayerRow[];
+        const out = officialDefense([], espn, 5, new Map(), 'cfb');
+        expect(out.map((r) => [r.name, r.INT])).toEqual([['Ann One', 0], ['Bob Two', 1]]);
+    });
+
+    test('a defensive stat ESPN leaves out keeps the pbp count instead of zero', () => {
+        const espn = [{ team_id: 5, category: 'defensive', athlete_id: '1', athlete: 'Dee Fender', soloTackles: 2, sacks: 0 }] as EspnPlayerRow[];
+        const pbp = [{ jersey: 1, name: 'D.Fender', TOT: 4, SOLO: 2, AST: 2, TFL: 1, SACK: 1, INT: 0, PBU: 1, QBH: 0 }];
+        const [d] = officialDefense(pbp, espn, 5, new Map(), 'cfb');
+        expect(d).toMatchObject({ TOT: 4, SOLO: 2, AST: 2, TFL: 1, SACK: 0, PBU: 1, source: 'pbp' });
+    });
+});

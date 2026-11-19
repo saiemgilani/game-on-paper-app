@@ -141,22 +141,32 @@ function overlay<T extends Row>(
     idOf: (r: T) => unknown,
     counts: (e: EspnPlayerRow, r: T | null) => Row,
     blank: (e: EspnPlayerRow) => T,
-    merge?: (kept: T, dup: T) => T,
+    merge?: (kept: T, dup: T, keptPbp: T) => T,
 ): Sourced<T>[] {
     if (!espn) return rows;
     const cat = new EspnCategory(espn, teamId, category);
     const out: Sourced<T>[] = [];
+    const pbpOf = new Map<Sourced<T>, T>();
     for (const r of rows) {
         const e = cat.find(nameOf(r), idOf(r));
         if (e) {
-            out.push({ ...r, ...counts(e, r), source: 'espn', espn_athlete_id: e.athlete_id });
+            retained = false;
+            const line: Sourced<T> = { ...r, ...counts(e, r), espn_athlete_id: e.athlete_id };
+            // a matched line still carrying a pbp count (ESPN left that stat blank) is marked
+            line.source = retained ? 'pbp' : 'espn';
+            out.push(line);
+            pbpOf.set(line, r);
             continue;
         }
         // sportsdataverse can split one kicker into two rows ("Blake Craig" with the FGs,
         // "B.Craig" with the XPs and kickoffs): fold the second into the line ESPN already gave
         const dupOf = merge && cat.find(nameOf(r), idOf(r), 'claimed');
         const kept = dupOf && out.find((o) => o.espn_athlete_id === dupOf.athlete_id);
-        if (kept) Object.assign(kept, merge!(kept, r), counts(dupOf, kept));
+        if (kept) {
+            retained = false;
+            Object.assign(kept, merge!(kept, r, pbpOf.get(kept)!), counts(dupOf, kept));
+            if (retained) kept.source = 'pbp';
+        }
         else out.push({ ...r, source: 'pbp' });
     }
     for (const e of cat.unclaimed()) {
@@ -165,7 +175,13 @@ function overlay<T extends Row>(
     return out;
 }
 
-const keepOr = (espn: number | null, pbp: unknown) => espn ?? n(pbp) ?? 0;
+// ponytail: module-level flag, reset per line by its caller; fine while every caller is synchronous
+let retained = false;
+/** ESPN's count, else the pbp one (flagging the line as retaining pbp), else 0. An ESPN zero is kept. */
+const keepOr = (espn: number | null, pbp: unknown) => {
+    if (espn == null && n(pbp) != null) retained = true;
+    return espn ?? n(pbp) ?? 0;
+};
 
 export function officialPassing<T extends Row>(rows: T[], espn: EspnPlayerRow[] | undefined, teamId: string | number, ids: Map<string, string>): Sourced<T>[] {
     return overlay(rows, espn, teamId, 'passing', (r) => r.passer_player_name, (r) => ids.get(String(r.passer_player_name ?? '')),
@@ -176,7 +192,8 @@ export function officialPassing<T extends Row>(rows: T[], espn: EspnPlayerRow[] 
             return {
                 Comp: keepOr(comp, r?.Comp), Att: keepOr(att, r?.Att), Yds: keepOr(n(e.passingYards), r?.Yds),
                 Pass_TD: keepOr(n(e.passingTouchdowns), r?.Pass_TD), Int: keepOr(n(e.interceptions), r?.Int),
-                Sck: keepOr(sacks, r?.Sck),
+                // not keepOr: a pbp sack count is the design in CFB, not a blank ESPN stat, so it does not mark the line
+                Sck: sacks ?? n(r?.Sck) ?? 0,
             };
         },
         (e) => ({ pos_team: e.team_id, passer_player_name: e.athlete }) as unknown as T);
@@ -247,8 +264,9 @@ export function officialPunters<T extends Row>(rows: T[], espn: EspnPlayerRow[] 
         }),
         // ESPN has no net average; an ESPN-only punter shows none rather than a made-up one
         (e) => ({ pos_team: e.team_id, player_id: e.athlete_id, player_name: e.athlete, punt_net_avg: null }) as unknown as T,
-        // a split punter keeps the row with more punts (its net average) and both EPAs
-        (a, b) => ({ ...((n(b.punts) ?? 0) > (n(a.punts) ?? 0) ? b : a), punt_epa: (n(a.punt_epa) ?? 0) + (n(b.punt_epa) ?? 0) }) as T);
+        // a split punter keeps the row with more pbp punts (its net average) and both EPAs;
+        // compared on the pbp counts, since `a` already carries ESPN's total
+        (a, b, aPbp) => ({ ...((n(b.punts) ?? 0) > (n(aPbp.punts) ?? 0) ? b : aPbp), punt_epa: (n(a.punt_epa) ?? 0) + (n(b.punt_epa) ?? 0) }) as T);
 }
 
 /** Kick and punt returns are two ESPN categories folded into one GOP returner line. */
@@ -259,12 +277,14 @@ export function officialReturners<T extends Row>(rows: T[], espn: EspnPlayerRow[
     const fold = (base: Row, k?: EspnPlayerRow, p?: EspnPlayerRow): Row => ({
         ...base,
         ...(k ? {
-            kick_returns: n(k.kickReturns) ?? 0, kick_return_yards: n(k.kickReturnYards) ?? 0, kick_return_avg: n(k.yardsPerKickReturn) ?? 0,
-            kick_return_long: n(k.longKickReturn) ?? base.kick_return_long ?? null, kick_return_tds: n(k.kickReturnTouchdowns) ?? 0,
+            kick_returns: keepOr(n(k.kickReturns), base.kick_returns), kick_return_yards: keepOr(n(k.kickReturnYards), base.kick_return_yards),
+            kick_return_avg: keepOr(n(k.yardsPerKickReturn), base.kick_return_avg),
+            kick_return_long: n(k.longKickReturn) ?? base.kick_return_long ?? null, kick_return_tds: keepOr(n(k.kickReturnTouchdowns), base.kick_return_tds),
         } : {}),
         ...(p ? {
-            punt_returns: n(p.puntReturns) ?? 0, punt_return_yards: n(p.puntReturnYards) ?? 0, punt_return_avg: n(p.yardsPerPuntReturn) ?? 0,
-            punt_return_long: n(p.longPuntReturn) ?? base.punt_return_long ?? null, punt_return_tds: n(p.puntReturnTouchdowns) ?? 0,
+            punt_returns: keepOr(n(p.puntReturns), base.punt_returns), punt_return_yards: keepOr(n(p.puntReturnYards), base.punt_return_yards),
+            punt_return_avg: keepOr(n(p.yardsPerPuntReturn), base.punt_return_avg),
+            punt_return_long: n(p.longPuntReturn) ?? base.punt_return_long ?? null, punt_return_tds: keepOr(n(p.puntReturnTouchdowns), base.punt_return_tds),
         } : {}),
     });
     const out: Sourced<T>[] = rows.map((r) => {
@@ -273,9 +293,10 @@ export function officialReturners<T extends Row>(rows: T[], espn: EspnPlayerRow[
         // a returner ESPN lists in only one category takes that one; the other keeps its pbp
         // counts, and the line is marked when those are not zero (ESPN would have listed them)
         const pbpLeft = (!k && (n(r.kick_returns) ?? 0) > 0) || (!p && (n(r.punt_returns) ?? 0) > 0);
-        return (k || p)
-            ? { ...(fold(r, k, p) as T), source: pbpLeft ? 'pbp' : 'espn', espn_athlete_id: (k ?? p)!.athlete_id }
-            : { ...r, source: 'pbp' };
+        if (!k && !p) return { ...r, source: 'pbp' };
+        retained = false;
+        const line = fold(r, k, p) as T;
+        return { ...line, source: pbpLeft || retained ? 'pbp' : 'espn', espn_athlete_id: (k ?? p)!.athlete_id };
     });
     const left = new Map<string, { k?: EspnPlayerRow, p?: EspnPlayerRow }>();
     // keyed by athlete id, or by name when ESPN gives none, so two id-less players stay two lines
@@ -311,22 +332,32 @@ export interface DefenseLike {
 export function officialDefense<T extends DefenseLike>(rows: T[], espn: EspnPlayerRow[] | undefined, teamId: string | number, ids: Map<string, string>, league: League): Sourced<T>[] {
     if (!espn) return rows;
     const ints = new EspnCategory(espn, teamId, 'interceptions');
-    const intsOf = (e: EspnPlayerRow) => n(ints.rows.find((i) => String(i.athlete_id) === String(e.athlete_id))?.interceptions) ?? 0;
-    const counts = (e: EspnPlayerRow): Partial<DefenseLike> => {
-        const tot = n(e.totalTackles) ?? 0, solo = n(e.soloTackles) ?? 0, int = intsOf(e);
-        const pd = n(e.passesDefended) ?? 0;
+    // the same player in both categories: by id when both rows have one, else by a unique full name
+    const samePlayer = (a: EspnPlayerRow, b: EspnPlayerRow) => (a.athlete_id != null && b.athlete_id != null
+        ? String(a.athlete_id) === String(b.athlete_id) : !!nameKey(a.athlete) && nameKey(a.athlete) === nameKey(b.athlete));
+    const intRow = (e: EspnPlayerRow) => {
+        const hits = ints.rows.filter((i) => samePlayer(i, e));
+        return hits.length === 1 ? hits[0] : undefined;
+    };
+    const counts = (e: EspnPlayerRow, r: Row | null): Partial<DefenseLike> => {
+        const i = intRow(e);
+        const tot = keepOr(n(e.totalTackles), r?.TOT), solo = keepOr(n(e.soloTackles), r?.SOLO);
+        const int = i ? (n(i.interceptions) ?? 0) : 0;
+        const pd = n(e.passesDefended);
         return {
-            TOT: tot, SOLO: solo, AST: Math.max(0, tot - solo), TFL: n(e.tacklesForLoss) ?? 0, SACK: n(e.sacks) ?? 0,
-            INT: int, PBU: Math.max(0, league === 'nfl' ? pd - int : pd), QBH: n(e.hurries ?? e.QBHits) ?? 0,
+            TOT: tot, SOLO: solo, AST: Math.max(0, tot - solo), TFL: keepOr(n(e.tacklesForLoss), r?.TFL), SACK: keepOr(n(e.sacks), r?.SACK),
+            INT: int, PBU: pd == null ? keepOr(null, r?.PBU) : Math.max(0, league === 'nfl' ? pd - int : pd),
+            QBH: keepOr(n(e.hurries ?? e.QBHits), r?.QBH),
         };
     };
     const out = overlay(rows as unknown as Row[], espn, teamId, 'defensive', (r) => r.name, (r) => ids.get(String(r.name ?? '')),
-        (e) => counts(e), (e) => ({ name: e.athlete }) as Row) as unknown as Sourced<T>[];
+        (e, r) => counts(e, r), (e) => ({ name: e.athlete }) as Row) as unknown as Sourced<T>[];
+    const defRows = new EspnCategory(espn, teamId, 'defensive').rows;
     // an interceptor with no tackle has no defensive row on ESPN: add him from his INT line.
     // Only when ESPN has a defensive box for the team: without one a tackle count of 0 would be made up.
-    const hasDefense = new EspnCategory(espn, teamId, 'defensive').rows.length > 0;
-    for (const i of hasDefense ? ints.rows : []) {
-        if (i.athlete_id != null && out.some((r) => String(r.espn_athlete_id) === String(i.athlete_id))) continue;
+    for (const i of defRows.length > 0 ? ints.rows : []) {
+        // every ESPN defensive row is a line already (matched or appended), with its INT from intRow
+        if (defRows.some((d) => samePlayer(d, i))) continue;
         // credit a pbp defender only when exactly one matches, by full name and then by initial
         const open = out.filter((r) => r.source === 'pbp');
         const unique = (hits: typeof open) => (hits.length === 1 ? hits[0] : undefined);
