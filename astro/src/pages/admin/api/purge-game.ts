@@ -2,6 +2,10 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { auditAdmin } from '../../../utils/telemetry';
 import { settledKey } from '../../../resources/python';
+import { BASKETBALL_LEAGUES, PREFIXED_LEAGUES, leaguePath, type League } from '../../../utils/league';
+
+/** every league with game pages: an id is purged under each, since the caller need not say which */
+const GAME_LEAGUES: readonly League[] = ['cfb', ...PREFIXED_LEAGUES];
 
 export const prerender = false;
 
@@ -29,6 +33,8 @@ const KNOWN_TAGS = new Set(['game-completed', 'game-in-progress', 'game-schedule
     'charts', 'leaderboards',
     // every share card (routes/shareCard.ts caches each under it)
     'share-card',
+    // every basketball page of one league (routes/basketball/cache.ts, game.ts, scoreboard.ts tag each with its slug)
+    ...BASKETBALL_LEAGUES,
     // /sitemap-index.xml and the player sitemaps, after a flag promotion changes what they list
     'sitemap']);
 
@@ -64,20 +70,21 @@ async function purge(context: Parameters<APIRoute>[0]): Promise<Response> {
     for (const id of ids) {
         try {
             // An ESPN game id belongs to one league, but the caller need not say
-            // which: purging the other league's path and mark is a harmless miss.
-            await context.cache.invalidate({ path: `/game/${id}` });
-            await context.cache.invalidate({ path: `/nfl/game/${id}` });
-            // and its share card, which caches for up to a year once final: a re-purge
-            // after a source pin changes (utils/sourceOverride.ts) has to reach it too
-            await context.cache.invalidate({ path: `/game/${id}/card.png` });
-            await context.cache.invalidate({ path: `/nfl/game/${id}/card.png` });
-            // A forced refresh also resets the regression guard's high-water mark:
-            // a stale or inflated mark makes every honest payload "regress", which
-            // renders the page uncached on every request.
-            await env.ESPN_API_CACHE.delete(`gamestate:${id}`);
-            await env.ESPN_API_CACHE.delete(`gamestate:nfl:${id}`);
-            // and a settled final's processed payload, which no deploy re-keys (resources/python.ts settledKey)
-            await (env as any).PRO_BUCKET?.delete([settledKey('cfb', id), settledKey('nfl', id)]);
+            // which: purging the other leagues' paths and marks is a harmless miss.
+            for (const lg of GAME_LEAGUES) {
+                const page = leaguePath(lg, `/game/${id}`);
+                await context.cache.invalidate({ path: page });
+                // and its share card, which caches for up to a year once final: a re-purge
+                // after a source pin changes (utils/sourceOverride.ts) has to reach it too
+                await context.cache.invalidate({ path: `${page}/card.png` });
+                // A forced refresh also resets the regression guard's high-water mark
+                // (resources/espn.ts, gamestate:<league:>id): a stale or inflated mark makes
+                // every honest payload "regress", which renders the page uncached on every request.
+                await env.ESPN_API_CACHE.delete(`gamestate:${lg === 'cfb' ? '' : `${lg}:`}${id}`);
+            }
+            // and a settled final's processed payload, which no deploy re-keys (resources/python.ts settledKey).
+            // Only football keeps one today; the basketball keys are a harmless miss that keeps a future one covered.
+            await (env as any).PRO_BUCKET?.delete(GAME_LEAGUES.map((lg) => settledKey(lg, id)));
             results[id] = 'purged';
         } catch (e: any) {
             results[id] = `error: ${e?.message ?? e}`;
