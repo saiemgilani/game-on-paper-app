@@ -4,6 +4,7 @@ import { espnLogoLeague, type League } from '../../../utils/league';
 import { leaguePath } from '../../../utils/league';
 import { METRIC_KEY_TITLE_MAPPING, BOX_SCORE_NON_RATE_PERCENT_COLUMNS, BOX_SCORE_NON_RATE_DECIMAL_COLUMNS, BOX_SCORE_NON_RATE_COLUMNS } from '../../../utils/constants';
 import { formatNumber, metricDecimalPoints, offenseYardsPerPlay, roundNumber } from '../../../utils/misc';
+import { OFFICIAL_TEAM_ROWS, type TeamCell } from '../../../utils/officialBox';
 
 interface Props {
     title: string
@@ -57,7 +58,14 @@ function handleMetricRows(rowKey: string): string {
             }
         }
     };
-    if (item == "EPA_misc") {
+    if (boxKey == "official") {
+        // officialTeamBox's preformatted cells: ESPN's box, or the play-by-play count (marked) where ESPN has none
+        eachTeam((teamData: any) => {
+            const c: TeamCell | undefined = teamData[item];
+            const title = c?.pbp ? ` title="Not in ESPN's box score: counted from the play-by-play."` : "";
+            result += `<td class="numeral" style="text-align: center;"${title}>${c?.text ?? "—"}${c?.pbp ? "*" : ""}</td>`;
+        });
+    } else if (item == "EPA_misc") {
         eachTeam((teamData: any) => {
             let overall = parseFloat(teamData['EPA_overall_total'] || 0);
             let off = parseFloat(teamData['EPA_overall_offense'] || 0);
@@ -213,7 +221,10 @@ const V2_METRIC_KEY_TITLE_MAPPING_OVERRIDES: Record<string, string> = {
     "early_down_first_down" : "First Downs Created",
 };
 
+const OFFICIAL_TITLES: Record<string, string> = Object.fromEntries(OFFICIAL_TEAM_ROWS);
+
 function getMetricTitle(rowKey: string): string {
+    if (rowKey.startsWith("official.")) return OFFICIAL_TITLES[rowKey.slice("official.".length)] ?? rowKey;
     const splitKeys = rowKey.split(".");
     const item = splitKeys.length > 1 ? splitKeys.slice(1).join(".") : splitKeys[0];
 

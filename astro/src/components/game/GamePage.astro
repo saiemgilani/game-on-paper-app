@@ -31,6 +31,7 @@ import GameHeader from './GameHeader.astro';
 import { LEAGUES, leaguePath, type League } from '../../utils/league';
 import SituationalSection from './metrics/SituationalSection.svelte';
 import { withoutUsageSections } from '../../utils/usage';
+import { officialTeamBox } from '../../utils/officialBox';
 import { wpExportTitle, type WpExportMeta } from '../../utils/chartExport';
 
 interface Props {
@@ -136,6 +137,9 @@ const latestPlays = gameStatus.type.completed === true ? [] : fullGamePlays.slic
 const periodsPlayed = [...new Set(game.plays.map((p: any) => Number(p.period)).filter(Number.isFinite).filter(x => x > 0))].sort((a, b) => a - b);
 // 'player-quarter-filter' (preview): each team's player section gets the Team Stats "Show only" select.
 const playerSpans = isFeatureEnabled('player-quarter-filter', Astro.locals) ? (game.advBoxScoreSpans ?? null) : null;
+const officialTeam = isFeatureEnabled('official-team-box', Astro.locals)
+    ? officialTeamBox(game.advBoxScore, [game.teamInfo.away.id, game.teamInfo.home.id], league, game.season.year)
+    : null;
 const lastPlay: any = game.plays.at(-1);
 const gameState = game.header.competitions[0].status?.type?.state;
 const latestSubtitle = latestDriveSubtitle(game.drives, lastPlay, gameState);
@@ -296,7 +300,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="team-stats" title="Team Stats" show={true} hint={isFeatureEnabled('method-notes', Astro.locals) ? METHOD_NOTES.game : undefined}>
-                        <SituationalSection client:load slot="panel-body" season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles} teamIds={[game.teamInfo.away.id, game.teamInfo.home.id]}>
+                        <SituationalSection client:load slot="panel-body" season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles} teamIds={[game.teamInfo.away.id, game.teamInfo.home.id]} officialTeam={officialTeam}>
                         </SituationalSection>
                     </Panel>
                 </div>
@@ -304,12 +308,12 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             <div id="player-stats" class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <TeamPanel id="away-stats-panel" season={game.season.year} team={awayTeam} show={false}>
-                        <TeamPlayerStats slot="panel-body" box={game.advBoxScore} plays={game.plays} teamId={parseInt(awayTeam.id)} season={game.season?.year} spans={playerSpans} />
+                        <TeamPlayerStats slot="panel-body" box={game.advBoxScore} plays={game.plays} teamId={parseInt(awayTeam.id)} season={game.season?.year} spans={playerSpans} league={league} />
                     </TeamPanel>
                 </div>
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <TeamPanel id="home-stats-panel" season={game.season.year} team={homeTeam} show={false}>
-                        <TeamPlayerStats slot="panel-body" box={game.advBoxScore} plays={game.plays} teamId={parseInt(homeTeam.id)} season={game.season?.year} spans={playerSpans} />
+                        <TeamPlayerStats slot="panel-body" box={game.advBoxScore} plays={game.plays} teamId={parseInt(homeTeam.id)} season={game.season?.year} spans={playerSpans} league={league} />
                     </TeamPanel>
                 </div>
             </div>

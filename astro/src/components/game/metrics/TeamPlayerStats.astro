@@ -10,6 +10,8 @@
  * PlayerSpanSelect's module script flips `hidden`, so the components stay SSR
  * Astro and no island props are added.
  * Without `spans` it renders exactly what the page rendered before the flag.
+ * The full-game window takes its counting stats from ESPN's box
+ * (utils/officialBox.ts); ESPN publishes no quarter or half box.
  */
 import type { ProcessedBoxScore } from '../../../resources/python';
 import { parseSpan } from '../../../utils/span';
@@ -18,6 +20,7 @@ import UsageBoxScore from './UsageBoxScore.astro';
 import PassingChart from './PassingChart.astro';
 import RushingChart from './RushingChart.astro';
 import PlayerSpanSelect from './PlayerSpanSelect.astro';
+import type { League } from '../../../utils/league';
 
 interface Props {
     box: Partial<ProcessedBoxScore>,
@@ -26,8 +29,9 @@ interface Props {
     season?: number,
     /** game.advBoxScoreSpans; omit for the unfiltered section */
     spans?: Record<string, Partial<ProcessedBoxScore>> | null,
+    league?: League,
 }
-const { box, plays, teamId, season, spans } = Astro.props;
+const { box, plays, teamId, season, spans, league = 'cfb' } = Astro.props;
 
 // the same list the Team Stats select builds: the payload's key order, known spans only
 const windows = [
@@ -54,6 +58,8 @@ const rowsOf = (b: Partial<ProcessedBoxScore>, k: keyof ProcessedBoxScore, key =
         teamId={teamId}
         box={w.box}
         season={season}
+        espn={w.key === 'all' ? box.espn_players : undefined}
+        league={league}
     />
     <UsageBoxScore box={w.box} teamId={teamId} season={season} />
     <PassingChart plays={w.plays.filter(p => p.pos_team == teamId)} />
