@@ -90,3 +90,40 @@ def test_a_failure_releases_the_slot(app_mod, monkeypatch):
     fds = _hold_every_slot(app_mod)  # would raise if a failed request had kept one
     for fd in fds:
         os.close(fd)
+
+
+def test_the_slot_is_held_while_the_game_processes(app_mod, monkeypatch):
+    def check(league, game_id, source=None):
+        # another worker trying for every slot now finds this request's
+        with pytest.raises(BlockingIOError):
+            _hold_every_slot(app_mod)
+        return {"ran": game_id}, 200
+
+    monkeypatch.setattr(app_mod, "_process_game", check)
+    r = app_mod.app.test_client().get("/cfb/252810251/process", headers=_auth())
+    assert r.get_json() == {"ran": 252810251}
+
+
+def test_a_small_host_keeps_a_worker_for_current_games(monkeypatch, app_mod):
+    monkeypatch.setenv("GOP_WORKERS", "2")
+    assert importlib.reload(app_mod).OLD_GAME_SLOTS == 1
+    monkeypatch.setenv("GOP_WORKERS", "8")
+    assert importlib.reload(app_mod).OLD_GAME_SLOTS == 2
+
+
+def test_an_unusable_slot_dir_runs_the_game_uncapped(monkeypatch, app_mod, tmp_path):
+    monkeypatch.setenv("GOP_SLOT_DIR", str(tmp_path / "missing"))
+    mod = importlib.reload(app_mod)
+    monkeypatch.setattr(
+        mod,
+        "_process_game",
+        lambda league, game_id, source=None: ({"ran": game_id}, 200),
+    )
+    r = mod.app.test_client().get("/cfb/252810251/process", headers=_auth())
+    assert r.status_code == 200
+
+
+def test_a_busy_answer_names_its_game(app_mod):
+    with app_mod.app.test_request_context("/nfl/252810251/process"):
+        assert app_mod._busy()[1] == 503
+        assert app_mod.g.gop_meta == {"game_id": "252810251", "league": "nfl"}

@@ -52,6 +52,7 @@ def _pick_workers():
 
 
 workers, _cores_found, _mem_found, _by_mem = _pick_workers()
+os.environ["GOP_WORKERS"] = str(workers)  # read by app.OLD_GAME_SLOTS, which leaves one worker free
 
 bind = "0.0.0.0:5000"
 # gthread, not sync: on a ~2-worker droplet, sync workers each held by an 8s

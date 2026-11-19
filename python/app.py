@@ -186,6 +186,9 @@ def one_heavy_at_a_time(func):
 
 
 def _busy():
+    game_id = (request.view_args or {}).get("game_id")
+    if game_id is not None:  # the request log keys a busy answer on its game too (telemetry._gop_after)
+        g.gop_meta = {**getattr(g, "gop_meta", {}), "game_id": str(game_id), "league": request.path.split("/")[1]}
     resp = jsonify({"status": "busy", "message": "Processor busy, retry shortly."})
     resp.headers["Retry-After"] = "5"
     return resp, 503
@@ -196,9 +199,11 @@ def _busy():
 # so a crawl of old games leaves the other workers to this season's. The 2026-11-16 crawl was ~4,800
 # old games from ~4,200 IPs, one request each: no per-IP limit at the Worker sees it, and a
 # crawler behind a desktop Chrome user agent is unlikely to honour robots.txt. A settled final is served from R2 before it
-# gets here (astro resources/python.ts processPlays), so only a cold game takes a slot.
+# gets here (astro resources/python.ts retrieveProcessedGame), so only a cold game takes a slot.
 # One lock file per slot, flock'd: the kernel drops a lock when its worker dies, SIGKILL included.
-OLD_GAME_SLOTS = 2
+# Two of production's 8 workers, and always one fewer than the host has (gunicorn.conf.py sets
+# GOP_WORKERS), so a small host keeps a worker for this season's games.
+OLD_GAME_SLOTS = max(1, min(2, int(os.getenv("GOP_WORKERS", "8")) - 1))
 _OLD_ID_CEILING = 300_000_000
 _SLOT_DIR = os.getenv("GOP_SLOT_DIR", "/tmp")
 
@@ -209,12 +214,20 @@ def old_games_capped(func):
         if fcntl is None or game_id >= _OLD_ID_CEILING:
             return func(*args, game_id=game_id, **kwargs)
         for k in range(OLD_GAME_SLOTS):
-            fd = os.open(os.path.join(_SLOT_DIR, f"gop-old-game-{k}.lock"), os.O_CREAT | os.O_RDWR, 0o600)
+            try:
+                fd = os.open(os.path.join(_SLOT_DIR, f"gop-old-game-{k}.lock"), os.O_CREAT | os.O_RDWR, 0o600)
+            except OSError as e:  # a missing or read-only GOP_SLOT_DIR: run uncapped, never fail the game
+                logging.getLogger("root").warning(f"old-game slots off, {_SLOT_DIR} unusable: {e}")
+                return func(*args, game_id=game_id, **kwargs)
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except OSError:
+            except BlockingIOError:  # another worker holds this slot
                 os.close(fd)
                 continue
+            except OSError as e:  # a lock that cannot be taken at all is a broken backend, not a full host
+                os.close(fd)
+                logging.getLogger("root").warning(f"old-game slots off, flock failed: {e}")
+                return func(*args, game_id=game_id, **kwargs)
             try:
                 return func(*args, game_id=game_id, **kwargs)
             finally:
