@@ -19,7 +19,8 @@ const NETS_BLOCK = capture('game-set-nba-2026'); // Brooklyn Nets 2025-26 (stats
 const DUKE_BLOCK = capture('game-set-mbb-2026'); // Duke 2025-26 (ESPN 150)
 const NETS_CTX = capture('schedule-context-nba-2026');
 const DUKE_CTX = capture('schedule-context-mbb-2026');
-// Q21: the Nets' and Duke's rows of the served {nba,mbb}.rated_priors (sdv-py#1193, sdv-db#229)
+// Q21: the Nets' and Duke's rows of the served {nba,mbb}.rated_priors (sdv-py#1193, sdv-db#229); the Nets' are the rated
+// prior's margin (wp_prior_exp_home_margin, sdv-db#236), the number the pregame card shows
 const NETS_PROJ = capture('schedule-context-proj-nba-2026');
 const DUKE_PROJ = capture('schedule-context-proj-mbb-2026');
 const asReads = (c: any) => ({ rates: c.rates, strength: c.strength[0] ?? null, games: [...c.home, ...c.away], gameRates: c.gameRates });
@@ -43,6 +44,8 @@ vi.mock('../src/resources/sdv', async (orig) => {
         if (!(key in rows)) return (real.retrieveRowsFrom as any)(src, table, q, ...rest); // the page's own reads: fetch throws
         sdv.calls.push(key);
         if (q.season !== '2026') throw new Error(`unfiltered ${key}`);
+        // the pros read the rated prior's margin, college the row's own
+        if (table === 'rated_priors' && q.select !== `game_id,home_team_id,${src.schema === 'nba' ? 'wp_prior_exp_home_margin' : 'exp_home_margin'}`) throw new Error(`select ${key} ${q.select}`);
         if (sdv.fail.has(key)) throw new Error(`503 ${key}`);
         if (!rows[key]) throw new Error(`unexpected ${key} ${JSON.stringify(q)}`);
         return rows[key];
@@ -108,13 +111,14 @@ describe('teamProj (Q21)', () => {
     });
 });
 
-// the opener has no rating yet (the Nets' exp_home_margin is null), so 81 of 82; Duke's prior-blended college rows are all rated
-for (const [lg, c, proj, espnId, unrated] of [['nba', NETS_BLOCK, NETS_PROJ, NETS_ESPN, 1], ['mbb', DUKE_BLOCK, DUKE_PROJ, DUKE, 0]] as const) {
+// the rated prior rates the pros from opening night, so all 82 Nets games (the team_strength closed form had no opener);
+// Duke's prior-blended college rows are all rated
+for (const [lg, c, proj, espnId, unrated, col] of [['nba', NETS_BLOCK, NETS_PROJ, NETS_ESPN, 0, 'wp_prior_exp_home_margin'], ['mbb', DUKE_BLOCK, DUKE_PROJ, DUKE, 0, 'exp_home_margin']] as const) {
     describe(`the projection, real rows (${lg} 2025-26)`, () => {
         const rows = sched(c, espnId);
         test("every game joins its row by the ESPN game id; every rated final gets a result against it, recounted from the producer's rows", async () => {
             const r = await retrieveScheduleContext(lg, 2026, espnId);
-            expect(r.proj!.size).toBe(proj.proj.filter((p: any) => p.exp_home_margin !== null).length);
+            expect(r.proj!.size).toBe(proj.proj.filter((p: any) => p[col] !== null).length);
             const ctx = scheduleContext(rows, listed(c, espnId), r, ET);
             const home = listed(c, espnId);
             const want = { w: 0, l: 0, p: 0 };
@@ -122,8 +126,8 @@ for (const [lg, c, proj, espnId, unrated] of [['nba', NETS_BLOCK, NETS_PROJ, NET
                 const raw = proj.proj.find((p: any) => String(p.game_id) === g.gameId);
                 expect(raw).toBeDefined(); // the schedule's ESPN id is the table's game_id, in both leagues
                 const k = ctx.get(g.gameId)!;
-                if (raw.exp_home_margin == null) { expect([k.proj, k.vsProj]).toEqual([null, null]); continue; }
-                const p = home.get(g.gameId) ? raw.exp_home_margin : -raw.exp_home_margin;
+                if (raw[col] == null) { expect([k.proj, k.vsProj]).toEqual([null, null]); continue; }
+                const p = home.get(g.gameId) ? raw[col] : -raw[col];
                 expect(k.proj).toBeCloseTo(p, 9);
                 const d = g.teamScore! - g.oppScore! - p;
                 want[d > 0 ? 'w' : d < 0 ? 'l' : 'p']++;
@@ -138,6 +142,21 @@ for (const [lg, c, proj, espnId, unrated] of [['nba', NETS_BLOCK, NETS_PROJ, NET
         });
     });
 }
+
+test("a row whose home side is not ESPN's gets no projection; the rest keep theirs", async () => {
+    const rows = sched(NETS_BLOCK, NETS_ESPN);
+    const home = listed(NETS_BLOCK, NETS_ESPN);
+    const raw = (g: { gameId: string }) => NETS_PROJ.proj.find((p: any) => String(p.game_id) === g.gameId);
+    // every captured row already agrees with ESPN's listed home
+    for (const g of rows) expect(raw(g).home_team_id === NETS_ESPN).toBe(home.get(g.gameId));
+    const r0 = raw(rows[0]), keep = r0.home_team_id;
+    r0.home_team_id = keep === NETS_ESPN ? rows[0].oppId : NETS_ESPN; // the producer's home side flipped
+    try {
+        const ctx = scheduleContext(rows, home, await retrieveScheduleContext('nba', 2026, NETS_ESPN), ET);
+        expect([ctx.get(rows[0].gameId)!.proj, ctx.get(rows[0].gameId)!.vsProj]).toEqual([null, null]);
+        expect(rows.slice(1).every((g) => ctx.get(g.gameId)!.proj !== null)).toBe(true);
+    } finally { r0.home_team_id = keep; }
+});
 
 test('a failed rated_priors read: no projection columns, and the page is not cached', async () => {
     sdv.fail.add('mbb.rated_priors');

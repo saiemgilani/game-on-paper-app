@@ -5,12 +5,20 @@ from typing import Any
 from flask import Flask, request, jsonify, Response, g
 from datetime import datetime as dt, timezone as tz
 from sportsdataverse.cfb import CFBPlayProcess
+try:  # private to sportsdataverse-py, which the image tracks at main: a rename must not stop the app
+    from sportsdataverse.cfb.cfb_game_rosters import _game_roster_entries
+except ImportError:  # the processor then fetches the roster itself, unbounded, as before app._bounded_roster
+    _game_roster_entries = None
+from sportsdataverse.errors import NoDataError
+import requests
+import time
 from sportsdataverse.nfl import NFLPlayProcess
 from flask_compress import Compress
 import orjson
 
 import os
 import logging
+import threading
 import base64
 import urllib.parse
 import urllib.request
@@ -156,6 +164,30 @@ def require_auth_token(func):
             return jsonify({"status": "bad", "message": "Access denied"}), 401
 
     return check_token
+
+
+# One heavy /process per worker at a time. gunicorn runs `threads = 2` so a light request
+# (/healthcheck, /gop/ingest) always finds a free thread, but nothing enforced that spare: on
+# 2026-11-16 a crawl of ~4,800 cold games (one user agent, ~4,200 IPs) filled every thread,
+# /healthcheck queued behind them and the uptime probe paged "down in all regions" three times.
+# A second /process in the same worker answers 503 at once; the Worker retries it, usually onto
+# an idle worker (resources/python.ts requestProcessor).
+_HEAVY = threading.BoundedSemaphore(1)
+
+
+def one_heavy_at_a_time(func):
+    @wraps(func)
+    def run(*args, **kwargs):
+        if not _HEAVY.acquire(blocking=False):
+            resp = jsonify({"status": "busy", "message": "Processor busy, retry shortly."})
+            resp.headers["Retry-After"] = "5"
+            return resp, 503
+        try:
+            return func(*args, **kwargs)
+        finally:
+            _HEAVY.release()
+
+    return run
 
 
 # Flat columns sdv-py adds that the site rebuilds as nested objects below;
@@ -397,6 +429,53 @@ _PROCESSORS = {
 }
 
 
+# A CFB game before 2014 has no names on its roster entries, so sportsdataverse-py fetches every
+# athlete's Core v2 resource one by one for them (cfb_game_rosters._game_roster_entries): ~70
+# requests for a 2005 game, against 3 for a current one, with no cap on their total. Each request
+# is bounded (Dockerfile: 10 s x 4 tries + 20 s of waits = 60 s), but under ESPN throttling, which
+# a crawl of old games brings on, 70 of them run for an hour. They all share this budget; past it,
+# the remaining athletes are skipped at once and the roster keeps its ids, teams and positions.
+ROSTER_BUDGET_S = 15.0
+
+
+class _DeadlineSession(requests.Session):
+    """A session whose requests fail fast as ESPN "no data" once `seconds` have passed.
+
+    NoDataError is the one failure sportsdataverse's download() neither retries nor sleeps on, and
+    the athlete fan-out skips an athlete on it, so an exhausted budget costs nothing more."""
+
+    def __init__(self, seconds: float):
+        super().__init__()
+        self.deadline = time.monotonic() + seconds
+        self.skipped = 0  # requests refused after the deadline: one per athlete left without a name
+
+    def request(self, method, url, *args, **kwargs):
+        left = self.deadline - time.monotonic()
+        if left <= 0:
+            self.skipped += 1
+            raise NoDataError(f"roster budget of {ROSTER_BUDGET_S:.0f}s spent before {url}")
+        kwargs["timeout"] = min(kwargs.get("timeout") or left, left)
+        return super().request(method, url, *args, **kwargs)
+
+
+def _bounded_roster(game_id: int):
+    """The roster CFBPlayProcess would fetch for itself, inside ROSTER_BUDGET_S. `[]` when even the
+    three team pages fail: the processor then joins names from the box score alone, instead of
+    fetching the roster again with no budget."""
+    try:
+        with _DeadlineSession(ROSTER_BUDGET_S) as session:  # closed after: its pool's sockets go with it
+            roster = _game_roster_entries(game_id, session=session)
+        if session.skipped:
+            # this payload is cached like any other (a year at the edge for a final): the log names the games
+            logging.getLogger("root").warning(
+                f"roster for {game_id}: budget of {ROSTER_BUDGET_S:.0f}s spent, {session.skipped} athletes left unnamed"
+            )
+        return roster
+    except Exception as e:
+        logging.getLogger("root").warning(f"roster for {game_id} not fetched in budget: {e}")
+        return []
+
+
 def _fill_success(plays):
     """CFBPlayProcess emits `success`; NFLPlayProcess does not. Same definition
     as nflfastR (EPA > 0) so the two leagues' play filters agree."""
@@ -436,6 +515,15 @@ def _process_game(league: str, game_id: int, source: str | None = None):
             game.resolve_missing = False
             with stage(timings, "espn_fetch"):
                 getattr(game, fetch_name)()
+            # the processor's own condition for fetching a roster (cfb_pbp __attach_player_ids)
+            if (
+                _game_roster_entries is not None
+                and isinstance(game, CFBPlayProcess)
+                and game.join_participants
+                and game.game_roster is None
+            ):
+                with stage(timings, "roster_fetch"):
+                    game.game_roster = _bounded_roster(game_id)
             served, fallback_used, processed_game = "espn", False, None
             dispatch_prov = None
         else:
@@ -699,12 +787,14 @@ def _process_game(league: str, game_id: int, source: str | None = None):
 
 @app.route("/cfb/<int:game_id>/process", methods=["GET"])
 @require_auth_token
+@one_heavy_at_a_time
 def process(game_id: int):
     return _process_game("cfb", game_id, request.args.get("source"))
 
 
 @app.route("/nfl/<int:game_id>/process", methods=["GET"])
 @require_auth_token
+@one_heavy_at_a_time
 def process_nfl(game_id: int):
     return _process_game("nfl", game_id, request.args.get("source"))
 
@@ -855,9 +945,9 @@ for _league in BASKETBALL_PROCESSORS:
     app.add_url_rule(
         f"/{_league}/<int(min=100000,max=999999999999):game_id>/process",
         endpoint=f"process_{_league}",
-        view_func=require_auth_token(
+        view_func=require_auth_token(one_heavy_at_a_time(
             lambda game_id, _lg=_league: _process_basketball(_lg, game_id, request.args.get("source"))
-        ),
+        )),
         methods=["GET"],
     )
     app.add_url_rule(
@@ -1081,6 +1171,41 @@ for _league in BASKETBALL_PROCESSORS:
         f"/{_league}/<int(min=100000,max=999999999999):game_id>/card.png",
         endpoint=f"card_{_league}",
         view_func=require_auth_token(lambda game_id, _lg=_league: _card_basketball(_lg, game_id)),
+        methods=["POST"],
+    )
+
+
+def _bball_stats_body_ok(body) -> bool:
+    if not isinstance(body, dict) or not isinstance(body.get("title"), str) or not isinstance(body.get("team"), dict):
+        return False
+    tiles = body.get("tiles", [])
+    return isinstance(tiles, list) and len(tiles) <= 4 and all(
+        isinstance(t, dict) and isinstance(t.get("value"), str) and isinstance(t.get("label"), str) for t in tiles
+    )
+
+
+def _card_basketball_stats(league: str, kind: str, subject_id: int):
+    """'bball-share-card' (preview): a basketball player or team page's 1200x630 card (share_card.render_basketball_stats).
+
+    The POST body is every string the card draws, built by the Worker from the producer's season row (astro
+    basketball/statCard.ts), so this route reads nothing itself. Caching is the Worker's.
+    """
+    body = request.get_json(silent=True)
+    if request.content_length is None or request.content_length > _CARD_BODY_MAX or not _bball_stats_body_ok(body):
+        return jsonify({"status": "bad", "message": "body is {title, team: {..}, tiles: [{value, label, rank}, ..]}"}), 400
+    try:
+        png = share_card.render_basketball_stats(body, league, _logo_fetch)
+    except Exception as e:  # not a 401: require_auth_token answers that for any raise
+        logging.getLogger("root").error(f"card: render failed for {league} {kind} {subject_id}: {e!r}")
+        return jsonify({"status": "bad", "message": "card render failed"}), 500
+    return Response(png, mimetype="image/png")
+
+
+for _league in BASKETBALL_PROCESSORS:
+    app.add_url_rule(
+        f"/{_league}/<any(players,team):kind>/<int(min=1,max=999999999999):subject_id>/card.png",
+        endpoint=f"stats_card_{_league}",
+        view_func=require_auth_token(lambda kind, subject_id, _lg=_league: _card_basketball_stats(_lg, kind, subject_id)),
         methods=["POST"],
     )
 

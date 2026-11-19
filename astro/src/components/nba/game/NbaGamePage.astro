@@ -86,8 +86,10 @@ interface Props {
   playerProps?: PropRow[] | null;
   /** BB-G43, 'bball-lines', live or final with a game_lines row: the market row; null when the read failed; absent: no panel */
   lines?: GameLine | null;
+  /** #459, beside `lines`: our pregame home win chance (the game's rated prior); null: none to show */
+  ourHomeWp?: number | null;
 }
-const { game, sourceTools, situations, poe, impact, flow, epv, garbage, averages, shooting, shotFilters, shift, season, playerSeason, info, playerProps, lines } = Astro.props;
+const { game, sourceTools, situations, poe, impact, flow, epv, garbage, averages, shooting, shotFilters, shift, season, playerSeason, info, playerProps, lines, ourHomeWp } = Astro.props;
 // BB-G44: the props panel's view (null: the read failed; undefined: no props for the game)
 const propLines = playerProps === null ? null : playerProps ? propsView(playerProps, game) : undefined;
 const withProps = playerProps === null || propLines != null;
@@ -128,7 +130,7 @@ const shareImage = isFeatureEnabled('bball-share-card', Astro.locals) ? basketba
     <div class="game-nav-sticky py-1 mb-3 border-top border-bottom"><NavScroller items={items} /></div>
     {latestOn && !latest && !game.status.completed && <template data-latest-pending></template>}
     {latest && (<Panel id="latest" title="Latest" show={true}><div slot="panel-body"><NbaLatest game={game} latest={latest} /></div></Panel>)}
-    <Panel id="wp" title="Win probability" show={true}><div slot="panel-body"><NbaWinProbability game={game} colors={colors} /></div></Panel>{flow !== undefined && (<Panel id="flow" title="Game flow" show={true}><div slot="panel-body"><NbaGameFlow game={game} flow={flow} /></div></Panel>)}{lines !== undefined && (<Panel id="lines" title="Lines and markets" show={true}><div slot="panel-body"><NbaGameLines line={lines} home={game.home.team} away={game.away.team} game={game} /></div></Panel>)}
+    <Panel id="wp" title="Win probability" show={true}><div slot="panel-body"><NbaWinProbability game={game} colors={colors} /></div></Panel>{flow !== undefined && (<Panel id="flow" title="Game flow" show={true}><div slot="panel-body"><NbaGameFlow game={game} flow={flow} /></div></Panel>)}{lines !== undefined && (<Panel id="lines" title="Lines and markets" show={true}><div slot="panel-body"><NbaGameLines line={lines} home={game.home.team} away={game.away.team} game={game} ours={ourHomeWp ?? null} /></div></Panel>)}
     {grid ? (<Panel id="factors" title="Team stats" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="select" />}<NbaTeamGrid game={game} season={season} /></div></Panel>) : (<Fragment><Panel id="factors" title="Four factors" show={true}><div slot="panel-body">{gt && <NbaGarbageTime game={game} view={gt} part="select" />}{split ? <NbaGarbageTime game={game} view={split} part="factors" /> : <NbaFourFactors game={game} />}</div></Panel>
     <Panel id="teambox" title="Team box" show={true}><div slot="panel-body">{split?.box ? <NbaGarbageTime game={game} view={split} part="teambox" /> : (<Fragment>{split && <NbaGarbageTime game={game} view={split} part="teambox" />}<NbaTeamBox game={game} /></Fragment>)}</div></Panel></Fragment>)}{poeShown && (<Panel id="poe" title="Points over expected" show={true}><div slot="panel-body"><NbaShotQuality game={game} poe={poe ?? null} /></div></Panel>)}
     {situations && <Panel id="situations" title="Situations" show={true}><div slot="panel-body"><GameSituations game={game} data={situations} /></div></Panel>}

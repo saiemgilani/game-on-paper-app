@@ -10,6 +10,9 @@ import LineupShotChart from '../nba/LineupShotChart.astro';
 import NbaNameFilter from '../nba/NbaNameFilter.astro';
 import NbaRosterTable from '../nba/NbaRosterTable.astro';
 import NbaSeasonSelect from '../nba/NbaSeasonSelect.astro';
+import ShareButton from '../game/ShareButton.svelte';
+import { statShareImage } from '../../basketball/statCard';
+import { isFeatureEnabled } from '../../utils/features';
 import LineupsTab from '../nba/LineupsTab.astro';
 import OnOffTab from '../nba/OnOffTab.astro';
 import SituationsTab from '../nba/SituationsTab.astro';
@@ -49,8 +52,11 @@ const params = { season: String(season) };
 const defaults = { season: String(current) };
 // BB-G15 ('bball-poe'): the section shows for a failed read (it says so) or a season with a team row
 const poeShown = poe === null || (poe !== undefined && poe.some((r) => r.level === 'team'));
+// 'bball-share-card' (preview), G-R5: the season card as og:image and a Share button; off, the head and the page are today's
+const shareCard = isFeatureEnabled('bball-share-card', Astro.locals);
+const shareImage = shareCard ? statShareImage('team', league, team.team_id, season, team.name) : undefined;
 ---
-<GenericPage title={title} subtitle={description} slug={basePath} breadcrumbs={breadcrumbs} description={description} canonicalPath={teamHref(team.team_id, q, league)}>
+<GenericPage title={title} subtitle={description} slug={basePath} breadcrumbs={breadcrumbs} description={description} canonicalPath={teamHref(team.team_id, q, league)} image={shareImage}>
   <link href="/assets/css/sticky-table.css" rel="stylesheet">
   <div class="container">
     <div class="row mb-3 align-items-start">
@@ -61,10 +67,10 @@ const poeShown = poe === null || (poe !== undefined && poe.some((r) => r.level =
         {!empty && (<p class="numeral mb-2" id="nba-line">{fmtInt(line.makes)}/{fmtInt(line.attempts)} FG &middot; {fmtPct(line.fgPct)} FG% &middot; {fmtPct(line.efgPct)} eFG% &middot; {fmtPct(line.fg3Pct)} 3P%</p>)}{coverage && (<p class="small text-muted mb-2" id="nba-coverage">{coverage}</p>)}{playStyles !== undefined && <PlayStyleChips chips={playStyles} detail />}
         <div class="d-flex flex-wrap align-items-center gap-3">
           <NbaSeasonSelect seasons={seasons} season={season} current={current} basePath={basePath} />
-          {!empty && !noPlayers && (<a href={withParams(lp('/players'), { season: String(season), team: byIdPlayers ? String(team.team_id) : team.tricode }, { season: String(current), team: byIdPlayers ? '' : ft ? ft.tricode(season) : 'ALL' })}>{team.tricode} player list &rarr;</a>)}
+          {!empty && !noPlayers && (<a href={withParams(lp('/players'), { season: String(season), team: byIdPlayers ? String(team.team_id) : team.tricode }, { season: String(current), team: byIdPlayers ? '' : ft ? ft.tricode(season) : 'ALL' })}>{team.tricode} player list &rarr;</a>)}{shareCard && (<ShareButton client:load label url={`https://gameonpaper.com${teamHref(team.team_id, q, league)}`} />)}
         </div>
       </div>
-    </div>{seasonBlock !== undefined && (<TeamSeasonBlock data={seasonBlock} season={season} espnId={team.espn_id || team.team_id} teamName={team.name} />)}{lineups !== undefined && (<LineupsTab data={lineups} season={season} current={current} basePath={basePath} teamName={team.name} />)}{onOff !== undefined && (<OnOffTab data={onOff} season={season} current={current} basePath={basePath} teamName={team.name} />)}{situations !== undefined && (<SituationsTab data={situations} season={season} current={current} basePath={basePath} teamName={team.name} />)}{poeShown && (<TeamShotQuality rows={poe ?? null} season={season} seasonQuery={q} names={new Map(roster.map((r) => [r.person_id, r.name]))} />)}{shotZones !== undefined && (<ShotProfile views={shotZones === null ? null : teamViews(shotZones)} season={season} name={team.name} team />)}{seasonBlock !== undefined && (<TeamSeasonBlock data={seasonBlock} season={season} espnId={team.espn_id || team.team_id} teamName={team.name} {...(gameSet ? { gameSet } : {})} {...(gameSetCounts !== undefined ? { gameSetCounts } : {})} />)}{seasonBlock !== undefined && (<TeamSeasonBlock data={seasonBlock} season={season} espnId={team.espn_id || team.team_id} teamName={team.name} {...(gameSet ? { gameSet } : {})} {...(gameSetCounts !== undefined ? { gameSetCounts } : {})} {...(seasonBlock && teamFlow !== undefined ? { logged: true } : {})} />)}{seasonBlock && teamFlow !== undefined && (<BbTeamGameLog data={seasonBlock} flow={teamFlow} season={season} espnId={team.espn_id || team.team_id} {...(gameSet ? { set: gameSet } : {})} />)}{seasonBlock !== undefined && (<TeamSeasonBlock data={seasonBlock} season={season} espnId={team.espn_id || team.team_id} teamName={team.name} {...(gameSet ? { gameSet } : {})} {...(gameSetCounts !== undefined ? { gameSetCounts } : {})} {...(scheduleContext ? { context: scheduleContext } : {})} {...(seasonBlock && teamFlow !== undefined ? { logged: true } : {})} />)}{seasonBlock && scheduleContext && (<BbTeamRotation data={seasonBlock} box={scheduleContext.box} season={season} espnId={team.espn_id || team.team_id} />)}{neighbors !== undefined && (<section id="nearby-ranks" aria-label="Nearby ranks" class="mb-4">
+    </div>{seasonBlock !== undefined && (<TeamSeasonBlock data={seasonBlock} season={season} espnId={team.espn_id || team.team_id} teamName={team.name} {...(gameSet ? { gameSet } : {})} {...(gameSetCounts !== undefined ? { gameSetCounts } : {})} {...(scheduleContext ? { context: scheduleContext } : {})} {...(seasonBlock && teamFlow !== undefined ? { logged: true } : {})} />)}{lineups !== undefined && (<LineupsTab data={lineups} season={season} current={current} basePath={basePath} teamName={team.name} />)}{onOff !== undefined && (<OnOffTab data={onOff} season={season} current={current} basePath={basePath} teamName={team.name} />)}{situations !== undefined && (<SituationsTab data={situations} season={season} current={current} basePath={basePath} teamName={team.name} />)}{poeShown && (<TeamShotQuality rows={poe ?? null} season={season} seasonQuery={q} names={new Map(roster.map((r) => [r.person_id, r.name]))} />)}{shotZones !== undefined && (<ShotProfile views={shotZones === null ? null : teamViews(shotZones)} season={season} name={team.name} team />)}{seasonBlock && teamFlow !== undefined && (<BbTeamGameLog data={seasonBlock} flow={teamFlow} season={season} espnId={team.espn_id || team.team_id} {...(gameSet ? { set: gameSet } : {})} />)}{seasonBlock && scheduleContext && (<BbTeamRotation data={seasonBlock} box={scheduleContext.box} season={season} espnId={team.espn_id || team.team_id} />)}{neighbors !== undefined && (<section id="nearby-ranks" aria-label="Nearby ranks" class="mb-4">
       <h2 class="h5">Nearby ranks</h2>
       {neighbors === null ? (<p class="text-muted" id="nearby-unavailable">The nearby ranks are temporarily unavailable.</p>)
         : neighbors.length === 0 ? (<p class="text-muted" id="nearby-empty">There are no {label} ranks for {team.name}.</p>)

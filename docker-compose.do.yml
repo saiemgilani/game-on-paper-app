@@ -11,6 +11,13 @@ services:
       - TELEMETRY_ENABLED=${TELEMETRY_ENABLED:-1}
     ports:
       - 3000:5000
+    # Docker's default is 1024 open files per process. Under the 2026-11-16 crawl a worker passed it
+    # and /process failed with EMFILE (os error 24). Workers recycle every ~400 requests
+    # (gunicorn.conf.py max_requests), so a higher ceiling covers what one accumulates meanwhile.
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     healthcheck:
       test: curl --fail http://python:5000/healthcheck || exit 1
       interval: 60s

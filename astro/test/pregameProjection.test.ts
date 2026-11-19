@@ -1,5 +1,6 @@
 // BB-G18: the pregame projection behind 'bball-pregame-projection' (the bracketology bracket keeps its bid chances). The card
-// reads the game's `{lg}.rated_priors` row as published (sdv-py#1193, sdv-db#229); the site computes nothing. The rows are
+// reads the game's `{lg}.rated_priors` row as published (sdv-py#1193, sdv-db#229; the pros' rated prior, `wp_prior_*`, sdv-db#236,
+// in the team_strength closed form's place); the site computes nothing. The rows are
 // real Data API reads (fixtures/README.md: pregame-projection.json.gz). The read (one season- and game-filtered row), the
 // route gates and the template. Every Data API read here is mocked.
 import { readFileSync } from 'node:fs';
@@ -52,7 +53,7 @@ import NbaGameRoute from '../src/components/routes/NbaGameRoute.astro';
 import BracketologyRoute from '../src/components/routes/BracketologyRoute.astro';
 import { prepareBasketballGame, type PregameProjection } from '../src/routes/basketball/game';
 import { prepareBracketology } from '../src/routes/basketball/bracketology';
-import { retrieveRatedPrior } from '../src/resources/pregameProjection';
+import { retrieveRatedPrior, servedPrior } from '../src/resources/pregameProjection';
 import { FLAGS } from '../src/utils/features';
 import { bballOnly } from './helpers/flags';
 
@@ -69,7 +70,17 @@ describe('retrieveRatedPrior: one season- and game-filtered row of the league ga
     ] as const)('%s %s %s', async (league, season, id, schema) => {
         const r = await retrieveRatedPrior(league, season, id);
         expect(api.calls).toEqual([{ schema, table: 'rated_priors', query: { season: String(season), game_id: id, limit: '1' } }]);
-        expect(r).toEqual(row(`${schema}.${season}.${id}`));
+        const raw = row(`${schema}.${season}.${id}`);
+        // college as published; the pros with the rated prior in the closed form's place
+        expect(r).toEqual(league === 'mbb' || league === 'wbb' ? raw : servedPrior(raw));
+    });
+    test.each([['nba', 2027, '401909994'], ['wnba', 2026, '401856990']] as const)("the pros' %s %s %s: every served number is the rated prior's", async (league, season, id) => {
+        const raw = row(`${league}.${season}.${id}`);
+        const r = (await retrieveRatedPrior(league, season, id))!;
+        expect([r.exp_home_margin, r.rated_home_prob, r.home_rating, r.away_rating, r.home_rank, r.away_rank, r.hfa])
+            .toEqual([raw.wp_prior_exp_home_margin, raw.wp_prior_home_prob, raw.wp_prior_home_rating, raw.wp_prior_away_rating, raw.wp_prior_home_rank, raw.wp_prior_away_rank, raw.wp_prior_hfa]);
+        expect(r.rated_home_prob).not.toBe(raw.rated_home_prob); // the closed form differs on these rows, so the swap is seen
+        expect([r.home_games, r.away_games]).toEqual([raw.home_games, raw.away_games]);
     });
     test('no row (a preseason game): null', async () => expect(await retrieveRatedPrior('nba', 2027, '401898403')).toBeNull());
     test('strict: an outage throws, never a game with no row', async () => {
@@ -113,19 +124,47 @@ describe('prepareBasketballGame: the pregame card', () => {
         expect(r.projection.neutral_site).toBe(true);
         expect(r.projection.hfa).toBe(0);
     });
-    test('on, the NBA: read by the ESPN game id, no team mapping', async () => {
+    test("on, the NBA: read by the ESPN game id, no team mapping; the rated prior's numbers", async () => {
         const { r } = await prep('nba', '401909994', FX.pages['401909994']);
-        expect(r.projection).toEqual(row('nba.2027.401909994'));
+        expect(r.projection).toEqual(servedPrior(row('nba.2027.401909994')));
+        expect('ourHomeWp' in r).toBe(false); // 'bball-lines' off: no Lines panel to feed
+    });
+    test("'bball-lines' on: the same read feeds the Lines panel's WP of ours, with or without the card", async () => {
+        const lines = { ...ON.flagOverrides, 'bball-lines': true };
+        const { r } = await prep('nba', '401909994', FX.pages['401909994'], { preview: true, flagOverrides: lines });
+        expect(r.ourHomeWp).toBe(row('nba.2027.401909994').wp_prior_home_prob);
+        expect(r.projection).toEqual(servedPrior(row('nba.2027.401909994')));
+        expect(api.calls.filter((c) => c.table === 'rated_priors')).toHaveLength(1); // the card and the panel share one read
+        api.calls = [];
+        const { r: noCard } = await prep('nba', '401909994', FX.pages['401909994'], { preview: true, flagOverrides: { ...lines, 'bball-pregame-projection': false } });
+        expect('projection' in noCard).toBe(false);
+        expect(noCard.ourHomeWp).toBe(row('nba.2027.401909994').wp_prior_home_prob);
+        expect(api.calls.filter((c) => c.table === 'rated_priors')).toHaveLength(1);
+    });
+    test("'bball-lines' on: a row with a win chance and no margin still feeds the panel, and shows no card", async () => {
+        api.rows['nba.2027.401909994'] = [{ ...row('nba.2027.401909994'), wp_prior_exp_home_margin: null }];
+        const { r } = await prep('nba', '401909994', FX.pages['401909994'], { preview: true, flagOverrides: { ...ON.flagOverrides, 'bball-lines': true } });
+        expect(r.projection).toBeNull();
+        expect(r.ourHomeWp).toBe(row('nba.2027.401909994').wp_prior_home_prob);
     });
     test('on, no row (a preseason game): no card, and the page keeps its cache', async () => {
         const { r, headers } = await prep('nba', '401898403', NBA_PRESEASON);
         expect(r.projection).toBeNull();
         expect(headers.get('Cache-Control') ?? '').not.toMatch(/no-store/);
     });
-    test("on, a null prediction (a pro side yet to play, as the opening week's rows publish it): no card", async () => {
+    test("on, opening night: the closed form's prediction is null, the rated prior's is not, so the pros get a card", async () => {
         const opening = row('nba.2026.401809243');
         expect([opening.exp_home_margin, opening.rated_home_prob]).toEqual([null, null]);
-        api.rows['nba.2027.401909994'] = [{ ...row('nba.2027.401909994'), exp_home_margin: opening.exp_home_margin, rated_home_prob: opening.rated_home_prob }];
+        expect(opening.wp_prior_home_prob).toBeGreaterThan(0);
+        const wp = Object.fromEntries(Object.entries(opening).filter(([k]) => k.startsWith('wp_prior_')));
+        api.rows['nba.2027.401909994'] = [{ ...row('nba.2027.401909994'), exp_home_margin: null, rated_home_prob: null, home_games: null, away_games: null, ...wp }];
+        const p = (await prep('nba', '401909994', FX.pages['401909994'])).r.projection;
+        expect([p.exp_home_margin, p.rated_home_prob]).toEqual([opening.wp_prior_exp_home_margin, opening.wp_prior_home_prob]);
+    });
+    test('on, no rated prior (an unmatched ESPN game, as All-Star rows publish it): no card, not the closed form', async () => {
+        const g = row('nba.2027.401909994');
+        const none = Object.fromEntries(Object.keys(g).filter((k) => k.startsWith('wp_prior_')).map((k) => [k, null]));
+        api.rows['nba.2027.401909994'] = [{ ...g, ...none }];
         expect((await prep('nba', '401909994', FX.pages['401909994'])).r.projection).toBeNull();
     });
     test("on, the producer's home side is not ESPN's: no card rather than a flipped one", async () => {
@@ -180,12 +219,12 @@ describe('NbaPregameProjection', () => {
         expect(card).toMatch(/<span>CONN by 0\.2<\/span>/);
         expect(card).toContain('51% by adjusted efficiency margin with a 3-game preseason prior');
     });
-    test('the pros: adjusted net rating', async () => {
+    test("the pros: the rated prior's margin, chance, ratings, ranks and home term", async () => {
         const card = await render('nba', '401909994');
-        expect(card).toMatch(/<span>BOS by 7\.5<\/span>/);
-        expect(card).toContain('70% by adjusted net rating, 2026-27');
-        expect(card).toContain('BOS +4.1 (#4), 12 games');
-        expect(card).toContain('home court +2.2 pts');
+        expect(card).toMatch(/<span>BOS by 12\.8<\/span>/);
+        expect(card).toContain('83% by adjusted net rating, 2026-27');
+        expect(card).toContain('ORL -2.1 (#21), 12 games; BOS +8.8 (#2), 13 games');
+        expect(card).toContain('home court +1.9 pts');
     });
     test("through NbaGameRoute: the route's prep reaches the card; off, no card", async () => {
         const { r: data } = await prep('mbb', '401909524', FX.pages['401909524']);

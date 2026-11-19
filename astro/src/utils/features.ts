@@ -87,7 +87,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // Basketball game link previews (nba/wnba/mbb/wbb, so inside each league's flag), as 'share-card' is for football:
     // a live or final game page's og:image is its 1200x630 card (`/<league>/game/<id>/card.png`, routes/basketball/
     // shareCard.ts, python/share_card.py render_basketball): the score, the teams, the WP line and, on a final, the GEI.
-    // Off: the head is today's, byte for byte. The card endpoint itself is not gated (a crawler carries no cookie).
+    // G-R5: the player and team pages too: og:image is the season card (`/<league>/players/<id>/card.png`, `/<league>/team/<id>/card.png`,
+    // routes/basketball/statCard.ts, render_basketball_stats) from the producer's shot_season_players / team_strength row and
+    // its ranks, plus a Share button beside the season select.
+    // Off: the heads and pages are today's, byte for byte. The card endpoints are not gated (a crawler carries no cookie).
     'bball-share-card': 'preview',
     // The Best Games board (BB-G29): /<league>/best-games and its Header entry, inside each league's flag. sdv-db's
     // `{lg}.game_excitement` by season, day range and team. Its own flag, so promoting the game pages' GEI line does not
@@ -201,8 +204,8 @@ export const FLAGS: Record<string, FeatureState> = {
     // page is today's.
     'bball-game-flow': 'preview',
     // BB-G18's pregame projection: on /<league>/game/[id] before tip, a Projection card (the favourite, the expected margin
-    // and its win chance) read as published from the game's {lg}.rated_priors row (sdv-py#1193, sdv-db#229); no card when
-    // the row is missing or its prediction is null. The bracketology bracket keeps its bid chances. Off: no read, and the
+    // and its win chance) read as published from the game's {lg}.rated_priors row (sdv-py#1193, sdv-db#229; the pros' rated
+    // prior, the wp_prior_* columns, sdv-db#236); no card when the row is missing or its prediction is null. The bracketology bracket keeps its bid chances. Off: no read, and the
     // pregame page is today's, byte for byte.
     'bball-pregame-projection': 'preview',
     // BB-G2's garbage-time toggle on /<league>/game/[id] for a final, beside the Impact box (so only with 'bball-impact-box'
@@ -279,7 +282,8 @@ export const FLAGS: Record<string, FeatureState> = {
     // panel when the game has no matched lines. Off: no read and the game page is today's, byte for byte.
     'bball-props': 'preview',
     // BB-G43's Lines and markets on /<league>/game/[id], pregame, live and final: the game's open and close spread, total
-    // and moneylines with the no-vig market win % (sdv-db game_lines, BB-D33) beside our pregame prior; a final's cover,
+    // and moneylines with the no-vig market win % (sdv-db game_lines, BB-D33) side by side with ours (the game's rated_priors
+    // row, BB-G18's number, #459); a final's cover,
     // total and upset; a live game's "at this pace" projection against the line. A game with no row (the current season is
     // mostly unmapped) gets no panel. Off: no read, and the pregame and game pages are today's.
     'bball-lines': 'preview',
