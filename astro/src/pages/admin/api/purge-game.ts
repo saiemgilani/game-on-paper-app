@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { auditAdmin } from '../../../utils/telemetry';
+import { settledKey } from '../../../resources/python';
 
 export const prerender = false;
 
@@ -12,7 +13,8 @@ export const prerender = false;
 //   ?ids=401856766,401864570      specific games (also resets their regression mark)
 // Both may be combined. The API-layer response cache is keyed on PROCESSOR_VERSION,
 // so a deploy that changes python/ or sportsdataverse-py main already invalidates it;
-// this only has to clear the rendered pages.
+// this only has to clear the rendered pages, and an id's settled-final copy in R2.
+// A tag cannot reach those copies: bump python/CACHE_GENERATION to re-key them all.
 const KNOWN_TAGS = new Set(['game-completed', 'game-in-progress', 'game-scheduled-today',
     'game-scheduled-future', 'scoreboard', 'matchup', 'favorites-enabled',
     // week/schedule + chart pages (see the tags: lists in utils/config.ts and pages/)
@@ -74,6 +76,8 @@ async function purge(context: Parameters<APIRoute>[0]): Promise<Response> {
             // renders the page uncached on every request.
             await env.ESPN_API_CACHE.delete(`gamestate:${id}`);
             await env.ESPN_API_CACHE.delete(`gamestate:nfl:${id}`);
+            // and a settled final's processed payload, which no deploy re-keys (resources/python.ts settledKey)
+            await (env as any).PRO_BUCKET?.delete([settledKey('cfb', id), settledKey('nfl', id)]);
             results[id] = 'purged';
         } catch (e: any) {
             results[id] = `error: ${e?.message ?? e}`;
