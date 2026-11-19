@@ -1,4 +1,5 @@
-// College bracketology (BB-G22): /mbb/bracketology's bracket (First Four and the four regions), the bubble and the seed
+// College bracketology (BB-G22): reached from the Header's Tools menu on /mbb (Nov 17 decisions, #394), then
+// /mbb/bracketology's bracket (First Four and the four regions), the bubble and the seed
 // table; the Standings view and one conference; the Team sheets; last season's final snapshot; then /wbb/bracketology.
 // Behind 'bball-bracketology' inside 'mbb' / 'wbb': pass WALKTHROUGH_COOKIE (see README.md) or run against a tree with
 // the flags forced on.
@@ -13,7 +14,20 @@ export default async (page, base) => {
     await Promise.all([page.waitForURL(url), sel.selectOption(value)]);
     await page.waitForTimeout(1200);
   };
-  await go('/mbb/bracketology');
+  await go('/mbb');
+  // on a phone the menu is collapsed: open it first
+  const toggle = page.locator('button[data-bs-target="#navOptions"]');
+  if (await toggle.isVisible()) {
+    await toggle.click();
+    await page.locator('#navOptions.show').waitFor({ state: 'visible', timeout: 5000 });
+  }
+  await page.locator('#navOptions .dropdown-toggle', { hasText: 'Tools' }).click();
+  await page.waitForTimeout(1200);
+  await Promise.all([
+    page.waitForURL(/\/mbb\/bracketology/, { timeout: 90_000 }),
+    page.locator('#navOptions .dropdown-menu a', { hasText: 'Bracketology' }).click(),
+  ]);
+  await page.waitForLoadState('networkidle');
   await page.waitForTimeout(1200);
   for (const text of ['The bubble', 'Seed distribution']) {
     await page.getByRole('heading', { name: text }).scrollIntoViewIfNeeded();

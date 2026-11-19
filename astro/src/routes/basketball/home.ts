@@ -1,7 +1,8 @@
 /**
  * Page-side step of a basketball league's landing page (/nba): the season, the featured team's
  * roster for it and their headshots. The template is components/routes/NbaHomeRoute.astro. Served at
- * /<league>?season=<endYear>; an unlisted season resolves to the current one before any read, so a
+ * /<league>?season=<endYear>, and the NBA's also at /nba/roster once the 'bball-hub' hub takes /nba (Nov 17, #458);
+ * an unlisted season resolves to the current one before any read, so a
  * crafted ?season= still caches its own copy of the current season's page (the key includes the query)
  * but never a different page. Only a 'featured-team' landing is served here.
  */
@@ -24,13 +25,14 @@ export interface BasketballHomeParams {
 
 export type BasketballHomePrep = { unavailable: true } | BasketballHomeParams;
 
-export async function prepareBasketballHome(Astro: AstroGlobal, league: BasketballLeague): Promise<BasketballHomePrep> {
+/** `path`: the league-relative path served, so a failed read is logged against the page that failed ('/' or '/roster'). */
+export async function prepareBasketballHome(Astro: AstroGlobal, league: BasketballLeague, path = '/'): Promise<BasketballHomePrep> {
     Astro.locals.league = league;
     const cfg = BASKETBALL[league];
     const ft = cfg.featuredTeam;
     if (cfg.landing !== 'featured-team' || !ft) throw new Error(`${league}: no featured-team landing`);
     const resolved = resolveBasketballSeason(Astro, league);
-    const rows = await readBasketballSeasonRows(Astro, league, resolved.season, leaguePath(league, '/'));
+    const rows = await readBasketballSeasonRows(Astro, league, resolved.season, leaguePath(league, path));
     if (rows === null) return { unavailable: true };
     return { ...resolved, roster: playerSeasonsFromRows(rows, ft.statsTeamId), headshots: headshotsFromRows(rows) };
 }

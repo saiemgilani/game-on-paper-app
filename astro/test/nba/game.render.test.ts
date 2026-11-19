@@ -227,10 +227,13 @@ describe('/nba/game/[id] render', () => {
         const on = wpProps(await render());
         expect(on).toContain('"gei":[0,3.5370793861546774]');
         expect(on).toContain('"showGei":[0,true]');
+        // Nov 17 decisions (#391): lead changes and the biggest WP swing ride beside it, a final only
+        expect(on).toMatch(/"geiExtras":\[0,\{"leadChanges":\[0,6\],"maxSwingPts":\[0,9\.34\]\}\]/);
         prep.mockResolvedValueOnce({ game: fromProcessor(j, 'nba') });
         const off = wpProps(await render({ 'bball-gei': false }));
         expect(off).toContain('"gei":[0,null]');
         expect(off).not.toContain('showGei');
+        expect(off).not.toContain('geiExtras');
         // no excitement in the payload (the Data API path, or a payload cached before it): on renders as off
         prep.mockResolvedValueOnce({ game: fromProcessor(read('game_401766458_processor'), 'nba') });
         expect(wpProps(await render())).not.toContain('showGei');
@@ -241,6 +244,7 @@ describe('/nba/game/[id] render', () => {
             const props = wpProps(await render());
             expect(props).toContain('"gei":[0,null]');
             expect(props).not.toContain('showGei');
+            expect(props).not.toContain('geiExtras');
         }
     });
     test('win probability with no prior: footnote says so, nothing crashes', async () => {

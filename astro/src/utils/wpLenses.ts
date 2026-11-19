@@ -91,8 +91,8 @@ export interface FlowExtras {
     runs: Run[];
     /** the longer of the two sides' longest gaps between two of their own scores; null before either scored twice */
     drought: Drought | null;
-    /** Q40, the clutch clock: points each side scored in the last 5:00 of regulation plus every overtime (the producer's
-     * clutch split's window, #416); finals only */
+    /** points each side scored in the last 5:00 of the final period played, overtime included: in an overtime game, the
+     * whole of the last five-minute OT (Nov 17 decisions, #462; it was Q40's clutch window); finals only */
     last5: { home: number; away: number } | null;
     /** each side's highest WP before the game was over (the settled 1 / 0 rows are not a peak) */
     peak: { home: Peak | null; away: Peak | null };
@@ -133,11 +133,16 @@ export function flowExtras(game: NbaGame, periodSeconds: number): FlowExtras {
     const winner = !done ? null : game.home.winner ? 'home' : game.away.winner ? 'away' : null;
     let last5: FlowExtras['last5'] = null;
     if (done && series.length > 1) {
-        // the last 5:00 of regulation, then every overtime to the end
-        const cut = gameSeconds(reg, reg, periodSeconds) - LAST_WINDOW;
-        const before = [...series].reverse().find((p) => p.t < cut) ?? series[0];
+        // Nov 17 decisions (#462): the last 5:00 of the final period played, overtime included (all of a five-minute OT)
         const end = series[series.length - 1];
-        last5 = { home: end.home - before.home, away: end.away - before.away };
+        // in overtime the window is the whole final period, read by the plays' own period (the previous period's buzzer and
+        // the OT's 5:00 share one elapsed time): the score at the last play before it is the baseline
+        const prior = game.periods > reg ? game.plays.findLast((p) => p.period < game.periods) : undefined;
+        const cut = total - LAST_WINDOW;
+        // series[0] is leadSeries' synthetic 0-0: a baseline only for a log that starts at the tip, else last5 stays null
+        const found = game.periods > reg ? undefined : [...series].reverse().find((p) => p.t < cut);
+        const before = prior ? { home: prior.homeScore, away: prior.awayScore } : found && (found !== series[0] || game.plays[0]?.period === 1) ? found : null;
+        if (before) last5 = { home: end.home - before.home, away: end.away - before.away };
     }
     return {
         runs: runs(series, RUN_LIST_MIN),
