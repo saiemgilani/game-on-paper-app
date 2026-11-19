@@ -68,27 +68,28 @@ async function purge(context: Parameters<APIRoute>[0]): Promise<Response> {
         }
     }
     for (const id of ids) {
-        try {
-            // An ESPN game id belongs to one league, but the caller need not say
-            // which: purging the other leagues' paths and marks is a harmless miss.
-            for (const lg of GAME_LEAGUES) {
-                const page = leaguePath(lg, `/game/${id}`);
-                await context.cache.invalidate({ path: page });
+        // An ESPN game id belongs to one league, but the caller need not say
+        // which: purging the other leagues' paths and marks is a harmless miss.
+        // Every step runs even when one fails, so one league's error leaves no other stale.
+        const steps = GAME_LEAGUES.flatMap((lg) => {
+            const page = leaguePath(lg, `/game/${id}`);
+            return [
+                () => context.cache.invalidate({ path: page }),
                 // and its share card, which caches for up to a year once final: a re-purge
                 // after a source pin changes (utils/sourceOverride.ts) has to reach it too
-                await context.cache.invalidate({ path: `${page}/card.png` });
+                () => context.cache.invalidate({ path: `${page}/card.png` }),
                 // A forced refresh also resets the regression guard's high-water mark
                 // (resources/espn.ts, gamestate:<league:>id): a stale or inflated mark makes
                 // every honest payload "regress", which renders the page uncached on every request.
-                await env.ESPN_API_CACHE.delete(`gamestate:${lg === 'cfb' ? '' : `${lg}:`}${id}`);
-            }
-            // and a settled final's processed payload, which no deploy re-keys (resources/python.ts settledKey).
-            // Only football keeps one today; the basketball keys are a harmless miss that keeps a future one covered.
-            await (env as any).PRO_BUCKET?.delete(GAME_LEAGUES.map((lg) => settledKey(lg, id)));
-            results[id] = 'purged';
-        } catch (e: any) {
-            results[id] = `error: ${e?.message ?? e}`;
-        }
+                () => env.ESPN_API_CACHE.delete(`gamestate:${lg === 'cfb' ? '' : `${lg}:`}${id}`),
+            ];
+        });
+        // and a settled final's processed payload, which no deploy re-keys (resources/python.ts settledKey).
+        // Only football keeps one today; the basketball keys are a harmless miss that keeps a future one covered.
+        steps.push(() => (env as any).PRO_BUCKET?.delete(GAME_LEAGUES.map((lg) => settledKey(lg, id))));
+        const failed = (await Promise.allSettled(steps.map(async (s) => s())))
+            .flatMap((r) => (r.status === 'rejected' ? [r.reason?.message ?? String(r.reason)] : []));
+        results[id] = failed.length ? `error: ${[...new Set(failed)].join('; ')}` : 'purged';
     }
     context.cache.set(false);
     const allOk = Object.values(results).every((v) => v === 'purged');

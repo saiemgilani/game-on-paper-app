@@ -11,13 +11,13 @@ import type { League } from '../src/utils/league';
 const ID = '401772944';
 const LEAGUES: League[] = ['cfb', 'nfl', 'nba', 'wnba', 'mbb', 'wbb'];
 
-async function purge(query: string) {
+async function purge(query: string, fail?: string) {
     const invalidated: unknown[] = [];
     const res = await (POST as any)({
         url: new URL(`https://gameonpaper.com/admin/api/purge-game?${query}`),
         request: new Request(`https://gameonpaper.com/admin/api/purge-game?${query}`, { method: 'POST' }),
         locals: { adminAuthed: true, adminActor: 'saiem' },
-        cache: { invalidate: async (o: unknown) => { invalidated.push(o); }, set: () => {} },
+        cache: { invalidate: async (o: any) => { if (fail && o.path === fail) throw new Error('cache down'); invalidated.push(o); }, set: () => {} },
     });
     return { res: res as Response, invalidated };
 }
@@ -37,6 +37,13 @@ describe('purge-game ?ids=', () => {
         for (const k of keys) await ESPN_API_CACHE.put(k, '{}');
         await purge(`ids=${ID}`);
         for (const k of keys) expect(await ESPN_API_CACHE.get(k)).toBeNull();
+    });
+
+    test("one league's failure still runs every other step, and reports the id as an error", async () => {
+        const { res, invalidated } = await purge(`ids=${ID}`, `/game/${ID}`);
+        expect((await res.json()).results[ID]).toBe('error: cache down');
+        expect(invalidated).toContainEqual({ path: `/wbb/game/${ID}/card.png` });
+        expect(invalidated).toHaveLength(11);
     });
 
     test("deletes every league's settled-final copy in R2 (#484)", async () => {
