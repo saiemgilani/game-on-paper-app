@@ -100,7 +100,8 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
 
         const config = getGameCacheConfig(espnGame.gamepackageJSON.header.competitions[0].date, espnGame.gamepackageJSON.header.competitions[0].status)
         if (!game && !ESPN_INVALID_GAME_STATUS_NAMES.includes(espnGame.gamepackageJSON.header.competitions[0].status.type.name)) {
-            game = await retrieveProcessedGame(id, config.maxAge || 30, league, source, pinned, notFoundTtl(espnGame.gamepackageJSON.header.competitions[0]));
+            const comp0 = espnGame.gamepackageJSON.header.competitions[0];
+            game = await retrieveProcessedGame(id, config.maxAge || 30, league, source, pinned, notFoundTtl(comp0), isSettledFinal(comp0));
         }
 
         // 'final-score-first' (preview): the chip's lookup runs here, before the cache policy,
@@ -161,9 +162,15 @@ export async function loadGameRoute(Astro: AstroGlobal, league: League): Promise
  * ESPN can serve a partial payload right at the final whistle and the next request should retry.
  * ponytail: kickoff + 2 days stands in for "ended over a day ago"; ESPN gives no end time here.
  */
-export function notFoundTtl(comp: { date?: string; status?: { type?: { completed?: boolean } } }): number {
-    const old = Date.now() - Date.parse(comp.date ?? '') >= 2 * 24 * 60 * 60 * 1000;
-    return comp.status?.type?.completed === true && old ? 10 * 60 : 1;
+export function notFoundTtl(comp: GameComp): number {
+    return isSettledFinal(comp) ? 10 * 60 : 1;
+}
+
+type GameComp = { date?: string; status?: { type?: { completed?: boolean } } };
+
+/** A final that kicked off two days ago or more. Its processed payload is kept for good (resources/python.ts retrieveProcessedGame). */
+export function isSettledFinal(comp: GameComp): boolean {
+    return comp.status?.type?.completed === true && Date.now() - Date.parse(comp.date ?? '') >= 2 * 24 * 60 * 60 * 1000;
 }
 
 export const espnPathFor = (league: League) => LEAGUES[league].espnPath;
