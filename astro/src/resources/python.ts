@@ -1,4 +1,6 @@
 import { getSecret } from "astro:env/server"
+import { env } from 'cloudflare:workers'
+import cacheGenerationFile from '../../../python/CACHE_GENERATION?raw'
 import type { ESPNGameClock, ESPNGameHeader, ESPNGeoBroadcast, ESPNPlayTeam, ESPNPlayTeamParticipant, ESPNPlayType, ESPNSeason, ESPNStatus, ESPNTeam, ESPNWinProbability } from "./espn"
 import { callerHeaders, wrappedFetch } from "../utils/telemetry"
 import { type League } from "../utils/league"
@@ -1201,9 +1203,10 @@ function cleanUpBoxScores(baseData: any[], pbp: ProcessedGame): any[] {
 /**
  * `fallbackOnRetired`: `source` is a pin (utils/sourceOverride.ts), so a 400 falls back to ESPN; see requestProcess.
  * `notFoundTtl`: how long the edge holds a processor 404 (requestProcessor).
+ * `settled`: the game is a settled final, so its payload is read from and kept in R2 (processPlays).
  */
-export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string, fallbackOnRetired = false, notFoundTtl = 1): Promise<ProcessedGame> {
-    const processed: ProcessedGame = await processPlays(gameId, cacheTTL, league, source, fallbackOnRetired, notFoundTtl);
+export async function retrieveProcessedGame(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string, fallbackOnRetired = false, notFoundTtl = 1, settled = false): Promise<ProcessedGame> {
+    const processed: ProcessedGame = await processPlays(gameId, cacheTTL, league, source, fallbackOnRetired, notFoundTtl, settled);
 
     const pbp: ProcessedGame = {
         ...processed,
@@ -1496,18 +1499,51 @@ async function requestProcess(gameId: string | number, cacheTTL: number, league:
     }
 }
 
-async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string, fallbackOnRetired = false, notFoundTtl = 1): Promise<ProcessedGame> {
+/**
+ * A settled final (completed, kicked off two days ago or more: routes/game.ts `isSettledFinal`) never
+ * changes, so its processed payload is kept in R2 for good, gzipped, keyed on python/CACHE_GENERATION
+ * rather than PROCESSOR_VERSION. The edge cache above is per data centre and evictable, and re-keys on
+ * every python/ or sportsdataverse-py change; on 2026-11-16 a crawl from ~4,200 IPs re-processed old
+ * games colo by colo. This copy is global and outlives deploys: bump CACHE_GENERATION to re-key it.
+ * ponytail: lives in the PRO_BUCKET under `processed/`; a bucket of its own is a wrangler.jsonc entry.
+ */
+export const CACHE_GENERATION = cacheGenerationFile.split('\n').map((l) => l.trim()).find((l) => l && !l.startsWith('#')) ?? '0';
+const settledKey = (league: League, gameId: string | number) => `processed/g${CACHE_GENERATION}/${league}/${gameId}.json.gz`;
+
+async function readSettled(key: string): Promise<string | null> {
+    try {
+        const obj = await (env as any).PRO_BUCKET?.get(key);
+        return obj ? await new Response(obj.body.pipeThrough(new DecompressionStream('gzip'))).text() : null;
+    } catch (e) {
+        console.warn(`settled-final read failed for ${key}: ${e}`);
+        return null;
+    }
+}
+
+async function writeSettled(key: string, content: string): Promise<void> {
+    try {
+        const gz = await new Response(new Blob([content]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
+        await (env as any).PRO_BUCKET?.put(key, gz, { customMetadata: { processor: PROCESSOR_VERSION } });
+    } catch (e) {
+        console.warn(`settled-final write failed for ${key}: ${e}`);
+    }
+}
+
+async function processPlays(gameId: string | number, cacheTTL: number, league: League = 'cfb', source?: string, fallbackOnRetired = false, notFoundTtl = 1, settled = false): Promise<ProcessedGame> {
     // `source` only ever arrives from the 'source-switch' preview path. It has
     // to reach the cache key as well as the URL: two sources' payloads for one
     // game are different responses, and a shared key would pin whichever
     // landed first for the whole TTL (a year on a completed game).
-    const content = await requestProcess(gameId, cacheTTL, league, source, fallbackOnRetired, notFoundTtl);
+    const key = settled && !source ? settledKey(league, gameId) : null;
+    const stored = key ? await readSettled(key) : null;
+    const content = stored ?? await requestProcess(gameId, cacheTTL, league, source, fallbackOnRetired, notFoundTtl);
 
     try {
         const resp: ProcessedGame = JSON.parse(content);
         if (resp.plays.length == 0) {
             throw new Error(`Game ID ${gameId} has no PBP`)
         }
+        if (key && stored === null) await writeSettled(key, content);
         return resp;
     } catch (e: any) {
         console.error(`ERROR while processing game ${gameId} plays: ${e}`)
