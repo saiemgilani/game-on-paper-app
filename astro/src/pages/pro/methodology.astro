@@ -15,7 +15,8 @@ import ProNav from '../../components/pro/ProNav.astro';
 import { PRO_SEASON, proObject } from '../../resources/pro';
 
 // A PFF-free build says so in the players index (gop-pro docs/contract.md): then this page makes
-// no claim about PFF figures.
+// no claim about PFF figures or the valuation built on them. An unreadable index keeps the licensed
+// copy, as before this flag existed.
 const playersIndex = await proObject<{ grades?: boolean }>(`pro/${PRO_SEASON}/players/index.json`);
 const hasGrades = playersIndex?.grades !== false;
 ---
@@ -30,7 +31,7 @@ const hasGrades = playersIndex?.grades !== false;
                     Pro profiles start from the same play-by-play numbers as the free site (EPA, success rate and the rest are in
                     the <a href="/glossary">glossary</a>) and add three things: small samples shrunk toward the position average,
                     a percentile band instead of a single rank, and a note on everything the data can't support.
-                    Valuation (below) turns the same numbers into model dollar values.
+                    {hasGrades && 'Valuation (below) turns the same numbers into model dollar values.'}
                 </p>
 
                 <h2 class="fs-4 mt-4">Percentile bands</h2>
@@ -92,7 +93,7 @@ const hasGrades = playersIndex?.grades !== false;
                     leaves the site, and the portal board's CSV carries derived columns only.
                 </p>
                 </Fragment>) : (
-                <p id="pro-no-grades">This edition carries no third-party grades: every figure comes from play-by-play.</p>
+                <p id="pro-no-grades">This edition carries no third-party grades and no valuation.</p>
                 )}
 
                 <h2 class="fs-4 mt-4">Data sources and refresh</h2>
@@ -109,6 +110,7 @@ const hasGrades = playersIndex?.grades !== false;
                     </li>
                 </ul>
 
+                {hasGrades && (<Fragment>
                 <h2 class="fs-4 mt-4" id="valuation">Valuation</h2>
                 <p>
                     Every player gets two numbers. <strong>Production value</strong> is what his play this season is worth to a program:
@@ -137,9 +139,10 @@ const hasGrades = playersIndex?.grades !== false;
                         includes them, and each team's run-blocking effect feeds the offensive line and unit projections.</li>
                 </ul>
                 <p>Every fitted number is in the <a href={`/pro/file/pro/${PRO_SEASON}/valuation/valuation.pdf`}>valuation methodology PDF</a>.</p>
+                </Fragment>)}
 
                 <h2 class="fs-4 mt-4">What this doesn't cover</h2>
-                <p>Athletic testing, injury history and third-party NIL deals. Dollar values are model estimates, not reported deals.</p>
+                <p>Athletic testing, injury history and third-party NIL deals.{hasGrades && ' Dollar values are model estimates, not reported deals.'}</p>
             </div>
         </div>
     </div>

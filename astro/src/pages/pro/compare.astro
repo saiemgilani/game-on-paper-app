@@ -10,7 +10,7 @@ import Panel from '../../layouts/panel/GenericPanel.astro';
 import ProNav from '../../components/pro/ProNav.astro';
 import { cleanTextForTeam, roundNumber } from '../../utils/misc';
 import {
-    compareMetricRows, formatOdds, formatProDelta, formatProMetric, formatUsd, parseCompareIds, PRO_COMPARE_MAX,
+    compareHasValue, compareMetricRows, formatOdds, formatProDelta, formatProMetric, formatUsd, parseCompareIds, PRO_COMPARE_MAX,
     type CompareProfile,
 } from '../../utils/pro';
 import { PRO_SEASON, proObject } from '../../resources/pro';
@@ -32,8 +32,8 @@ const hits = (index?.players ?? [])
     .slice(0, HITS);
 const rows = compareMetricRows(docs);
 // A PFF-free build carries no grades and no valuation (gop-pro docs/contract.md).
-const hasGrades = docs.some((d) => (d as { pff?: unknown[] }).pff !== undefined);
-const hasValue = docs.some((d) => d.value);
+const hasGrades = docs.some((d) => d.pff !== undefined);
+const hasValue = compareHasValue(docs);
 const name = (d: CompareProfile) => cleanTextForTeam(d.player.name ?? `Player ${d.player.espn_id}`, d.player.team_id);
 const r0 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : roundNumber(v, 0, 0));
 const valueRows: [string, (d: CompareProfile) => string][] = [

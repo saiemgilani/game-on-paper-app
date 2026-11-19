@@ -54,8 +54,9 @@ const bandOf = (e: BoardEntrant): { v: number; label: string } | null => {
 const showRealized = all.some((e) => e.value?.realized);
 // A PFF-free build has no grade and no valuation on any row (gop-pro docs/contract.md): drop the
 // columns and say so once, instead of a column of dashes.
-const showGrades = all.some((e) => e.pff_grade != null);
-const showValue = all.some((e) => e.value);
+// The grade key's presence marks the edition (a licensed board keeps it, null when unmatched).
+const showGrades = all.some((e) => e.pff_grade !== undefined);
+const showValue = showGrades || all.some((e) => e.value);
 const r0 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : String(Math.round(v)));
 const columns: [BoardSort | null, string, string][] = [
     ['name', 'Player', 'text-left'],

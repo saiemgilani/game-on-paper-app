@@ -838,15 +838,37 @@ describe('a PFF-free build (gop-pro GOP_PRO_PFF=0)', () => {
             expect(rows.length).toBeGreaterThan(0);
             for (const row of rows) expect(row.split('</tr>')[0].match(/<td[\s>]/g)?.length).toBe(heads);
             const compare = await render('../src/pages/pro/compare.astro', '/pro/compare?ids=1,2');
+            expect(compare).toContain('Fixture Player');  // not the empty state
+            expect(compare).toContain('Fixture Receiver');
             expect(compare).not.toContain('id="pro-compare-value"');
-            expect(compare).not.toMatch(/PFF/);
+            expect(compare).not.toMatch(/PFF|[Vv]aluation/);
+            const { compareCsv } = await import('../src/utils/pro');
+            expect(compareCsv([profile('1'), profile('2')]).split('\r\n')[0]).not.toMatch(/unit|usd/);
             const method = await render('../src/pages/pro/methodology.astro', '/pro/methodology');
             expect(method).toContain('id="pro-no-grades"');
-            expect(method).not.toMatch(/PFF/);
+            expect(method).not.toMatch(/PFF|id="valuation"|valuation\.pdf|Valuation \(below\)|Dollar values/);
         } finally {
             await PRO_BUCKET.delete(Object.keys(objects));
         }
-        // the licensed build still shows its PFF copy
-        expect(await render('../src/pages/pro/methodology.astro', '/pro/methodology')).toContain('PFF figures');
+        // the licensed build still shows its PFF copy, and its valuation even when no row is valued
+        const method = await render('../src/pages/pro/methodology.astro', '/pro/methodology');
+        expect(method).toContain('PFF figures');
+        expect(method).toContain('valuation methodology PDF');
+        const unvalued = ['1', '2'].map((id) => ({ ...fixture(`players/${id}.json`), value: null }));
+        await PRO_BUCKET.put('pro/2026/players/1.json', JSON.stringify(unvalued[0]));
+        await PRO_BUCKET.put('pro/2026/players/2.json', JSON.stringify(unvalued[1]));
+        await PRO_BUCKET.put('pro/2026/portal/board.json', JSON.stringify({
+            ...b, entrants: b.entrants.map((e: Record<string, unknown>) => ({ ...e, pff_grade: null, pff_grade_pct: null })),
+        }));
+        try {
+            expect(await render('../src/pages/pro/compare.astro', '/pro/compare?ids=1,2')).toContain('id="pro-compare-value"');
+            const { compareCsv } = await import('../src/utils/pro');
+            expect(compareCsv(unvalued).split('\r\n')[0]).toContain('projected_usd');
+            const board = await render('../src/pages/pro/portal.astro', '/pro/portal');
+            expect(board).toContain('PFF grade');
+            expect(board).not.toContain('id="pro-board-edition"');
+        } finally {
+            await PRO_BUCKET.delete(['pro/2026/players/1.json', 'pro/2026/players/2.json', 'pro/2026/portal/board.json']);
+        }
     }, 60_000);
 });

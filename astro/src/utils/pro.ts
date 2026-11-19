@@ -363,6 +363,14 @@ export interface CompareProfile {
     value?: { unit: string; age: number | null; production_usd_pace: number | null; projected_usd: number | null
         projected_usd_lo: number | null; projected_usd_hi: number | null; p_start_next: number | null
         projection: { pct: number | null; lo: number | null; hi: number | null } } | null
+    /** absent in a PFF-free build (gop-pro docs/contract.md); not read here beyond its presence */
+    pff?: unknown[]
+}
+
+/** Whether these profiles come from an edition with a valuation: a PFF build always carries `pff`
+ *  (an empty list when unrated), a PFF-free one never does and has no valuation. */
+export function compareHasValue(docs: CompareProfile[]): boolean {
+    return docs.some((d) => d.pff !== undefined || d.value);
 }
 
 /** Every metric any of the players has, in first-seen order, with each player's row or null. */
@@ -387,10 +395,11 @@ const csvCell = (v: unknown): string => {
  */
 export function compareCsv(docs: CompareProfile[]): string {
     const metrics = compareMetricRows(docs).map((r) => r.key);
+    const valued = compareHasValue(docs);
     const head = ['espn_id', 'name', 'team', 'position', 'season',
         ...metrics.flatMap((k) => [k, `${k}_n`, `${k}_band_lo`, `${k}_band_mid`, `${k}_band_hi`, `${k}_change`]),
-        'unit', 'production_usd_pace', 'projected_usd', 'projected_usd_lo', 'projected_usd_hi',
-        'projection_pct', 'projection_lo', 'projection_hi', 'p_start_next', 'age'];
+        ...(valued ? ['unit', 'production_usd_pace', 'projected_usd', 'projected_usd_lo', 'projected_usd_hi',
+            'projection_pct', 'projection_lo', 'projection_hi', 'p_start_next', 'age'] : [])];
     const rows = docs.map((d) => {
         const by = new Map((d.metrics ?? []).map((m) => [m.key, m]));
         const v = d.value ?? null;
@@ -399,8 +408,8 @@ export function compareCsv(docs: CompareProfile[]): string {
                 const m = by.get(k);
                 return m ? [m.value, m.n, m.band_lo, m.band_mid, m.band_hi, m.delta_eb] : ['', '', '', '', '', ''];
             }),
-            v?.unit, v?.production_usd_pace, v?.projected_usd, v?.projected_usd_lo, v?.projected_usd_hi,
-            v?.projection?.pct, v?.projection?.lo, v?.projection?.hi, v?.p_start_next, v?.age];
+            ...(valued ? [v?.unit, v?.production_usd_pace, v?.projected_usd, v?.projected_usd_lo, v?.projected_usd_hi,
+                v?.projection?.pct, v?.projection?.lo, v?.projection?.hi, v?.p_start_next, v?.age] : [])];
     });
     return [head, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
