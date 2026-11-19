@@ -34,11 +34,16 @@ session.headers["Authorization"] = f"Bearer {os.environ['SDV_AUTH_TOKEN']}"
 
 
 def get(table: str, **params) -> list[dict]:
+    # a 5xx, a 429 or a dropped connection is retried with backoff; the last attempt raises
     for attempt in range(4):
-        r = session.get(f"{API}/{table}", params=params, timeout=60)
-        if r.status_code < 500:
-            r.raise_for_status()
-            return r.json()["data"]
+        try:
+            r = session.get(f"{API}/{table}", params=params, timeout=60)
+            if r.status_code < 500 and r.status_code != 429:
+                r.raise_for_status()
+                return r.json()["data"]
+        except (requests.ConnectionError, requests.Timeout):
+            if attempt == 3:
+                raise
         time.sleep(2**attempt)
     r.raise_for_status()
     return []

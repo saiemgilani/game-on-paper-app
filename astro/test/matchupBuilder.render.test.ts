@@ -113,6 +113,13 @@ describe('the team index follows cfb.team_summaries (#338)', () => {
             const astro = { locals: {}, url: new URL('https://gameonpaper.com/game/matchup'), cache: { set: () => {} }, response: { headers: new Headers() } };
             const r = prepareMatchup(astro as any, league) as any;
             expect([r.awaySeason, r.homeSeason]).toEqual([String(METRIC_YEAR), String(METRIC_YEAR)]);
+            if (league !== 'cfb') continue;
+            // and the builder, handed those, selects that season in both season selects
+            const { retrieveAllTeams } = await import('../src/utils/teams');
+            const { default: MatchupBuilder } = await import('../src/components/game/MatchupBuilder.svelte');
+            const html = await container.renderToString(MatchupBuilder, { props: { teamSeasons: retrieveAllTeams('cfb'), league, projection: null, ...r } });
+            const seasons = [...html.matchAll(/<select\b[^>]*>([\s\S]*?)<\/select>/g)].map((m) => m[1]).filter((_, i) => i % 2 === 1);
+            for (const sel of seasons) expect(sel).toMatch(new RegExp(`<option(?=[^>]*value="${METRIC_YEAR}")(?=[^>]*\\bselected\\b)[^>]*>`));
         }
     });
 });
