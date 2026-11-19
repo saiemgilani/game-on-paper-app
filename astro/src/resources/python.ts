@@ -1452,6 +1452,30 @@ export async function retrieveBasketballShareCard(gameId: string | number, leagu
     }
 }
 
+/**
+ * 'bball-share-card' (preview), G-R5: a basketball player's or team's card (python/share_card.py render_basketball_stats) as PNG
+ * bytes, or null when the API cannot draw one. A POST of the strings the card draws (basketball/statCard.ts), so the API reads nothing.
+ */
+export async function retrieveBasketballStatCard(league: League, kind: 'players' | 'team', id: number, body: unknown): Promise<ArrayBuffer | null> {
+    if (!PYTHON_HTTP_TOKEN) return null;
+    try {
+        const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${kind}/${id}/card.png`, {
+            method: 'POST',
+            headers: { "Authorization": `Bearer ${btoa(PYTHON_HTTP_TOKEN)}`, "Referer": "gameonpaper.com", "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(BASKETBALL_CARD_TIMEOUT_MS),
+        });
+        if (!req.ok) {
+            console.error(`ERROR share card ${league} ${kind} ${id}: HTTP ${req.status}`);
+            return null;
+        }
+        return await req.arrayBuffer();
+    } catch (e) {
+        console.error(`ERROR while fetching share card for ${league} ${kind} ${id}: ${e}`);
+        return null;
+    }
+}
+
 /** A processor answer that was not a 2xx (or never arrived): `status` is the HTTP status, 504 for a timeout. */
 export class ProcessorError extends Error {
     constructor(public status: number, message: string) {

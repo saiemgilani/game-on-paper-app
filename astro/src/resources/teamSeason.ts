@@ -108,12 +108,17 @@ export async function retrieveTeamSeason(league: BasketballLeague, season: numbe
         retrieveRowsFrom<ScheduleGameRow>(games, 'schedule', { season: s, ...scope, [key]: String(espnId), select: SCHEDULE_SELECT, limit: GAME_LIMIT }, TTL, true);
     const [rates, strength, home, away, gameRates] = await Promise.all([
         retrieveRows<TeamSeasonRateRow>(league, 'team_season_rates', { season: s, team_id: String(teamId), limit: SPLIT_LIMIT }, TTL, true),
-        retrieveRows<TeamStrengthRow>(league, 'team_strength', { season: s, team_id: String(teamId), select: STRENGTH_SELECT, limit: '1' }, TTL, true),
+        retrieveTeamStrength(league, season, teamId),
         side('home_id'),
         side('away_id'),
         retrieveRowsFrom<GameRateRow>(games, 'game_team_rates', { season: s, team_id: String(espnId), select: GAME_RATE_SELECT, limit: GAME_LIMIT }, TTL, true),
     ]);
-    return { rates, strength: strength[0] ?? null, games: [...home, ...away], gameRates };
+    return { rates, strength, games: [...home, ...away], gameRates };
+}
+
+/** The team's team_strength row, or null for a team the producer has not rated; strict (a failed read throws). Also the share card's read (basketball/statCard.ts). */
+export async function retrieveTeamStrength(league: BasketballLeague, season: number, teamId: number): Promise<TeamStrengthRow | null> {
+    return (await retrieveRows<TeamStrengthRow>(league, 'team_strength', { season: String(season), team_id: String(teamId), select: STRENGTH_SELECT, limit: '1' }, TTL, true))[0] ?? null;
 }
 
 /** One team-game's play-by-play totals (sdv-db team_game_possessions, split 'all'), the columns BB-G14's summed sets add. */
