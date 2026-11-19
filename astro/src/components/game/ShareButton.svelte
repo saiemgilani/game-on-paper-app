@@ -3,6 +3,8 @@
     // whose preview leaves the score out. The Web Share sheet where the browser
     // has one; otherwise the link is copied and a toast says so. The menu opens
     // and closes itself because the pregame page loads no Bootstrap JS.
+    // Without `spoilerFreeUrl` (a basketball player or team page, 'bball-share-card')
+    // there is nothing to hide: the button shares the link at once, no menu.
     const { url, spoilerFreeUrl, label = false } = $props();
     let open = $state(false);
     let toast = $state('');
@@ -35,12 +37,13 @@
     onkeydown={(e) => { if (e.key === 'Escape') open = false; }}
 />
 <div class="dropdown" bind:this={root}>
-    <button class="btn btn-sm btn-outline-primary align-middle text-nowrap p-2" type="button" aria-label="Share" aria-haspopup="true" aria-expanded={open} onclick={() => (open = !open)}>
+    <button class="btn btn-sm btn-outline-primary align-middle text-nowrap p-2" type="button" aria-label="Share" aria-haspopup={spoilerFreeUrl ? 'true' : undefined} aria-expanded={spoilerFreeUrl ? open : undefined} onclick={() => (spoilerFreeUrl ? (open = !open) : share(url))}>
         <!-- Bootstrap Icons' share.svg inline, not <i class="bi-share">: Fanboy's
              Social list (in Safari/uBlock/AdGuard annoyance blockers) hides `.bi-share`,
              which left an empty button. Keep the bi-share class off this element. -->
         <svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" style="vertical-align: -.125em"><path d="M13.5 1a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3M11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.5 2.5 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5m-8.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3m11 5.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3"/></svg>{label ? ' Share' : ''}
     </button>
+    {#if spoilerFreeUrl}
     <ul class="dropdown-menu dropdown-menu-end" class:show={open} data-bs-popper="static">
         <li><button class="dropdown-item" type="button" onclick={() => share(url)}><i class="bi-link-45deg me-2"></i>Share link</button></li>
         <li>
@@ -50,6 +53,7 @@
             </button>
         </li>
     </ul>
+    {/if}
     {#if toast}
         <div class="toast show position-fixed bottom-0 end-0 m-3" role="status" aria-live="polite"><div class="toast-body">{toast}</div></div>
     {/if}

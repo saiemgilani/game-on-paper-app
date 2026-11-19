@@ -28,6 +28,8 @@ import { LEAGUES, leaguePath } from '../../utils/league';
 import { playerGameSet } from '../../utils/bballGameSet';
 import { compareHref } from '../../utils/compare';
 import { isFeatureEnabled } from '../../utils/features';
+import ShareButton from '../game/ShareButton.svelte';
+import { statShareImage } from '../../basketball/statCard';
 
 interface Props { data: NbaPlayerParams }
 const { season, seasons, current, q, player, line, teams, headshot, prev, next, explorer, ranks, hisSeasons, min, unlocated, coverage, situations, poe, impact, onOff, playStyles, war, epv, playTypes, career, zones, zonesFt, currentImpact, gameSet, gameLog } = Astro.props.data;
@@ -45,6 +47,9 @@ const title = `${player.player_name}, ${label} shooting | Game on Paper`;
 const description = `${player.player_name} (${teams.join(', ')}) ${label}: ${fmtInt(line.makes)}/${fmtInt(line.attempts)} FG, ${fmtPct(line.fgPct)} FG%, ${fmtPct(line.efgPct)} eFG%. Hex shot chart, shooting signature and distance and side splits against the league.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: name, url: lp('/'), active: false }, { title: 'Players', url: `${lp('/players')}${q}`, active: false }, { title: player.player_name, active: true }];
 const subject = `${player.player_name} ${label}`;
+// 'bball-share-card' (preview), G-R5: the season card as og:image and a Share button; off, the head and the page are today's
+const shareCard = isFeatureEnabled('bball-share-card', Astro.locals);
+const shareImage = shareCard ? statShareImage('players', league, player.person_id, season, player.player_name) : undefined;
 // BB-G51: null, the read failed; [], no zone row for him
 const zonesView = zones == null ? null : ((v) => (v ? [v] : []))(playerView(zones, zonesFt ?? null));
 // BB-G14 ('bball-game-set'): the explorer starts from the ?games= set's games (absent for All, so the island's props are today's)
@@ -52,7 +57,7 @@ const startSet = gameSet && explorer.games ? playerGameSet(explorer.games, gameS
 const initial = startSet && startSet.set !== 'all' ? { initial: startSet.gameIds } : {};
 const sections = [...(impact !== undefined || currentImpact !== undefined ? [['#impact', 'Impact']] : []), ...(war !== undefined && impact === undefined ? [['#value', 'Value']] : []), ...(zones !== undefined ? [['#shot-profile', 'Shot profile']] : []), ...(career !== undefined ? [['#career', 'Career']] : []), ...(playTypes !== undefined ? [['#play-types', 'Play types'], ['#defense', 'Defense']] : []), ...(onOff !== undefined ? [['#on-off', 'On/Off']] : []), ['#ranks', 'League ranks'], ...(situations ? [['#situations', 'Situations']] : []), ...(explorer.games ? [['#nba-games-panel', 'Games']] : []), ['#charts', 'Shot charts'], ...(explorer.games ? [['#nba-rolling-panel', 'Rolling shooting'], ['#nba-versus-panel', 'Versus each opponent']] : [])];
 ---
-<GenericPage title={title} subtitle={description} slug={lp(`/players/${player.person_id}`)} breadcrumbs={breadcrumbs} description={description} canonicalPath={playerHref(player.person_id, q, league)}>
+<GenericPage title={title} subtitle={description} slug={lp(`/players/${player.person_id}`)} breadcrumbs={breadcrumbs} description={description} canonicalPath={playerHref(player.person_id, q, league)} image={shareImage}>
   <div class="container">
     <div class="row mb-3 align-items-start">
       <div class="col-auto"><NbaHeadshot src={headshot} name={player.player_name} size={140} /></div>
@@ -63,7 +68,7 @@ const sections = [...(impact !== undefined || currentImpact !== undefined ? [['#
         {stats && (<>{cfg.hidePie ? (<p class="small text-muted numeral mb-2">{fmtInt(stats.gp)} GP &middot; {fmtDec(stats.min)} MIN &middot; {fmtPct(stats.usg_pct)} USG% &middot; {fmtPct(stats.ts_pct)} TS%</p>) : (<p class="small text-muted numeral mb-2">{fmtInt(stats.gp)} GP &middot; {fmtDec(stats.min)} MIN &middot; {fmtPct(stats.usg_pct)} USG% &middot; {fmtPct(stats.ts_pct)} TS% &middot; {fmtPct(stats.pie)} PIE</p>)}{usageNote && (<p class="small text-muted mb-2">{usageNote}</p>)}</>)}{coverage && (<p class="small text-muted mb-2" id="nba-coverage">{coverage}</p>)}{playStyles !== undefined && <PlayStyleChips chips={playStyles} />}
         <div class="d-flex flex-wrap align-items-center gap-3">
           <NbaSeasonSelect seasons={options} season={season} current={current} basePath={lp(`/players/${player.person_id}`)} />
-          <a href={teamHref(player.team_id, q, league)}>{player.team_tricode} team page &rarr;</a>{isFeatureEnabled('bball-compare', Astro.locals) && (<a class="btn btn-sm btn-outline-secondary" id="player-compare-link" href={compareHref(league, [String(player.person_id)], season === current ? null : season)}>Compare</a>)}
+          <a href={teamHref(player.team_id, q, league)}>{player.team_tricode} team page &rarr;</a>{isFeatureEnabled('bball-compare', Astro.locals) && (<a class="btn btn-sm btn-outline-secondary" id="player-compare-link" href={compareHref(league, [String(player.person_id)], season === current ? null : season)}>Compare</a>)}{shareCard && (<ShareButton client:load label url={`https://gameonpaper.com${playerHref(player.person_id, q, league)}`} />)}
         </div>
       </div>
     </div>

@@ -485,3 +485,36 @@ def render_basketball(
         card.text(PAD, 590, f"Game Excitement Index: {float(game['gei']):.2f}", 26, BOLD, ha="left")
     card.text(W - PAD, 590, "gameonpaper.com", 26, color=MUTED, ha="right")
     return card.png()
+
+
+def render_basketball_stats(
+    body: dict,
+    league: str,
+    logo_fetch,
+    drawn: list | None = None,
+) -> bytes:
+    """A basketball player or team page's card (nba/wnba/mbb/wbb) as PNG bytes.
+
+    `body` is the Worker's (astro basketball/statCard.ts): `stamp` (league and season), `title` (the player or the
+    team), `subtitle` (team, games, record), `team` (id, abbr, colors, logo URL) and up to four `tiles`, each a
+    `value` and `label` already formatted from the producer's columns, with the producer's `rank` or None. This
+    draws strings; it computes nothing.
+    """
+    team = {**body["team"], "id": str(body["team"].get("id")), "color": _color(body["team"])}
+    card = _Card(drawn)
+    card.text(W / 2, 58, body.get("stamp") or "", 26, color=MUTED, max_w=W - 2 * PAD)
+    card.text(W / 2, 150, body["title"], 60, BOLD, max_w=W - 2 * (PAD + 120 + 24))
+    card.logo(team, league, logo_fetch, PAD + 60, 135, 120)
+    if body.get("subtitle"):
+        card.text(W / 2, 205, body["subtitle"], 30, color=MUTED, max_w=W - 2 * (PAD + 120 + 24))
+    tiles = (body.get("tiles") or [])[:4]
+    for i, tile in enumerate(tiles):
+        cx = (2 * i + 1) * W / (2 * len(tiles))
+        card.text(cx, 385, tile["value"], 80, BOLD, team["color"], max_w=W / len(tiles) - PAD)
+        card.text(cx, 440, tile["label"], 26, color=MUTED, max_w=W / len(tiles) - PAD)
+        if tile.get("rank"):
+            card.text(cx, 482, tile["rank"], 26, BOLD, max_w=W / len(tiles) - PAD)
+    if body.get("note"):
+        card.text(PAD, 590, body["note"], 22, color=MUTED, ha="left", max_w=W - 2 * PAD - 260)
+    card.text(W - PAD, 590, "gameonpaper.com", 26, color=MUTED, ha="right")
+    return card.png()

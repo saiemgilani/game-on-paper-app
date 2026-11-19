@@ -1085,6 +1085,41 @@ for _league in BASKETBALL_PROCESSORS:
     )
 
 
+def _bball_stats_body_ok(body) -> bool:
+    if not isinstance(body, dict) or not isinstance(body.get("title"), str) or not isinstance(body.get("team"), dict):
+        return False
+    tiles = body.get("tiles", [])
+    return isinstance(tiles, list) and len(tiles) <= 4 and all(
+        isinstance(t, dict) and isinstance(t.get("value"), str) and isinstance(t.get("label"), str) for t in tiles
+    )
+
+
+def _card_basketball_stats(league: str, kind: str, subject_id: int):
+    """'bball-share-card' (preview): a basketball player or team page's 1200x630 card (share_card.render_basketball_stats).
+
+    The POST body is every string the card draws, built by the Worker from the producer's season row (astro
+    basketball/statCard.ts), so this route reads nothing itself. Caching is the Worker's.
+    """
+    body = request.get_json(silent=True)
+    if request.content_length is None or request.content_length > _CARD_BODY_MAX or not _bball_stats_body_ok(body):
+        return jsonify({"status": "bad", "message": "body is {title, team: {..}, tiles: [{value, label, rank}, ..]}"}), 400
+    try:
+        png = share_card.render_basketball_stats(body, league, _logo_fetch)
+    except Exception as e:  # not a 401: require_auth_token answers that for any raise
+        logging.getLogger("root").error(f"card: render failed for {league} {kind} {subject_id}: {e!r}")
+        return jsonify({"status": "bad", "message": "card render failed"}), 500
+    return Response(png, mimetype="image/png")
+
+
+for _league in BASKETBALL_PROCESSORS:
+    app.add_url_rule(
+        f"/{_league}/<any(players,team):kind>/<int(min=1,max=999999999999):subject_id>/card.png",
+        endpoint=f"stats_card_{_league}",
+        view_func=require_auth_token(lambda kind, subject_id, _lg=_league: _card_basketball_stats(_lg, kind, subject_id)),
+        methods=["POST"],
+    )
+
+
 @app.route("/cfb/playoff/projection", methods=["POST"])
 @require_auth_token
 def playoff_projection_route():
