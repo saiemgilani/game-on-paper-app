@@ -60,7 +60,8 @@ def test_nba_payload_carries_regulation_from_the_summary(monkeypatch):
 def test_nba_payload_carries_the_game_excitement_of_its_own_wp(monkeypatch):
     body = _app(monkeypatch, _summary()).app.test_client().get("/nba/401585607/process", headers=AUTH).get_json()
     ex = body["excitement"]
-    assert set(ex) == {"gei", "lead_changes", "max_swing_pts", "completed"}
+    # sdv-py #1190 adds the winner's WP low (winner_team_id, winner_low_wp/period/clock), GOP Q41
+    assert set(ex) == {"gei", "lead_changes", "max_swing_pts", "completed", "winner_team_id", "winner_low_wp", "winner_low_period", "winner_low_clock"}
     assert ex["completed"] is True  # a final: the last play swings to the result
     # sdv-py game_excitement on this capture at the pinned lock (353e42b2); a WP refit moves these with the PR 0 snapshot
     assert ex["gei"] == pytest.approx(3.5370793861546774) and ex["max_swing_pts"] == pytest.approx(9.34339165687561)
