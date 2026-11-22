@@ -51,11 +51,7 @@ describe('the coaches flag', () => {
 
     test('a public viewer gets the 404 for every board route, and only those', async () => {
         for (const p of BOARD_PATHS) {
-            if (p.includes("nfl")) {
-                expect((await run(p, null)).rewrittenTo, p).toBe('/404');
-            } else {
-                expect((await run(p, null)).rewrittenTo, p).not.toBe('/404');
-            }
+            expect((await run(p, null)).rewrittenTo, p).not.toBe('/404');
         }
         // the rest of the cfb site -- including the team leaderboards the boards sit beside -- is untouched
         for (const p of ['/', '/year/2025/teams/differential', '/year/2025/players/passing', '/game/401752746', '/coachesx']) {

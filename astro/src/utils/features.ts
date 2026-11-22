@@ -38,7 +38,7 @@ export const FLAGS: Record<string, FeatureState> = {
     // sitemap's /nfl URLs). Gated once in middleware: a viewer without the
     // preview cookie gets the site's 404 for any /nfl path. Promote to 'on'
     // when the NFL launches -- nothing else changes.
-    'nfl': 'preview',
+    'nfl': 'on',
     // The whole NBA surface (pages/nba/**, the Header's league menu entry). Gated once
     // in middleware like 'nfl': a viewer without the preview cookie gets the site's 404
     // for any /nba path. The Blazing the Nets shooting dashboards, read live from the

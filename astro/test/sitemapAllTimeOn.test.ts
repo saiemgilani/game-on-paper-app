@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 
 // The sitemap once the all-time boards are promoted ('all-time-leaderboards': 'on'),
-// NFL still in preview: the three cfb boards, no /nfl one. Its own file so the
+// with the NFL public: the three cfb boards and the /nfl ones. Its own file so the
 // promotion path stays tested while the flag is 'preview'.
 vi.mock('../src/utils/features', async (orig) => {
     const real = await orig<typeof import('../src/utils/features')>();
@@ -16,6 +16,6 @@ describe('sitemap.xml with the all-time-leaderboards flag on', () => {
         for (const c of ['passing', 'rushing', 'receiving']) {
             expect(xml).toContain(`<loc>https://gameonpaper.com/all-time/players/${c}</loc>`);
         }
-        expect(xml).not.toContain('/nfl/all-time/');
+        expect(xml).toContain('/nfl/all-time/');
     });
 });

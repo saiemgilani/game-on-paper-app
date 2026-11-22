@@ -3,10 +3,9 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
 
-// The NFL surface sits behind the 'nfl' feature flag (utils/features.ts):
-// middleware turns any /nfl path into the site's 404 unless the viewer holds
-// the preview cookie; the header offers the switch into the NFL only to such a
-// viewer. Promotion is 'preview' -> 'on' and nothing else.
+// The NFL surface sits behind the 'nfl' feature flag (utils/features.ts), now 'on':
+// middleware serves /nfl to every viewer and the header offers the switch into the
+// NFL to everyone. The preview cookie and /preview/nfl still compose as before.
 vi.mock('astro:env/server', () => ({ getSecret: (k: string) => (k === 'ADMIN_PASS' ? 'test-secret' : undefined) }));
 vi.mock('astro:middleware', () => ({ defineMiddleware: (fn: unknown) => fn }));
 
@@ -30,15 +29,15 @@ async function run(path: string, cookie: string | null) {
 }
 
 describe('the nfl flag', () => {
-    test('is a preview feature until launch', () => {
-        expect(FLAGS['nfl']).toBe('preview');
-        expect(isFeatureEnabled('nfl', {})).toBe(false);
+    test('is public', () => {
+        expect(FLAGS['nfl']).toBe('on');
+        expect(isFeatureEnabled('nfl', {})).toBe(true);
         expect(isFeatureEnabled('nfl', { preview: true })).toBe(true);
     });
 
-    test('a public viewer gets the 404 for every /nfl path, and only those', async () => {
+    test('a public viewer gets every /nfl path', async () => {
         for (const p of ['/nfl', '/nfl/', '/nfl/year/2025/teams/tendencies', '/nfl/game/401772944']) {
-            expect((await run(p, null)).rewrittenTo, p).toBe('/404');
+            expect((await run(p, null)).rewrittenTo, p).toBeUndefined();
         }
         // the cfb site is untouched, and a path that merely starts with the letters is not the namespace
         for (const p of ['/', '/year/2025/teams/differential', '/game/401752746', '/nflx']) {
@@ -62,14 +61,14 @@ describe('the nfl flag', () => {
         expect(bounced.res.headers.get('Location')).toBe('/nfl');
     });
 
-    test('the header offers the switch into the NFL only to a viewer the flag admits', async () => {
+    test('the header offers the switch into the NFL to every viewer', async () => {
         // a preview header carries the search island, so the Svelte renderer is loaded
         const container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) });
         const { default: Header } = await import('../src/components/Header.astro');
         const req = new Request('https://gameonpaper.com/');
         const pub = await container.renderToString(Header, { request: req, locals: {} });
-        expect(pub).not.toContain('league-switch');
-        expect(pub).not.toContain('href="/nfl"');
+        expect(pub).toContain('league-switch');
+        expect(pub).toContain('href="/nfl"');
         const prev = await container.renderToString(Header, { request: req, locals: { preview: true } });
         expect(prev).toContain('league-switch');
         expect(prev).toContain('href="/nfl"');
