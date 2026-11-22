@@ -48,12 +48,7 @@ const PLAYER_PATHS = [
 describe('the player-pages flag', () => {
     test('a public viewer gets every player route', async () => {
         for (const p of PLAYER_PATHS) {
-            if (p.includes("/nfl")) {
-                // this will be removed when NFL goes live
-                expect((await run(p, null)).rewrittenTo, p).toBe('/404');
-            } else {
-                expect((await run(p, null)).rewrittenTo, p).not.toBe('/404');
-            }
+            expect((await run(p, null)).rewrittenTo, p).not.toBe('/404');
         }
         // the season leaderboards those pages hang off are untouched
         for (const p of ['/', '/players', '/year/2025/players/passing', '/year/2024/players/receiving', '/game/401634304', '/playersx']) {

@@ -1,8 +1,8 @@
 import { describe, expect, test, vi } from 'vitest';
 
-// The sitemap once the head-coach boards are promoted ('coaches': 'on') while the
-// NFL is still in preview: every cfb board for every finished season plus the
-// careers boards, and still no /nfl URL. Its own file so the promotion path stays
+// The sitemap once the head-coach boards are promoted ('coaches': 'on') with the
+// NFL public: every cfb board for every finished season plus the careers boards,
+// and the /nfl coach boards beside them. Its own file so the promotion path stays
 // tested while the flag is 'preview'.
 vi.mock('../src/utils/features', async (orig) => {
     const real = await orig<typeof import('../src/utils/features')>();
@@ -28,9 +28,10 @@ describe('sitemap.xml with the coaches flag on', () => {
       expect(xml).toContain(`<loc>https://gameonpaper.com/coaches/${b}</loc>`);
     }
     expect(AVAILABLE_SEASONS[0]).toBe(2004);
-    expect(xml).not.toContain(`/year/${AVAILABLE_SEASONS[0] - 1}/coaches`);
+    // anchored on the host: the /nfl boards reach back to 2002
+    expect(xml).not.toContain(`gameonpaper.com/year/${AVAILABLE_SEASONS[0] - 1}/coaches`);
     if (METRIC_YEAR != CURRENT_YEAR) {
-      expect(xml).not.toContain(`/year/${CURRENT_YEAR}/coaches`);
+      expect(xml).not.toContain(`gameonpaper.com/year/${CURRENT_YEAR}/coaches`);
     } else {
       expect(xml).toContain(`/year/${CURRENT_YEAR}/coaches`);
     }
@@ -40,7 +41,7 @@ describe('sitemap.xml with the coaches flag on', () => {
     expect(m?.[1]).toBe('2016-01-15');
   });
 
-  test('the NFL coach boards stay out while the nfl flag is not public', () => {
-    expect(xml).not.toContain('gameonpaper.com/nfl');
+  test('the NFL coach boards are listed now the nfl flag is public', () => {
+    expect(xml).toContain('gameonpaper.com/nfl/year/2025/coaches/pace</loc>');
   });
 });

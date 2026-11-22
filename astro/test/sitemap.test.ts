@@ -61,8 +61,8 @@ describe('sitemap.xml', () => {
     expect(xml).toContain('/coaches/');
   });
 
-  test('no /nfl URL while the nfl flag is not public (they are 404s)', () => {
-    expect(xml).not.toContain('gameonpaper.com/nfl');
+  test('lists the /nfl URLs now the nfl flag is public', () => {
+    expect(xml).toContain('<loc>https://gameonpaper.com/nfl</loc>');
   });
 
   test('no /nba URL while the nba flag is not public (a gated route answers 404)', () => {
