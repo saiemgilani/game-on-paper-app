@@ -18,6 +18,7 @@ What cannot be windowed, ever:
 import logging
 
 import polars as pl
+from sportsdataverse.cfb.cfb_opponent_adjust import flag_garbage_time
 
 _PERIODS = {
     "q1": [1],
@@ -95,6 +96,23 @@ def _box_for(game, frame, expr):
 # render order for the standard windows; a window absent from the game
 # (no OT, or a live game still in Q1) is simply omitted
 _ALL_KEYS = ("q1", "q2", "h1", "q3", "q4", "h2", "ot")
+
+
+def non_garbage_box(game):
+    """The full-game box with garbage-time plays left out, for the game page's
+    All / Non-garbage toggle. Garbage time is sportsdataverse-py's
+    (``flag_garbage_time``: the score margin past 43/37/27/21 points in Q1-Q4,
+    the Q4 line in overtime), the definition its season tables use
+    (``cfb_advanced_stats(exclude_garbage=True)``). None when no play is garbage
+    time (the toggle would show the same box twice) or plays are unavailable."""
+    frame = _plays_frame(game)
+    if frame is None:
+        return None
+    flagged = flag_garbage_time(frame)
+    if not flagged["garbage_time"].any():
+        return None
+    kept = flagged.filter(~pl.col("garbage_time")).drop("garbage_time")
+    return game.create_box_score(kept) if kept.height else None
 
 
 def all_span_boxes(game):
