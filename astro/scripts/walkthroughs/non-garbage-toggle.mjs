@@ -11,7 +11,8 @@ export default async (page, base) => {
   if ((await group.count()) !== 1) throw new Error(`expected one All / Non-garbage toggle, found ${await group.count()}`);
   const box = page.locator('#team-stats table', { has: page.locator('th', { hasText: /^Overall$/ }) });
   const cells = () => box.locator('td.numeral').allInnerTexts();
-  await box.scrollIntoViewIfNeeded();
+  // centred, so the sticky section nav never covers the toggle
+  await group.evaluate((el) => el.scrollIntoView({ block: 'center' }));
   await page.waitForTimeout(1500);
   const all = await cells();
   await group.getByRole('button', { name: 'Non-garbage', exact: true }).click();
