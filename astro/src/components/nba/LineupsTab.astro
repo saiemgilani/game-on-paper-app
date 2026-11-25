@@ -86,7 +86,7 @@ const POINTS: Col[] = [
     col('ft_pts', 'FT', 'Free-throw points per 100 against the league average, offense plus defense', net, false),
 ];
 const COLS = basis === 'per100' ? PER100 : basis === 'zones' ? ZONE_COLS : basis === 'points' ? POINTS : TOTALS;
-const pointsOn = isFeatureEnabled('bball-factor-points', Astro.locals);
+const pointsOn = isFeatureEnabled('bball-factor-points', Astro.locals) && data.points === true;
 const LEAD: Col[] = [col('minutes', 'Min', 'Minutes on the floor together', int, false), col('poss', 'Poss', 'Offensive possessions', int, false)];
 const cell = (u: LineupRow, key: string) => (u as Record<string, unknown>)[key] as number | null;
 const capped = units !== null && units.length >= UNIT_LIMIT;
