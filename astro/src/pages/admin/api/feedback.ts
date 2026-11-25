@@ -114,7 +114,7 @@ export const POST: APIRoute = async (context) => {
 };
 
 /** The whole body, or null as soon as it passes `max` bytes (the rest is never read). */
-async function readCapped(stream: ReadableStream<Uint8Array>, max: number): Promise<Uint8Array | null> {
+async function readCapped(stream: ReadableStream<Uint8Array>, max: number): Promise<Uint8Array<ArrayBuffer> | null> {
     const reader = stream.getReader();
     const chunks: Uint8Array[] = [];
     let total = 0;
