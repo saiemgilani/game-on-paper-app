@@ -63,6 +63,11 @@ describe("'bball-team-compare'", () => {
         expect(await prep('nba', '?ids=1610612751', { preview: false })).toEqual({ notFound: true });
         expect(calls).toEqual([]);
     });
+    test('without the strength flag no strength read is made', async () => {
+        calls.length = 0;
+        await prep('nba', '?ids=1610612751&season=2026', on({ 'bball-team-strength': false }));
+        expect(calls.map(([, t]) => t)).toEqual(['team_season_rates']);
+    });
     test('reads only the season block rows: the all split and team_strength, one each per team', async () => {
         calls.length = 0;
         const r = await prep('nba', '?ids=1610612751,1610612738&season=2026');
@@ -95,6 +100,8 @@ describe('the page', () => {
             const strength = cells(c, 'strength');
             expect(strength[0][2]).toContain(`#${st.adj_net_rtg_rank}`);
             expect(c).toContain(`${st.wins}-${st.losses}`);
+            // the full name from md up, the tricode below it
+            expect(c).toMatch(/<span class="d-md-none">[A-Z]{2,4}<\/span>/);
         }
         expect(html).toContain('id="team-compare-add"');
     });

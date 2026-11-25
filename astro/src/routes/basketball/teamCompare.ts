@@ -58,6 +58,8 @@ export async function prepareTeamCompare(Astro: AstroGlobal, league: BasketballL
     const { season, seasons, current } = resolveBasketballSeason(Astro, league);
     const module = BASKETBALL[league].teams;
     const ids = parseTeamIds(Astro.url.searchParams.get('ids'));
+    // the strength section renders only with 'bball-team-strength', so its read is made only then
+    const withStrength = isFeatureEnabled('bball-team-strength', Astro.locals);
     let entries: TeamCompareEntry[];
     try {
         entries = await Promise.all(ids.map(async (id): Promise<TeamCompareEntry> => {
@@ -65,7 +67,7 @@ export async function prepareTeamCompare(Astro: AstroGlobal, league: BasketballL
             if (!team) return { id, missing: true };
             const [rates, strength] = await Promise.all([
                 retrieveRows<TeamSeasonRateRow>(league, 'team_season_rates', { season: String(season), team_id: String(id), split: 'all', limit: '1' }, TTL, true),
-                retrieveTeamStrength(league, season, id),
+                withStrength ? retrieveTeamStrength(league, season, id) : Promise.resolve(null),
             ]);
             return rates[0] ? { id, team, rates: rates[0], strength } : { id, missing: true };
         }));

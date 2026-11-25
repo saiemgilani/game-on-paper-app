@@ -16,7 +16,7 @@ import { seasonQuery, teamHref } from '../../nba/links';
 import { MAX_COMPARE } from '../../utils/compare';
 import { isFeatureEnabled } from '../../utils/features';
 import { LEAGUES, leaguePath } from '../../utils/league';
-import { formatRank, generateColorRampValue, generateMarginalString } from '../../utils/misc';
+import { cleanName, formatRank, generateColorRampValue, generateMarginalString } from '../../utils/misc';
 
 interface Props { data: TeamCompareParams }
 const { season, seasons, current, entries, teams } = Astro.props.data;
@@ -72,7 +72,7 @@ const cards = entries.map((e) => {
         ] }] : []),
     ];
     const record = st?.wins != null && st?.losses != null ? `${st.wins}-${st.losses}` : null;
-    return { id: e.id, remove, name: e.team.name, href: teamHref(e.team.team_id, q, league), record, games: r.games, sections };
+    return { id: e.id, remove, name: cleanName(e.team), tricode: e.team.tricode, href: teamHref(e.team.team_id, q, league), record, games: r.games, sections };
 });
 const loaded = cards.filter((c): c is Exclude<(typeof cards)[number], { missing: true }> => !('missing' in c));
 const shortName = LEAGUES[league].shortName;
@@ -95,7 +95,7 @@ const tip = (r: Row) => (r.pct == null ? undefined : `${Math.round(r.pct)}th per
                 <label class="form-label text-muted text-small mb-0" for="team-compare-team">Add a team</label>
                 <select id="team-compare-team" class="form-select form-select-md w-auto" onchange="window.location.href = this.value">
                     <option value={pageUrl} selected>Team</option>
-                    {teams.map((t) => <option value={href([...ids, t.team_id])}>{t.name}</option>)}
+                    {teams.map((t) => <option value={href([...ids, t.team_id])}>{cleanName(t)}</option>)}
                 </select>
             </div>
             ) : (
@@ -124,7 +124,7 @@ const tip = (r: Row) => (r.pct == null ? undefined : `${Math.round(r.pct)}th per
                         ) : (
                         <Fragment>
                         <div class="text-center">
-                            <h2 class="h5 mb-1"><a href={c.href}>{c.name}</a></h2>
+                            <h2 class="h5 mb-1"><a href={c.href} title={c.name}><span class="d-none d-md-inline">{c.name}</span><span class="d-md-none">{c.tricode}</span></a></h2>
                             <p class="mb-2 text-muted text-small numeral" data-compare-record>{c.record ?? `${c.games} games rated`}</p>
                             <a class="btn btn-sm btn-outline-secondary" href={c.remove} data-compare-remove>Remove</a>
                         </div>
