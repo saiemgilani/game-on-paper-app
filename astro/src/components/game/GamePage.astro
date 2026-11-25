@@ -16,6 +16,8 @@ import TeamPanel from '../../layouts/panel/TeamPanel.astro';
 import TeamPlayerStats from './metrics/TeamPlayerStats.astro';
 import PaperIndex from './metrics/PaperIndex.astro';
 import Linescore from './metrics/Linescore.astro';
+import QuarterEpa from './metrics/QuarterEpa.astro';
+import { quarterEpa } from '../../utils/quarterEpa';
 import DrivesTable from './drives/DrivesTable.astro';
 import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
 import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
@@ -140,6 +142,11 @@ const periodsPlayed = [...new Set(game.plays.map((p: any) => Number(p.period)).f
 const playerSpans = isFeatureEnabled('player-quarter-filter', Astro.locals) ? (game.advBoxScoreSpans ?? null) : null;
 const officialTeam = isFeatureEnabled('official-team-box', Astro.locals)
     ? officialTeamBox(game.advBoxScore, [game.teamInfo.away.id, game.teamInfo.home.id], league, game.season.year)
+    : null;
+// 'quarter-epa' (preview): each team's EPA by quarter under the linescore, final games only; null when the EPA fails its
+// sanity gate against the final margin (utils/quarterEpa.ts)
+const quarterEpaRows = isFeatureEnabled('quarter-epa', Astro.locals) && gameStatus.type.completed == true
+    ? quarterEpa(game.plays, [awayTeam.id, homeTeam.id], Number(awayComp.score) - Number(homeComp.score))
     : null;
 const lastPlay: any = game.plays.at(-1);
 const gameState = game.header.competitions[0].status?.type?.state;
@@ -351,6 +358,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                     <Panel id="scoring-plays" title="Scoring Plays" show={false}>
                         <div class="row" slot="panel-body">
                             <Linescore competitors={game.header.competitions[0].competitors} season={game.season.year} />
+                            {quarterEpaRows && <QuarterEpa rows={quarterEpaRows} teams={[awayTeam, homeTeam]} season={game.season.year} />}
                             {
                                 (game.scoringPlays.length == 0) && (<p class="text-center text-muted">No scoring plays in this game.</p>)
                             }
