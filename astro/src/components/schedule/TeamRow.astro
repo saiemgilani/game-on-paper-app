@@ -1,7 +1,7 @@
 ---
 import type { ESPNCompetitor, ESPNStatus } from "../../resources/espn";
 import { teamLogoUrl } from '../../utils/league';
-import { cleanScore, getRecordString, cleanAbbreviation } from "../../utils/misc";
+import { cleanScore, getRecordString, cleanAbbreviation, cleanLocation } from "../../utils/misc";
 
 interface Props {
     espnComp: ESPNCompetitor
@@ -15,8 +15,10 @@ interface Props {
     season?: number | null
     /** The league's own conference list for the record line (MBB); absent, the football group list */
     conferences?: readonly { id: string; label: string }[]
+    /** #140 ('scoreboard-full-names', set by the football card): the location from md up, the abbreviation on phones */
+    fullName?: boolean
 }
-const { espnComp, espnStatus, isRedZone, hasBall, winner, completed, spacer, season, conferences } = Astro.props;
+const { espnComp, espnStatus, isRedZone, hasBall, winner, completed, spacer, season, conferences, fullName } = Astro.props;
 
 function formatScore(score: string | { displayValue: string }, winner: boolean, complete: boolean): string {
     const cleanedScore = typeof(score) == 'object' ? cleanScore(score) : score;
@@ -43,6 +45,12 @@ const logoSrc = comp.id && String(comp.id) !== "0" && comp.team?.abbreviation !=
     : "https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png&h=80&w=80";
 const possessionClass = isRedZone ? "text-danger" : "text-primary";
 const possessionMarker = hasBall ? `<span class="ms-1 ${possessionClass}">&#8226;</span>` : ''
+const abbr = formatScore(cleanAbbreviation(comp.team), winner, completed);
+// a TBD placeholder (or a team ESPN gives no location) keeps its abbreviation
+const location = fullName ? cleanLocation(comp.team) : "";
+const teamLabel = location
+    ? `<span class="d-none d-md-inline">${formatScore(location, winner, completed)}</span><span class="d-md-none">${abbr}</span>`
+    : abbr;
 ---
 <div class={`m-0 d-flex ${spacer}`}>
     <div class="d-flex me-auto">
@@ -50,7 +58,7 @@ const possessionMarker = hasBall ? `<span class="ms-1 ${possessionClass}">&#8226
         <div class="d-flex flex-column me-3 align-self-center">
             <div class="d-flex align-items-center">
                 <span class=`small text-muted ${(rank != 99) ? "me-1" : ""}`>{(rank != 99) ? ("#" + rank) : ""}</span>
-                <span class="align-self-center h4 mb-0"><Fragment set:html={formatScore(cleanAbbreviation(comp.team), winner, completed)} /> <Fragment set:html={possessionMarker} /></span>
+                <span class="align-self-center h4 mb-0"><Fragment set:html={teamLabel} /> <Fragment set:html={possessionMarker} /></span>
             </div>
             <Fragment set:html={getRecordString(comp, conferences)} />
         </div>

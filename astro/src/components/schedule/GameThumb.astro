@@ -72,6 +72,8 @@ const canLoadStats = gameStatus && !(
     || (gameStatus.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)
 )
 const canLoadStatsTheme = canLoadStats ? `` : `disabled`
+// #140 ('scoreboard-full-names'): the card names its teams in full from md up
+const fullNames = isFeatureEnabled('scoreboard-full-names', Astro.locals);
 ---
 
 <div class="col-xl-3 col-lg-6">
@@ -93,8 +95,8 @@ const canLoadStatsTheme = canLoadStats ? `` : `disabled`
                 </strong>
                 {spiceLabel && <span class="text-small text-muted text-nowrap ms-auto ps-2">{spiceLabel}</span>}
             </div>
-            <TeamRow espnComp={awayComp} espnStatus={gameStatus} winner={awayScore > homeScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == awayComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="" />
-            <TeamRow espnComp={homeComp} espnStatus={gameStatus} winner={awayScore < homeScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == homeComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="mb-3" />
+            <TeamRow espnComp={awayComp} espnStatus={gameStatus} winner={awayScore > homeScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == awayComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="" fullName={fullNames} />
+            <TeamRow espnComp={homeComp} espnStatus={gameStatus} winner={awayScore < homeScore} completed={gameStatus.type.completed == true} hasBall={espnGameComp.situation?.lastPlay?.end?.team?.id == homeComp.id} isRedZone={espnGameComp.situation?.isRedZone} spacer="mb-3" fullName={fullNames} />
             <GameSituation hidden={!canShowSituation} game={espnGame} />
             <div class="d-flex justify-content-between game-thumb-actions">
                 <div class="text-left">
