@@ -94,7 +94,12 @@ describe('the All / Non-garbage toggle', () => {
         expect(html.indexOf('id="span-stats"')).toBeLessThan(html.indexOf('aria-label="Plays counted"'));
         const props = islandProps(html);
         expect(props).toContain('"nonGarbage":[0,{');
-        expect(props.slice(props.indexOf('"nonGarbage"'))).not.toContain('"player_usage"');
+        const sent = props.slice(props.indexOf('"nonGarbage"'));
+        expect(sent).not.toContain('"player_usage"');
+        // the box's own numbers arrive, not an empty object: its team and situational sections
+        expect(sent).toMatch(/"team":\[1,\[\[0,\{/);
+        expect(sent).toMatch(/"situational":\[1,\[\[0,\{/);
+        expect(sent).toContain('"rushing_stopped_rate":[0,0.4827586206896552]');
     });
 
     test('flag off: a payload with the box still renders no toggle', async () => {
