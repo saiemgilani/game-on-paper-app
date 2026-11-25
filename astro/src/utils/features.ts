@@ -38,6 +38,9 @@ export const FLAGS: Record<string, FeatureState> = {
     // (and the compact row, which has no border), an accessible name on the
     // bordered card, and a legend that reads the same SPICE_LABEL map.
     'spice-cues': 'preview',
+    // #140: the football scoreboard card names each team by its location
+    // (Missouri, Texas A&M) from md up; phones keep the abbreviation.
+    'scoreboard-full-names': 'preview',
     // The whole NFL surface (pages/nfl/**, the header's league switch, the
     // sitemap's /nfl URLs). Gated once in middleware: a viewer without the
     // preview cookie gets the site's 404 for any /nfl path. Promote to 'on'
