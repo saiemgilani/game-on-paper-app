@@ -1,0 +1,163 @@
+---
+/**
+ * Basketball team compare (BB-G60, behind 'bball-team-compare'): two to four teams' season blocks side by side, the player
+ * compare page's layout (BasketballCompare.astro): the controls row, then one card per team (col-6 col-lg-3) with its name to
+ * its team page and a Remove link, then one table per section. A value cell is shaded by its producer percentile with the
+ * producer rank faded beside it; pace is not shaded (fast is not better). Reads only the season block's rows
+ * (team_season_rates, team_strength), so every number is the team page's.
+ */
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import type { TeamCompareParams } from '../../routes/basketball/teamCompare';
+import { teamCompareHref } from '../../routes/basketball/teamCompare';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+import { isNcaaDashboards } from '../../basketball/dashboards';
+import { fmtDec, fmtPct } from '../../nba/format';
+import { seasonQuery, teamHref } from '../../nba/links';
+import { MAX_COMPARE } from '../../utils/compare';
+import { isFeatureEnabled } from '../../utils/features';
+import { LEAGUES, leaguePath } from '../../utils/league';
+import { formatRank, generateColorRampValue, generateMarginalString } from '../../utils/misc';
+
+interface Props { data: TeamCompareParams }
+const { season, seasons, current, entries, teams } = Astro.props.data;
+const league = basketball(Astro.locals.league).league;
+const college = isNcaaDashboards(league);
+const label = seasonLabelFor(league, season);
+const ids = entries.map((e) => e.id);
+const href = (list: number[], s: number = season) => teamCompareHref(league, list, s, current);
+const q = seasonQuery(season, current);
+const strengthOn = isFeatureEnabled('bball-team-strength', Astro.locals);
+
+type Row = { label: string; hover: string; text: string; rank: number | null; pct: number | null };
+const dash = '—';
+const num = (v: number | null | undefined, f: (x: number) => string) => (v == null ? dash : f(v));
+const rtg = (v: number | null | undefined) => num(v, (x) => fmtDec(x, 1));
+const net = (v: number | null | undefined) => num(v, (x) => generateMarginalString(x, 1, 1));
+const pct = (v: number | null | undefined) => num(v, fmtPct);
+const rate = (v: number | null | undefined) => num(v, (x) => fmtDec(x, 3));
+const at = (row: object | null, k: string) => ((row as Record<string, number | null> | null)?.[k] ?? null);
+const metric = (row: object | null, key: string, labelText: string, hover: string, fmt: (v: number | null) => string, shaded = true): Row => ({
+    label: labelText, hover, text: fmt(at(row, key)), rank: at(row, `${key}_rank`), pct: shaded ? at(row, `${key}_pct`) : null,
+});
+const minutes = league === 'nba' ? 48 : 40;
+
+const cards = entries.map((e) => {
+    const remove = href(ids.filter((x) => x !== e.id));
+    if ('missing' in e) return { id: e.id, missing: true as const, remove };
+    const r = e.rates;
+    const st = e.strength;
+    const sections = [
+        { id: 'ratings', title: 'Ratings (per 100 possessions)', rows: [
+            metric(r, 'net_rtg', 'Net', 'ORtg minus DRtg', net),
+            metric(r, 'off_rtg', 'ORtg', 'Points scored per 100 possessions', rtg),
+            metric(r, 'def_rtg', 'DRtg', 'Points allowed per 100 possessions', rtg),
+            metric(r, 'pace', college ? 'Tempo' : 'Pace', `Possessions per ${minutes} minutes`, rtg, false),
+        ] },
+        { id: 'offense', title: 'Four factors (offense)', rows: [
+            metric(r, 'efg_pct', 'eFG%', 'Effective field-goal percentage: (FGM + 0.5 × 3PM) / FGA', pct),
+            metric(r, 'tov_pct', 'TOV%', 'Turnovers per possession', pct),
+            metric(r, 'orb_pct', 'ORB%', 'Offensive rebounds over offensive-rebound chances', pct),
+            metric(r, 'ft_rate', 'FT rate', 'Free-throw attempts per field-goal attempt', rate),
+        ] },
+        { id: 'defense', title: 'Four factors (defense)', rows: [
+            metric(r, 'opp_efg_pct', 'eFG%', "The opponents' effective field-goal percentage", pct),
+            metric(r, 'opp_tov_pct', 'TOV%', "The opponents' turnovers per possession", pct),
+            metric(r, 'opp_orb_pct', 'ORB%', "The opponents' offensive rebounds over their chances", pct),
+            metric(r, 'opp_ft_rate', 'FT rate', "The opponents' free-throw attempts per field-goal attempt", rate),
+        ] },
+        ...(strengthOn && st ? [{ id: 'strength', title: 'Team strength', rows: [
+            metric(st, 'adj_net_rtg', college ? 'Adj. EM' : 'Adj. net', 'Points per 100 possessions better than an average opponent on a neutral court', net),
+            metric(st, 'sos', 'SOS', 'Strength of schedule: the mean adjusted net rating of the opponents', net),
+            metric(st, 'sov', 'SOV', 'Strength of victory: the mean adjusted net rating of the teams beaten', net),
+        ] }] : []),
+    ];
+    const record = st?.wins != null && st?.losses != null ? `${st.wins}-${st.losses}` : null;
+    return { id: e.id, remove, name: e.team.name, href: teamHref(e.team.team_id, q, league), record, games: r.games, sections };
+});
+const loaded = cards.filter((c): c is Exclude<(typeof cards)[number], { missing: true }> => !('missing' in c));
+const shortName = LEAGUES[league].shortName;
+const pageUrl = href(ids);
+const names = loaded.map((c) => c.name).join(' vs. ');
+const title = names ? `${names}: ${label} team comparison` : `${label} team comparison`;
+const breadcrumbs: PageBreadcrumb[] = [
+    { title: shortName, url: leaguePath(league, '/'), active: false },
+    { title: 'Teams', url: `${leaguePath(league, '/teams')}${q}`, active: false },
+    { title: 'Compare', url: pageUrl, active: true },
+];
+const tip = (r: Row) => (r.pct == null ? undefined : `${Math.round(r.pct)}th percentile`);
+---
+
+<GenericPage title={title} subtitle="Team comparison" description={`Compare ${shortName} teams side by side: ratings, four factors and team strength for the ${label} season.`} slug={pageUrl} canonicalPath={pageUrl} breadcrumbs={breadcrumbs} heading={title}>
+    <div class="container">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2 mb-3" id="team-compare-controls">
+            {ids.length < MAX_COMPARE ? (
+            <div class="d-flex flex-wrap align-items-center gap-2" id="team-compare-add">
+                <label class="form-label text-muted text-small mb-0" for="team-compare-team">Add a team</label>
+                <select id="team-compare-team" class="form-select form-select-md w-auto" onchange="window.location.href = this.value">
+                    <option value={pageUrl} selected>Team</option>
+                    {teams.map((t) => <option value={href([...ids, t.team_id])}>{t.name}</option>)}
+                </select>
+            </div>
+            ) : (
+            <p class="m-0 text-muted text-small">Remove a team to add another (four at most).</p>
+            )}
+            <div class="d-flex align-items-center gap-2 ms-md-auto">
+                <label class="form-label text-muted text-small mb-0" for="team-compare-season">Season</label>
+                <select id="team-compare-season" class="form-select form-select-md w-auto" onchange="window.location.href = this.value">
+                    {[...seasons].reverse().map((s) => <option value={href(ids, s)} selected={s === season}>{seasonLabelFor(league, s)}</option>)}
+                </select>
+            </div>
+        </div>
+
+        {cards.length === 0 && <p class="text-muted" id="team-compare-empty">Pick a team to start a comparison.</p>}
+
+        <div class="row" id="team-compare-cards">
+            {cards.map((c) => (
+            <div class="col-6 col-lg-3 mb-3" data-compare-card={c.id}>
+                <div class="card border rounded h-100">
+                    <div class="card-body p-2 p-md-3">
+                        {'missing' in c ? (
+                            <Fragment>
+                                <p class="text-muted text-small">No {label} line for this team.</p>
+                                <a class="btn btn-sm btn-outline-secondary" href={c.remove} data-compare-remove>Remove</a>
+                            </Fragment>
+                        ) : (
+                        <Fragment>
+                        <div class="text-center">
+                            <h2 class="h5 mb-1"><a href={c.href}>{c.name}</a></h2>
+                            <p class="mb-2 text-muted text-small numeral" data-compare-record>{c.record ?? `${c.games} games rated`}</p>
+                            <a class="btn btn-sm btn-outline-secondary" href={c.remove} data-compare-remove>Remove</a>
+                        </div>
+                        {c.sections.map((s) => (
+                            <div class="table-responsive mt-3" data-compare-category={s.id}>
+                                <h3 class="h6">{s.title}</h3>
+                                <table class="table table-sm mb-0">
+                                    <tbody>
+                                        {s.rows.map((r) => (
+                                            <tr>
+                                                <td class="text-left" colspan="1"><abbr title={r.hover}>{r.label}</abbr></td>
+                                                <td class:list={["text-center", "numeral", generateColorRampValue(r.pct, 100)]} colspan="1" title={tip(r)}>
+                                                    {r.text}
+                                                    {r.rank != null && (
+                                                        <span class="align-self-center text-small" style="opacity: 50%"> #{formatRank(r.rank)}</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ))}
+                        </Fragment>
+                        )}
+                    </div>
+                </div>
+            </div>
+            ))}
+        </div>
+
+        <p class="text-muted text-small" id="team-compare-provenance">
+            Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a>, {label}, {college ? 'every game' : 'regular season'}. Ranks and shading (percentile) are the producer’s own, among the league’s teams; pace is not shaded.
+        </p>
+    </div>
+</GenericPage>

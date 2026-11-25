@@ -183,6 +183,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // of schedule, strength of victory and pace, each with its league rank (sdv-db's team_strength, BB-D19). Off: the
     // block is BB-G5's, byte for byte.
     'bball-team-strength': 'preview',
+    // BB-G60: /<league>/teams/compare?ids=&season=, two to four teams' season blocks side by side (the player compare
+    // page's layout): each team's team_season_rates all split and team_strength rows, the team page's reads, with the
+    // producer's ranks and percentiles. Off: the route is the site's 404.
+    'bball-team-compare': 'preview',
     // BB-G14: the game-set filter (?games=all|home|away|close|clutch|conference|wins|losses|last5|last10|last20) on
     // /<league>/team/[id], inside 'bball-team-season' (All / Home / Away / Close / Clutch are that block's producer split
     // rows; Wins / Losses / last N / college Conference games sum the team's team_game_possessions rows, read
