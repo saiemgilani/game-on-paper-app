@@ -1,5 +1,6 @@
 ---
 import Footer from "../components/Footer.astro";
+import SiteIcons from "../components/SiteIcons.astro";
 import Header from "../components/Header.astro";
 import Scripts from "../components/Scripts.astro";
 import { breadcrumbListJsonLd, jsonLdScript } from "../utils/seo";
@@ -81,7 +82,7 @@ function generateBreadcrumbsListHtml(): string {
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
+        <SiteIcons />
         <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
         <link href="/assets/css/base.css" rel="stylesheet">
         <link href="/assets/css/nav-header.css" rel="stylesheet">

@@ -12,6 +12,7 @@ import TeamCard from '../team/TeamCard.astro';
 import MatchupView from './MatchupView.astro';
 import WatchButton from './WatchButton.astro';
 import Footer from '../Footer.astro';
+import SiteIcons from '../SiteIcons.astro';
 import "bootstrap-icons/font/bootstrap-icons.css";
 import { gameDescription, gameTitle, jsonLdScript, sportsEventJsonLd } from '../../utils/seo';
 import { cardState, shareTags } from '../../utils/shareTags';
@@ -158,7 +159,7 @@ const gameColors = isFeatureEnabled('game-colours', Astro.locals) ? pickGameColo
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
+        <SiteIcons />
         <link href="/assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
         <link href="/assets/css/base.css" rel="stylesheet">
         <link href="/assets/css/nav-header.css" rel="stylesheet">

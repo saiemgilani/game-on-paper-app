@@ -31,6 +31,7 @@ There is no design-token file and no Tailwind config. The site is **Bootstrap 5
 | `astro/src/layouts/panel/GenericPanel.astro`, `panel/TeamPanel.astro` | the collapsible `[show/hide]` panel — the game page's only container |
 | `astro/src/layouts/FilterGroup.astro` | the filter/toggle pill row |
 | `astro/src/components/DarkModeLogos.astro` | dark-mode + override logo swapping |
+| `astro/src/components/SiteIcons.astro` | the `<head>`'s favicon, home-screen icon and `site.webmanifest` links; every page shell renders it, and a new shell should too |
 | `astro/src/components/Header.astro`, `Footer.astro`, `NavScroller.astro` | nav, footer, in-page section nav |
 | `astro/src/components/dropdowns/*.svelte` | the metric-switch dropdown pattern |
 | `astro/src/utils/misc.ts` | `cleanField`, `cleanAbbreviation`, `cleanName`, `cleanLocation`, `cleanNickname`, `roundNumber`, `generateMarginalString`, `generateColorRampValue`, `generateTeamMetricTitle` |
