@@ -61,7 +61,7 @@ const TYPE_LABELS: Record<keyof typeof FEEDBACK_TAGS, string> = { bug: 'Bug', id
         <input class="form-control" id="feedback-image" name="image" type="file" accept="image/*">
       </div>
       <p class="text-muted small mb-0">The page URL, league, route, screen size and browser are attached.</p>
-      <p class="text-danger small mt-2 mb-0" role="alert" data-feedback-error hidden></p>
+      <p class="text-danger small mb-0" role="alert" data-feedback-error></p>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-outline-secondary" data-feedback-close>Cancel</button>
@@ -104,6 +104,7 @@ const TYPE_LABELS: Record<keyof typeof FEEDBACK_TAGS, string> = { bug: 'Bug', id
     }
     #feedback-sheet .modal-content { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
   }
+  #feedback-sheet [data-feedback-error]:not(:empty) { margin-top: .5rem; }
   #feedback-toast { z-index: 1040; }
   @media print { #feedback-open { display: none; } }
 </style>
@@ -112,7 +113,9 @@ const TYPE_LABELS: Record<keyof typeof FEEDBACK_TAGS, string> = { bug: 'Bug', id
     var open = document.getElementById('feedback-open');
     var sheet = document.getElementById('feedback-sheet');
     var toast = document.getElementById('feedback-toast');
-    if (!open || !sheet || !sheet.showModal) return;
+    if (!open || !sheet) return;
+    // no <dialog> support: no button, rather than one that does nothing
+    if (!sheet.showModal) { open.hidden = true; return; }
     var form = sheet.querySelector('form');
     var error = sheet.querySelector('[data-feedback-error]');
     var submit = sheet.querySelector('[data-feedback-submit]');
@@ -123,13 +126,17 @@ const TYPE_LABELS: Record<keyof typeof FEEDBACK_TAGS, string> = { bug: 'Bug', id
     function rememberedFrom() {
       try { var v = localStorage.getItem(FROM_KEY); if (v) form.elements.from.value = v; } catch (e) { /* storage blocked */ }
     }
-    function fail(msg) { error.textContent = msg; error.hidden = false; }
+    // the alert stays in the page and only its text changes, so a screen reader announces it
+    function fail(msg) { error.textContent = msg; }
     rememberedFrom();
 
-    open.addEventListener('click', function () { error.hidden = true; sheet.showModal(); form.elements.title.focus(); });
+    open.addEventListener('click', function () { error.textContent = ''; sheet.showModal(); form.elements.title.focus(); });
     sheet.querySelectorAll('[data-feedback-close]').forEach(function (b) { b.addEventListener('click', function () { sheet.close(); }); });
-    // a tap on the backdrop (the dialog box itself, outside the form) closes it
-    sheet.addEventListener('click', function (e) { if (e.target === sheet) sheet.close(); });
+    // a tap on the backdrop (the dialog box itself, outside the form) closes it -- only when the
+    // press started there too, so a text-selection drag that ends outside the form keeps the draft
+    var downOnBackdrop = false;
+    sheet.addEventListener('pointerdown', function (e) { downOnBackdrop = e.target === sheet; });
+    sheet.addEventListener('click', function (e) { if (downOnBackdrop && e.target === sheet) sheet.close(); downOnBackdrop = false; });
 
     // Re-encode every image: <= 1600px on the long side, JPEG, <= 4 MB. Re-encoding also drops
     // the camera's EXIF (location included).
@@ -152,7 +159,7 @@ const TYPE_LABELS: Record<keyof typeof FEEDBACK_TAGS, string> = { bug: 'Bug', id
 
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
-      error.hidden = true;
+      error.textContent = '';
       if (!form.reportValidity()) return;
       submit.disabled = true;
       try {

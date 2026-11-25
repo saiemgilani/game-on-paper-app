@@ -239,6 +239,9 @@ URL; the button and its inline script exist only in an admin's render, which
 per-person identity, so the sender picks a name from `FEEDBACK_SENDERS`; the rate
 limit (10 per sender per 10 min) is a KV counter in `ESPN_API_CACHE`. A clean URL an
 admin reaches through a cache HIT shows no button; `/preview/<path>` and `/admin` always do.
+The secret is deliberately **not** in `wrangler.jsonc` `secrets.required`, because the feature is
+optional and a deploy must never wait on it. Keep `observability.traces` off: traces record
+subrequest URLs, and the webhook URL carries its token.
 
 ## Guardrails
 - Branch + PR, never push `main`. Stage explicit paths. One logical change per PR.

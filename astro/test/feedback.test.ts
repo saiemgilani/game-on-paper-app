@@ -226,6 +226,28 @@ describe('validation', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    test('CRLF line breaks count once, as the textarea maxlength did', async () => {
+        const message = Array.from({ length: 120 }, () => 'x'.repeat(11)).join('\r\n');  // 1439 typed, 1558 as CRLF
+        expect(message.length).toBeGreaterThan(1500);
+        expect((await post(ADMIN, form({ message }))).res.status).toBe(200);
+        const content = JSON.parse(String((fetchMock.mock.calls[0][1].body as FormData).get('payload_json'))).content as string;
+        expect(content).not.toContain('\r');
+    });
+
+    test('a cross-origin Origin header: 403; this origin or none (curl -u) passes', async () => {
+        expect((await post(ADMIN, form(), { origin: 'https://evil.example' })).res.status).toBe(403);
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect((await post(ADMIN, form(), { origin: 'https://gameonpaper.com' })).res.status).toBe(200);
+        expect((await post(ADMIN, form())).res.status).toBe(200);
+    });
+
+    test('a page on another site is left out of the post', async () => {
+        await post(ADMIN, form({ page: 'https://evil.example/nfl/game/1' }));
+        const content = JSON.parse(String((fetchMock.mock.calls[0][1].body as FormData).get('payload_json'))).content as string;
+        expect(content).not.toContain('evil.example');
+        expect(content).not.toContain('Page:');
+    });
+
     test('not multipart: 415', async () => {
         const { res } = await post(ADMIN, JSON.stringify({ type: 'bug' }), { 'content-type': 'application/json' });
         expect(res.status).toBe(415);

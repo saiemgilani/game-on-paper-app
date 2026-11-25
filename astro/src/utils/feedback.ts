@@ -106,7 +106,8 @@ export function parseFeedbackFields(get: (k: string) => unknown): ParsedFeedback
     const title = oneLine(str('title'), Infinity);
     if (!title) return 'title is required';
     if (title.length > FEEDBACK_LIMITS.title) return `title must be at most ${FEEDBACK_LIMITS.title} characters`;
-    const message = str('message').trim();
+    // a browser sends a textarea's line breaks as CRLF, which its maxlength counted as one character
+    const message = str('message').replace(/\r\n?/g, '\n').trim();
     if (!message) return 'message is required';
     if (message.length > FEEDBACK_LIMITS.message) return `message must be at most ${FEEDBACK_LIMITS.message} characters`;
     const sender = str('from');

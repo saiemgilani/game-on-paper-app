@@ -3,7 +3,7 @@ import { getSecret } from 'astro:env/server';
 import { env } from 'cloudflare:workers';
 import { isFeatureEnabled } from '../../../utils/features';
 import {
-    discordPayload, FEEDBACK_IMAGE_TYPES, FEEDBACK_LIMITS, imageFilename, parseFeedbackFields, rateKey, sniffImage,
+    discordPayload, FEEDBACK_IMAGE_TYPES, FEEDBACK_LIMITS, imageFilename, pageRoute, parseFeedbackFields, rateKey, sniffImage,
     webhookUrl,
 } from '../../../utils/feedback';
 import { auditAdmin } from '../../../utils/telemetry';
@@ -19,7 +19,8 @@ export const prerender = false;
 // request picks a host). Plain fetch on purpose: wrappedFetch/timedFetch log or record the URL.
 //
 // CSRF: multipart/form-data is a form type, which Astro's checkOrigin (on by default) refuses
-// cross-origin, and the admin cookie is SameSite=Lax.
+// cross-origin, and the admin cookie is SameSite=Lax. The Origin check below holds on its own
+// too: a browser resends cached basic-auth credentials cross-site whatever SameSite says.
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
 export const POST: APIRoute = async (context) => {
@@ -31,6 +32,10 @@ export const POST: APIRoute = async (context) => {
         auditAdmin(locals, 'feedback', `${detail} (rejected: ${error})`, false);
         return reply(status, { ok: false, error });
     };
+    // a browser always sends Origin on a cross-origin POST; a scripted caller (curl -u) sends none
+    const origin = new URL(request.url).origin;
+    const sentOrigin = request.headers.get('origin');
+    if (sentOrigin !== null && sentOrigin !== origin) return bad('cross-origin request', 'cross-origin', 403);
     if (!isFeatureEnabled('feedback-inbox', locals)) return bad('not found', 'flag off', 404);
     const hook = webhookUrl(getSecret('DISCORD_INBOX_WEBHOOK_URL'));
     if (!hook) return bad("Feedback isn't configured: DISCORD_INBOX_WEBHOOK_URL is not set.", 'webhook unset', 503);
@@ -48,6 +53,8 @@ export const POST: APIRoute = async (context) => {
 
     const fields = parseFeedbackFields((k) => form.get(k));
     if (typeof fields === 'string') return bad(fields, 'invalid fields');
+    // only a page on this site goes into the post: a forged report can't plant another site's link as its context
+    if (pageRoute(fields.page)?.href.startsWith(origin + '/') !== true) fields.page = '';
     const detail = `${fields.sender} ${fields.type}: ${fields.title.slice(0, 80)}`;
 
     let image: { type: string; buf: ArrayBuffer } | null = null;

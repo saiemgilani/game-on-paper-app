@@ -91,5 +91,8 @@ sent the button: an admin's render is never cached. Optional secret:
   - Production: `cd astro && npx wrangler secret put DISCORD_INBOX_WEBHOOK_URL`
     (paste the URL at the prompt), then redeploy or wait for the next deploy.
   - Local: add `DISCORD_INBOX_WEBHOOK_URL=https://discord.com/api/webhooks/<id>/<token>`
-    to `astro/.dev.vars` (wrangler dev/preview) or `astro/.env` (`astro dev`).
-    Both files are git-ignored.
+    to `astro/.dev.vars` (git-ignored). Because `wrangler.jsonc` declares
+    `secrets.required`, a local run loads only the secrets named there, so also add
+    `"DISCORD_INBOX_WEBHOOK_URL"` to that list **in your working copy only**. Don't
+    commit it: newer wrangler versions refuse to deploy when a required secret is unset,
+    and this one is optional.
