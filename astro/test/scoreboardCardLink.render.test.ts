@@ -1,6 +1,7 @@
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { loadRenderers } from 'astro:container';
 import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/container-renderer';
+import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, test } from 'vitest';
 
 // #139 ('scoreboard-card-link'): the desktop card's Stats/Preview link is
@@ -65,6 +66,15 @@ describe('scoreboard card link', () => {
         const html = await grid({ preview: true });
         // .disabled sets pointer-events: none, which the stretched ::after inherits
         expect(html).toMatch(/<a class="btn btn-sm btn-outline-primary disabled stretched-link" role="button" href="\/game\/402">/);
+    });
+
+    test('the broadcast slot stacks above the overlay: positioned, z-index over stretched-link::after', () => {
+        const css = (p: string) => readFileSync(new URL(`../public/assets/css/${p}`, import.meta.url), 'utf8');
+        const overlay = css('bootstrap.min.css').match(/\.stretched-link::after\{[^}]*z-index:(\d+)/);
+        const over = css('index.css').match(/\.game-thumb-over\s*\{([^}]*)\}/);
+        expect(overlay).not.toBeNull();
+        expect(over?.[1]).toMatch(/position:\s*relative/);
+        expect(Number(over?.[1].match(/z-index:\s*(\d+)/)?.[1])).toBeGreaterThan(Number(overlay![1]));
     });
 
     test('flag off: no stretched link, no positioned card, no raised broadcast slot', async () => {
