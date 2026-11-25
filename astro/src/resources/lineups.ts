@@ -58,12 +58,18 @@ export type LineupRow = {
     opp_pts: number;
     plus_minus: number;
 } & { [K in Rated]: number | null } & { [K in `${Rated}_pct`]: number | null }
-    & { [K in Zone]?: number | null } & { [K in `${Zone}_pct`]?: number | null };
+    & { [K in Zone]?: number | null } & { [K in `${Zone}_pct`]?: number | null }
+    & { [K in FactorPoints]?: number | null };
+
+/** BB-G58 ('bball-factor-points'): net rating split into four-factor points per 100 (sdv-py BB-D42); the four add up to net_rtg. */
+export const FACTOR_POINTS = ['efg_pts', 'tov_pts', 'orb_pts', 'ft_pts'] as const;
+export type FactorPoints = (typeof FACTOR_POINTS)[number];
 
 const BASE_SELECT = ['lineup_id', 'n_players', 'player_1', 'player_2', 'player_3', 'player_4', 'player_5', 'minutes', 'poss', 'opp_poss', 'pts', 'opp_pts', 'plus_minus'];
 const withPct = (ms: readonly string[]) => [...ms, ...ms.map((m) => `${m}_pct`)];
 /** The pros' tables carry no zone columns (selecting one would be a 400), so only college selects them. */
-export const selectFor = (league: BasketballLeague) => [...BASE_SELECT, ...withPct(RATED), ...(isNcaaDashboards(league) ? withPct(ZONES) : [])].join(',');
+// `points`: the four-factor points basis is shown, so its columns are read too (only then: a table without them would be a 400)
+export const selectFor = (league: BasketballLeague, points = false) => [...BASE_SELECT, ...withPct(RATED), ...(isNcaaDashboards(league) ? withPct(ZONES) : []), ...(points ? FACTOR_POINTS : [])].join(',');
 
 /** One stats.ncaa.org player's name in one game of the team's. */
 export interface NcaaNameRow {
@@ -97,11 +103,11 @@ export function gateQuery(gate: Gate): Record<string, string> {
 }
 
 /** One unit size of one team-season, most possessions first, over the gate; college adds its players' names and ESPN ids. */
-export async function retrieveLineups(league: BasketballLeague, season: number, teamId: number, size: UnitSize, gate: Gate = DEFAULT_GATE[league]): Promise<LineupReads> {
+export async function retrieveLineups(league: BasketballLeague, season: number, teamId: number, size: UnitSize, gate: Gate = DEFAULT_GATE[league], points = false): Promise<LineupReads> {
     const s = String(season);
     const college = isNcaaDashboards(league);
     const [units, names, pairs] = await Promise.all([
-        retrieveRows<LineupRow>(league, 'lineup_seasons', { season: s, team_id: String(teamId), n_players: String(size), ...gateQuery(gate), order: '-poss', select: selectFor(league), limit: String(UNIT_LIMIT) }, TTL, true),
+        retrieveRows<LineupRow>(league, 'lineup_seasons', { season: s, team_id: String(teamId), n_players: String(size), ...gateQuery(gate), order: '-poss', select: selectFor(league, points), limit: String(UNIT_LIMIT) }, TTL, true),
         retrieveNcaaNames(league, season, teamId),
         college
             ? retrieveRows<NcaaPairRow>(league, 'ncaa_player_crosswalk', { season: s, espn_team_id: String(teamId), select: 'ncaa_player_id,espn_athlete_id', limit: PAIR_LIMIT }, TTL, true)

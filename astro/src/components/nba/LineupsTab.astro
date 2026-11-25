@@ -13,6 +13,7 @@ import { fmtDec, fmtInt, fmtPct } from '../../nba/format';
 import { playerHref, seasonQuery, withParams } from '../../nba/links';
 import { generateColorRampValue, generateMarginalString } from '../../utils/misc';
 import { basketball, seasonLabelFor } from '../../basketball/config';
+import { isFeatureEnabled } from '../../utils/features';
 
 interface Props { data: LineupsTab; season: number; current: number; basePath: string; teamName: string }
 const { data, season, current, basePath, teamName } = Astro.props;
@@ -75,7 +76,17 @@ const ZONE_COLS: Col[] = [
     col('opp_mid_pct', 'Opp mid FG%', "The opponents' field-goal percentage from mid-range", pct),
     col('opp_fg3_pct', 'Opp 3P%', "The opponents' three-point percentage", pct),
 ];
-const COLS = basis === 'per100' ? PER100 : basis === 'zones' ? ZONE_COLS : TOTALS;
+// BB-G58 ('bball-factor-points'): the net rating split into eFG, turnover, rebounding and free-throw points per 100 against
+// the league average, offense and defense together (the producer's sums); the four add up to Net. Only Net has a percentile.
+const POINTS: Col[] = [
+    col('net_rtg', 'Net', 'ORtg minus DRtg', net),
+    col('efg_pts', 'eFG', 'Shooting points per 100 against the league average, offense plus defense', net, false),
+    col('tov_pts', 'TOV', 'Turnover points per 100 against the league average, offense plus defense', net, false),
+    col('orb_pts', 'ORB', 'Offensive rebounding points per 100 against the league average, offense plus defense', net, false),
+    col('ft_pts', 'FT', 'Free-throw points per 100 against the league average, offense plus defense', net, false),
+];
+const COLS = basis === 'per100' ? PER100 : basis === 'zones' ? ZONE_COLS : basis === 'points' ? POINTS : TOTALS;
+const pointsOn = isFeatureEnabled('bball-factor-points', Astro.locals);
 const LEAD: Col[] = [col('minutes', 'Min', 'Minutes on the floor together', int, false), col('poss', 'Poss', 'Offensive possessions', int, false)];
 const cell = (u: LineupRow, key: string) => (u as Record<string, unknown>)[key] as number | null;
 const capped = units !== null && units.length >= UNIT_LIMIT;
@@ -91,7 +102,7 @@ const emptyText = ranked ? `No ${teamName} ${unit}-man unit has the ${fmtInt(RAN
     </select>
     <label class="visually-hidden" for="lineups-basis">Basis</label>
     <select id="lineups-basis" class="form-select form-select-sm w-auto" onchange="window.location.href = this.value">
-      {basesFor(league).map((b) => (<option value={basisHref(b)} selected={b === basis}>{BASIS_LABEL[b]}</option>))}
+      {basesFor(league, pointsOn).map((b) => (<option value={basisHref(b)} selected={b === basis}>{BASIS_LABEL[b]}</option>))}
     </select>
     <label class="visually-hidden" for="lineups-min">Minimum possessions</label>
     <select id="lineups-min" class="form-select form-select-sm w-auto" onchange="window.location.href = this.value">
@@ -101,7 +112,7 @@ const emptyText = ranked ? `No ${teamName} ${unit}-man unit has the ${fmtInt(RAN
   {units === null ? (<p class="text-muted" id="lineups-unavailable">The {label} lineups are temporarily unavailable.</p>) : units.length === 0 ? (<p class="text-muted" id="lineups-empty">{emptyText}</p>) : (
     <div class="table-responsive">
       <table class="table table-sm align-middle mb-0" id="lineups-table">
-        <caption class="small text-muted">{capped ? `The ${fmtInt(UNIT_LIMIT)} ${unit}-man units with the most possessions` : `${fmtInt(units.length)} ${unit}-man units`}, {gateText}. {basis === 'totals' ? 'Each possession counts for the unit on the floor when it starts.' : 'Shading by league percentile where the unit is ranked; a plain cell is below the rank gate.'} Sort by any column.</caption>
+        <caption class="small text-muted">{capped ? `The ${fmtInt(UNIT_LIMIT)} ${unit}-man units with the most possessions` : `${fmtInt(units.length)} ${unit}-man units`}, {gateText}. {basis === 'points' ? 'Points per 100 possessions against the league average, by factor; the four add up to Net. Net is shaded by league percentile where the unit is ranked.' : basis === 'totals' ? 'Each possession counts for the unit on the floor when it starts.' : 'Shading by league percentile where the unit is ranked; a plain cell is below the rank gate.'} Sort by any column.</caption>
         <thead><tr>
           <th scope="col">Unit</th>
           {[...LEAD, ...COLS].map((c) => (

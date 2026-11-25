@@ -207,7 +207,7 @@ describe('prepareNbaTeam with the flag', () => {
     test('on: the 5-man per-100 default, keyed by the stats team id, the page cached as before', async () => {
         const { astro, cache } = fakeAstro({ preview: true });
         const r = ok(await prepareNbaTeam(astro));
-        expect(tab.fn).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, 5, '100');
+        expect(tab.fn).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, 5, '100', false);
         expect(r.lineups).toEqual({ unit: 5, basis: 'per100', gate: '100', sort: 'poss', dir: 'desc', units: [], labels: [] });
         expect(cache).toHaveLength(1);
         expect(cache[0]).not.toBe(false);
@@ -217,7 +217,7 @@ describe('prepareNbaTeam with the flag', () => {
         const pair = { ...NBA.units.find((u) => u.n_players === 2), player_1: rows[0].person_id, player_2: rows[1].person_id };
         tab.fn.mockResolvedValue({ units: [pair], names: [], pairs: [] });
         const r = ok(await prepareNbaTeam(fakeAstro({ preview: true }, '?season=2026&unit=2&basis=totals&min=ranked&lsort=pts&ldir=asc').astro));
-        expect(tab.fn).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, 2, 'ranked');
+        expect(tab.fn).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, 2, 'ranked', false);
         expect([r.lineups!.basis, r.lineups!.gate, r.lineups!.sort, r.lineups!.dir]).toEqual(['totals', 'ranked', 'pts', 'asc']);
         expect(r.lineups!.labels[0].full).toBe(`${rows[0].player_name}, ${rows[1].player_name}`);
         // a pro with a season row has a page: his stats id
