@@ -43,6 +43,8 @@ describe('the feedback button in the footer', () => {
         expect(html).toContain('accept="image/*"');
         for (const label of ['Bug', 'Idea', 'Link', 'Data', 'Question', 'Jack', 'Akshay', 'Saiem']) expect(html).toContain(`>${label}</option>`);
         expect(html).toContain('/admin/api/feedback');
+        // site copy rule: a colon, not a dash
+        expect(html).toContain(`"Sent: you'll get a reply in #gop-inbox"`);
         expect(html).not.toContain('webhooks');
         expect(html).not.toContain('data-feedback-unconfigured');
     });

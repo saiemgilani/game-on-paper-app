@@ -178,7 +178,7 @@ const TYPE_LABELS: Record<keyof typeof FEEDBACK_TAGS, string> = { bug: 'Bug', id
         sheet.close();
         var card = toast.firstElementChild;
         card.hidden = false;
-        card.querySelector('.toast-body').textContent = 'Sent — you’ll get a reply in #gop-inbox';
+        card.querySelector('.toast-body').textContent = "Sent: you'll get a reply in #gop-inbox";
         clearTimeout(timer);
         timer = setTimeout(function () { card.hidden = true; card.querySelector('.toast-body').textContent = ''; }, 4000);
       } catch (err) {
