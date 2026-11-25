@@ -30,6 +30,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // Mobile scoreboard: one-line rows (GameCompactRow) instead of cards under
     // 768px. Desktop keeps the card grid either way.
     'scoreboard-compact': 'preview',
+    // #139: the whole desktop scoreboard card opens the game (its Stats/Preview
+    // link stretched over the card, as the compact row is one link); the
+    // broadcast button stays clickable above it.
+    'scoreboard-card-link': 'preview',
     // G12: the scoreboard's spice border gets words -- a text cue on the card
     // (and the compact row, which has no border), an accessible name on the
     // bordered card, and a legend that reads the same SPICE_LABEL map.
