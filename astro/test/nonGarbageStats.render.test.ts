@@ -85,7 +85,7 @@ describe('the All / Non-garbage toggle', () => {
         expect(islandProps(html)).toContain('"nonGarbage":[0,null]');
     });
 
-    test('with a non-garbage box: the toggle beside Show only, All pressed, the box in the props without usage sections', async () => {
+    test('with a non-garbage box: the toggle beside Show only, All pressed, the box in the props, Team Stats sections only', async () => {
         const withBox = { ...game, advBoxScoreNonGarbage: structuredClone(game.advBoxScore) };
         const html = await render(true, withBox);
         const toggle = html.slice(html.indexOf('aria-label="Plays counted"'), html.indexOf('>Non-garbage<') + 20);
@@ -96,6 +96,8 @@ describe('the All / Non-garbage toggle', () => {
         expect(props).toContain('"nonGarbage":[0,{');
         const sent = props.slice(props.indexOf('"nonGarbage"'));
         expect(sent).not.toContain('"player_usage"');
+        expect(sent).not.toContain('"espn_players"');
+        expect(sent).not.toContain('"receiver"');
         // the box's own numbers arrive, not an empty object: its team and situational sections
         expect(sent).toMatch(/"team":\[1,\[\[0,\{/);
         expect(sent).toMatch(/"situational":\[1,\[\[0,\{/);
