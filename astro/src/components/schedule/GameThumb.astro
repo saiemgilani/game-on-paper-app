@@ -72,11 +72,16 @@ const canLoadStats = gameStatus && !(
     || (gameStatus.type.name.includes("STATUS_IN_PROGRESS") && !hasLastPlay)
 )
 const canLoadStatsTheme = canLoadStats ? `` : `disabled`
+// #139 ('scoreboard-card-link'): the Stats/Preview link stretches over the card
+// (Bootstrap's stretched-link, anchored on the position-relative col); a
+// disabled link has pointer-events none, so its card stays unclickable too.
+// The broadcast button sits above the stretched area (game-thumb-over).
+const cardLink = isFeatureEnabled('scoreboard-card-link', Astro.locals);
 ---
 
 <div class="col-xl-3 col-lg-6">
     <div class={cx("row border rounded m-2 mb-4", outlineClass, borderClass)} role={spiceLabel ? "group" : undefined} aria-label={spiceLabel ?? undefined}>
-        <div class="col p-3">
+        <div class={cx("col p-3", cardLink && "position-relative")}>
             <div class={cx("d-flex justify-content-between", spiceLabel && "flex-wrap")}>
                 <strong class={cx("d-inline-block mb-2", textClass, "text-small")}>
                     {
@@ -98,9 +103,9 @@ const canLoadStatsTheme = canLoadStats ? `` : `disabled`
             <GameSituation hidden={!canShowSituation} game={espnGame} />
             <div class="d-flex justify-content-between game-thumb-actions">
                 <div class="text-left">
-                    <a class=`btn btn-sm ${buttonClass} ${canLoadStatsTheme}` role="button" href={leaguePath(Astro.locals.league, `/game/${espnGame.id}`)}>{ (gameStatus.type.name.includes("STATUS_SCHEDULED")) ? "Preview" : "Stats" }</a>
+                    <a class={cx("btn btn-sm", buttonClass, canLoadStatsTheme, cardLink && "stretched-link")} role="button" href={leaguePath(Astro.locals.league, `/game/${espnGame.id}`)}>{ (gameStatus.type.name.includes("STATUS_SCHEDULED")) ? "Preview" : "Stats" }</a>
                 </div>
-                <div class="text-right">
+                <div class={cx("text-right", cardLink && "game-thumb-over")}>
                     <BroadcastButton game={espnGame} />
                 </div>
             </div>
