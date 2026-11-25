@@ -38,8 +38,8 @@ async function grid(locals: Record<string, unknown>) {
 describe('scoreboard full names', () => {
     test('flag on: the location from md up, the abbreviation below, both with the winner/loser styling', async () => {
         const html = await grid({ preview: true });
-        expect(html).toContain('<span class="d-none d-md-inline"><strong>Missouri</strong></span><span class="d-md-none"><strong>MIZ</strong></span>');
-        expect(html).toContain('<span class="d-none d-md-inline"><span style="opacity: 0.5;">Texas A&M</span></span><span class="d-md-none"><span style="opacity: 0.5;">TA&M</span></span>');
+        expect(html).toContain('<span class="d-none d-md-inline text-break"><strong>Missouri</strong></span><span class="d-md-none"><strong>MIZ</strong></span>');
+        expect(html).toContain('<span class="d-none d-md-inline text-break"><span style="opacity: 0.5;">Texas A&amp;M</span></span><span class="d-md-none"><span style="opacity: 0.5;">TA&M</span></span>');
         // routed through cleanLocation, so the meme team keeps its lowercase
         expect(html).toContain('<strong>georgia</strong>');
     });
@@ -47,7 +47,18 @@ describe('scoreboard full names', () => {
     test('flag on: a competitor with no location keeps its abbreviation alone', async () => {
         const html = await grid({ preview: true });
         expect(html).toContain('<span style="opacity: 0.5;">TBD</span>');
-        expect([...html.matchAll(/class="d-none d-md-inline"/g)]).toHaveLength(3);
+        expect([...html.matchAll(/class="d-none d-md-inline text-break"/g)]).toHaveLength(3);
+    });
+
+    test('flag on: a location carrying markup renders as text', async () => {
+        const { default: SchedulePage } = await import('../src/components/schedule/SchedulePage.astro');
+        const html = await container.renderToString(SchedulePage, {
+            props: { season: 2026, week: 13, isScoreboard: true, games: [finalEvent('403', [competitor('9', 'X', '<img src=x onerror=alert(1)>', '1'), competitor('8', 'Y', 'Y State', '2')])] },
+            request: new Request('https://gameonpaper.com/'),
+            locals: { preview: true } as any,
+        });
+        expect(html).not.toContain('<img src=x');
+        expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
     });
 
     test('flag off: abbreviations only, no responsive name spans', async () => {

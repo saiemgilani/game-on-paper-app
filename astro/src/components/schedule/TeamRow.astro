@@ -1,7 +1,7 @@
 ---
 import type { ESPNCompetitor, ESPNStatus } from "../../resources/espn";
 import { teamLogoUrl } from '../../utils/league';
-import { cleanScore, getRecordString, cleanAbbreviation, cleanLocation } from "../../utils/misc";
+import { cleanScore, getRecordString, cleanAbbreviation, cleanLocation, escapeHtml } from "../../utils/misc";
 
 interface Props {
     espnComp: ESPNCompetitor
@@ -46,10 +46,11 @@ const logoSrc = comp.id && String(comp.id) !== "0" && comp.team?.abbreviation !=
 const possessionClass = isRedZone ? "text-danger" : "text-primary";
 const possessionMarker = hasBall ? `<span class="ms-1 ${possessionClass}">&#8226;</span>` : ''
 const abbr = formatScore(cleanAbbreviation(comp.team), winner, completed);
-// a TBD placeholder (or a team ESPN gives no location) keeps its abbreviation
+// a TBD placeholder (or a team ESPN gives no location) keeps its abbreviation; the location is escaped (it lands in
+// set:html) and may break inside a word (text-break) rather than overflow a narrow four-up card
 const teamLocation = fullName ? cleanLocation(comp.team) : "";
 const teamLabel = teamLocation
-    ? `<span class="d-none d-md-inline">${formatScore(teamLocation, winner, completed)}</span><span class="d-md-none">${abbr}</span>`
+    ? `<span class="d-none d-md-inline text-break">${formatScore(escapeHtml(teamLocation), winner, completed)}</span><span class="d-md-none">${abbr}</span>`
     : abbr;
 ---
 <div class={`m-0 d-flex ${spacer}`}>
