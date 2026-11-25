@@ -30,7 +30,7 @@ export type PlayerCategory = (typeof PLAYER_CATEGORIES)[number];
 
 /**
  * What a player has to do to be ranked in a category, in the season
- * leaderboards' own words (adapted from Pro Football Reference). The producer
+ * leaderboards' own words: a per-team-game volume floor per category. The producer
  * publishes `_rank`/`_pct` only for rows that clear it, so a player below the
  * bar gets numbers with no ranks -- and the page has to say why rather than
  * show a table of blanks (review on #267).
