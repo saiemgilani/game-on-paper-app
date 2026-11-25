@@ -32,7 +32,12 @@ export type TeamSeasonRateRow = {
     opp_poss: number;
     pts: number;
     opp_pts: number;
-} & { [K in Rated]: number | null } & { [K in `${Rated}_rank` | `${Rated}_pct`]: number | null };
+} & { [K in Rated]: number | null } & { [K in `${Rated}_rank` | `${Rated}_pct`]: number | null }
+    & { lg_rtg?: number | null } & { [K in FactorPointsCol]?: number | null };
+
+/** BB-G58: sdv-py BB-D42's factor points per 100 against the league average (lg_rtg); off_* + def_* add up to net_rtg. */
+export const FACTORS = ['efg', 'tov', 'orb', 'ft'] as const;
+type FactorPointsCol = `${'off_' | 'def_' | ''}${(typeof FACTORS)[number]}_pts`;
 
 export interface TeamStrengthRow {
     wins: number | null;

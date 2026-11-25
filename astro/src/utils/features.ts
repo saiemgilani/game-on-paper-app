@@ -183,6 +183,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // of schedule, strength of victory and pace, each with its league rank (sdv-db's team_strength, BB-D19). Off: the
     // block is BB-G5's, byte for byte.
     'bball-team-strength': 'preview',
+    // BB-G58: four-factor point accounting, inside 'bball-team-season' (the season block's factor-points table) and
+    // 'bball-lineups' (a Four-factor points basis): the net rating per 100 split into eFG, turnover, rebounding and
+    // free-throw points against the league average, for offense and defense, read from sdv-db's team_season_rates and
+    // lineup_seasons (sdv-py BB-D42; the parts add up to the net rating). Off: the block and tab are unchanged.
+    'bball-factor-points': 'preview',
     // BB-G14: the game-set filter (?games=all|home|away|close|clutch|conference|wins|losses|last5|last10|last20) on
     // /<league>/team/[id], inside 'bball-team-season' (All / Home / Away / Close / Clutch are that block's producer split
     // rows; Wins / Losses / last N / college Conference games sum the team's team_game_possessions rows, read
