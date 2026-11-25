@@ -75,6 +75,24 @@ both leagues with the SDV client mocked. The game page tests next door use
 teams (ESPN ids 1/29 and 26/2509) and the scheduled status, which the test's
 logo, venue and link assertions name.
 
+## `players-to-watch-nfl-2026.json`
+Green Bay (9) and the Rams (14), 2026 through week 11: the three reads the
+pregame's Players to Watch card makes per team, keyed `{ team: { passing,
+rushing, receiving } }`, from Green Bay at the Rams (401873079, week 12).
+
+**Provenance (2026-11-25):** the Data API's `/v1/nfl/{passing|rushing|receiving}`
+with `season=2026&team_id=<id>` and the card's own order and limit (`-dropbacks`
+10; `-plays` 20 and 25), each row cut to the columns the card and the test read
+(name, `position_group`, volume, `TEPA`, `TEPA_rank`, `EPAplay`, yards, TDs) by
+`jq`; no values edited.
+
+**Used by:** `test/players.test.ts` (`watchLeader`): Tucker Kraft, a tight end
+with 4 carries and +1.56 EPA, is Green Bay's best rusher by total EPA, which is
+how the preview named him; nobody in Green Bay's backfield has qualified yet.
+
+**To regenerate:** the same calls; the assertions name players, so expect to
+update them with the season.
+
 ## `nfl-summaries-2025.json`
 Real rows from the published `nfl_team_summaries` / `nfl_passing` 2025 assets
 (the nfl-data stage-06 producer's 2026-09-10 rebuild, which added
