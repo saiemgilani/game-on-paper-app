@@ -17,6 +17,12 @@ vi.mock('../src/resources/espn', async (orig) => ({
 }));
 
 const { loadWeek } = await import('../src/routes/week');
+const { CACHE_TTL_MULTIPLIER, CURRENT_SEASON_CONFIG } = await import('../src/utils/config');
+const scoreboardWindow = {
+    maxAge: CURRENT_SEASON_CONFIG.scoreboardRefreshRate,
+    swr: CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER,
+    tags: ['week-in-progress'],
+};
 
 const on = (year: number, type: number, week: number) => [{ id: '1', season: { year, type, slug: '' }, week: { number: week } }];
 
@@ -41,20 +47,24 @@ describe('loadWeek with no week', () => {
         // the scoreboard page's own read (KV first, write-back on a miss)
         expect(board.calls).toEqual([[true, true, 'cfb']]);
         // the URL's week moves with the scoreboard: held for the scoreboard's window, not a week page's
-        expect(cache.set.mock.calls[0][0].tags).toEqual(['week-in-progress']);
+        expect(cache.set.mock.calls[0][0]).toEqual(scoreboardWindow);
     });
 
     test('the postseason carries its type', async () => {
         board.events = on(CURRENT_YEAR, 3, 1);
         const { Astro } = astro(`/nfl/year/${CURRENT_YEAR}`, { year: String(CURRENT_YEAR) });
         expect(await loadWeek(Astro, 'nfl')).toMatchObject({ seasontype: 3, week: 1, group: undefined });
+        expect(remote).toEqual([[CURRENT_YEAR, 3, 1, undefined, 'nfl']]);
         expect(board.calls).toEqual([[true, true, 'nfl']]);
     });
 
     test('a past season keeps week 1 of the regular season and never reads the scoreboard', async () => {
-        const { Astro } = astro('/year/2019?group=8', { year: '2019' });
+        const { Astro, cache } = astro('/year/2019?group=8', { year: '2019' });
         expect(await loadWeek(Astro, 'cfb')).toMatchObject({ season: 2019, seasontype: 2, week: 1 });
+        expect(remote).toEqual([[2019, 2, 1, 8, 'cfb']]);
         expect(board.calls).toHaveLength(0);
+        // an archive week keeps the week pages' own policy
+        expect(cache.set.mock.calls[0][0]).not.toEqual(scoreboardWindow);
     });
 
     test('an explicit type or week is kept as it was', async () => {
@@ -62,6 +72,7 @@ describe('loadWeek with no week', () => {
         expect(await loadWeek(typed.Astro, 'cfb')).toMatchObject({ seasontype: 3, week: 1 });
         const weekly = astro(`/year/${CURRENT_YEAR}/type/2/week/4`, { year: String(CURRENT_YEAR), type: '2', week: '4' });
         expect(await loadWeek(weekly.Astro, 'cfb')).toMatchObject({ seasontype: 2, week: 4 });
+        expect(remote).toEqual([[CURRENT_YEAR, 3, 1, 80, 'cfb'], [CURRENT_YEAR, 2, 4, 80, 'cfb']]);
         expect(board.calls).toHaveLength(0);
     });
 
@@ -72,13 +83,18 @@ describe('loadWeek with no week', () => {
         ['an empty scoreboard', []],
     ])('%s falls back to week 1', async (_label, events) => {
         board.events = events;
-        const { Astro } = astro(`/year/${CURRENT_YEAR}`, { year: String(CURRENT_YEAR) });
+        const { Astro, cache } = astro(`/year/${CURRENT_YEAR}`, { year: String(CURRENT_YEAR) });
         expect(await loadWeek(Astro, 'cfb')).toMatchObject({ seasontype: 2, week: 1 });
+        expect(remote).toEqual([[CURRENT_YEAR, 2, 1, 80, 'cfb']]);
+        // the fallback is held no longer than the scoreboard, so the current week returns with it
+        expect(cache.set.mock.calls[0][0]).toEqual(scoreboardWindow);
     });
 
-    test('a failed scoreboard read falls back to week 1', async () => {
+    test('a failed scoreboard read falls back to week 1, held only for the scoreboard window', async () => {
         board.fail = true;
-        const { Astro } = astro(`/year/${CURRENT_YEAR}`, { year: String(CURRENT_YEAR) });
+        const { Astro, cache } = astro(`/year/${CURRENT_YEAR}`, { year: String(CURRENT_YEAR) });
         expect(await loadWeek(Astro, 'cfb')).toMatchObject({ seasontype: 2, week: 1 });
+        expect(remote).toEqual([[CURRENT_YEAR, 2, 1, 80, 'cfb']]);
+        expect(cache.set.mock.calls[0][0]).toEqual(scoreboardWindow);
     });
 });

@@ -49,7 +49,8 @@ export async function loadWeek(Astro: AstroGlobal, league: League): Promise<Week
     const season = int(year, CURRENT_YEAR);
     // #150: /year/<season> with no type or week (the picker submitted with only a conference, say) is the scoreboard's
     // current week when <season> is the one the scoreboard is on; otherwise, and for a past season, week 1.
-    const current = (type == null && week == null && season === CURRENT_YEAR) ? await currentWeek(season, league) : null;
+    const defaulted = type == null && week == null && season === CURRENT_YEAR;
+    const current = defaulted ? await currentWeek(season, league) : null;
     const weekCleaned = current?.week ?? int(week, 1);
     const seasontype = current?.seasontype ?? int(type, 2);
 
@@ -57,8 +58,9 @@ export async function loadWeek(Astro: AstroGlobal, league: League): Promise<Week
     try {
         games = await getRemoteGames(season, seasontype, weekCleaned, group, league);
         const hasActiveGames = games.find((item: ESPNScheduleEvent) => item.status && !(item.status?.type.completed == true || item.status?.type.name.includes("SCHEDULED") || item.status?.type.name.includes("CANCEL") || item.status?.type.name.includes("POSTPONE") || item.status?.type.name.includes("DELAY")))
-        // a defaulted week moves with the scoreboard, so the URL is held only as long as the scoreboard is
-        const config = current
+        // a defaulted week moves with the scoreboard (and a week-1 fallback from a failed read should not outlive it), so
+        // the URL is held only as long as the scoreboard is
+        const config = defaulted
             ? { maxAge: CURRENT_SEASON_CONFIG.scoreboardRefreshRate, swr: CURRENT_SEASON_CONFIG.scoreboardRefreshRate * CACHE_TTL_MULTIPLIER, tags: ['week-in-progress'] }
             : getScheduleCacheConfig(new Date(), season, seasontype, weekCleaned, !!hasActiveGames, league);
         Astro.cache.set(config);
