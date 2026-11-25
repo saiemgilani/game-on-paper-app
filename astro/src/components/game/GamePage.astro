@@ -141,6 +141,12 @@ const playerSpans = isFeatureEnabled('player-quarter-filter', Astro.locals) ? (g
 const officialTeam = isFeatureEnabled('official-team-box', Astro.locals)
     ? officialTeamBox(game.advBoxScore, [game.teamInfo.away.id, game.teamInfo.home.id], league, game.season.year)
     : null;
+// 'non-garbage-stats' (preview): Team Stats' All / Non-garbage toggle (a college game with garbage time) and the Overall
+// box's run rows. Off, the island's props are exactly what they were (no extra keys).
+const nonGarbageProps = isFeatureEnabled('non-garbage-stats', Astro.locals) ? {
+    nonGarbage: game.advBoxScoreNonGarbage ? withoutUsageSections({ box: game.advBoxScoreNonGarbage }).box : null,
+    runRows: true,
+} : {};
 const lastPlay: any = game.plays.at(-1);
 const gameState = game.header.competitions[0].status?.type?.state;
 const latestSubtitle = latestDriveSubtitle(game.drives, lastPlay, gameState);
@@ -301,7 +307,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="team-stats" title="Team Stats" show={true} hint={isFeatureEnabled('method-notes', Astro.locals) ? METHOD_NOTES.game : undefined}>
-                        <SituationalSection client:load slot="panel-body" season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles} teamIds={[game.teamInfo.away.id, game.teamInfo.home.id]} officialTeam={officialTeam}>
+                        <SituationalSection client:load slot="panel-body" season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles} teamIds={[game.teamInfo.away.id, game.teamInfo.home.id]} officialTeam={officialTeam} {...nonGarbageProps}>
                         </SituationalSection>
                     </Panel>
                 </div>
