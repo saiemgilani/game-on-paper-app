@@ -509,6 +509,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // with garbage time: the processor's advBoxScoreNonGarbage, sportsdataverse-py's flag_garbage_time margins), and its
     // Overall box gets Power Success Rate and Def Run Stop Rate rows. Off: the island's props and the panel are today's.
     'non-garbage-stats': 'preview',
+    // G17: a "Fourth Down Decisions" panel under Team Stats, one row per team: the fourth downs the play rows'
+    // Fourth Down Bot cards grade, how many agreed with the bot and the win probability lost on the rest
+    // (components/game/metrics/DecisionSummary.astro, utils/fourthDown.ts). Off: no panel, no nav entry.
+    'decision-summary': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

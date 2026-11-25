@@ -337,27 +337,57 @@ describe('the player board sorts from the dropdown config (one list, so they can
 describe('players to watch', () => {
     // Kent State 2026 through week 9 (gameonpaper.com/year/2026/team/2309, captured 2026-10-30): the
     // preview for 401866451 named Da'Realyst Clark (1 dropback, +2.07 EPA) over the starter, and a
-    // 7-carry back (+1.71) over the backs with the carries.
+    // 7-carry back (+1.71) over the backs with the carries. position_group and qualification (a
+    // TEPA_rank) are the Data API's for the same players, read 2026-11-25.
     const passing = [
-        { passer_player_name: 'Dru DeShields', TEPA: -0.62, dropbacks: 201 },
-        { passer_player_name: 'Nolan Good', TEPA: -9.9, dropbacks: 7 },
-        { passer_player_name: 'Ethan Thanthanavong', TEPA: -0.76, dropbacks: 2 },
-        { passer_player_name: "Da'Realyst Clark", TEPA: 2.07, dropbacks: 1 },
+        { passer_player_name: 'Dru DeShields', position_group: 'QB', TEPA: -0.62, TEPA_rank: 116, dropbacks: 201 },
+        { passer_player_name: 'Nolan Good', position_group: 'QB', TEPA: -9.9, TEPA_rank: null, dropbacks: 7 },
+        { passer_player_name: 'Ethan Thanthanavong', position_group: 'QB', TEPA: -0.76, TEPA_rank: null, dropbacks: 2 },
+        { passer_player_name: "Da'Realyst Clark", position_group: 'WR', TEPA: 2.07, TEPA_rank: null, dropbacks: 1 },
     ];
     const rushing = [
-        { rusher_player_name: 'Brandon White', TEPA: -6.91, plays: 57 },
-        { rusher_player_name: 'Dru DeShields', TEPA: -3.87, plays: 44 },
-        { rusher_player_name: 'Hunter Hopperton', TEPA: 1.71, plays: 7 },
+        { rusher_player_name: 'Brandon White', position_group: 'RB', TEPA: -6.91, TEPA_rank: 272, plays: 57 },
+        { rusher_player_name: 'Dru DeShields', position_group: 'QB', TEPA: -3.87, TEPA_rank: null, plays: 44 },
+        { rusher_player_name: 'Hunter Hopperton', position_group: 'RB', TEPA: 1.71, TEPA_rank: null, plays: 7 },
     ];
 
-    test('the passer is the one with the most dropbacks, not the best total EPA', () => {
+    test('the passer is the quarterback with the most dropbacks, not the best total EPA', () => {
         expect(watchLeader(passing, 'passing')?.passer_player_name).toBe('Dru DeShields');
-        const tied = passing.map((r) => ({ ...r, dropbacks: 10 }));
-        expect(watchLeader(tied, 'passing')?.passer_player_name).toBe("Da'Realyst Clark");
+        // a dropbacks tie goes to total EPA -- among quarterbacks: Clark is a receiver
+        const tied = passing.map((r) => ({ ...r, dropbacks: 10, TEPA_rank: null }));
+        expect(watchLeader(tied, 'passing')?.passer_player_name).toBe('Dru DeShields');
     });
 
-    test('the rusher and receiver stay the most valuable by total EPA', () => {
-        expect(watchLeader(rushing, 'rushing')?.rusher_player_name).toBe('Hunter Hopperton');
+    test('the rusher is the most valuable qualifier, not a 7-carry back', () => {
+        expect(watchLeader(rushing, 'rushing')?.rusher_player_name).toBe('Brandon White');
         expect(watchLeader([], 'receiving')).toBeNull();
+    });
+
+    // Green Bay at the Rams, 2026 week 12 (401873079): both teams' rows as the card reads them,
+    // from the Data API on 2026-11-25 (fixtures/README.md). The preview named Tucker Kraft -- a
+    // tight end with 4 carries and +1.56 EPA -- Green Bay's rusher.
+    const rows = JSON.parse(readFileSync(new URL('./fixtures/players-to-watch-nfl-2026.json', import.meta.url), 'utf8'));
+    const leader = (team: string, category: 'passing' | 'rushing' | 'receiving') => {
+        const r = watchLeader(rows[team][category], category) as Record<string, unknown> | null;
+        return r?.[`${{ passing: 'passer', rushing: 'rusher', receiving: 'receiver' }[category]}_player_name`];
+    };
+
+    test('a tight end is never the rusher to watch', () => {
+        expect(rows['9'].rushing.find((r: any) => r.rusher_player_name === 'T.Kraft').position_group).toBe('TE');
+        expect(leader('9', 'rushing')).not.toBe('T.Kraft');
+    });
+
+    test('with no qualified rusher yet, it is the back with the most carries', () => {
+        // nobody in Green Bay's backfield has 6.25 carries per team-game (Lloyd: 61 in 10)
+        expect(rows['9'].rushing.some((r: any) => r.TEPA_rank != null)).toBe(false);
+        expect(leader('9', 'rushing')).toBe('M.Lloyd');
+    });
+
+    test('the Rams: the most valuable qualifier at each position', () => {
+        expect(leader('14', 'passing')).toBe('M.Stafford');
+        expect(leader('14', 'rushing')).toBe('B.Corum');
+        expect(leader('9', 'passing')).toBe('J.Love');
+        // a tight end can still be the receiver to watch; here the qualified leader is a wideout
+        expect(leader('9', 'receiving')).toBe('C.Watson');
     });
 });

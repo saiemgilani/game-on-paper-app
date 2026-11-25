@@ -31,6 +31,8 @@ import { latestDriveSubtitle } from '../../utils/latestDrive';
 import GameHeader from './GameHeader.astro';
 import { LEAGUES, leaguePath, type League } from '../../utils/league';
 import SituationalSection from './metrics/SituationalSection.svelte';
+import DecisionSummary from './metrics/DecisionSummary.astro';
+import { fourthDownSummary } from '../../utils/fourthDown';
 import { withoutUsageSections } from '../../utils/usage';
 import { officialTeamBox } from '../../utils/officialBox';
 import { wpExportTitle, type WpExportMeta } from '../../utils/chartExport';
@@ -144,11 +146,14 @@ const officialTeam = isFeatureEnabled('official-team-box', Astro.locals)
 // 'non-garbage-stats' (preview): Team Stats' All / Non-garbage toggle (a college game with garbage time) and the Overall
 // box's run rows. Off, the island's props are exactly what they were (no extra keys).
 const NON_GARBAGE_SECTIONS = ['team', 'situational', 'defensive', 'drives', 'turnover', 'team_usage', 'drive_scripting', 'st_team'];
-const nonGarbageProps =isFeatureEnabled('non-garbage-stats', Astro.locals) ? {
+const nonGarbageProps = isFeatureEnabled('non-garbage-stats', Astro.locals) ? {
     // only the sections Team Stats reads: the box is serialized into the island's props
     nonGarbage: game.advBoxScoreNonGarbage ? Object.fromEntries(NON_GARBAGE_SECTIONS.map((k) => [k, (game.advBoxScoreNonGarbage as any)[k] ?? []])) : null,
     runRows: true,
 } : {};
+// 'decision-summary' (preview): the Fourth Down Bot cards summed per team, away first; no panel when no play has a card
+const decisionRows = isFeatureEnabled('decision-summary', Astro.locals) ? fourthDownSummary(game.plays, [awayTeam.id, homeTeam.id]) : [];
+const decisionSummary = decisionRows.some((r) => r.decisions > 0);
 const lastPlay: any = game.plays.at(-1);
 const gameState = game.header.competitions[0].status?.type?.state;
 const latestSubtitle = latestDriveSubtitle(game.drives, lastPlay, gameState);
@@ -161,6 +166,7 @@ const scrollerItems: ScrollerItem[] = [
     { href: "#ep-section", title: "EPA Chart" },
     ...((game.paperIndex && gameStatus.type.completed == true) ? [{ href: "#paper-index-panel", title: "Deserved Win %" }] : []),
     { href: "#team-stats-panel", title: "Team Stats" },
+    ...(decisionSummary ? [{ href: "#decision-summary-panel", title: "4th Downs" }] : []),
     { href: "#player-stats", title: "Player Stats" },
     { href: "#big-plays-panel", title: "Big Plays" },
     { href: "#most-important-plays-panel", title: "Most Important Plays" },
@@ -314,6 +320,13 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                     </Panel>
                 </div>
             </div>
+            {decisionSummary && (
+                <div class="row mb-3">
+                    <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                        <DecisionSummary rows={decisionRows} teams={[awayTeam, homeTeam]} season={game.season.year} />
+                    </div>
+                </div>
+            )}
             <div id="player-stats" class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <TeamPanel id="away-stats-panel" season={game.season.year} team={awayTeam} show={false}>
