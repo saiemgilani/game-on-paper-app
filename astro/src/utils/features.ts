@@ -505,6 +505,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // ESPN's box (utils/officialBox.ts officialTeamBox), full game only. Off: the panel is unchanged.
     // The player lines' ESPN counts are a fix and are not behind this flag.
     'official-team-box': 'preview',
+    // G17: a "Fourth Down Decisions" panel under Team Stats, one row per team: the fourth downs the play rows'
+    // Fourth Down Bot cards grade, how many agreed with the bot and the win probability lost on the rest
+    // (components/game/metrics/DecisionSummary.astro, utils/fourthDown.ts). Off: no panel, no nav entry.
+    'decision-summary': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
