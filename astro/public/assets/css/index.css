@@ -254,3 +254,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 .game-banner .gb-mid { font-size: clamp(0.65rem, 3vw, 0.75rem); }
 .game-banner .gb-note { grid-column: 1 / -1; }
+/* Scoreboard card link (GameThumb, preview 'scoreboard-card-link'): the
+   broadcast button sits above the Stats link's stretched-link overlay
+   (z-index 1). Bootstrap 5.0.2 has no z-index utilities. */
+.game-thumb-over {
+    position: relative;
+    z-index: 2;
+}
