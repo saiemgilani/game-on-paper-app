@@ -67,6 +67,9 @@ describe('quarterEpa', () => {
         const holed = game.plays.map((p: any, j: number) => (j === i ? { ...p, expectedPoints: { ...p.expectedPoints, added: null } } : p));
         expect(quarterEpa(holed, [ACU, NDSU], MARGIN)).toBeNull();
         expect(quarterEpa([], [ACU, NDSU], MARGIN)).toBeNull();
+        // a period no game reaches is a corrupt feed: no table, and no thousand-column row
+        const corrupt = game.plays.map((p: any, j: number) => (j === 0 ? { ...p, period: 1000 } : p));
+        expect(quarterEpa(corrupt, [ACU, NDSU], MARGIN)).toBeNull();
     });
 });
 

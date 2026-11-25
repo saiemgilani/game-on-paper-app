@@ -145,9 +145,12 @@ const officialTeam = isFeatureEnabled('official-team-box', Astro.locals)
     : null;
 // 'quarter-epa' (preview): each team's EPA by quarter under the linescore, final games only; null when the EPA fails its
 // sanity gate against the final margin (utils/quarterEpa.ts)
-const quarterEpaRows = isFeatureEnabled('quarter-epa', Astro.locals) && gameStatus.type.completed == true
-    ? quarterEpa(game.plays, [awayTeam.id, homeTeam.id], Number(awayComp.score) - Number(homeComp.score))
+// The sides are read by homeAway, as the linescore reads them, since the margin's sign depends on it.
+const sides = (['away', 'home'] as const).map((s) => game.header.competitions[0].competitors.find((c: any) => c.homeAway === s));
+const quarterEpaRows = isFeatureEnabled('quarter-epa', Astro.locals) && gameStatus.type.completed == true && sides[0] && sides[1]
+    ? quarterEpa(game.plays, [sides[0].team.id, sides[1].team.id], Number(sides[0].score) - Number(sides[1].score))
     : null;
+const quarterEpaTeams = sides.map((c: any) => c?.team);
 const lastPlay: any = game.plays.at(-1);
 const gameState = game.header.competitions[0].status?.type?.state;
 const latestSubtitle = latestDriveSubtitle(game.drives, lastPlay, gameState);
@@ -358,7 +361,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                     <Panel id="scoring-plays" title="Scoring Plays" show={false}>
                         <div class="row" slot="panel-body">
                             <Linescore competitors={game.header.competitions[0].competitors} season={game.season.year} />
-                            {quarterEpaRows && <QuarterEpa rows={quarterEpaRows} teams={[awayTeam, homeTeam]} season={game.season.year} />}
+                            {quarterEpaRows && <QuarterEpa rows={quarterEpaRows} teams={quarterEpaTeams} season={game.season.year} />}
                             {
                                 (game.scoringPlays.length == 0) && (<p class="text-center text-muted">No scoring plays in this game.</p>)
                             }

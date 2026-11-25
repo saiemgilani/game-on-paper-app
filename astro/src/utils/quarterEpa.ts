@@ -9,6 +9,8 @@
 
 /** Two touchdowns. The real finals in test/fixtures land 0.2 to 8.9 points from their margins (kickoff and try EP). */
 export const EPA_MARGIN_TOLERANCE = 14;
+/** Four quarters and eight overtimes; the longest college game went to a ninth. */
+const MAX_PERIODS = 12;
 
 export interface QuarterEpaRow {
     teamId: string;
@@ -25,6 +27,8 @@ const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFi
 export function quarterEpa(plays: readonly any[], teamIds: readonly [string | number, string | number], margin: number): QuarterEpaRow[] | null {
     if (!plays.length || !finite(margin)) return null;
     const periods = Math.max(0, ...plays.map((p) => Number(p.period)).filter((n) => Number.isInteger(n) && n > 0));
+    // a period no game reaches is a corrupt feed, not a column
+    if (periods > MAX_PERIODS) return null;
     const rows = teamIds.map((id) => ({ teamId: String(id), byPeriod: new Array(periods).fill(0), total: 0 }));
     for (const p of plays) {
         const epa = p.expectedPoints?.added;
