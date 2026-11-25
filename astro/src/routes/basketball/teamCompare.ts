@@ -59,6 +59,13 @@ export async function prepareTeamCompare(Astro: AstroGlobal, league: BasketballL
     const { season, seasons, current } = resolveBasketballSeason(Astro, league);
     const module = BASKETBALL[league].teams;
     const ids = parseTeamIds(Astro.url.searchParams.get('ids'));
+    // a comparison is a query over the team pages, not a page of its own: no ?ids= permutation is indexed
+    Astro.response.headers.set('X-Robots-Tag', 'noindex');
+    // an id that is no team of this league (another league's, a typo) is a 404, not a "Team <id>" card
+    if (ids.some((id) => module.seasonsOf(id, season) === undefined)) {
+        uncacheable(Astro);
+        return { notFound: true };
+    }
     // the strength section renders only with 'bball-team-strength', so its read is made only then
     const withStrength = isFeatureEnabled('bball-team-strength', Astro.locals);
     let entries: TeamCompareEntry[];

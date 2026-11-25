@@ -120,3 +120,22 @@ describe('the page', () => {
         expect(html).not.toContain('id="team-compare-add"');
     });
 });
+
+describe('ids from another league, and indexing', () => {
+    const prepWith = async (league: 'nba' | 'mbb', query: string) => {
+        const astro: any = { locals: on(), url: new URL(`https://gameonpaper.com/${league}/teams/compare${query}`), params: {}, response: { headers: new Headers() }, cache: { set: vi.fn() } };
+        return { r: await prepareTeamCompare(astro, league), headers: astro.response.headers as Headers };
+    };
+    test("Duke's ESPN id on the NBA page, or a Celtics id on the men's page, is a 404 with no read", async () => {
+        calls.length = 0;
+        expect((await prepWith('nba', '?ids=1610612751,150&season=2026')).r).toEqual({ notFound: true });
+        expect((await prepWith('mbb', '?ids=150,1610612738&season=2026')).r).toEqual({ notFound: true });
+        expect(calls).toEqual([]);
+    });
+    test('every compare URL is noindex, the 404 and the comparison alike', async () => {
+        const ok = await prepWith('nba', '?ids=1610612751,1610612738&season=2026');
+        expect('entries' in ok.r).toBe(true);
+        expect(ok.headers.get('X-Robots-Tag')).toBe('noindex');
+        expect((await prepWith('nba', '?ids=150')).headers.get('X-Robots-Tag')).toBe('noindex');
+    });
+});
