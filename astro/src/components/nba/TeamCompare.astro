@@ -43,7 +43,8 @@ const minutes = league === 'nba' ? 48 : 40;
 
 const cards = entries.map((e) => {
     const remove = href(ids.filter((x) => x !== e.id));
-    if ('missing' in e) return { id: e.id, missing: true as const, remove };
+    // a card with no row still says whose it is, so each Remove link is identifiable
+    if ('missing' in e) return { id: e.id, missing: true as const, remove, name: e.team ? cleanName(e.team) : `Team ${e.id}` };
     const r = e.rates;
     const st = e.strength;
     const sections = [
@@ -118,6 +119,7 @@ const tip = (r: Row) => (r.pct == null ? undefined : `${Math.round(r.pct)}th per
                     <div class="card-body p-2 p-md-3">
                         {'missing' in c ? (
                             <Fragment>
+                                <h2 class="h5 mb-1" data-compare-missing-name>{c.name}</h2>
                                 <p class="text-muted text-small">No {label} line for this team.</p>
                                 <a class="btn btn-sm btn-outline-secondary" href={c.remove} data-compare-remove>Remove</a>
                             </Fragment>

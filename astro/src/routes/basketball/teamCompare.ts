@@ -20,7 +20,8 @@ import { resolveBasketballSeason } from './season';
 const TTL = 6 * 60 * 60;
 
 export type TeamCompareEntry =
-    | { id: number; missing: true }
+    /** `team`: the id is a team of that season with no row yet, so its card can still name it */
+    | { id: number; missing: true; team?: Team }
     | { id: number; team: Team; rates: TeamSeasonRateRow; strength: TeamStrengthRow | null };
 
 export interface TeamCompareParams {
@@ -69,7 +70,7 @@ export async function prepareTeamCompare(Astro: AstroGlobal, league: BasketballL
                 retrieveRows<TeamSeasonRateRow>(league, 'team_season_rates', { season: String(season), team_id: String(id), split: 'all', limit: '1' }, TTL, true),
                 withStrength ? retrieveTeamStrength(league, season, id) : Promise.resolve(null),
             ]);
-            return rates[0] ? { id, team, rates: rates[0], strength } : { id, missing: true };
+            return rates[0] ? { id, team, rates: rates[0], strength } : { id, missing: true, team };
         }));
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} team compare reads for ${ids.join(',')}: ${e}, ${e?.stack}`);

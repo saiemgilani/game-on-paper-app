@@ -115,6 +115,8 @@ describe('the page', () => {
     test('an id with no row that season keeps a "no line" card; four teams hide the add control', async () => {
         const html = await render('nba', '?ids=1610612751,1610612738,1610612752,1610612737&season=2026');
         expect(card(html, 1610612737)).toContain('No 2025-26 line for this team.');
+        // the card still names the team (the Atlanta Hawks are a 2025-26 team with no row in the capture)
+        expect(card(html, 1610612737)).toMatch(/data-compare-missing-name>[^<]*Hawks</);
         expect(html).not.toContain('id="team-compare-add"');
     });
 });
