@@ -64,7 +64,10 @@ describe('fourthDownSummary', () => {
     test('a team with no graded fourth down is a zero row, and an unknown team is no row', () => {
         expect(fourthDownSummary([], [ACU])).toEqual([{ teamId: ACU, decisions: 0, agreed: 0, wpLost: 0 }]);
         const other = game.plays.map((p: any) => ({ ...p, start: { ...p.start, pos_team: { id: 1 } } }));
-        expect(fourthDownSummary(other, [ACU, NDSU]).every((r) => r.decisions === 0)).toBe(true);
+        expect(fourthDownSummary(other, [ACU, NDSU])).toEqual([
+            { teamId: ACU, decisions: 0, agreed: 0, wpLost: 0 },
+            { teamId: NDSU, decisions: 0, agreed: 0, wpLost: 0 },
+        ]);
     });
 });
 
