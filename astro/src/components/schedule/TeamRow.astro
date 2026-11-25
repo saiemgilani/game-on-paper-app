@@ -47,9 +47,9 @@ const possessionClass = isRedZone ? "text-danger" : "text-primary";
 const possessionMarker = hasBall ? `<span class="ms-1 ${possessionClass}">&#8226;</span>` : ''
 const abbr = formatScore(cleanAbbreviation(comp.team), winner, completed);
 // a TBD placeholder (or a team ESPN gives no location) keeps its abbreviation
-const location = fullName ? cleanLocation(comp.team) : "";
-const teamLabel = location
-    ? `<span class="d-none d-md-inline">${formatScore(location, winner, completed)}</span><span class="d-md-none">${abbr}</span>`
+const teamLocation = fullName ? cleanLocation(comp.team) : "";
+const teamLabel = teamLocation
+    ? `<span class="d-none d-md-inline">${formatScore(teamLocation, winner, completed)}</span><span class="d-md-none">${abbr}</span>`
     : abbr;
 ---
 <div class={`m-0 d-flex ${spacer}`}>
