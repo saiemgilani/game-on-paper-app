@@ -222,6 +222,24 @@ source, the ESPN processor payload; a source request is held a minute at most; `
 (`utils/sourceCompare.ts`) sets them side by side on score, team box, four-factor
 rates and play count.
 
+**Feedback inbox** (`'feedback-inbox'`, preview, admin-only on top of the flag): a
+floating *Feedback* button (`components/FeedbackButton.astro`, mounted in
+`Footer.astro`, which every page shell renders) opens a native `<dialog>` sheet whose
+report goes to `POST /admin/api/feedback` (behind the `/admin` gate, and it re-checks
+`locals.adminAuthed` and the flag). The endpoint files a new post in the `#gop-inbox`
+Discord forum through the webhook in the `DISCORD_INBOX_WEBHOOK_URL` secret (setup:
+README *Team feedback inbox*; unset = 503): `thread_name` = title, `applied_tags` =
+the type's tag (`utils/feedback.ts` `FEEDBACK_TAGS`), `allowed_mentions: {parse: []}`,
+the image as `files[0]`. Rules that keep it safe, pinned by `test/feedback*.test.ts`:
+the secret is read server-side only (the page gets a configured yes/no), never logged
+(plain `fetch`, not `wrappedFetch`/`timedFetch`, which log or record the URL) and is
+the only URL fetched, and only when it is an `https://discord.com/api/webhooks/...`
+URL; the button and its inline script exist only in an admin's render, which
+`withPreviewCacheGuard` keeps out of Workers Caching. The admin session has no
+per-person identity, so the sender picks a name from `FEEDBACK_SENDERS`; the rate
+limit (10 per sender per 10 min) is a KV counter in `ESPN_API_CACHE`. A clean URL an
+admin reaches through a cache HIT shows no button; `/preview/<path>` and `/admin` always do.
+
 ## Guardrails
 - Branch + PR, never push `main`. Stage explicit paths. One logical change per PR.
 - After merging a GOP PR, the deploy runs on push to `main`; smoke the deployed

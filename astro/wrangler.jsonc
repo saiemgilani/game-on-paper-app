@@ -12,8 +12,10 @@
 		"APP_VERSION": "2026-07-30",
 		"SEASON_MODE": "normal"
 	},
+	// "required" only feeds `wrangler types` and which .dev.vars keys a local run loads (a missing one is a warning there,
+	// never a deploy error). DISCORD_INBOX_WEBHOOK_URL is optional in production: unset, feedback answers 503.
 	"secrets": {
-		"required": ["PYTHON_HTTP_TOKEN", "SDV_AUTH_TOKEN", "ADMIN_USER", "ADMIN_PASS", "GOP_INGEST_KEY", "PRO_COOKIE_SECRET"]
+		"required": ["PYTHON_HTTP_TOKEN", "SDV_AUTH_TOKEN", "ADMIN_USER", "ADMIN_PASS", "GOP_INGEST_KEY", "PRO_COOKIE_SECRET", "DISCORD_INBOX_WEBHOOK_URL"]
 	},
 	"main": "./src/worker.ts",
 	"assets": {

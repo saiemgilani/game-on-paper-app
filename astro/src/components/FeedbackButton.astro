@@ -1,0 +1,193 @@
+---
+// 'feedback-inbox' (preview): the team's floating "Feedback" button and its sheet, posting to
+// POST /admin/api/feedback, which files a new post in the #gop-inbox Discord forum.
+//
+// Renders ONLY for a request the middleware authenticated with the gop_admin cookie, with the
+// flag on. That render is forced uncacheable (middleware.ts withPreviewCacheGuard), so no copy in
+// Workers Caching -- the one every other viewer gets -- ever carries the button or this script.
+// The flip side: a clean URL an admin reaches through a cache HIT never runs the Worker and shows
+// no button; /preview/<path> and /admin always render it.
+//
+// Native <dialog> with showModal(): it traps focus, makes the page inert, closes on Escape and
+// gives focus back to the button. The script is inline so it ships only in an admin's render.
+import { getSecret } from 'astro:env/server';
+import { isFeatureEnabled } from '../utils/features';
+import { FEEDBACK_LIMITS, FEEDBACK_SENDERS, FEEDBACK_TAGS, webhookUrl } from '../utils/feedback';
+
+const show = Astro.locals.adminAuthed === true && isFeatureEnabled('feedback-inbox', Astro.locals);
+// only the yes/no reaches the page, never the secret
+const configured = show && webhookUrl(getSecret('DISCORD_INBOX_WEBHOOK_URL')) !== null;
+const TYPE_LABELS: Record<keyof typeof FEEDBACK_TAGS, string> = { bug: 'Bug', idea: 'Idea', link: 'Link', data: 'Data', question: 'Question' };
+---
+{show && (
+<Fragment>
+<button id="feedback-open" class="btn btn-secondary shadow" type="button" aria-haspopup="dialog" aria-controls="feedback-sheet" data-feedback-inbox>
+  <i class="bi bi-chat-square-text me-1" aria-hidden="true"></i>Feedback
+</button>
+<dialog id="feedback-sheet" class="p-0" aria-labelledby="feedback-sheet-title">
+  <form class="modal-content" method="dialog" novalidate>
+    <div class="modal-header">
+      <h2 class="modal-title fs-5" id="feedback-sheet-title">Send feedback</h2>
+      <button type="button" class="btn-close" aria-label="Close" data-feedback-close></button>
+    </div>
+    <div class="modal-body">
+      {!configured && (
+        <p class="alert alert-warning small" role="status" data-feedback-unconfigured>Feedback isn't configured yet: the DISCORD_INBOX_WEBHOOK_URL secret is not set on this deploy.</p>
+      )}
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label" for="feedback-type">Type</label>
+          <select class="form-select" id="feedback-type" name="type" required>
+            {Object.keys(FEEDBACK_TAGS).map((t) => <option value={t}>{TYPE_LABELS[t as keyof typeof FEEDBACK_TAGS]}</option>)}
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label" for="feedback-from">From</label>
+          <select class="form-select" id="feedback-from" name="from" required>
+            {FEEDBACK_SENDERS.map((s) => <option value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="feedback-title">Title</label>
+        <input class="form-control" id="feedback-title" name="title" type="text" required maxlength={FEEDBACK_LIMITS.title} autocomplete="off" enterkeyhint="next">
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="feedback-message">Message</label>
+        <textarea class="form-control" id="feedback-message" name="message" rows="4" required maxlength={FEEDBACK_LIMITS.message}></textarea>
+      </div>
+      <div class="mb-2">
+        <label class="form-label" for="feedback-image">Screenshot or photo (optional)</label>
+        <input class="form-control" id="feedback-image" name="image" type="file" accept="image/*">
+      </div>
+      <p class="text-muted small mb-0">The page URL, league, route, screen size and browser are attached.</p>
+      <p class="text-danger small mt-2 mb-0" role="alert" data-feedback-error hidden></p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline-secondary" data-feedback-close>Cancel</button>
+      <button type="submit" class="btn btn-primary" data-feedback-submit disabled={!configured}>Send</button>
+    </div>
+  </form>
+</dialog>
+<!-- the live region stays in the page (and takes no space) so its text is announced; the toast inside it toggles -->
+<div id="feedback-toast" class="position-fixed bottom-0 start-50 translate-middle-x mb-3" role="status" aria-live="polite">
+  <div class="toast show" hidden><div class="toast-body"></div></div>
+</div>
+<style is:inline>
+  #feedback-open {
+    position: fixed;
+    right: 1rem;
+    /* stacked above the footer's 44px back-to-top button (1.25rem from the bottom) */
+    bottom: calc(1.25rem + 44px + .5rem);
+    z-index: 1030;
+    min-height: 44px;
+    border-radius: 22px;
+    opacity: 0.9;
+  }
+  #feedback-open:hover, #feedback-open:focus-visible { opacity: 1; }
+  #feedback-sheet {
+    border: 0;
+    background: transparent;
+    color: inherit; /* a dialog defaults to CanvasText, black even in dark mode */
+    width: min(32rem, 100% - 2rem);
+    max-height: calc(100% - 2rem);
+  }
+  #feedback-sheet .btn, #feedback-sheet .form-select, #feedback-sheet .form-control { min-height: 44px; }
+  #feedback-sheet .btn-close { min-width: 44px; min-height: 44px; }
+  #feedback-sheet .modal-content { overflow-y: auto; max-height: calc(100dvh - 2rem); }
+  /* a bottom sheet on phones */
+  @media (max-width: 575.98px) {
+    #feedback-sheet {
+      width: 100%;
+      max-width: 100%;
+      margin: auto 0 0;
+    }
+    #feedback-sheet .modal-content { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  }
+  #feedback-toast { z-index: 1040; }
+  @media print { #feedback-open { display: none; } }
+</style>
+<script is:inline>
+  (function () {
+    var open = document.getElementById('feedback-open');
+    var sheet = document.getElementById('feedback-sheet');
+    var toast = document.getElementById('feedback-toast');
+    if (!open || !sheet || !sheet.showModal) return;
+    var form = sheet.querySelector('form');
+    var error = sheet.querySelector('[data-feedback-error]');
+    var submit = sheet.querySelector('[data-feedback-submit]');
+    var FROM_KEY = 'gop-feedback-from';
+    var MAX_SIDE = 1600, MAX_BYTES = 4 * 1024 * 1024;
+    var timer;
+
+    function rememberedFrom() {
+      try { var v = localStorage.getItem(FROM_KEY); if (v) form.elements.from.value = v; } catch (e) { /* storage blocked */ }
+    }
+    function fail(msg) { error.textContent = msg; error.hidden = false; }
+    rememberedFrom();
+
+    open.addEventListener('click', function () { error.hidden = true; sheet.showModal(); form.elements.title.focus(); });
+    sheet.querySelectorAll('[data-feedback-close]').forEach(function (b) { b.addEventListener('click', function () { sheet.close(); }); });
+    // a tap on the backdrop (the dialog box itself, outside the form) closes it
+    sheet.addEventListener('click', function (e) { if (e.target === sheet) sheet.close(); });
+
+    // Re-encode every image: <= 1600px on the long side, JPEG, <= 4 MB. Re-encoding also drops
+    // the camera's EXIF (location included).
+    async function downscale(file) {
+      var bmp = await createImageBitmap(file);
+      var s = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
+      var c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(bmp.width * s));
+      c.height = Math.max(1, Math.round(bmp.height * s));
+      var g = c.getContext('2d');
+      g.fillStyle = 'white'; // JPEG has no alpha: a transparent PNG would turn black
+      g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(bmp, 0, 0, c.width, c.height);
+      for (var q of [0.85, 0.7, 0.5]) {
+        var blob = await new Promise(function (r) { c.toBlob(r, 'image/jpeg', q); });
+        if (blob && blob.size <= MAX_BYTES) return new File([blob], 'screenshot.jpg', { type: 'image/jpeg' });
+      }
+      throw new Error('That image is too large to send, even downscaled.');
+    }
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      error.hidden = true;
+      if (!form.reportValidity()) return;
+      submit.disabled = true;
+      try {
+        var data = new FormData(form);
+        data.delete('image');
+        var file = form.elements.image.files[0];
+        if (file) {
+          try { data.append('image', await downscale(file)); }
+          catch (err) { throw new Error(err && err.message && err.message.indexOf('too large') >= 0 ? err.message : "That image couldn't be read. Try a screenshot or a JPEG."); }
+        }
+        data.append('page', location.href);
+        data.append('viewport', window.innerWidth + 'x' + window.innerHeight);
+        // an admin's ?view= / ?flags= on this page apply to the endpoint's flag check too
+        var here = new URLSearchParams(location.search), carry = new URLSearchParams();
+        ['view', 'flags'].forEach(function (k) { if (here.get(k)) carry.set(k, here.get(k)); });
+        var qs = carry.toString();
+        var res = await fetch('/admin/api/feedback' + (qs ? '?' + qs : ''), { method: 'POST', body: data, credentials: 'same-origin' });
+        var out = await res.json().catch(function () { return {}; });
+        if (!res.ok || !out.ok) throw new Error(out.error || ('The report was not sent (' + res.status + ').'));
+        try { localStorage.setItem(FROM_KEY, form.elements.from.value); } catch (err) { /* storage blocked */ }
+        form.reset();
+        rememberedFrom();
+        sheet.close();
+        var card = toast.firstElementChild;
+        card.hidden = false;
+        card.querySelector('.toast-body').textContent = 'Sent — you’ll get a reply in #gop-inbox';
+        clearTimeout(timer);
+        timer = setTimeout(function () { card.hidden = true; card.querySelector('.toast-body').textContent = ''; }, 4000);
+      } catch (err) {
+        fail(err && err.message ? err.message : 'The report was not sent.');
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  })();
+</script>
+</Fragment>
+)}

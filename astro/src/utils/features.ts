@@ -509,6 +509,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // Fourth Down Bot cards grade, how many agreed with the bot and the win probability lost on the rest
     // (components/game/metrics/DecisionSummary.astro, utils/fourthDown.ts). Off: no panel, no nav entry.
     'decision-summary': 'preview',
+    // The team's "Send feedback" button (components/FeedbackButton.astro, in the Footer every page shell renders) and
+    // its endpoint, POST /admin/api/feedback, which posts each report to the #gop-inbox Discord forum
+    // (utils/feedback.ts). Admin-only on top of the flag: the button renders only for a request the middleware
+    // authenticated with the gop_admin cookie, and that render is never cached (withPreviewCacheGuard), so no public
+    // page carries it whatever this says. Off: no button, and the endpoint answers 404.
+    'feedback-inbox': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */
