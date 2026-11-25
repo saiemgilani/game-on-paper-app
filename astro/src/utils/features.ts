@@ -183,6 +183,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // of schedule, strength of victory and pace, each with its league rank (sdv-db's team_strength, BB-D19). Off: the
     // block is BB-G5's, byte for byte.
     'bball-team-strength': 'preview',
+    // BB-G60: /<league>/teams/compare?ids=&season=, two to four teams' season blocks side by side (the player compare
+    // page's layout): each team's team_season_rates all split and team_strength rows, the team page's reads, with the
+    // producer's ranks and percentiles. Off: the route is the site's 404.
+    'bball-team-compare': 'preview',
     // BB-G58: four-factor point accounting, inside 'bball-team-season' (the season block's factor-points table) and
     // 'bball-lineups' (a Four-factor points basis): the net rating per 100 split into eFG, turnover, rebounding and
     // free-throw points against the league average, for offense and defense, read from sdv-db's team_season_rates and

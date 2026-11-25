@@ -1,0 +1,16 @@
+---
+// src/pages/wbb/teams/compare.astro: BB-G60's team compare, behind 'bball-team-compare'
+import TeamCompare from '../../../components/nba/TeamCompare.astro';
+import { prepareTeamCompare } from '../../../routes/basketball/teamCompare';
+import { unavailable } from '../../../routes/basketball/cache';
+
+const r = await prepareTeamCompare(Astro, 'wbb');
+if ('unavailable' in r) {
+    return unavailable('wbb', 'The team numbers are temporarily unavailable. Please try again shortly.');
+}
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+---
+
+<TeamCompare data={r} />

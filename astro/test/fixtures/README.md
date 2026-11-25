@@ -1814,6 +1814,21 @@ Keyed `cfb_401856889` / `nfl_401873054`. No hand edits.
 
 **To regenerate:** rerun the two processors on the same ids and keep the same sections and columns.
 
+## `team-compare-2026.json.gz`
+BB-G60's team compare reads (`routes/basketball/teamCompare.ts`: each team's `team_season_rates` `all` split row and its
+`team_strength` row), as `{nba: {rates, strength}, mbb: {rates, strength}}`. They are the producers' own output on the
+release data, written on 2026-11-25 with sportsdataverse-py (`nba_team_season_rates(2026)`, `nba_team_strength(2026)`,
+`mbb_team_season_rates(2026)`, `mbb_team_strength(2026)`), the frames sdv-db loads into those tables. NBA: the Brooklyn
+Nets (1610612751), Boston Celtics (1610612738) and New York Knicks (1610612752). MBB: Duke (150) and North Carolina
+(153). The rates rows are projected to main's `team_season_rates` columns and the strength rows to `STRENGTH_SELECT`.
+Nothing is edited.
+
+**Used by:** `test/teamCompare.test.ts`.
+
+**To regenerate:** capture `/v1/nba_stats/team_season_rates?season=2026&team_id=<id>&split=all&limit=1` and
+`/v1/nba_stats/team_strength?season=2026&team_id=<id>&select=…&limit=1` for each team (the `mbb` twins for college), and wrap
+them as above.
+
 ## `factor-points.json.gz`
 BB-G58's four-factor points (sdv-py BB-D42, sportsdataverse-py #1287) before sdv-db reloads `team_season_rates` and
 `lineup_seasons` with the new columns: the producer's own output on the release data, written on 2026-11-25 from that
