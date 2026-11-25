@@ -136,7 +136,12 @@ const TYPE_LABELS: Record<keyof typeof FEEDBACK_TAGS, string> = { bug: 'Bug', id
     // press started there too, so a text-selection drag that ends outside the form keeps the draft
     var downOnBackdrop = false;
     sheet.addEventListener('pointerdown', function (e) { downOnBackdrop = e.target === sheet; });
-    sheet.addEventListener('click', function (e) { if (downOnBackdrop && e.target === sheet) sheet.close(); downOnBackdrop = false; });
+    sheet.addEventListener('click', function (e) { if (!sending && downOnBackdrop && e.target === sheet) sheet.close(); downOnBackdrop = false; });
+    // While a report is sending the sheet stays open and its fields locked (form.inert covers the
+    // Cancel and close buttons too), so a send that completes can never reset or close a newer draft.
+    var sending = false;
+    sheet.addEventListener('cancel', function (e) { if (sending) e.preventDefault(); });
+    function lock(on) { sending = on; form.inert = on; form.setAttribute('aria-busy', on ? 'true' : 'false'); submit.textContent = on ? 'Sending…' : 'Send'; }
 
     // Re-encode every image: <= 1600px on the long side, JPEG, <= 4 MB. Re-encoding also drops
     // the camera's EXIF (location included).
@@ -161,11 +166,12 @@ const TYPE_LABELS: Record<keyof typeof FEEDBACK_TAGS, string> = { bug: 'Bug', id
       e.preventDefault();
       error.textContent = '';
       if (!form.reportValidity()) return;
-      submit.disabled = true;
+      // the draft as submitted, taken before the form locks
+      var data = new FormData(form);
+      var file = form.elements.image.files[0];
+      lock(true);
       try {
-        var data = new FormData(form);
         data.delete('image');
-        var file = form.elements.image.files[0];
         if (file) {
           try { data.append('image', await downscale(file)); }
           catch (err) { throw new Error(err && err.message && err.message.indexOf('too large') >= 0 ? err.message : "That image couldn't be read. Try a screenshot or a JPEG."); }
@@ -180,6 +186,7 @@ const TYPE_LABELS: Record<keyof typeof FEEDBACK_TAGS, string> = { bug: 'Bug', id
         var out = await res.json().catch(function () { return {}; });
         if (!res.ok || !out.ok) throw new Error(out.error || ('The report was not sent (' + res.status + ').'));
         try { localStorage.setItem(FROM_KEY, form.elements.from.value); } catch (err) { /* storage blocked */ }
+        lock(false);
         form.reset();
         rememberedFrom();
         sheet.close();
@@ -191,7 +198,8 @@ const TYPE_LABELS: Record<keyof typeof FEEDBACK_TAGS, string> = { bug: 'Bug', id
       } catch (err) {
         fail(err && err.message ? err.message : 'The report was not sent.');
       } finally {
-        submit.disabled = false;
+        // unlocked after a failure too, so the draft can be fixed and sent again
+        lock(false);
       }
     });
   })();

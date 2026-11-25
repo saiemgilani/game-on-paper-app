@@ -248,6 +248,17 @@ describe('validation', () => {
         expect(content).not.toContain('Page:');
     });
 
+    test('an upload that breaks off mid-stream: a JSON 400, not an unhandled error', async () => {
+        const body = new ReadableStream<Uint8Array>({ pull(c) { c.error(new TypeError('connection reset')); } });
+        const request = new Request('https://gameonpaper.com/admin/api/feedback', {
+            method: 'POST', body, headers: { 'content-type': 'multipart/form-data; boundary=x' }, duplex: 'half',
+        } as RequestInit);
+        const res = await (POST as any)({ locals: ADMIN, request });
+        expect(res.status).toBe(400);
+        expect((await res.json()).error).toContain('did not arrive in full');
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     test('not multipart: 415', async () => {
         const { res } = await post(ADMIN, JSON.stringify({ type: 'bug' }), { 'content-type': 'application/json' });
         expect(res.status).toBe(415);

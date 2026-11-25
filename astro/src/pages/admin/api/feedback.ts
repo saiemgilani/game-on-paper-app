@@ -46,7 +46,13 @@ export const POST: APIRoute = async (context) => {
     }
     // the real byte count, not the declared one: a missing or understated content-length must not
     // get a larger body buffered and parsed
-    const raw = request.body ? await readCapped(request.body, FEEDBACK_LIMITS.bodyBytes) : new Uint8Array(0);
+    let raw: Uint8Array<ArrayBuffer> | null;
+    try {
+        raw = request.body ? await readCapped(request.body, FEEDBACK_LIMITS.bodyBytes) : new Uint8Array(0);
+    } catch {
+        // the upload broke off mid-stream
+        return bad('the report did not arrive in full: try again', 'unreadable body');
+    }
     if (raw === null) return bad('the report is too large', 'oversized body', 413);
     let form: FormData;
     try { form = await new Response(raw, { headers: { 'content-type': contentType } }).formData(); } catch { return bad('unreadable form', 'unreadable form'); }
