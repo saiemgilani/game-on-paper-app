@@ -489,6 +489,8 @@ export interface SDVPassingSummary {
     yardsdropback_rank?: number
     detmer_rank?: number
     detmergame_rank?: number
+    /** the producer's roster group (QB/RB/WR/TE/other); null on ESPN's TEAM line */
+    position_group?: string | null
     fbs_class: string
 }
 
@@ -520,6 +522,8 @@ export interface SDVRushingSummary {
     yards_rank: number
     yardsplay_rank: number
     yardsgame_rank: number
+    /** the producer's roster group (QB/RB/WR/TE/other); null on ESPN's TEAM line */
+    position_group?: string | null
     fbs_class: string
 }
 
@@ -555,6 +559,8 @@ export interface SDVReceivingSummary {
     yards_rank: number
     yardsplay_rank: number
     yardsgame_rank: number
+    /** the producer's roster group (QB/RB/WR/TE/other); null on ESPN's TEAM line */
+    position_group?: string | null
     fbs_class: string
 }
 

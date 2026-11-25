@@ -1,0 +1,51 @@
+---
+/**
+ * The game's fourth-down decisions per team ('decision-summary'): the per-play Fourth Down Bot cards
+ * (plays/DecisionCard.astro) summed by utils/fourthDown.ts fourthDownSummary.
+ */
+import type { ESPNTeam } from '../../../resources/espn';
+import Panel from '../../../layouts/panel/GenericPanel.astro';
+import { cleanAbbreviation, roundNumber } from '../../../utils/misc';
+import { espnLogoLeague, leaguePath } from '../../../utils/league';
+import type { FourthDownTeamSummary } from '../../../utils/fourthDown';
+
+interface Props {
+    /** fourthDownSummary rows, in `teams` order */
+    rows: FourthDownTeamSummary[]
+    /** away, then home: the way the linescore reads */
+    teams: ESPNTeam[]
+    season: number
+}
+
+const { rows, teams, season } = Astro.props;
+---
+<Panel id="decision-summary" title="Fourth Down Decisions" show={true}>
+    <div class="table-responsive" slot="panel-body">
+        <table class="table table-sm" style="width: auto;">
+            <caption class="text-muted text-small">WP Lost: the bot's win probability for its pick minus the team's choice, summed over the disagreements.</caption>
+            <thead>
+                <tr>
+                    <th class="box-heading">Team</th>
+                    <th class="text-center">Decisions</th>
+                    <th class="text-center">Agreed</th>
+                    <th class="text-center">WP Lost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows.map((r, i) => (
+                    <tr>
+                        <td class="text-left text-nowrap">
+                            <a href={leaguePath(Astro.locals.league, `/year/${season}/team/${teams[i].id}`)}>
+                                <img class={`img-fluid team-logo-${teams[i].id}`} width="22px" src={`https://a.espncdn.com/i/teamlogos/${espnLogoLeague(Astro.locals.league)}/500/${teams[i].id}.png`} alt={`ESPN team id ${teams[i].id}`} />
+                            </a>
+                            <span class="ms-1">{cleanAbbreviation(teams[i])}</span>
+                        </td>
+                        <td class="numeral text-center">{r.decisions}</td>
+                        <td class="numeral text-center">{r.agreed}</td>
+                        <td class="numeral text-center">{roundNumber(r.wpLost * 100, 1, 1)}%</td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    </div>
+</Panel>

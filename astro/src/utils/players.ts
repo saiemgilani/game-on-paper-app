@@ -42,15 +42,33 @@ export const PLAYER_STAT_MINIMUMS: Record<string, string> = {
 };
 
 /**
- * A team's "player to watch" in a category. The passer is the one with the most dropbacks (ties to
- * total EPA): by total EPA alone a 1-dropback backup with one long completion outranked the starter
- * (Kent State's Da'Realyst Clark, 2026: 1 db, +2.07 EPA). The rusher and receiver are the season's
- * most valuable by total EPA.
+ * The position groups (the rows' own `position_group`, read through gamePercentileGroup) a
+ * category's player to watch is drawn from. Green Bay's 2026 preview named Tucker Kraft, a tight
+ * end with 4 carries (+1.56 EPA), as its rusher; rows with no group (ESPN's "TEAM" line) never count.
  */
-export function watchLeader<T extends { TEPA: number }>(rows: T[], category: PlayerCategory): T | null {
-    if (rows.length === 0) return null;
-    const dropbacks = (r: T) => Number((r as Record<string, unknown>).dropbacks) || 0;
-    return rows.toSorted((a, b) => (category === 'passing' ? dropbacks(b) - dropbacks(a) : 0) || b.TEPA - a.TEPA)[0];
+export const WATCH_POSITIONS: Record<PlayerCategory, string[]> = {
+    passing: ['QB'],
+    rushing: ['RB', 'QB'],
+    receiving: ['WR', 'TE', 'RB'],
+};
+
+/**
+ * A team's "player to watch" in a category, from the players at WATCH_POSITIONS who qualify
+ * (PLAYER_STAT_MINIMUMS: the producer ranks only the rows that clear it, so a `TEPA_rank` is the
+ * mark). The passer is the one with the most dropbacks (ties to total EPA): by total EPA alone a
+ * 1-dropback backup with one long completion outranked the starter (Kent State's Da'Realyst Clark,
+ * 2026: 1 db, +2.07 EPA). The rusher and receiver are the qualifiers' most valuable by total EPA.
+ * When nobody at the position qualifies yet (Green Bay 2026: the lead back's 61 carries are short
+ * of 62.5), it is the one with the most carries or targets -- volume, so a 4-carry cameo never wins.
+ */
+export function watchLeader<T extends { TEPA: number; position_group?: string | null }>(rows: T[], category: PlayerCategory): T | null {
+    const n = (r: T, k: string) => Number((r as Record<string, unknown>)[k]) || 0;
+    // a row without a position_group is never eligible: it is ESPN's TEAM line, or not a summary row
+    const eligible = rows.filter((r) => WATCH_POSITIONS[category].includes(gamePercentileGroup(r.position_group) ?? ''));
+    const qualified = eligible.filter((r) => numberOrNull((r as Record<string, unknown>).TEPA_rank) !== null);
+    const pool = qualified.length > 0 ? qualified : eligible;
+    const volume = category === 'passing' ? 'dropbacks' : qualified.length > 0 ? null : 'plays';
+    return pool.toSorted((a, b) => (volume ? n(b, volume) - n(a, volume) : 0) || b.TEPA - a.TEPA)[0] ?? null;
 }
 
 /** The column the player leaderboard sorts on, and whether that column is a rank (sorted ascending). */

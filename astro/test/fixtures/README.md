@@ -75,6 +75,24 @@ both leagues with the SDV client mocked. The game page tests next door use
 teams (ESPN ids 1/29 and 26/2509) and the scheduled status, which the test's
 logo, venue and link assertions name.
 
+## `players-to-watch-nfl-2026.json`
+Green Bay (9) and the Rams (14), 2026 through week 11: the three reads the
+pregame's Players to Watch card makes per team, keyed `{ team: { passing,
+rushing, receiving } }`, from Green Bay at the Rams (401873079, week 12).
+
+**Provenance (2026-11-25):** the Data API's `/v1/nfl/{passing|rushing|receiving}`
+with `season=2026&team_id=<id>` and the card's own order and limit (`-dropbacks`
+10; `-plays` 20 and 25), each row cut to the columns the card and the test read
+(name, `position_group`, volume, `TEPA`, `TEPA_rank`, `EPAplay`, yards, TDs) by
+`jq`; no values edited.
+
+**Used by:** `test/players.test.ts` (`watchLeader`): Tucker Kraft, a tight end
+with 4 carries and +1.56 EPA, is Green Bay's best rusher by total EPA, which is
+how the preview named him; nobody in Green Bay's backfield has qualified yet.
+
+**To regenerate:** the same calls; the assertions name players, so expect to
+update them with the season.
+
 ## `nfl-summaries-2025.json`
 Real rows from the published `nfl_team_summaries` / `nfl_passing` 2025 assets
 (the nfl-data stage-06 producer's 2026-09-10 rebuild, which added
@@ -1810,3 +1828,18 @@ Nothing is edited.
 **To regenerate:** capture `/v1/nba_stats/team_season_rates?season=2026&team_id=<id>&split=all&limit=1` and
 `/v1/nba_stats/team_strength?season=2026&team_id=<id>&select=…&limit=1` for each team (the `mbb` twins for college), and wrap
 them as above.
+
+## `factor-points.json.gz`
+BB-G58's four-factor points (sdv-py BB-D42, sportsdataverse-py #1287) before sdv-db reloads `team_season_rates` and
+`lineup_seasons` with the new columns: the producer's own output on the release data, written on 2026-11-25 from that
+PR's branch, as `{nba, mbb, units}`. `nba`: `nba_team_season_rates(2026)` filtered to the Brooklyn Nets (1610612751),
+the five split rows; `mbb`: `mbb_team_season_rates(2026)` filtered to Duke (150); `units`:
+`nba_lineup_seasons(2025)` filtered to the Minnesota Timberwolves (1610612750), all 816 units. Each is projected to the
+ids, `split` / `n_players` / `lineup_id` / `poss`, the ratings and `lg_rtg` plus the factor columns (`off_*_pts`,
+`def_*_pts`, `efg_pts`, `tov_pts`, `orb_pts`, `ft_pts`); nothing is edited. The test joins the team rows onto
+`team-season-*-2026.json.gz` by split (the factor columns and `lg_rtg` only).
+
+**Used by:** `test/factorPoints.test.ts`.
+
+**To regenerate:** once sdv-db serves the columns, capture `/v1/nba_stats/team_season_rates?season=2026&team_id=1610612751&limit=10`,
+the `mbb` twin for 150 and `/v1/nba_stats/lineup_seasons?season=2025&team_id=1610612750&select=…&limit=1000` instead.

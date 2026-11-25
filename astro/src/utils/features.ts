@@ -187,6 +187,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // page's layout): each team's team_season_rates all split and team_strength rows, the team page's reads, with the
     // producer's ranks and percentiles. Off: the route is the site's 404.
     'bball-team-compare': 'preview',
+    // BB-G58: four-factor point accounting, inside 'bball-team-season' (the season block's factor-points table) and
+    // 'bball-lineups' (a Four-factor points basis): the net rating per 100 split into eFG, turnover, rebounding and
+    // free-throw points against the league average, for offense and defense, read from sdv-db's team_season_rates and
+    // lineup_seasons (sdv-py BB-D42; the parts add up to the net rating). Off: the block and tab are unchanged.
+    'bball-factor-points': 'preview',
     // BB-G14: the game-set filter (?games=all|home|away|close|clutch|conference|wins|losses|last5|last10|last20) on
     // /<league>/team/[id], inside 'bball-team-season' (All / Home / Away / Close / Clutch are that block's producer split
     // rows; Wins / Losses / last N / college Conference games sum the team's team_game_possessions rows, read
@@ -509,6 +514,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // ESPN's box (utils/officialBox.ts officialTeamBox), full game only. Off: the panel is unchanged.
     // The player lines' ESPN counts are a fix and are not behind this flag.
     'official-team-box': 'preview',
+    // G17: a "Fourth Down Decisions" panel under Team Stats, one row per team: the fourth downs the play rows'
+    // Fourth Down Bot cards grade, how many agreed with the bot and the win probability lost on the rest
+    // (components/game/metrics/DecisionSummary.astro, utils/fourthDown.ts). Off: no panel, no nav entry.
+    'decision-summary': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

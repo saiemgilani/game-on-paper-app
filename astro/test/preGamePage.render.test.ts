@@ -49,6 +49,7 @@ const MATCHUP_ROWS = [
 const NAME_KEY: Record<string, string> = { passing: 'passer_player_name', rushing: 'rusher_player_name', receiving: 'receiver_player_name' };
 const playerRow = (table: string, teamId: string) => ({
     [NAME_KEY[table]]: `${table} leader ${teamId}`, player_id: `${table}-${teamId}`, team_id: Number(teamId),
+    position_group: { passing: 'QB', rushing: 'RB', receiving: 'WR' }[table], TEPA_rank: 1,
     TEPA: 30, EPAplay: 0.25, plays: 120, yards: 900, comppct: 0.66, passing_td: 8, rushing_td: 6,
 });
 
@@ -138,6 +139,7 @@ describe('PreGamePage renders a scheduled NFL game as an NFL page', () => {
     test('players to watch read the NFL summaries, and recent-form links stay in the league', () => {
         expect(fetched.some(u => u.includes('/v1/nfl/passing?'))).toBe(true);
         expect(fetched.some(u => u.includes('/v1/cfb/passing?'))).toBe(false);
+        expect(html).toContain('rushing leader 1');
         expect(html).not.toMatch(/href="\/game\/\d+"/);
     });
 

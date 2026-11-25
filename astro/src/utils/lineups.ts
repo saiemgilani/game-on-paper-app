@@ -3,17 +3,20 @@
  * column sort of the read's rows, each unit's player names and their player pages. Nothing here aggregates: every number
  * is the producer's row (rule B6).
  */
-import { DEFAULT_GATE, GATES, RATED, UNIT_SIZES, ZONES, type Gate, type LineupRow, type NcaaNameRow, type NcaaPairRow, type UnitSize } from '../resources/lineups';
+import { DEFAULT_GATE, FACTOR_POINTS, GATES, RATED, UNIT_SIZES, ZONES, type Gate, type LineupRow, type NcaaNameRow, type NcaaPairRow, type UnitSize } from '../resources/lineups';
 import type { SeasonPlayerRow } from '../resources/nbaShots';
 import { dotLabels } from '../nba/scatterMetrics';
 import type { SortDir } from '../nba/table';
 import type { BasketballLeague } from './league';
 
-export const BASES = ['per100', 'totals', 'zones'] as const;
+export const BASES = ['per100', 'totals', 'zones', 'points'] as const;
 export type Basis = (typeof BASES)[number];
-export const BASIS_LABEL: Record<Basis, string> = { per100: 'Per 100 possessions', totals: 'Totals', zones: 'Shot zones' };
-/** The shot-zone columns are college's only (the pros' lineup_seasons has none). */
-export const basesFor = (league: BasketballLeague): readonly Basis[] => (league === 'mbb' || league === 'wbb' ? BASES : ['per100', 'totals']);
+export const BASIS_LABEL: Record<Basis, string> = { per100: 'Per 100 possessions', totals: 'Totals', zones: 'Shot zones', points: 'Four-factor points' };
+/** The shot-zone columns are college's only (the pros' lineup_seasons has none); `points` (BB-G58) is 'bball-factor-points'. */
+export const basesFor = (league: BasketballLeague, points = false): readonly Basis[] => [
+    ...(league === 'mbb' || league === 'wbb' ? (['per100', 'totals', 'zones'] as const) : (['per100', 'totals'] as const)),
+    ...(points ? (['points'] as const) : []),
+];
 export const GATE_LABEL: Record<Gate, string> = { '50': '50+ possessions', '100': '100+ possessions', '200': '200+ possessions', ranked: 'Ranked only' };
 
 export const DEFAULT_UNIT: UnitSize = 5;
@@ -25,8 +28,8 @@ export function parseUnit(v: string | null): UnitSize {
 }
 
 /** ?basis=: one of the league's bases; anything else is the per-100 default. */
-export function parseBasis(v: string | null, league: BasketballLeague): Basis {
-    return basesFor(league).find((b) => b === v) ?? DEFAULT_BASIS;
+export function parseBasis(v: string | null, league: BasketballLeague, points = false): Basis {
+    return basesFor(league, points).find((b) => b === v) ?? DEFAULT_BASIS;
 }
 
 /** ?min=: 50, 100, 200 or ranked; anything else is the league's default gate. */
@@ -39,6 +42,7 @@ const SORT_KEYS: Record<Basis, readonly string[]> = {
     per100: RATED,
     totals: ['opp_poss', 'pts', 'opp_pts', 'plus_minus'],
     zones: ZONES,
+    points: ['net_rtg', ...FACTOR_POINTS],
 };
 export const DEFAULT_SORT = 'poss';
 export const sortKeysFor = (basis: Basis): readonly string[] => ['minutes', 'poss', ...SORT_KEYS[basis]];
