@@ -509,6 +509,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // utils/quarterEpa.ts), final games only, and only when the game's net EPA lands within two touchdowns of the final
     // margin and no snap is missing its EPA. Off: the panel is the linescore and the plays, as today.
     'quarter-epa': 'preview',
+    // G17: a "Fourth Down Decisions" panel under Team Stats, one row per team: the fourth downs the play rows'
+    // Fourth Down Bot cards grade, how many agreed with the bot and the win probability lost on the rest
+    // (components/game/metrics/DecisionSummary.astro, utils/fourthDown.ts). Off: no panel, no nav entry.
+    'decision-summary': 'preview',
 };
 
 /** The flags an admin can flip per request -- what the admin tools list. */

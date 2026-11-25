@@ -33,6 +33,8 @@ import { latestDriveSubtitle } from '../../utils/latestDrive';
 import GameHeader from './GameHeader.astro';
 import { LEAGUES, leaguePath, type League } from '../../utils/league';
 import SituationalSection from './metrics/SituationalSection.svelte';
+import DecisionSummary from './metrics/DecisionSummary.astro';
+import { fourthDownSummary } from '../../utils/fourthDown';
 import { withoutUsageSections } from '../../utils/usage';
 import { officialTeamBox } from '../../utils/officialBox';
 import { wpExportTitle, type WpExportMeta } from '../../utils/chartExport';
@@ -151,6 +153,9 @@ const quarterEpaRows = isFeatureEnabled('quarter-epa', Astro.locals) && gameStat
     ? quarterEpa(game.plays, [sides[0].team.id, sides[1].team.id], Number(sides[0].score) - Number(sides[1].score))
     : null;
 const quarterEpaTeams = sides.map((c: any) => c?.team);
+// 'decision-summary' (preview): the Fourth Down Bot cards summed per team, away first; no panel when no play has a card
+const decisionRows = isFeatureEnabled('decision-summary', Astro.locals) ? fourthDownSummary(game.plays, [awayTeam.id, homeTeam.id]) : [];
+const decisionSummary = decisionRows.some((r) => r.decisions > 0);
 const lastPlay: any = game.plays.at(-1);
 const gameState = game.header.competitions[0].status?.type?.state;
 const latestSubtitle = latestDriveSubtitle(game.drives, lastPlay, gameState);
@@ -163,6 +168,7 @@ const scrollerItems: ScrollerItem[] = [
     { href: "#ep-section", title: "EPA Chart" },
     ...((game.paperIndex && gameStatus.type.completed == true) ? [{ href: "#paper-index-panel", title: "Deserved Win %" }] : []),
     { href: "#team-stats-panel", title: "Team Stats" },
+    ...(decisionSummary ? [{ href: "#decision-summary-panel", title: "4th Downs" }] : []),
     { href: "#player-stats", title: "Player Stats" },
     { href: "#big-plays-panel", title: "Big Plays" },
     { href: "#most-important-plays-panel", title: "Most Important Plays" },
@@ -316,6 +322,13 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                     </Panel>
                 </div>
             </div>
+            {decisionSummary && (
+                <div class="row mb-3">
+                    <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                        <DecisionSummary rows={decisionRows} teams={[awayTeam, homeTeam]} season={game.season.year} />
+                    </div>
+                </div>
+            )}
             <div id="player-stats" class="row mb-3">
                 <div class="col-lg-6 ms-sm-auto px-md-4">
                     <TeamPanel id="away-stats-panel" season={game.season.year} team={awayTeam} show={false}>

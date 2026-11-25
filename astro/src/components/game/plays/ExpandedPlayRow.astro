@@ -2,6 +2,7 @@
 import type { ProcessedPlay } from '../../../resources/python';
 import { formatYardline, roundNumber, cleanAbbreviation, toTitleCase } from '../../../utils/misc';
 import DecisionCard from './DecisionCard.astro';
+import { fourthDownActual as fourthDownActualOf, isGradedFourthDown } from '../../../utils/fourthDown';
 
 interface Props {
     play: ProcessedPlay
@@ -14,17 +15,13 @@ const offense = (play.start.pos_team.id == homeTeam.id) ? homeTeam : awayTeam;
 const defense = (play.start.pos_team.id == homeTeam.id) ? awayTeam : homeTeam;
 
 // What the offense actually did, read off the play flags (null when ambiguous,
-// e.g. a penalty-only row).
-const fourthDownActual: string | null =
-    play.punt ? "punt"
-    : play.fg_attempt ? "field_goal"
-    : (play.pass || play.rush || play.sack_vec) ? "go"
-    : null;
+// e.g. a penalty-only row); the decision summary counts the same choice.
+const fourthDownActual = fourthDownActualOf(play);
 const tryActual: string | null =
     play.two_point_conv_result != null ? "go_for_2"
     : play.extra_point_result != null ? "kick_xp"
     : null;
-const showFourthDown = play.start.down == 4 && !!play.fourth_down_recommendation;
+const showFourthDown = isGradedFourthDown(play);
 const showTry = !!play.two_pt_recommendation;
 
 // "+0.33" / "-2.15": the Added figure reads as a delta, not a level
