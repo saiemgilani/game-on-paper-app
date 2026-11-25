@@ -21,6 +21,8 @@ describe('METHOD_NOTES', () => {
     test('the game note says garbage time is included; the adjusted note has no typo', () => {
         expect(METHOD_NOTES.game).toContain('garbage time included');
         expect(METHOD_NOTES.adjusted).not.toContain('advantange');
+        // sdv-py cfb_adjusted_epa leaves garbage time out by flag_garbage_time's margins (GARBAGE_TIME_MARGIN)
+        expect(METHOD_NOTES.adjusted).toContain('43, 37, 27 or 21 points');
     });
 
     test('the leaderboard and team-page hovers read the one adjusted sentence', () => {
