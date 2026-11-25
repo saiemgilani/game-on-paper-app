@@ -17,6 +17,7 @@ import { FLAGS } from '../src/utils/features';
 import { FACTOR_POINTS, selectFor, type LineupRow } from '../src/resources/lineups';
 import { basesFor, parseBasis, parseLineupSort, sortKeysFor } from '../src/utils/lineups';
 import { bballOnly } from './helpers/flags';
+import { generateColorRampValue } from '../src/utils/misc';
 
 const gz = (name: string) => JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/${name}.json.gz`, import.meta.url))).toString());
 const FP = gz('factor-points');
@@ -72,12 +73,17 @@ describe("'bball-factor-points' on the season block", () => {
         const body = t.split('<tbody>')[1].split('<tr').slice(1);
         expect(body).toHaveLength(5);
         const nets = body.slice(0, 4).map((r) => tds(r).map(num));
-        for (const [off, def, n] of nets) expect(Math.abs(off + def - n)).toBeLessThan(0.15); // each cell rounds to 0.1
+        // every cell is the producer's own value, rounded to 0.1: offense, defense and their sum, factor by factor
+        const r1 = (v: number) => Math.round(v * 10) / 10;
+        expect(nets).toEqual(['efg', 'tov', 'orb', 'ft'].map((f) => [r1(all[`off_${f}_pts`]), r1(all[`def_${f}_pts`]), r1(all[`${f}_pts`])]));
         expect(Math.abs(nets.reduce((s, r) => s + r[2], 0) - all.net_rtg)).toBeLessThan(0.25);
-        expect(num(tds(body[4])[2])).toBeCloseTo(all.net_rtg, 1);
+        const shown = c.rates.find((r: any) => r.split === 'all');
+        expect(num(tds(body[4])[2])).toBeCloseTo(shown.net_rtg, 1);
         expect(t).toContain(`(${all.lg_rtg.toFixed(1)})`);
-        // one number per cell; only the net rating is shaded (the parts have no percentile)
-        expect(t.match(/hulk-bg-level-\d/g)?.length ?? 0).toBeLessThanOrEqual(1);
+        // one number per cell; only the net rating is shaded, by its producer percentile (the parts have none)
+        const ramp = generateColorRampValue(shown.net_rtg_pct, 100);
+        expect(t.match(/hulk-bg-level-\d/g) ?? []).toEqual(ramp ? [ramp] : []);
+        if (ramp) expect(body[4]).toContain(ramp);
     });
 });
 
