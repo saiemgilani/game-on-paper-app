@@ -26,22 +26,25 @@ export const POST: APIRoute = async (context) => {
     const { locals, request } = context;
     const reply = (status: number, body: Record<string, unknown>) => Response.json(body, { status, headers: NO_STORE });
     if (locals.adminAuthed !== true) return reply(401, { ok: false, error: 'auth required' });
-    if (!isFeatureEnabled('feedback-inbox', locals)) return reply(404, { ok: false, error: 'not found' });
-    const hook = webhookUrl(getSecret('DISCORD_INBOX_WEBHOOK_URL'));
-    if (!hook) return reply(503, { ok: false, error: "Feedback isn't configured: DISCORD_INBOX_WEBHOOK_URL is not set." });
-
+    // every refusal past the session check is audited: a refused attempt is still an admin action
     const bad = (error: string, detail: string, status = 400) => {
         auditAdmin(locals, 'feedback', `${detail} (rejected: ${error})`, false);
         return reply(status, { ok: false, error });
     };
-    if (!/^multipart\/form-data\b/i.test(request.headers.get('content-type') ?? '')) {
+    if (!isFeatureEnabled('feedback-inbox', locals)) return bad('not found', 'flag off', 404);
+    const hook = webhookUrl(getSecret('DISCORD_INBOX_WEBHOOK_URL'));
+    if (!hook) return bad("Feedback isn't configured: DISCORD_INBOX_WEBHOOK_URL is not set.", 'webhook unset', 503);
+
+    const contentType = request.headers.get('content-type') ?? '';
+    if (!/^multipart\/form-data\b/i.test(contentType)) {
         return bad('content-type must be multipart/form-data', 'non-multipart body', 415);
     }
-    if (Number(request.headers.get('content-length') ?? 0) > FEEDBACK_LIMITS.bodyBytes) {
-        return bad('the report is too large', 'oversized body', 413);
-    }
+    // the real byte count, not the declared one: a missing or understated content-length must not
+    // get a larger body buffered and parsed
+    const raw = request.body ? await readCapped(request.body, FEEDBACK_LIMITS.bodyBytes) : new Uint8Array(0);
+    if (raw === null) return bad('the report is too large', 'oversized body', 413);
     let form: FormData;
-    try { form = await request.formData(); } catch { return bad('unreadable form', 'unreadable form'); }
+    try { form = await new Response(raw, { headers: { 'content-type': contentType } }).formData(); } catch { return bad('unreadable form', 'unreadable form'); }
 
     const fields = parseFeedbackFields((k) => form.get(k));
     if (typeof fields === 'string') return bad(fields, 'invalid fields');
@@ -59,14 +62,19 @@ export const POST: APIRoute = async (context) => {
         image = { type: sniffed, buf };
     }
 
-    // ponytail: a fixed-window counter in KV, which is eventually consistent across colos, so a
-    // burst from two places can pass a few extra. Durable Objects if that ever matters.
+    // ponytail: a fixed-window counter in KV, read then written and eventually consistent across
+    // colos, so concurrent posts or a burst across a window edge can pass a few extra. Durable
+    // Objects if that ever matters. Fail-open: a KV outage must not stop a report.
     const key = rateKey(fields.sender, Math.floor(Date.now() / 1000));
-    const used = Number(await env.ESPN_API_CACHE.get(key)) || 0;
-    if (used >= FEEDBACK_LIMITS.perWindow) {
-        return bad(`at most ${FEEDBACK_LIMITS.perWindow} reports per ${FEEDBACK_LIMITS.windowS / 60} minutes`, detail, 429);
+    try {
+        const used = Number(await env.ESPN_API_CACHE.get(key)) || 0;
+        if (used >= FEEDBACK_LIMITS.perWindow) {
+            return bad(`at most ${FEEDBACK_LIMITS.perWindow} reports per ${FEEDBACK_LIMITS.windowS / 60} minutes`, detail, 429);
+        }
+        await env.ESPN_API_CACHE.put(key, String(used + 1), { expirationTtl: FEEDBACK_LIMITS.windowS * 2 });
+    } catch (e: any) {
+        console.error(`feedback: rate counter unavailable (${e?.name ?? 'error'}), sending anyway`);
     }
-    await env.ESPN_API_CACHE.put(key, String(used + 1), { expirationTtl: FEEDBACK_LIMITS.windowS * 2 });
 
     const payload = discordPayload({
         ...fields,
@@ -89,8 +97,29 @@ export const POST: APIRoute = async (context) => {
     if (status < 200 || status >= 300) {
         if (status) console.error(`feedback: Discord webhook answered ${status}`);
         auditAdmin(locals, 'feedback', `${detail} (discord ${status || 'unreachable'})`, false);
-        return reply(502, { ok: false, error: `Discord didn't take the report (${status || 'unreachable'}). Try again in a minute.` });
+        // no response at all (a timeout) may still have posted: say so, rather than invite a blind resend
+        return reply(502, { ok: false, error: status
+            ? `Discord didn't take the report (${status}). Try again in a minute.`
+            : "Discord didn't answer. Check #gop-inbox before sending again: the report may have posted." });
     }
     auditAdmin(locals, 'feedback', detail, true);
     return reply(200, { ok: true });
 };
+
+/** The whole body, or null as soon as it passes `max` bytes (the rest is never read). */
+async function readCapped(stream: ReadableStream<Uint8Array>, max: number): Promise<Uint8Array | null> {
+    const reader = stream.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > max) { await reader.cancel().catch(() => {}); return null; }
+        chunks.push(value);
+    }
+    const out = new Uint8Array(total);
+    let at = 0;
+    for (const c of chunks) { out.set(c, at); at += c.byteLength; }
+    return out;
+}

@@ -10,8 +10,12 @@ const secrets: Record<string, string | undefined> = {};
 vi.mock('astro:env/server', () => ({ getSecret: (k: string) => secrets[k] }));
 
 const kv = new Map<string, string>();
+let kvDown = false;
 vi.mock('cloudflare:workers', () => ({
-    env: { ESPN_API_CACHE: { get: async (k: string) => kv.get(k) ?? null, put: async (k: string, v: string) => { kv.set(k, v); } } },
+    env: { ESPN_API_CACHE: {
+        get: async (k: string) => { if (kvDown) throw new Error('kv down'); return kv.get(k) ?? null; },
+        put: async (k: string, v: string) => { if (kvDown) throw new Error('kv down'); kv.set(k, v); },
+    } },
 }));
 
 import { POST } from '../src/pages/admin/api/feedback';
@@ -44,6 +48,7 @@ async function post(locals: Record<string, unknown>, body: BodyInit = form(), he
 let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
     kv.clear();
+    kvDown = false;
     secrets.DISCORD_INBOX_WEBHOOK_URL = HOOK;
     fetchMock = vi.fn(async () => new Response('{"id":"1"}', { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
@@ -139,17 +144,41 @@ describe('the post sent to Discord', () => {
         expect(new Uint8Array(await file.arrayBuffer())).toEqual(PNG);
     });
 
-    test('Discord refusing: 502, and the webhook URL is in neither the reply nor the log', async () => {
-        fetchMock.mockResolvedValueOnce(new Response('{"message":"Unknown Webhook"}', { status: 404 }));
+    test('Discord refusing: 502, and no part of the secret (URL, id or token) is in the reply or the log', async () => {
+        const [id, token] = HOOK.split('/').slice(-2);
+        const leaked = (s: string) => [HOOK, 'webhooks', id, token].some((x) => s.includes(x));
+        fetchMock.mockResolvedValueOnce(new Response(`{"message":"Unknown Webhook ${token}"}`, { status: 404 }));
         const err = vi.spyOn(console, 'error').mockImplementation(() => {});
-        const { res, json } = await post(ADMIN);
-        expect(res.status).toBe(502);
-        expect(JSON.stringify(json)).not.toContain('discord.com/api/webhooks');
-        expect(err.mock.calls.flat().join(' ')).not.toContain('webhooks');
-        fetchMock.mockRejectedValueOnce(new TypeError(`fetch failed: ${HOOK}`));
-        expect((await post(ADMIN)).res.status).toBe(502);
-        expect(err.mock.calls.flat().join(' ')).not.toContain('webhooks');
+        const first = await post(ADMIN);
+        expect(first.res.status).toBe(502);
+        expect(leaked(JSON.stringify(first.json))).toBe(false);
+        fetchMock.mockRejectedValueOnce(new TypeError(`fetch failed: ${HOOK} (${token})`));
+        const second = await post(ADMIN);
+        expect(second.res.status).toBe(502);
+        // no answer at all may still have posted: the reply says to check before resending
+        expect(second.json.error).toContain('Check #gop-inbox before sending again');
+        expect(leaked(JSON.stringify(second.json))).toBe(false);
+        expect(err).toHaveBeenCalled();
+        expect(leaked(err.mock.calls.flat().join(' '))).toBe(false);
         err.mockRestore();
+    });
+
+    test('a KV outage fails open: the report is still sent', async () => {
+        kvDown = true;
+        const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+        expect((await post(ADMIN)).res.status).toBe(200);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        err.mockRestore();
+    });
+
+    test('a long message gives way so the whole context block always fits in 2000 characters', async () => {
+        await post(ADMIN, form({ message: 'm'.repeat(1500), page: `https://gameonpaper.com/${'p'.repeat(290)}` }), { 'user-agent': 'U'.repeat(400) });
+        const content = JSON.parse(String((fetchMock.mock.calls[0][1].body as FormData).get('payload_json'))).content as string;
+        expect(content.length).toBeLessThanOrEqual(2000);
+        expect(content.endsWith(`User agent: ${'U'.repeat(250)}`)).toBe(true);
+        expect(content).toContain('Viewport: 390x844');
+        expect(content.startsWith('m')).toBe(true);
+        expect(content).toContain('…\n\n**Context**');
     });
 });
 
@@ -181,9 +210,20 @@ describe('validation', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    test('a body declared over 5 MB is refused before it is read: 413', async () => {
-        const { res } = await post(ADMIN, form(), { 'content-length': String(5 * 1024 * 1024 + 1) });
+    test('a body over 5 MB with no content-length: 413, and reading stops past the cap', async () => {
+        const MB = 1024 * 1024;
+        let pulled = 0;
+        const body = new ReadableStream<Uint8Array>({
+            pull(c) { pulled += MB; c.enqueue(new Uint8Array(MB)); if (pulled >= 50 * MB) c.close(); },
+        });
+        const request = new Request('https://gameonpaper.com/admin/api/feedback', {
+            method: 'POST', body, headers: { 'content-type': 'multipart/form-data; boundary=x' }, duplex: 'half',
+        } as RequestInit);
+        expect(request.headers.get('content-length')).toBeNull();
+        const res = await (POST as any)({ locals: ADMIN, request });
         expect(res.status).toBe(413);
+        expect(pulled).toBeLessThanOrEqual(8 * MB);
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     test('not multipart: 415', async () => {
@@ -219,6 +259,9 @@ describe('helpers', () => {
         expect(sniffImage(new TextEncoder().encode('GIF89a'))).toBe('image/gif');
         expect(sniffImage(new TextEncoder().encode('RIFF\0\0\0\0WEBPVP8 '))).toBe('image/webp');
         expect(sniffImage(new TextEncoder().encode('<svg'))).toBeNull();
+        // the full signature, not a prefix of it
+        expect(sniffImage(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x20, 0x20, 0x20, 0x20]))).toBeNull();
+        expect(sniffImage(new TextEncoder().encode('GIF8zz'))).toBeNull();
     });
 
     test('pageRoute: the league from the prefix, cfb when unprefixed, /preview dropped', () => {

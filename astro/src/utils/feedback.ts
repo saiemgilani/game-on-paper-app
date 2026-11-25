@@ -50,12 +50,16 @@ export function webhookUrl(raw: string | undefined | null): string | null {
 const IMAGE_EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
 export const FEEDBACK_IMAGE_TYPES = Object.keys(IMAGE_EXT);
 
-/** The image's real type from its first bytes, or null: the declared type must match it. */
+/**
+ * The image's real type from its full format signature, or null: the declared type must match
+ * it. ponytail: a signature check, not a decode; Discord only ever shows the file as an image.
+ */
+const ascii = (b: Uint8Array, from: number, to: number) => String.fromCharCode(...b.slice(from, to));
 export function sniffImage(b: Uint8Array): string | null {
     if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
-    if (b.length >= 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
-    if (b.length >= 6 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38) return 'image/gif';
-    if (b.length >= 12 && String.fromCharCode(...b.slice(0, 4)) === 'RIFF' && String.fromCharCode(...b.slice(8, 12)) === 'WEBP') return 'image/webp';
+    if (b.length >= 8 && [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((v, i) => b[i] === v)) return 'image/png';
+    if (b.length >= 6 && (ascii(b, 0, 6) === 'GIF87a' || ascii(b, 0, 6) === 'GIF89a')) return 'image/gif';
+    if (b.length >= 12 && ascii(b, 0, 4) === 'RIFF' && ascii(b, 8, 12) === 'WEBP') return 'image/webp';
     return null;
 }
 
@@ -123,15 +127,19 @@ export function discordPayload(f: FeedbackInput): Record<string, unknown> {
         '**Context**',
         `From: ${f.sender} (${oneLine(f.actor, 40)})`,
         // <...> keeps Discord from unfurling the page into an embed
-        where ? `Page: <${where.href}>` : null,
+        where ? `Page: <${where.href.slice(0, 400)}>` : null,
         where ? `League: ${where.league}, route: \`${oneLine(where.route, 200)}\`` : null,
         f.viewport ? `Viewport: ${f.viewport}` : null,
         f.userAgent ? `User agent: ${oneLine(f.userAgent, 250)}` : null,
     ].filter(Boolean).join('\n');
+    // the context block (at most ~1000 characters) always fits; the message gives way inside
+    // the post's 2000 characters
+    const room = 2000 - context.length - 2;
+    const message = f.message.length > room ? `${f.message.slice(0, room - 1)}…` : f.message;
     const payload: Record<string, unknown> = {
         thread_name: oneLine(f.title, FEEDBACK_LIMITS.title),
         applied_tags: [FEEDBACK_TAGS[f.type]],
-        content: `${f.message}\n\n${context}`.slice(0, 2000),
+        content: `${message}\n\n${context}`,
         allowed_mentions: { parse: [] },
     };
     if (f.image) payload.attachments = [{ id: 0, filename: imageFilename(f.image.type) }];

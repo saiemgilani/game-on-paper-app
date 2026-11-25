@@ -92,11 +92,11 @@ const TYPE_LABELS: Record<keyof typeof FEEDBACK_TAGS, string> = { bug: 'Bug', id
     width: min(32rem, 100% - 2rem);
     max-height: calc(100% - 2rem);
   }
-  #feedback-sheet .btn, #feedback-sheet .form-select, #feedback-sheet .form-control { min-height: 44px; }
-  #feedback-sheet .btn-close { min-width: 44px; min-height: 44px; }
   #feedback-sheet .modal-content { overflow-y: auto; max-height: calc(100dvh - 2rem); }
-  /* a bottom sheet on phones */
+  /* a bottom sheet with 44px tap targets on phones only (72cf38e6: tap-target height on xs screens) */
   @media (max-width: 575.98px) {
+    #feedback-sheet .btn, #feedback-sheet .form-select, #feedback-sheet .form-control { min-height: 44px; }
+    #feedback-sheet .btn-close { min-width: 44px; min-height: 44px; }
     #feedback-sheet {
       width: 100%;
       max-width: 100%;
