@@ -46,4 +46,9 @@ set of working rules. This file carries the ones that apply to PR authoring and 
 ## Other rules
 - Branch + PR; never push `main`. One logical change per PR.
 - Preview-gated work stays behind its flag in `astro/src/utils/features.ts`.
+- Admin-only UI (the game page's admin tools, the `feedback-inbox` Feedback button) renders
+  only when `Astro.locals.adminAuthed === true`, and that render must stay out of Workers
+  Caching (`withPreviewCacheGuard` in `middleware.ts`). In review, check that nothing new
+  renders for an anonymous request and that no secret (e.g. `DISCORD_INBOX_WEBHOOK_URL`)
+  reaches the HTML, a log line or a response body.
 - Run `cd astro && npx vitest run` and `cd python && pytest` before opening a PR.

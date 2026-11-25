@@ -73,3 +73,26 @@ Cloud (tag in `GenericPage.astro`).
 `astro/wrangler.jsonc` sets `global_fetch_strictly_public`, so on Workers the
 `http://python:7000` fallback is refused by the runtime — `PYTHON_HTTP_URL`
 must be set as a wrangler secret to python's public URL.
+
+## Team feedback inbox
+
+Behind the `feedback-inbox` preview flag, a signed-in admin (the `gop_admin`
+cookie from `/admin/login`) sees a floating **Feedback** button on every page.
+It opens a sheet (type, title, message, optional screenshot or photo) that
+posts to `POST /admin/api/feedback`, which files a new post in the `#gop-inbox`
+Discord forum with the type's tag and the page's context. Nobody else is ever
+sent the button: an admin's render is never cached. Optional secret:
+
+- `DISCORD_INBOX_WEBHOOK_URL`: the `#gop-inbox` forum's webhook URL (Discord:
+  Server Settings > Integrations > Webhooks > New Webhook, channel `#gop-inbox`,
+  Copy Webhook URL). It must be a `https://discord.com/api/webhooks/...` URL;
+  anything else counts as unset. Unset, the endpoint answers 503 and the sheet
+  says feedback isn't configured. Never commit it.
+  - Production: `cd astro && npx wrangler secret put DISCORD_INBOX_WEBHOOK_URL`
+    (paste the URL at the prompt), then redeploy or wait for the next deploy.
+  - Local: add `DISCORD_INBOX_WEBHOOK_URL=https://discord.com/api/webhooks/<id>/<token>`
+    to `astro/.dev.vars` (git-ignored). Because `wrangler.jsonc` declares
+    `secrets.required`, a local run loads only the secrets named there, so also add
+    `"DISCORD_INBOX_WEBHOOK_URL"` to that list **in your working copy only**. Don't
+    commit it: newer wrangler versions refuse to deploy when a required secret is unset,
+    and this one is optional.
