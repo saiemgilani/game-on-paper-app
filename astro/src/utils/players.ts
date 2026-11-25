@@ -61,9 +61,10 @@ export const WATCH_POSITIONS: Record<PlayerCategory, string[]> = {
  * When nobody at the position qualifies yet (Green Bay 2026: the lead back's 61 carries are short
  * of 62.5), it is the one with the most carries or targets -- volume, so a 4-carry cameo never wins.
  */
-export function watchLeader<T extends { TEPA: number }>(rows: T[], category: PlayerCategory): T | null {
+export function watchLeader<T extends { TEPA: number; position_group?: string | null }>(rows: T[], category: PlayerCategory): T | null {
     const n = (r: T, k: string) => Number((r as Record<string, unknown>)[k]) || 0;
-    const eligible = rows.filter((r) => WATCH_POSITIONS[category].includes(gamePercentileGroup((r as Record<string, unknown>).position_group) ?? ''));
+    // a row without a position_group is never eligible: it is ESPN's TEAM line, or not a summary row
+    const eligible = rows.filter((r) => WATCH_POSITIONS[category].includes(gamePercentileGroup(r.position_group) ?? ''));
     const qualified = eligible.filter((r) => numberOrNull((r as Record<string, unknown>).TEPA_rank) !== null);
     const pool = qualified.length > 0 ? qualified : eligible;
     const volume = category === 'passing' ? 'dropbacks' : qualified.length > 0 ? null : 'plays';
