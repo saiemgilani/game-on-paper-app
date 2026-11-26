@@ -95,7 +95,11 @@ const propLines = playerProps === null ? null : playerProps ? propsView(playerPr
 const withProps = playerProps === null || propLines != null;
 const cfg = basketball(Astro.locals.league);
 const league = cfg.league;
-const title = `${game.away.team.displayName} ${game.away.score ?? ''} at ${game.home.team.displayName} ${game.home.score ?? ''} | Game on Paper`.replace(/\s+/g, ' ');
+// 'bball-share-card': ?spoilers=off shares the spoiler-free card, and the head names no score (the body is the same)
+const spoilerFree = isFeatureEnabled('bball-share-card', Astro.locals) && Astro.url.searchParams.get('spoilers') === 'off';
+const title = (spoilerFree
+    ? `${game.away.team.displayName} at ${game.home.team.displayName} | Game on Paper`
+    : `${game.away.team.displayName} ${game.away.score ?? ''} at ${game.home.team.displayName} ${game.home.score ?? ''} | Game on Paper`).replace(/\s+/g, ' ');
 const description = `${game.away.team.displayName} at ${game.home.team.displayName}: win probability, biggest plays, four factors, advanced box score and shot charts.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: leaguePath(league, '/'), active: false }, { title: 'Scoreboard', url: scoreboardDayHref(league, game.date), active: false }, { title: `${cleanAbbreviation(game.away.team)} @ ${cleanAbbreviation(game.home.team)}`, active: true }];
 const side = (s: typeof game.home) => ({ name: s.team.displayName, href: teamHrefFromEspn(s.team, league, game.season), score: s.score });
@@ -121,9 +125,9 @@ if (withLeaders) items.splice(items.findIndex((i) => i.href === '#shots'), 0, { 
 // BB-G34: the player box views; `?garbage=out` keeps BB-G2's whole-game note above them
 const boxViews = isFeatureEnabled('bball-player-box-views', Astro.locals);
 // 'bball-share-card' (preview): the game's card as og:image (basketball/shareCard.ts); off, the head is today's
-const shareImage = isFeatureEnabled('bball-share-card', Astro.locals) ? basketballShareImage(game, league) : undefined;
+const shareImage = isFeatureEnabled('bball-share-card', Astro.locals) ? basketballShareImage(game, league, Date.now(), spoilerFree) : undefined;
 ---
-<GenericPage title={title} subtitle={description} slug={gameHref(league, game.id)} breadcrumbs={breadcrumbs} description={description} jsonLd={[jsonLd]} image={shareImage}>
+<GenericPage title={title} subtitle={description} slug={gameHref(league, game.id)} breadcrumbs={breadcrumbs} description={description} jsonLd={spoilerFree ? [] : [jsonLd]} image={shareImage} canonicalPath={spoilerFree ? `${gameHref(league, game.id)}?spoilers=off` : undefined}>
   <link href="/assets/css/sticky-table.css" rel="stylesheet">
   <div class="container">
     <NbaGameHeader game={game} />{sourceTools && <NbaAdminSourceTools game={game} tools={sourceTools} />}{info && !game.status.completed && <NbaGameInfo info={info} home={game.home.team} away={game.away.team} season={game.season} part="summary" />}

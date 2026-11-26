@@ -1442,10 +1442,10 @@ export async function retrieveShareCard(gameId: string | number, league: League,
  * (basketball/shareCard.ts), so a card costs drawing and never a play-by-play run; the route keeps it (routes/basketball/shareCard.ts).
  */
 const BASKETBALL_CARD_TIMEOUT_MS = 15000;
-export async function retrieveBasketballShareCard(gameId: string | number, league: League, state: 'live' | 'final', body: unknown): Promise<ArrayBuffer | null> {
+export async function retrieveBasketballShareCard(gameId: string | number, league: League, state: 'live' | 'final', body: unknown, variant: 'full' | 'spoilerfree' = 'full'): Promise<ArrayBuffer | null> {
     if (!PYTHON_HTTP_TOKEN) return null;
     try {
-        const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?state=${state}`, {
+        const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/${gameId}/card.png?state=${state}&variant=${variant}`, {
             method: 'POST',
             headers: { "Authorization": `Bearer ${btoa(PYTHON_HTTP_TOKEN)}`, "Referer": "gameonpaper.com", "Content-Type": "application/json" },
             body: JSON.stringify(body),
@@ -1459,6 +1459,30 @@ export async function retrieveBasketballShareCard(gameId: string | number, leagu
         return await req.arrayBuffer();
     } catch (e) {
         console.error(`ERROR while fetching share card for ${league} ${gameId}: ${e}`);
+        return null;
+    }
+}
+
+/**
+ * 'bball-series' + 'bball-share-card' (preview): a playoff series' card (python/share_card.py render_basketball_series)
+ * as PNG bytes, from the strings the Worker formats (basketball/seriesCard.ts); null when the API is unreachable.
+ */
+export async function retrieveBasketballSeriesCard(league: League, seriesId: string, variant: 'full' | 'spoilerfree', body: unknown): Promise<ArrayBuffer | null> {
+    if (!PYTHON_HTTP_TOKEN) return null;
+    try {
+        const req = await wrappedFetch(`${PYTHON_HTTP_URL}/${league}/series/${seriesId}/card.png?variant=${variant}`, {
+            method: 'POST',
+            headers: { "Authorization": `Bearer ${btoa(PYTHON_HTTP_TOKEN)}`, "Referer": "gameonpaper.com", "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(BASKETBALL_CARD_TIMEOUT_MS),
+        });
+        if (!req.ok) {
+            console.error(`ERROR share card ${league} series ${seriesId}: HTTP ${req.status}`);
+            return null;
+        }
+        return await req.arrayBuffer();
+    } catch (e) {
+        console.error(`ERROR while fetching share card for ${league} series ${seriesId}: ${e}`);
         return null;
     }
 }

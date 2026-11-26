@@ -7,6 +7,8 @@
  */
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
 import SeriesPlayerTables from './SeriesPlayerTables.astro';
+import { seriesShareImage } from '../../basketball/seriesCard';
+import { isFeatureEnabled } from '../../utils/features';
 import { seasonLabelFor } from '../../basketball/config';
 import { gameHref, teamHrefFromEspn } from '../../nba/links';
 import { LEAGUES, leaguePath } from '../../utils/league';
@@ -29,6 +31,8 @@ const description = spoilerFree
 const url = seriesHref(league, id);
 // the spoiler-free share URL is its own page in the head (og:url / twitter:url / canonical), as the game page's (utils/shareTags.ts)
 const shareUrl = spoilerFree ? `${url}?spoilers=off` : url;
+// 'bball-share-card' (preview): the series' card as og:image (basketball/seriesCard.ts); off, the head has the site's card
+const shareImage = isFeatureEnabled('bball-share-card', Astro.locals) ? seriesShareImage(league, id, games, spoilerFree) : undefined;
 const lastSeason = LEAGUES[league].seasons[LEAGUES[league].seasons.length - 1];
 const breadcrumbs: PageBreadcrumb[] = [
     { title: shortName, url: leaguePath(league, '/'), active: false },
@@ -45,7 +49,7 @@ const sides = [a, b].map((s) => ({
 }));
 ---
 
-<GenericPage title={title} subtitle={`${label} ${shortName} playoffs`} description={description} slug={url} canonicalPath={shareUrl} breadcrumbs={breadcrumbs} heading={title}>
+<GenericPage title={title} subtitle={`${label} ${shortName} playoffs`} description={description} slug={url} canonicalPath={shareUrl} breadcrumbs={breadcrumbs} heading={title} image={shareImage}>
     <div class="container">
         <div class="text-center mb-3" id="series-header">
             <p class="text-muted text-small mb-1">{label} · {round}</p>

@@ -6,6 +6,7 @@ TOR 96 at ORL 111 (2024-03-17, final). Logos come from a stub, so nothing reache
 
 import copy
 import importlib
+import re
 import io
 import json
 from datetime import datetime, timezone
@@ -226,3 +227,73 @@ def test_route_needs_the_token(client):
         c.get(f"/nba/{GAME_ID}/card.png?state=final", headers=_auth()).status_code
         == 405
     )
+
+
+def test_spoilerfree_card_hides_the_score_the_detail_and_the_line(monkeypatch):
+    """?spoilers=off: the matchup, Final and the date, the GEI; never the score, "Final/OT" or the WP line."""
+    drawn_line = []
+    monkeypatch.setattr(share_card._Card, "line", lambda self, *a, **k: drawn_line.append(a))
+    body = _body()
+    body["detail"] = "Final/OT"
+    drawn = []
+    png = share_card.render_basketball(body, "nba", "final", _logo, NOW, drawn, variant="spoilerfree")
+    assert Image.open(io.BytesIO(png)).size == (1200, 630)
+    assert "Toronto @ Orlando" in drawn
+    assert "Final / Mar 17, 2024" in drawn
+    assert "3.54" in drawn and "Score hidden" in drawn
+    assert not any("96" in s or "111" in s or "OT" in s for s in drawn)
+    assert drawn_line == []
+    live = []
+    share_card.render_basketball(_live(_body(), 250), "nba", "live", _logo, NOW, live, variant="spoilerfree")
+    assert "Live / as of 8:41 PM ET" in live and not any("3rd Quarter" in s for s in live)
+
+
+def test_unknown_variant_raises():
+    with pytest.raises(ValueError):
+        share_card.render_basketball(_body(), "nba", "final", _logo, NOW, variant="blurred")
+
+
+def test_route_passes_the_variant(client):
+    _, c = client
+    ok = c.post(f"/nba/{GAME_ID}/card.png?state=final&variant=spoilerfree", json=_body(), headers=_auth())
+    assert ok.status_code == 200 and ok.mimetype == "image/png"
+    assert c.post(f"/nba/{GAME_ID}/card.png?state=final&variant=x", json=_body(), headers=_auth()).status_code == 400
+
+
+def _series_body():
+    """The Worker's series body (astro basketball/seriesCard.ts) for the real 2025 NBA Finals: OKC over IND in seven."""
+    side = lambda i, abbr, name: {"id": i, "abbr": abbr, "name": name, "color": "007ac1", "alternateColor": "ef3b24", "logo": f"https://a.espncdn.com/i/teamlogos/nba/500/{abbr.lower()}.png"}  # noqa: E731
+    scores = [(110, 111, "b"), (123, 107, "a"), (107, 116, "b"), (111, 104, "a"), (120, 109, "a"), (91, 108, "b"), (103, 91, "a")]
+    return {
+        "stamp": "2024-25 NBA Finals",
+        "a": side(25, "OKC", "Oklahoma City"),
+        "b": side(11, "IND", "Indiana"),
+        "status": "OKC wins 4-3",
+        "games": [{"label": f"G{i + 1}", "a": x, "b": y, "winner": w} for i, (x, y, w) in enumerate(scores)],
+    }
+
+
+def test_series_card_draws_the_status_and_every_game():
+    drawn = []
+    png = share_card.render_basketball_series(_series_body(), "nba", "full", _logo, drawn)
+    assert Image.open(io.BytesIO(png)).size == (1200, 630)
+    assert {"2024-25 NBA Finals", "Oklahoma City vs. Indiana", "OKC wins 4-3", "G1", "G7", "103-91", "110-111"} <= set(drawn)
+
+
+def test_spoilerfree_series_card_has_the_matchup_and_round_only():
+    drawn = []
+    share_card.render_basketball_series(_series_body(), "nba", "spoilerfree", _logo, drawn)
+    assert "Oklahoma City vs. Indiana" in drawn and "2024-25 NBA Finals" in drawn and "Series score hidden" in drawn
+    # no series score, no game label, no game score
+    assert not any("wins" in x or "leads" in x or re.fullmatch(r"G\d|\d+-\d+", x) for x in drawn)
+
+
+def test_series_route(client):
+    app_mod, c = client
+    r = c.post("/nba/series/2025-11-25/card.png?variant=full", json=_series_body(), headers=_auth())
+    assert r.status_code == 200 and r.mimetype == "image/png"
+    assert c.post("/wnba/series/2025-11-17/card.png?variant=spoilerfree", json=_series_body(), headers=_auth()).status_code == 200
+    assert c.post("/nba/series/2025-11-25/card.png?variant=x", json=_series_body(), headers=_auth()).status_code == 400
+    assert c.post("/nba/series/x/card.png", json=_series_body(), headers=_auth()).status_code == 404
+    assert c.post("/nba/series/2025-11-25/card.png", json={"a": {}}, headers=_auth()).status_code == 400
+    assert c.post("/mbb/series/2025-11-25/card.png", json=_series_body(), headers=_auth()).status_code == 404

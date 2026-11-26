@@ -97,6 +97,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // G-R5: the player and team pages too: og:image is the season card (`/<league>/players/<id>/card.png`, `/<league>/team/<id>/card.png`,
     // routes/basketball/statCard.ts, render_basketball_stats) from the producer's shot_season_players / team_strength row and
     // its ranks, plus a Share button beside the season select.
+    // A game page's ?spoilers=off shares the spoiler-free card (variant=spoilerfree: the matchup, Final or Live, the date,
+    // a final's GEI; no score, detail or WP line) and a head with no score. With 'bball-series', a series page's og:image is
+    // the series card (`/<league>/series/<id>/card.png`, routes/basketball/seriesCard.ts, render_basketball_series), its
+    // ?spoilers=off variant the matchup and round only.
     // Off: the heads and pages are today's, byte for byte. The card endpoints are not gated (a crawler carries no cookie).
     'bball-share-card': 'preview',
     // The Best Games board (BB-G29): /<league>/best-games and its Header entry, inside each league's flag. sdv-db's
