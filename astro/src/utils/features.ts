@@ -190,7 +190,9 @@ export const FLAGS: Record<string, FeatureState> = {
     // BB-G59: /<league>/series (a season's playoff series by round) and /<league>/series/<id> (one series: the game strip
     // with the series score after each game, both teams' totals, each player's per-game line and his shift from the regular
     // season), NBA and WNBA, read from sdv-db's playoff_series_games / _teams / _players (sdv-py BB-D43). Off: both routes
-    // are the site's 404.
+    // are the site's 404. MBB / WBB: /<league>/tournaments (a season's tournaments, each with its teams' runs) and
+    // /<league>/tournaments/<run_id> (one team's run in the NCAA tournament, a conference tournament, the NIT ...), from
+    // tournament_run_games / _teams / _players.
     'bball-series': 'preview',
     // BB-G57: /<league>/games/find?unit=&pts=&reb=&...&from=&to=&type=&ha=&res=, the game finder: every player (or team) game
     // with at least the given stats over a season range, home / away, result and season type, the "how many N+ games" table

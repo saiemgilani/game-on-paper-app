@@ -1,0 +1,16 @@
+---
+// src/pages/wbb/tournaments/[id].astro: BB-G59's college tournament run, behind 'bball-series'
+import TournamentRun from '../../../components/nba/TournamentRun.astro';
+import { prepareRun } from '../../../routes/basketball/runs';
+import { unavailable } from '../../../routes/basketball/cache';
+
+const r = await prepareRun(Astro, 'wbb');
+if ('unavailable' in r) {
+    return unavailable('wbb', 'The tournament numbers are temporarily unavailable. Please try again shortly.');
+}
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+---
+
+<TournamentRun data={r} />

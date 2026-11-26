@@ -1892,6 +1892,22 @@ the league shape; MBB: Duke's 15 rows (ESPN 150) and the Division I and ACC (con
 and `/v1/nba_stats/roster_tier_shape?season=2025&scope=league&order=tier_order`, the `mbb` twins for 150 (both scopes, the
 conference one with `conference_id=2`), and wrap them the same way.
 
+## `tournament-runs-2025.json.gz`
+BB-G59's college reads (`routes/basketball/runs.ts`: sdv-db's `tournament_run_games`, `tournament_run_teams` and
+`tournament_run_players`), as `{mbb: {games, teams, players}, wbb: {...}}`. They are sportsdataverse-py BB-D43's own output
+for college (`sportsdataverse._common.tournament_runs`, branch `feat/bball-tournament-runs`), written on 2026-11-25 over
+sdv-py's `tests/fixtures/bb_tournament_runs` (the 2024-25 men's and women's ESPN schedule and box releases). `games` holds
+every tournament game of both seasons, once per side; `teams` and `players` the NCAA champions' runs (Florida `2025-22-57`,
+UConn `2025-22-41`). `game_date` is ISO text, as the Data API sends it. Nothing is edited. The women's `games` were re-written
+on 2026-11-26 from the producer's fixed champion rule (no champion while the release ends on a round of several games:
+11 conference tournaments and the WBIT, 18 rows now `alive`).
+
+**Used by:** `test/tournamentRuns.test.ts`.
+
+**To regenerate:** capture `/v1/mbb/tournament_run_games?season=2025`, `/v1/mbb/tournament_run_teams?season=2025&run_id=2025-22-57`
+and `/v1/mbb/tournament_run_players?season=2025&run_id=2025-22-57` (and the WBB's for `2025-22-41`), or rerun the producer on
+the same releases.
+
 ## `game-finder-wnba-2025.json.gz`
 BB-G57's game finder reads (`routes/basketball/gameFinder.ts`: one `/v1/<league>/game_finder` answer per search), as
 `{<case>: {query, body}}`. Each body is sdv-db's own `find_games` (BB-D41, `python/src/sdv_db/api/game_finder_routes.py`)

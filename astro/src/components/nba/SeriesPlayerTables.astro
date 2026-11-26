@@ -1,0 +1,74 @@
+---
+/**
+ * The player tables of a playoff series and a college tournament run (BB-G59): each side's per-game lines with TS%, then
+ * each player's regular-season line with the shift (the producer's `<stat>_pg_diff` / `ts_pct_diff`). One number per
+ * cell; every value is a producer column (playoff_series_players / tournament_run_players share their columns).
+ */
+import { fmtDec, fmtPct } from '../../nba/format';
+import { generateMarginalString } from '../../utils/misc';
+import type { SeriesPlayerRow } from '../../routes/basketball/series';
+
+interface Props {
+    sides: { id: number; name: string; players: SeriesPlayerRow[] }[];
+    /** what the games are: the copy says "per game in the series" / "in the run" */
+    unit: 'series' | 'run';
+}
+const { sides, unit } = Astro.props;
+const Unit = unit === 'series' ? 'Series' : 'Run';
+const dash = '\u2014';
+const n = (v: number | null | undefined, digits = 1) => (v == null ? dash : fmtDec(v, digits));
+const diff = (v: number | null | undefined) => (v == null ? dash : generateMarginalString(v, 1, 1));
+const pct = (v: number | null | undefined) => (v == null ? dash : fmtPct(v));
+/** ts_pct_diff is a fraction: shown once, in points */
+const ptsDiff = (v: number | null | undefined) => (v == null ? dash : `${v >= 0 ? '+' : '\u2212'}${Math.abs(v * 100).toFixed(1)}`);
+const LINE: [keyof SeriesPlayerRow, string, string][] = [
+    ['min_pg', 'MIN', 'Minutes per game'], ['pts_pg', 'PTS', 'Points per game'], ['reb_pg', 'REB', 'Rebounds per game'],
+    ['ast_pg', 'AST', 'Assists per game'], ['stl_pg', 'STL', 'Steals per game'], ['blk_pg', 'BLK', 'Blocks per game'],
+    ['tov_pg', 'TOV', 'Turnovers per game'], ['fg3m_pg', '3PM', 'Three-pointers made per game'],
+];
+const SHIFT: [string, string][] = [['min', 'MIN'], ['pts', 'PTS'], ['reb', 'REB'], ['ast', 'AST']];
+---
+
+        {sides.map((s) => s.players.length > 0 && (
+        <div class="table-responsive mb-4" data-series-players={s.id}>
+            <h3 class="h6">{s.name}: per game in the {unit}</h3>
+            <table class="table table-sm text-center">
+                <thead>
+                    <tr><th class="text-left">Player</th><th><abbr title={`${Unit} games played`}>GP</abbr></th>{LINE.map(([, l, h]) => <th><abbr title={h}>{l}</abbr></th>)}<th><abbr title="True shooting: PTS / (2 × (FGA + 0.44 × FTA))">TS%</abbr></th></tr>
+                </thead>
+                <tbody>
+                    {s.players.map((p) => (
+                        <tr data-series-player={p.athlete_id}>
+                            <td class="text-left">{p.athlete_display_name}</td><td class="numeral">{p.games}</td>
+                            {LINE.map(([k]) => <td class="numeral">{n(p[k] as number | null)}</td>)}
+                            <td class="numeral">{pct(p.ts_pct)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+        ))}
+
+        {sides.map((s) => s.players.length > 0 && (
+        <div class="table-responsive mb-4" data-series-shift={s.id}>
+            <h3 class="h6">{s.name}: the {unit} against the regular season</h3>
+            <table class="table table-sm text-center">
+                <thead>
+                    <tr>
+                        <th class="text-left">Player</th><th><abbr title="Regular-season games played">Reg GP</abbr></th>
+                        {SHIFT.map(([, l]) => <Fragment><th><abbr title={`${l} per regular-season game`}>Reg {l}</abbr></th><th><abbr title={`${l} per ${unit} game minus per regular-season game`}>± {l}</abbr></th></Fragment>)}
+                        <th><abbr title="Regular-season true shooting">Reg TS%</abbr></th><th><abbr title={`${Unit} TS% minus regular-season TS%, in points`}>± TS%</abbr></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {s.players.map((p) => (
+                        <tr data-series-shift-player={p.athlete_id}>
+                            <td class="text-left">{p.athlete_display_name}</td><td class="numeral">{p.reg_games ?? dash}</td>
+                            {SHIFT.map(([k]) => <Fragment><td class="numeral">{n(p[`reg_${k}_pg` as keyof SeriesPlayerRow] as number | null)}</td><td class="numeral">{diff(p[`${k}_pg_diff` as keyof SeriesPlayerRow] as number | null)}</td></Fragment>)}
+                            <td class="numeral">{pct(p.reg_ts_pct)}</td><td class="numeral">{ptsDiff(p.ts_pct_diff)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+        ))}
