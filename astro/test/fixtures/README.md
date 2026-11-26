@@ -1877,6 +1877,21 @@ API sends it. Nothing is edited.
 and `/v1/nba/playoff_series_players?season=2025&series_id=2025-11-25` (and the WNBA's for `2025-11-17`), or rerun the producer on
 the same releases.
 
+## `depth-ladder-2025.json.gz`
+BB-G61's depth-ladder reads (`resources/depthLadder.ts`: the team's `roster_tiers` rows and the `roster_tier_shape` rows it reads), as
+`{nba: {rows, shape}, mbb: {rows, shape}}`. They are sportsdataverse-py #1303's own output, written on 2026-11-25: `player_war`
+over the committed 2024-25 inputs of its BB-D26 tests (`tests/fixtures/bb_player_war`, `tests/fixtures/mbb_player_value`, with the
+`bb_college_season` 2025 schedule's conferences), what `nba_player_war(2025)` / `mbb_player_war(2025)` return on those releases,
+then `roster_tiers` and `roster_tier_shape`. Ids as sdv-db writes them (bigint team and conference ids). NBA: the Brooklyn Nets'
+24 rows (1610612751; 21 players, plus Dorian Finney-Smith, D'Angelo Russell and Jaylen Martin, whose main team was another) and
+the league shape; MBB: Duke's 15 rows (ESPN 150) and the Division I and ACC (conference 2) shapes. Nothing is edited.
+
+**Used by:** `test/depthLadder.test.ts`.
+
+**To regenerate:** once sdv-db serves the tables, capture `/v1/nba_stats/roster_tiers?season=2025&team_id=1610612751&order=-war&limit=60`
+and `/v1/nba_stats/roster_tier_shape?season=2025&scope=league&order=tier_order`, the `mbb` twins for 150 (both scopes, the
+conference one with `conference_id=2`), and wrap them the same way.
+
 ## `tournament-runs-2025.json.gz`
 BB-G59's college reads (`routes/basketball/runs.ts`: sdv-db's `tournament_run_games`, `tournament_run_teams` and
 `tournament_run_players`), as `{mbb: {games, teams, players}, wbb: {...}}`. They are sportsdataverse-py BB-D43's own output

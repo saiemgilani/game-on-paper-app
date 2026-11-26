@@ -6,6 +6,7 @@ import { roundNumber, cleanField, retrieveValue, generateColorRampValue, shouldI
 import DarkModeLogos from '../DarkModeLogos.astro';
 import { isFeatureEnabled } from '../../utils/features';
 import { metricHelpButton, metricHelpPopovers } from '../../utils/metricHelp';
+import { METHOD_NOTES, adjustedNote } from '../../utils/methodNotes';
 import "bootstrap-icons/font/bootstrap-icons.css";
 
 interface Props {
@@ -49,8 +50,8 @@ content = content.toSorted((a, b) => {
 
 function generateMetricHead(key: string, title: string): string {
     let abbr = (SDV_TEAM_METRIC_HOVER_TEXT[category] ?? {})[key];
-    // the shared hover copy was written for the college grid
-    if (abbr && Astro.locals.league === 'nfl') abbr = abbr.replace(' in FBS vs FBS games', '');
+    // the shared hover copy is the college method; each league gets the note for its own
+    if (abbr === METHOD_NOTES.adjusted) abbr = adjustedNote(Astro.locals.league);
     if (abbr) {
         title = `<abbr title="${abbr}">${title}</abbr>`
     }

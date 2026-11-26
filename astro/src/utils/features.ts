@@ -204,6 +204,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // free-throw points against the league average, for offense and defense, read from sdv-db's team_season_rates and
     // lineup_seasons (sdv-py BB-D42; the parts add up to the net rating). Off: the block and tab are unchanged.
     'bball-factor-points': 'preview',
+    // BB-G61: a Depth ladder section on /<league>/team/[id]: the team's players on the producer's WAR tiers (sdv-db's
+    // roster_tiers: Star, Starter, Rotation, Bench, Fringe by WAR percentile among the players over a possession floor, a traded
+    // player on each of his teams; sdv-py BB-G61; college ?tiers=d1|conference) beside the league's
+    // median players per team in each tier (roster_tier_shape). No tier, no rung; a season with no ladder yet has no section.
+    // Off: no read, no section.
+    'bball-depth-ladder': 'preview',
     // BB-G14: the game-set filter (?games=all|home|away|close|clutch|conference|wins|losses|last5|last10|last20) on
     // /<league>/team/[id], inside 'bball-team-season' (All / Home / Away / Close / Clutch are that block's producer split
     // rows; Wins / Losses / last N / college Conference games sum the team's team_game_possessions rows, read
