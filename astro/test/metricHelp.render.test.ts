@@ -5,6 +5,7 @@ import { getContainerRenderer as svelteRenderer } from '@astrojs/svelte/containe
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { modifyMetricForCategory } from '../src/utils/misc';
 import { metricHelp } from '../src/utils/metricHelp';
+import { METHOD_NOTES } from '../src/utils/methodNotes';
 import type { League } from '../src/utils/league';
 
 // N6 metric help on the season leaderboards. The rows are the nfl-data 2025 fixture (as nflLeaderboards.render.test.ts)
@@ -24,6 +25,9 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     retrievePlayerSummaries: async () => fx.passing,
     retrievePercentiles: async () => [],
 }));
+
+// the Adj EPA hover is the method note itself
+const ADJ_TITLE = METHOD_NOTES.adjusted;
 
 let container: AstroContainer;
 beforeAll(async () => {
@@ -65,7 +69,7 @@ describe('metric help on the team leaderboard', () => {
         // Yards/Play has no glossary entry, so no button
         expect(html.match(/<th[^>]*>Yards\/Play[^]*?<\/th>/)![0]).not.toContain('popovertarget');
         // the hover stays alongside the button
-        expect(html).toContain('<abbr title="Adjusted for opponent strength, fit with a home-field term on non-garbage-time plays in FBS vs FBS games.">Adj EPA/Play</abbr> <button');
+        expect(html).toContain(`<abbr title="${ADJ_TITLE}">Adj EPA/Play</abbr> <button`);
     }, 60_000);
 
     test('the NFL twin gets no help: the glossary copy is FBS-only', async () => {
@@ -76,7 +80,7 @@ describe('metric help on the team leaderboard', () => {
     test('public: no popover, the abbr hover unchanged', async () => {
         const html = await renderTeams({});
         expect(html).not.toContain('popover');
-        expect(html).toContain('<abbr title="Adjusted for opponent strength, fit with a home-field term on non-garbage-time plays in FBS vs FBS games.">Adj EPA/Play</abbr> <i');
+        expect(html).toContain(`<abbr title="${ADJ_TITLE}">Adj EPA/Play</abbr> <i`);
     }, 60_000);
 });
 
