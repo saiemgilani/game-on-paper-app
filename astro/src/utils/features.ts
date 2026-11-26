@@ -193,7 +193,7 @@ export const FLAGS: Record<string, FeatureState> = {
     // lineup_seasons (sdv-py BB-D42; the parts add up to the net rating). Off: the block and tab are unchanged.
     'bball-factor-points': 'preview',
     // BB-G61: a Depth ladder section on /<league>/team/[id]: the team's players on the producer's WAR tiers (sdv-db's player_war
-    // war_tier: Star, Starter, Rotation, Bench, Fringe by WAR percentile in the league-season; sdv-py BB-G61) beside the league's
+    // war_tier: Star, Starter, Rotation, Bench, Fringe by WAR percentile among the players over a possession floor; sdv-py BB-G61) beside the league's
     // median players per team in each tier (roster_tier_shape). No tier, no rung; a season with no ladder yet has no section.
     // Off: no read, no section.
     'bball-depth-ladder': 'preview',

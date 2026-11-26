@@ -13,8 +13,9 @@ const FIX = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/depth-ladder-
 const NETS = 1610612751;
 const SCHEMA: Record<string, string> = { nba_stats: 'nba', mbb: 'mbb' };
 
+
 const calls: [string, string, Record<string, string>][] = [];
-const api = vi.hoisted(() => ({ mode: 'ok' as 'ok' | 'down' | 'no-shape' | 'old-table' }));
+const api = vi.hoisted(() => ({ mode: 'ok' as 'ok' | 'down' | 'no-shape' | 'null-tier' | 'old-table' }));
 vi.mock('../src/resources/sdv', async (orig) => {
     const real = await orig<typeof import('../src/resources/sdv')>();
     return {
@@ -23,11 +24,13 @@ vi.mock('../src/resources/sdv', async (orig) => {
             if (table !== 'player_war' && table !== 'roster_tier_shape') throw new Error(`unmocked read ${table}`);
             calls.push([source.schema, table, q]);
             if (api.mode === 'down') throw new real.SDVRequestError(503, table, 'down');
-            if (api.mode === 'no-shape' && table === 'roster_tier_shape') throw new real.SDVRequestError(404, table, 'no such table');
+            // the generated route of a snapshot table the warehouse has not built answers 500 (sdv-db test_generated_api)
+            if (api.mode === 'no-shape' && table === 'roster_tier_shape') throw new real.SDVRequestError(500, table, 'relation does not exist');
             const lg = FIX[SCHEMA[source.schema]];
             if (table === 'roster_tier_shape') return lg.shape.filter((r) => String(r.season) === q.season);
             const rows = lg.war.filter((r) => String(r.season) === q.season && String(r.team_id) === q.team_id);
-            // the table before the season-products reload: no war_tier column at all
+            // the table before the season-products reload: the column is null once widened, absent before
+            if (api.mode === 'null-tier') return rows.map((r) => ({ ...r, war_tier: null }));
             return api.mode === 'old-table' ? rows.map(({ war_tier: _, ...r }) => r) : rows;
         },
     };
@@ -50,9 +53,10 @@ vi.mock('../src/resources/nbaShots', async (orig) => ({
     retrieveTeamShots: async (_s: number, teamId: number) => shots.filter((s) => s.team_id === teamId).map(lite),
 }));
 
-import { retrieveDepthLadder } from '../src/resources/depthLadder';
+
+import { retrieveDepthLadder, type DepthLadderReads } from '../src/resources/depthLadder';
 import { prepareBasketballTeam } from '../src/routes/basketball/team';
-import { depthLadder, TIER_BANDS } from '../src/utils/depthLadder';
+import { bandOf, depthLadder } from '../src/utils/depthLadder';
 import { FLAGS } from '../src/utils/features';
 
 const ON = { 'bball-depth-ladder': true, 'bball-team-season': false };
@@ -62,7 +66,9 @@ function fakeAstro(path: string, id: string, flagOverrides: Record<string, boole
     return { astro: { params: { id }, url: new URL(`https://gameonpaper.com${path}`), locals: { flagOverrides } as any, cache: { set: (v: unknown) => cache.push(v) }, response: { headers: new Headers() } } as any, cache };
 }
 const ok = <T extends object>(r: T) => { if ('notFound' in r || 'unavailable' in r) throw new Error(JSON.stringify(r)); return r as Exclude<T, { notFound: true } | { unavailable: true }>; };
+const ladder = (r: unknown) => r as DepthLadderReads;
 const TIERS = ['Star', 'Starter', 'Rotation', 'Bench', 'Fringe'];
+const nets = () => FIX.nba.war;
 
 beforeAll(() => { vi.stubGlobal('fetch', () => { throw new Error('unmocked network read'); }); });
 afterAll(() => { vi.unstubAllGlobals(); });
@@ -70,23 +76,24 @@ beforeEach(() => { api.mode = 'ok'; calls.length = 0; });
 
 describe('the reads', () => {
     test("the team's player_war rows, most WAR first, and the league's tier shape, in the season schema", async () => {
-        const r = await retrieveDepthLadder('nba', 2025, NETS);
+        const r = ladder(await retrieveDepthLadder('nba', 2025, NETS));
         expect(calls).toEqual([
             ['nba_stats', 'player_war', { season: '2025', team_id: String(NETS), order: '-war', limit: '60' }],
             ['nba_stats', 'roster_tier_shape', { season: '2025', order: 'tier_order', limit: '10' }],
         ]);
-        expect(r?.players).toHaveLength(21);
-        expect(r?.shape.map((s) => s.war_tier)).toEqual(TIERS);
+        expect(r.players).toHaveLength(21);
+        expect(r.shape.map((s) => s.war_tier)).toEqual(TIERS);
     });
-    test('before the reload (no war_tier column) or before the shape table exists: no ladder, not an outage', async () => {
-        api.mode = 'old-table';
-        expect(await retrieveDepthLadder('nba', 2025, NETS)).toBeUndefined();
-        api.mode = 'no-shape';
-        expect(await retrieveDepthLadder('nba', 2025, NETS)).toBeUndefined();
-        api.mode = 'ok';
-        expect(await retrieveDepthLadder('nba', 2024, NETS)).toBeUndefined(); // a season the producer has not built
+    test("before the reload (war_tier null or absent) or before the shape table exists (the API's 500): 'pending'", async () => {
+        for (const mode of ['null-tier', 'old-table', 'no-shape'] as const) {
+            api.mode = mode;
+            expect(await retrieveDepthLadder('nba', 2025, NETS)).toBe('pending');
+        }
     });
-    test('an outage throws', async () => {
+    test("a season the producer does not cover (no player_war rows): 'none'", async () => {
+        expect(await retrieveDepthLadder('nba', 2024, NETS)).toBe('none');
+    });
+    test('a player_war outage throws', async () => {
         api.mode = 'down';
         await expect(retrieveDepthLadder('nba', 2025, NETS)).rejects.toThrow('down');
     });
@@ -98,20 +105,24 @@ describe('depthLadder', () => {
         const rungs = depthLadder(war as any, shape as any);
         expect(rungs.map((r) => r.tier)).toEqual(TIERS);
         expect(rungs.map((r) => r.median)).toEqual(shape.map((s) => s.players_median));
-        expect(rungs.map((r) => r.band)).toEqual(TIERS.map((t) => TIER_BANDS[t]));
         for (const r of rungs) expect(r.players.map((p) => p.id)).toEqual(war.filter((w) => w.war_tier === r.tier).map((w) => String(w.player_id)));
-        expect(rungs.flatMap((r) => r.players)).toHaveLength(war.length);
+        // under the producer's possession floor: no tier, off the ladder (Cui Cui's 20 possessions among them)
+        const untiered = war.filter((w) => w.war_tier == null);
+        expect(untiered.map((w) => w.player_name)).toContain('Cui Cui');
+        expect(rungs.flatMap((r) => r.players)).toHaveLength(war.length - untiered.length);
         expect(rungs[0].players).toEqual([]); // no Nets Star in 2024-25
-        expect(rungs[1].players.map((p) => p.name)).toEqual(['Cameron Johnson', "Day'Ron Sharpe"]);
+        expect(rungs[1].players.map((p) => p.name)).toEqual(['Cameron Johnson']);
+    });
+    test("the bands are the producer's (roster_tier_shape pct_floor / pct_ceiling), read as copy", () => {
+        // the cut points sportsdataverse-py publishes (WAR_TIERS); a drift there changes these rows and this test
+        expect(FIX.nba.shape.map((s) => [s.pct_floor, s.pct_ceiling])).toEqual([[95, null], [80, 95], [50, 80], [20, 50], [0, 20]]);
+        expect(depthLadder([], FIX.nba.shape as any).map((r) => r.band)).toEqual(['95 and up', '80 to under 95', '50 to under 80', '20 to under 50', 'under 20']);
+        expect(bandOf(null, null)).toBeNull();
     });
     test('Duke: five Stars against a D-I median of none', () => {
         const rungs = depthLadder(FIX.mbb.war as any, FIX.mbb.shape as any);
         expect(rungs[0].players.map((p) => p.name)).toEqual(['Khaman Maluach', 'Cooper Flagg', 'Kon Knueppel', 'Sion James', 'Tyrese Proctor']);
-        expect(rungs[0].median).toBe(FIX.mbb.shape[0].players_median);
-    });
-    test('a player without a tier stays off the ladder', () => {
-        const war = FIX.nba.war.map((w, i) => (i === 0 ? { ...w, war_tier: null } : w));
-        expect(depthLadder(war as any, FIX.nba.shape as any).flatMap((r) => r.players)).toHaveLength(war.length - 1);
+        expect(rungs[0].median).toBe(0);
     });
 });
 
@@ -125,7 +136,7 @@ describe('the team page', () => {
     test('on: the reads, cached with the page', async () => {
         const tt = fakeAstro(`/nba/team/${NETS}?season=2025`, String(NETS), ON);
         const t = ok(await prepareBasketballTeam(tt.astro, 'nba'));
-        expect(t.depthLadder?.players).toHaveLength(21);
+        expect(t.depthLadder?.players).toHaveLength(nets().length);
         expect(tt.cache).not.toContain(false);
     });
     test('on, a failed read: the page renders, the ladder is null, nothing is cached', async () => {
@@ -135,10 +146,18 @@ describe('the team page', () => {
         expect(t.depthLadder).toBeNull();
         expect(tt.cache.at(-1)).toBe(false);
     });
-    test('on, a season with no ladder yet: no key', async () => {
-        api.mode = 'old-table';
-        const t = ok(await prepareBasketballTeam(fakeAstro(`/nba/team/${NETS}?season=2025`, String(NETS), ON).astro, 'nba'));
+    test('on, before the reload: no key, and the page is not cached so the ladder shows once loaded', async () => {
+        api.mode = 'no-shape';
+        const tt = fakeAstro(`/nba/team/${NETS}?season=2025`, String(NETS), ON);
+        const t = ok(await prepareBasketballTeam(tt.astro, 'nba'));
         expect('depthLadder' in t).toBe(false);
+        expect(tt.cache.at(-1)).toBe(false);
+    });
+    test('on, a season the producer does not cover: no key, and the page caches as usual', async () => {
+        const tt = fakeAstro(`/nba/team/${NETS}?season=2024`, String(NETS), ON);
+        const t = ok(await prepareBasketballTeam(tt.astro, 'nba'));
+        expect('depthLadder' in t).toBe(false);
+        expect(tt.cache).not.toContain(false);
     });
 });
 
@@ -156,17 +175,25 @@ describe('rendered', () => {
         expect(html).toContain('<a href="#depth-ladder" class="ms-2">Depth ladder</a>');
         const r = rows(html);
         expect(r.map((x) => x[0])).toEqual(TIERS);
-        expect(r[0]).toEqual(['Star', 'StarTop 5%', '—', '0', '1.0']);
-        expect(r[1]).toEqual(['Starter', 'Starter5–20%', 'Cameron Johnson, Day&#39;Ron Sharpe', '2', '2.5']);
+        expect(r[0]).toEqual(['Star', 'Starpercentile 95 and up', '—No players', '0', '0.5']);
+        expect(r[2]).toEqual(['Rotation', 'Rotationpercentile 50 to under 80', 'Day&#39;Ron Sharpe, Dennis Schröder', '2', '4.0']);
         expect(r.map((x) => x[4])).toEqual(FIX.nba.shape.map((s) => s.players_median.toFixed(1)));
+        expect(html).toContain('<th scope="col" class="text-end">Team players</th>');
         // a name links only where the roster rows (here the mocked season-player read) name the player
         expect(html).toContain('href="/nba/players/1630549'); // Day'Ron Sharpe
         expect(html).not.toContain('/nba/players/1629661'); // Cameron Johnson: no roster row in the mock
+        expect(html).not.toContain('Cui Cui'); // under the possession floor
         expect(html).toContain('id="depth-ladder-note"');
     });
     test('a failed read says the ladder is unavailable', async () => {
         api.mode = 'down';
         expect(await render(ON)).toContain('The 2024-25 depth ladder is temporarily unavailable.');
+    });
+    test('before the reload: no section and no link', async () => {
+        api.mode = 'no-shape';
+        const html = await render(ON);
+        expect(html).not.toContain('id="depth-ladder"');
+        expect(html).not.toContain('#depth-ladder');
     });
     test('off: no section and no link', async () => {
         const html = await render(OFF);

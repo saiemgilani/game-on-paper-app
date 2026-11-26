@@ -1867,7 +1867,8 @@ BB-G61's depth-ladder reads (`resources/depthLadder.ts`: the team's `player_war`
 `{nba: {war, shape}, mbb: {war, shape}}`. They are the producer's own output on the release data, written on 2026-11-25 with
 sportsdataverse-py BB-G61 (branch `feat/bball-war-tier`): `player_war` over the committed 2024-25 inputs of its BB-D26 tests
 (`tests/fixtures/bb_player_war`, `tests/fixtures/mbb_player_value`), which is what `nba_player_war(2025)` / `mbb_player_war(2025)`
-return on those releases, with `war_tier`, and `roster_tier_shape` of the whole league. NBA: the 21 Brooklyn Nets rows
+return on those releases, with `war_tier` (null under the producer's possession floor), and `roster_tier_shape` of the whole
+league with its `pct_floor` / `pct_ceiling` bands. Re-taken on 2026-11-25 after the possession floor (#1303 review). NBA: the 21 Brooklyn Nets rows
 (1610612751); MBB: the 15 Duke rows (ESPN 150). Every column of those rows; nothing is edited.
 
 **Used by:** `test/depthLadder.test.ts`.

@@ -24,14 +24,14 @@ const href = (id: string) => (pages.has(id) ? playerHref(Number(id), seasonQuery
   <div class="table-responsive">
     <table class="table table-sm align-middle mb-1" id="depth-ladder-table">
       <caption class="small text-muted">{teamName}'s {label} players by WAR tier, beside the league's median roster.</caption>
-      <thead><tr class="text-nowrap"><th scope="col">Tier</th><th scope="col">Players</th><th scope="col" class="text-end">Team</th><th scope="col" class="text-end"><abbr title="The median number of players per team in this tier">League median</abbr></th></tr></thead>
+      <thead><tr class="text-nowrap"><th scope="col">Tier</th><th scope="col">Players</th><th scope="col" class="text-end">Team players</th><th scope="col" class="text-end"><abbr title="The median number of players per team in this tier">League median</abbr></th></tr></thead>
       <tbody>
         {rungs.map((r) => (
           <tr data-tier={r.tier}>
-            <th scope="row" class="text-nowrap">{r.tier}{r.band && (<span class="d-block small text-muted fw-normal">{r.band}</span>)}</th>
-            <td>{r.players.length === 0 ? (<span class="text-muted">—</span>) : r.players.map((p, i) => (<Fragment>{i > 0 && ', '}{href(p.id) ? (<a href={href(p.id)!}>{p.name}</a>) : p.name}</Fragment>))}</td>
+            <th scope="row" class="text-nowrap">{r.tier}{r.band && (<span class="d-block small text-muted fw-normal">percentile {r.band}</span>)}</th>
+            <td>{r.players.length === 0 ? (<Fragment><span class="text-muted" aria-hidden="true">—</span><span class="visually-hidden">No players</span></Fragment>) : r.players.map((p, i) => (<Fragment>{i > 0 && ', '}{href(p.id) ? (<a href={href(p.id)!}>{p.name}</a>) : p.name}</Fragment>))}</td>
             <td class="numeral text-end">{fmtInt(r.players.length)}</td>
-            <td class="numeral text-end">{r.median == null ? '—' : fmtDec(r.median, 1)}</td>
+            <td class="numeral text-end">{r.median == null ? (<Fragment><span aria-hidden="true">—</span><span class="visually-hidden">No median</span></Fragment>) : fmtDec(r.median, 1)}</td>
           </tr>
         ))}
       </tbody>

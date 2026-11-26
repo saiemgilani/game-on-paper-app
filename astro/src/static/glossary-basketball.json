@@ -7,7 +7,7 @@
         },
         {
             "term": "Depth ladder (basketball)",
-            "definition": "A team page's players on five tiers by their WAR percentile among every player of the league-season: Star (about the top 5%), Starter (5-20%), Rotation (20-50%), Bench (50-80%) and Fringe (the bottom 20%). Beside each tier, the league median: the median number of players per team in it, a team with nobody there counting 0. A player counts for the team they played the most possessions for; a season with fewer than ten rated players has no tiers.",
+            "definition": "A team page's players on five tiers by their WAR percentile among the league-season's players who were on the floor for at least a tenth of a team's possessions: Star (95 and up, about the top 5%), Starter (80 to under 95), Rotation (50 to under 80), Bench (20 to under 50) and Fringe (under 20). A player under that possession floor is not placed: WAR counts playing time, so a call-up who barely played would otherwise sit in the middle. Beside each tier, the league median: the median number of players per team in it, a team with nobody there counting 0. A player counts for the team they played the most possessions for.",
             "source": ""
         }
     ],

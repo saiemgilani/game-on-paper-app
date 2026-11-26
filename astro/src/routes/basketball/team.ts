@@ -20,7 +20,7 @@ import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeam
 import { retrieveBioNames, retrieveOnOff } from '../../resources/onOff';
 import { retrieveTeamPlayStyle } from '../../resources/playStyles';
 import { retrieveTeamShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
-import { retrieveDepthLadder, type DepthLadderReads } from '../../resources/depthLadder';
+import { retrieveDepthLadder, type DepthLadderReads, type DepthLadderResult } from '../../resources/depthLadder';
 import { retrieveSituational } from '../../resources/situational';
 import { retrieveTeamShotZones, type TeamZoneReads } from '../../resources/shotZones';
 import { retrieveGameSetCounts, retrieveTeamSeason, type GameSetCountReads, type TeamSeasonReads } from '../../resources/teamSeason';
@@ -171,7 +171,7 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
         ladderOn ? readDepthLadder(league, season, teamId) : undefined,
     ]);
     // the block and the tabs are decorative: a failed read renders the rest of the page, never cached
-    if (seasonBlock === null || lineups?.units === null || onOff?.players === null || situations?.reads === null || poe === null || shotZones === null || playStyles === null || depthLadder === null) uncacheable(Astro);
+    if (seasonBlock === null || lineups?.units === null || onOff?.players === null || situations?.reads === null || poe === null || shotZones === null || playStyles === null || depthLadder === null || depthLadder === 'pending') uncacheable(Astro);
     const neighbors = await neighborsP;
     if (neighbors === null) uncacheable(Astro);
     // BB-G14 rides on the block's reads; a summed set (wins, losses, last N, conference) adds the per-game possessions reads. Off,
@@ -187,7 +187,7 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const scheduleContext = seasonBlock && seasonBlock.games.length > 0 && isFeatureEnabled('bball-schedule-context', Astro.locals)
         ? await retrieveScheduleContext(league, season, espnIdOf(league, season, teamId)) : undefined;
     if (scheduleContext && (!scheduleContext.lines || !scheduleContext.strength || !scheduleContext.box || !scheduleContext.proj)) uncacheable(Astro);
-    const block = { ...(flagged ? { seasonBlock, ...(gameSet ? { gameSet } : {}), ...(gameSetCounts !== undefined ? { gameSetCounts } : {}), ...(teamFlow !== undefined ? { teamFlow } : {}), ...(scheduleContext ? { scheduleContext } : {}) } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}), ...(situationsOn ? { situations } : {}), ...(poeOn ? { poe } : {}), ...(zonesOn ? { shotZones } : {}), ...(stylesOn ? { playStyles } : {}), ...(nearby ? { neighbors } : {}), ...(depthLadder !== undefined ? { depthLadder } : {}) };
+    const block = { ...(flagged ? { seasonBlock, ...(gameSet ? { gameSet } : {}), ...(gameSetCounts !== undefined ? { gameSetCounts } : {}), ...(teamFlow !== undefined ? { teamFlow } : {}), ...(scheduleContext ? { scheduleContext } : {}) } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}), ...(situationsOn ? { situations } : {}), ...(poeOn ? { poe } : {}), ...(zonesOn ? { shotZones } : {}), ...(stylesOn ? { playStyles } : {}), ...(nearby ? { neighbors } : {}), ...(depthLadder !== undefined && depthLadder !== 'none' && depthLadder !== 'pending' ? { depthLadder } : {}) };
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);
@@ -323,8 +323,8 @@ async function readTeamPlayStyles(season: number, teamId: number): Promise<PlayS
     }
 }
 
-/** BB-G61's reads, keyed like the season tables; undefined for a season with no ladder yet, null when a read failed. */
-async function readDepthLadder(league: BasketballLeague, season: number, teamId: number): Promise<DepthLadderReads | null | undefined> {
+/** BB-G61's reads, keyed like the season tables (resources/depthLadder.ts: 'none' / 'pending' are no section); null when a read failed. */
+async function readDepthLadder(league: BasketballLeague, season: number, teamId: number): Promise<DepthLadderResult | null> {
     try {
         return await retrieveDepthLadder(league, season, teamId);
     } catch (e: any) {
