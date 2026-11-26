@@ -8,8 +8,15 @@ export const METHOD_NOTES = {
     cfbSeason: 'Data shown is from FBS vs FBS games only. Not adjusted for opponent or garbage time.',
     nflSeason: 'Data shown is from regular season games only. Not adjusted for opponent or garbage time.',
     adjusted: 'Adjusted for opponent strength, fit with a home-field term in FBS vs FBS games. Garbage time (a lead of more than 43, 37, 27 or 21 points in quarters 1-4, and 21 in overtime) is left out of both the fit and the team\'s own EPA.',
+    // nfl-data's NFL team summaries run cfb_adjusted_epa's method="pre598": a win-probability band, own EPA on every play
+    adjustedNfl: 'Adjusted for opponent strength, fit with a home-field term on plays with a win probability between 10% and 90%. The team\'s own EPA counts every play.',
     game: 'Every play, garbage time included. Not adjusted for opponent.',
 } as const;
+
+/** The adjusted-EPA hover for a football league: the NFL summaries use a different garbage-time rule. */
+export function adjustedNote(league: League | undefined): string {
+    return league === 'nfl' ? METHOD_NOTES.adjustedNfl : METHOD_NOTES.adjusted;
+}
 
 /** The season tables' note for a football league (a page without a league is the college site); undefined for a
  *  league with no note written, so a caller keeps its own copy rather than borrowing another league's. */
