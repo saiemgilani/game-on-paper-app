@@ -15,7 +15,7 @@ import type { Team } from '../../nba/data/teams';
 import type { SortDir } from '../../nba/table';
 import { ROSTER_COLUMNS, parseDir, parseMode, parseSort, rosterRows, sortRosterRows, teamsFromSeasonRows, type Mode, type RosterRow, type RosterSortKey } from '../../nba/tables';
 import type { LineupShotsView } from '../../nba/lineupShots';
-import { retrieveLineups } from '../../resources/lineups';
+import { hasFactorPoints, retrieveLineups } from '../../resources/lineups';
 import { retrieveConferenceRows, retrieveLeagueContextRows, retrieveScheduleTeamRows, retrieveSeasonPlayerRows, retrieveTeamShots, type SeasonPlayerRow } from '../../resources/nbaShots';
 import { retrieveBioNames, retrieveOnOff } from '../../resources/onOff';
 import { retrieveTeamPlayStyle } from '../../resources/playStyles';
@@ -251,8 +251,10 @@ async function readSeasonBlock(league: BasketballLeague, season: number, teamId:
 async function readLineups(Astro: AstroGlobal, league: BasketballLeague, season: number, teamId: number, rows: SeasonPlayerRow[]): Promise<LineupsTab> {
     const q = Astro.url.searchParams;
     const unit = parseUnit(q.get('unit'));
-    const basis = parseBasis(q.get('basis'), league, isFeatureEnabled('bball-factor-points', Astro.locals));
-    const controls = { unit, basis, gate: parseGate(q.get('min'), league), sort: parseLineupSort(q.get('lsort'), basis), dir: parseDir(q.get('ldir')) };
+    // BB-G58: the points basis only once the producer's columns are in the table, never a "temporarily unavailable" tab
+    const points = isFeatureEnabled('bball-factor-points', Astro.locals) && (await hasFactorPoints(league, season));
+    const basis = parseBasis(q.get('basis'), league, points);
+    const controls = { unit, basis, gate: parseGate(q.get('min'), league), sort: parseLineupSort(q.get('lsort'), basis), dir: parseDir(q.get('ldir')), points };
     try {
         const read = await retrieveLineups(league, season, teamId, unit, controls.gate, basis === 'points');
         const college = isNcaaDashboards(league);

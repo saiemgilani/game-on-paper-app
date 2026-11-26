@@ -1110,6 +1110,8 @@ export interface ProcessedGame {
     count: number
     advBoxScore: ProcessedBoxScore
     advBoxScoreSpans: Record<string, ProcessedBoxScore>
+    /** the full-game box without garbage-time plays (python/span_box.py non_garbage_box); college, only when the game had garbage time */
+    advBoxScoreNonGarbage?: ProcessedBoxScore
     plays: ProcessedPlay[]
     drives: { previous?: ProcessedDrive[], current?: ProcessedDrive }
     scoringPlays: ProcessedPlay[]
@@ -1250,6 +1252,10 @@ function shapeProcessedGame(processed: ProcessedGame): ProcessedGame {
     }
 
     pbp.advBoxScoreSpans["all"] = pbp.advBoxScore;
+
+    for (const baseData of Object.values(pbp.advBoxScoreNonGarbage ?? {})) {
+        cleanUpBoxScores(baseData, pbp);
+    }
 
     const homeTeamId = parseInt(pbp.teamInfo.home.id);
     const awayTeamId = parseInt(pbp.teamInfo.away.id);

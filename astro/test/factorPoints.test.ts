@@ -88,8 +88,9 @@ describe("'bball-factor-points' on the season block", () => {
 });
 
 const MIN = FP.units as LineupRow[];
-const tab = async (units: LineupRow[], on: boolean) => normalize(await container.renderToString(LineupsTab, {
-    props: { data: { unit: 5, basis: 'points', gate: '200', sort: 'poss', dir: 'desc', units, labels: units.map(() => ({ players: [] })) }, season: 2025, current: 2026, basePath: '/nba/team/1610612750', teamName: 'Team' },
+// `points`: the route's hasFactorPoints answer (the season's table carries the columns)
+const tab = async (units: LineupRow[], on: boolean, points = on) => normalize(await container.renderToString(LineupsTab, {
+    props: { data: { unit: 5, basis: points ? 'points' : 'per100', gate: '200', sort: 'poss', dir: 'desc', units, labels: units.map(() => ({ players: [] })), points }, season: 2025, current: 2026, basePath: '/nba/team/1610612750', teamName: 'Team' },
     locals: { league: 'nba', preview: true, flagOverrides: { ...bballOnly('bball-lineups'), 'bball-factor-points': on } } as unknown as App.Locals,
 }));
 
@@ -123,5 +124,10 @@ describe("'bball-factor-points' on the Lineups tab", () => {
     });
     test('off, the basis select has no points option', async () => {
         expect(await tab(MIN.slice(0, 2), false)).not.toContain('Four-factor points');
+    });
+    test('on, but before the producer reload (no factor columns in the table), no points option and no unavailable state', async () => {
+        const html = await tab(MIN.slice(0, 2), true, false);
+        expect(html).not.toContain('Four-factor points');
+        expect(html).not.toContain('temporarily unavailable');
     });
 });

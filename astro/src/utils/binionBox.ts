@@ -72,8 +72,8 @@ function boxValue(team: Record<string, any>, key: string): [number | null, boole
 export function binionBoxCells(box: Record<string, any[]>, item: string, percentiles: SDVSeasonPercentile[]): string {
     const [section, key] = item.includes('.') ? item.split('.') : ['team', item];
     const teams = [...(box?.[section] ?? [])];
-    // the run-stuff rate is the defense's: shown under the team that made the stops
-    if (key.includes('rushing_stuff')) teams.reverse();
+    // the run-stuff and run-stop rates are the defense's: shown under the team that made the stops
+    if (key.includes('rushing_stuff') || key.includes('rushing_stopped')) teams.reverse();
     return teams.map((team) => {
         const [value, rate] = boxValue(team, key);
         const format = (x: number | null) => (rate ? formatPercent(x, 0) : formatNumber(x, 2));
