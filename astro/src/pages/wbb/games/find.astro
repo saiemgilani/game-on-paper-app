@@ -1,0 +1,16 @@
+---
+// src/pages/wbb/games/find.astro: BB-G57's game finder, behind 'bball-game-finder'
+import GameFinder from '../../../components/nba/GameFinder.astro';
+import { prepareGameFinder } from '../../../routes/basketball/gameFinder';
+import { unavailable } from '../../../routes/basketball/cache';
+
+const r = await prepareGameFinder(Astro, 'wbb');
+if ('unavailable' in r) {
+    return unavailable('wbb', 'The game finder is temporarily unavailable. Please try again shortly.');
+}
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+---
+
+<GameFinder data={r} />

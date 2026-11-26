@@ -198,6 +198,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // /<league>/tournaments/<run_id> (one team's run in the NCAA tournament, a conference tournament, the NIT ...), from
     // tournament_run_games / _teams / _players.
     'bball-series': 'preview',
+    // BB-G57: /<league>/games/find?unit=&pts=&reb=&...&from=&to=&type=&ha=&res=, the game finder: every player (or team) game
+    // with at least the given stats over a season range, home / away, result and season type, the "how many N+ games" table
+    // and the game rows linking to their game pages, all from one read of sdv-db's /v1/<league>/game_finder (BB-D41: the
+    // totals and counts are the route's). Off: the route is the site's 404.
+    'bball-game-finder': 'preview',
     // BB-G58: four-factor point accounting, inside 'bball-team-season' (the season block's factor-points table) and
     // 'bball-lineups' (a Four-factor points basis): the net rating per 100 split into eFG, turnover, rebounding and
     // free-throw points against the league average, for offense and defense, read from sdv-db's team_season_rates and
