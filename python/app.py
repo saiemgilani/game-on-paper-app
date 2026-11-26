@@ -1,5 +1,6 @@
 from functools import wraps
 import math
+import re
 from typing import Any
 
 from flask import Flask, request, jsonify, Response, g
@@ -1225,11 +1226,14 @@ def _card_basketball(league: str, game_id: int):
     state = request.args.get("state")
     if state not in ("live", "final"):
         return jsonify({"status": "bad", "message": "state is live|final"}), 400
+    variant = request.args.get("variant", "full")
+    if variant not in share_card.VARIANTS:
+        return jsonify({"status": "bad", "message": "variant is full|spoilerfree"}), 400
     body = request.get_json(silent=True)
     if request.content_length is None or request.content_length > _CARD_BODY_MAX or not _bball_card_body_ok(body):
         return jsonify({"status": "bad", "message": "body is {home: {..}, away: {..}, plays: [[period, wp, secs], ..]}"}), 400
     try:
-        png = share_card.render_basketball(body, league, state, _logo_fetch, dt.now(tz.utc))
+        png = share_card.render_basketball(body, league, state, _logo_fetch, dt.now(tz.utc), variant=variant)
     except Exception as e:  # not a 401: require_auth_token answers that for any raise
         logging.getLogger("root").error(f"card: render failed for {league} {game_id}: {e!r}")
         return jsonify({"status": "bad", "message": "card render failed"}), 500
@@ -1241,6 +1245,44 @@ for _league in BASKETBALL_PROCESSORS:
         f"/{_league}/<int(min=100000,max=999999999999):game_id>/card.png",
         endpoint=f"card_{_league}",
         view_func=require_auth_token(lambda game_id, _lg=_league: _card_basketball(_lg, game_id)),
+        methods=["POST"],
+    )
+
+
+def _bball_series_body_ok(body) -> bool:
+    if not isinstance(body, dict) or not all(isinstance(body.get(s), dict) for s in ("a", "b")):
+        return False
+    games = body.get("games", [])
+    return isinstance(games, list) and len(games) <= 7 and all(isinstance(g, dict) for g in games)
+
+
+def _card_basketball_series(league: str, series_id: str):
+    """'bball-series' (preview): a playoff series' 1200x630 card (share_card.render_basketball_series) as a PNG.
+
+    `variant` is full or spoilerfree. The POST body is every string the card draws, built by the Worker from the
+    producer's playoff_series_games rows (astro basketball/seriesCard.ts), so this route reads nothing itself.
+    """
+    if not re.fullmatch(r"\d{4}-\d{1,9}-\d{1,9}", series_id):
+        return jsonify({"status": "bad", "message": "a series id is {season}-{team id}-{team id}"}), 404
+    variant = request.args.get("variant", "full")
+    if variant not in share_card.VARIANTS:
+        return jsonify({"status": "bad", "message": "variant is full|spoilerfree"}), 400
+    body = request.get_json(silent=True)
+    if request.content_length is None or request.content_length > _CARD_BODY_MAX or not _bball_series_body_ok(body):
+        return jsonify({"status": "bad", "message": "body is {a: {..}, b: {..}, games: [{label, a, b, winner}, ..]}"}), 400
+    try:
+        png = share_card.render_basketball_series(body, league, variant, _logo_fetch)
+    except Exception as e:  # not a 401: require_auth_token answers that for any raise
+        logging.getLogger("root").error(f"card: render failed for {league} series {series_id}: {e!r}")
+        return jsonify({"status": "bad", "message": "card render failed"}), 500
+    return Response(png, mimetype="image/png")
+
+
+for _league in ("nba", "wnba"):
+    app.add_url_rule(
+        f"/{_league}/series/<series_id>/card.png",
+        endpoint=f"series_card_{_league}",
+        view_func=require_auth_token(lambda series_id, _lg=_league: _card_basketball_series(_lg, series_id)),
         methods=["POST"],
     )
 

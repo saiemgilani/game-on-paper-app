@@ -1862,6 +1862,52 @@ ids, `split` / `n_players` / `lineup_id` / `poss`, the ratings and `lg_rtg` plus
 **To regenerate:** once sdv-db serves the columns, capture `/v1/nba_stats/team_season_rates?season=2026&team_id=1610612751&limit=10`,
 the `mbb` twin for 150 and `/v1/nba_stats/lineup_seasons?season=2025&team_id=1610612750&select=…&limit=1000` instead.
 
+## `playoff-series-2025.json.gz`
+BB-G59's series reads (`routes/basketball/series.ts`: sdv-db's `playoff_series_games`, `playoff_series_teams` and
+`playoff_series_players`), as `{nba: {games, teams, players}, wnba: {...}}`. They are sportsdataverse-py BB-D43's own output
+(`sportsdataverse._common.playoff_series`, branch `feat/bball-playoff-series`), the frames sdv-db loads into those tables,
+written on 2026-11-25 over sdv-py's `tests/fixtures/bb_playoff_series` (the 2024-25 NBA and 2025 WNBA ESPN schedule and box
+releases). `games` holds every postseason game of both seasons; `teams` and `players` the two Finals (NBA `2025-11-25`,
+Oklahoma City over Indiana in seven; WNBA `2025-11-17`, Las Vegas over Phoenix in four). `game_date` is ISO text, as the Data
+API sends it. Nothing is edited.
+
+**Used by:** `test/playoffSeries.test.ts`.
+
+**To regenerate:** capture `/v1/nba/playoff_series_games?season=2025`, `/v1/nba/playoff_series_teams?season=2025&series_id=2025-11-25`
+and `/v1/nba/playoff_series_players?season=2025&series_id=2025-11-25` (and the WNBA's for `2025-11-17`), or rerun the producer on
+the same releases.
+
+## `depth-ladder-2025.json.gz`
+BB-G61's depth-ladder reads (`resources/depthLadder.ts`: the team's `roster_tiers` rows and the `roster_tier_shape` rows it reads), as
+`{nba: {rows, shape}, mbb: {rows, shape}}`. They are sportsdataverse-py #1303's own output, written on 2026-11-25: `player_war`
+over the committed 2024-25 inputs of its BB-D26 tests (`tests/fixtures/bb_player_war`, `tests/fixtures/mbb_player_value`, with the
+`bb_college_season` 2025 schedule's conferences), what `nba_player_war(2025)` / `mbb_player_war(2025)` return on those releases,
+then `roster_tiers` and `roster_tier_shape`. Ids as sdv-db writes them (bigint team and conference ids). NBA: the Brooklyn Nets'
+24 rows (1610612751; 21 players, plus Dorian Finney-Smith, D'Angelo Russell and Jaylen Martin, whose main team was another) and
+the league shape; MBB: Duke's 15 rows (ESPN 150) and the Division I and ACC (conference 2) shapes. Nothing is edited.
+
+**Used by:** `test/depthLadder.test.ts`.
+
+**To regenerate:** once sdv-db serves the tables, capture `/v1/nba_stats/roster_tiers?season=2025&team_id=1610612751&order=-war&limit=60`
+and `/v1/nba_stats/roster_tier_shape?season=2025&scope=league&order=tier_order`, the `mbb` twins for 150 (both scopes, the
+conference one with `conference_id=2`), and wrap them the same way.
+
+## `tournament-runs-2025.json.gz`
+BB-G59's college reads (`routes/basketball/runs.ts`: sdv-db's `tournament_run_games`, `tournament_run_teams` and
+`tournament_run_players`), as `{mbb: {games, teams, players}, wbb: {...}}`. They are sportsdataverse-py BB-D43's own output
+for college (`sportsdataverse._common.tournament_runs`, branch `feat/bball-tournament-runs`), written on 2026-11-25 over
+sdv-py's `tests/fixtures/bb_tournament_runs` (the 2024-25 men's and women's ESPN schedule and box releases). `games` holds
+every tournament game of both seasons, once per side; `teams` and `players` the NCAA champions' runs (Florida `2025-22-57`,
+UConn `2025-22-41`). `game_date` is ISO text, as the Data API sends it. Nothing is edited. The women's `games` were re-written
+on 2026-11-26 from the producer's fixed champion rule (no champion while the release ends on a round of several games:
+11 conference tournaments and the WBIT, 18 rows now `alive`).
+
+**Used by:** `test/tournamentRuns.test.ts`.
+
+**To regenerate:** capture `/v1/mbb/tournament_run_games?season=2025`, `/v1/mbb/tournament_run_teams?season=2025&run_id=2025-22-57`
+and `/v1/mbb/tournament_run_players?season=2025&run_id=2025-22-57` (and the WBB's for `2025-22-41`), or rerun the producer on
+the same releases.
+
 ## `game-finder-wnba-2025.json.gz`
 BB-G57's game finder reads (`routes/basketball/gameFinder.ts`: one `/v1/<league>/game_finder` answer per search), as
 `{<case>: {query, body}}`. Each body is sdv-db's own `find_games` (BB-D41, `python/src/sdv_db/api/game_finder_routes.py`)

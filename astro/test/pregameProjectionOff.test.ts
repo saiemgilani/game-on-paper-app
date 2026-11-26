@@ -47,7 +47,7 @@ describe("flag off: today's pages", () => {
             league: 'mbb', seasons: [2025, 2026, 2027], current: 2027, view: 'bracket', conference: null,
             pick: { snapshot: f.snapshot, season: 2026, fallback: true }, data: { sims: f.sims, bracket: f.bracket, resume: f.resume },
         };
-        const html = await container.renderToString(BracketologyRoute, { props: { data }, locals: { league: 'mbb', preview: true } as App.Locals });
+        const html = await container.renderToString(BracketologyRoute, { props: { data }, locals: { league: 'mbb', preview: true, flagOverrides: { 'bball-series': false } } as unknown as App.Locals });
         await expect(normalize(html)).toMatchFileSnapshot(snap('bracket-off-mbb'));
     });
 });

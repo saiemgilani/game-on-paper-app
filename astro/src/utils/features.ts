@@ -97,6 +97,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // G-R5: the player and team pages too: og:image is the season card (`/<league>/players/<id>/card.png`, `/<league>/team/<id>/card.png`,
     // routes/basketball/statCard.ts, render_basketball_stats) from the producer's shot_season_players / team_strength row and
     // its ranks, plus a Share button beside the season select.
+    // A game page's ?spoilers=off shares the spoiler-free card (variant=spoilerfree: the matchup, Final or Live, the date,
+    // a final's GEI; no score, detail or WP line) and a head with no score. With 'bball-series', a series page's og:image is
+    // the series card (`/<league>/series/<id>/card.png`, routes/basketball/seriesCard.ts, render_basketball_series), its
+    // ?spoilers=off variant the matchup and round only.
     // Off: the heads and pages are today's, byte for byte. The card endpoints are not gated (a crawler carries no cookie).
     'bball-share-card': 'preview',
     // The Best Games board (BB-G29): /<league>/best-games and its Header entry, inside each league's flag. sdv-db's
@@ -187,6 +191,13 @@ export const FLAGS: Record<string, FeatureState> = {
     // page's layout): each team's team_season_rates all split and team_strength rows, the team page's reads, with the
     // producer's ranks and percentiles. Off: the route is the site's 404.
     'bball-team-compare': 'preview',
+    // BB-G59: /<league>/series (a season's playoff series by round) and /<league>/series/<id> (one series: the game strip
+    // with the series score after each game, both teams' totals, each player's per-game line and his shift from the regular
+    // season), NBA and WNBA, read from sdv-db's playoff_series_games / _teams / _players (sdv-py BB-D43). Off: both routes
+    // are the site's 404. MBB / WBB: /<league>/tournaments (a season's tournaments, each with its teams' runs) and
+    // /<league>/tournaments/<run_id> (one team's run in the NCAA tournament, a conference tournament, the NIT ...), from
+    // tournament_run_games / _teams / _players.
+    'bball-series': 'preview',
     // BB-G57: /<league>/games/find?unit=&pts=&reb=&...&from=&to=&type=&ha=&res=, the game finder: every player (or team) game
     // with at least the given stats over a season range, home / away, result and season type, the "how many N+ games" table
     // and the game rows linking to their game pages, all from one read of sdv-db's /v1/<league>/game_finder (BB-D41: the
@@ -197,6 +208,12 @@ export const FLAGS: Record<string, FeatureState> = {
     // free-throw points against the league average, for offense and defense, read from sdv-db's team_season_rates and
     // lineup_seasons (sdv-py BB-D42; the parts add up to the net rating). Off: the block and tab are unchanged.
     'bball-factor-points': 'preview',
+    // BB-G61: a Depth ladder section on /<league>/team/[id]: the team's players on the producer's WAR tiers (sdv-db's
+    // roster_tiers: Star, Starter, Rotation, Bench, Fringe by WAR percentile among the players over a possession floor, a traded
+    // player on each of his teams; sdv-py BB-G61; college ?tiers=d1|conference) beside the league's
+    // median players per team in each tier (roster_tier_shape). No tier, no rung; a season with no ladder yet has no section.
+    // Off: no read, no section.
+    'bball-depth-ladder': 'preview',
     // BB-G14: the game-set filter (?games=all|home|away|close|clutch|conference|playoffs|wins|losses|last5|last10|last20) on
     // /<league>/team/[id], inside 'bball-team-season' (All / Home / Away / Close / Clutch are that block's producer split
     // rows; Wins / Losses / last N / college Conference games sum the team's team_game_possessions rows, read

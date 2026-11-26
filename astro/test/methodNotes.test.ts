@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { METHOD_NOTES, seasonNote } from '../src/utils/methodNotes';
+import { METHOD_NOTES, adjustedNote, seasonNote } from '../src/utils/methodNotes';
 import { SDV_TEAM_METRIC_HOVER_TEXT, TEAM_METRIC_HOVER_TEXT } from '../src/utils/constants';
 
 describe('METHOD_NOTES', () => {
@@ -21,6 +21,17 @@ describe('METHOD_NOTES', () => {
     test('the game note says garbage time is included; the adjusted note has no typo', () => {
         expect(METHOD_NOTES.game).toContain('garbage time included');
         expect(METHOD_NOTES.adjusted).not.toContain('advantange');
+        // sdv-py cfb_adjusted_epa leaves garbage time out by flag_garbage_time's margins (GARBAGE_TIME_MARGIN)
+        expect(METHOD_NOTES.adjusted).toContain('43, 37, 27 or 21 points');
+    });
+
+    test('the NFL adjusted hover names its own rule, not the college margins', () => {
+        expect(adjustedNote('nfl')).toBe(METHOD_NOTES.adjustedNfl);
+        expect(adjustedNote('nfl')).not.toContain('43, 37, 27 or 21');
+        expect(adjustedNote('nfl')).not.toContain('FBS');
+        expect(adjustedNote('nfl')).toContain('10% and 90%');
+        expect(adjustedNote('cfb')).toBe(METHOD_NOTES.adjusted);
+        expect(adjustedNote(undefined)).toBe(METHOD_NOTES.adjusted);
     });
 
     test('the leaderboard and team-page hovers read the one adjusted sentence', () => {

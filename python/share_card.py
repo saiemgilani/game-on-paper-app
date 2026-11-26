@@ -449,6 +449,7 @@ def render_basketball(
     logo_fetch,
     now: datetime,
     drawn: list | None = None,
+    variant: str = "full",
 ) -> bytes:
     """A basketball game's card (nba/wnba/mbb/wbb) as PNG bytes, in the football card's layout.
 
@@ -456,20 +457,36 @@ def render_basketball(
     names, score, colors and logo URL, ESPN's status detail, the date, the regulation periods, the plays as
     [period, home WP, game seconds remaining] and, on a final, the game excitement index. Live or final only:
     a pregame page keeps the site's social card.
+
+    `variant="spoilerfree"` (the page's ?spoilers=off) draws the matchup, the date, Final or Live and, on a final,
+    the game excitement index, never the score, the status detail (an "OT" would tell) or the win probability line.
     """
-    if state not in ("live", "final"):
-        raise ValueError(f"state {state!r}")
+    if state not in ("live", "final") or variant not in VARIANTS:
+        raise ValueError(f"state {state!r} / variant {variant!r}")
     home, away = ({**game[s], "id": str(game[s].get("id")), "color": _color(game[s])} for s in ("home", "away"))
     regulation = int(game.get("regulation") or 4)
     kickoff = _kickoff(game)
     detail = (game.get("detail") or "").strip()
     card = _Card(drawn)
+    spoilerfree = variant == "spoilerfree"
+    if spoilerfree:
+        detail = ""  # "Final/OT", "5:32 - 3rd Quarter": each tells something
     if state == "live":
         stamp = " / ".join(x for x in ("Live", detail, f"as of {_clock12(now.astimezone(ET))} ET") if x)
     else:
         day = f"{kickoff:%b} {kickoff.day}, {kickoff.year}" if kickoff else ""
         stamp = " / ".join(x for x in (detail if detail.startswith("Final") else "Final", day) if x)
     card.text(W / 2, 58, stamp, 26, color=MUTED, max_w=W - 2 * PAD)
+    if spoilerfree:
+        card.text(W / 2, 138, f"{away['name']} @ {home['name']}", 52, BOLD, max_w=W - 2 * (PAD + 96 + 24))
+        card.logo(away, league, logo_fetch, PAD + 48, 120, 96)
+        card.logo(home, league, logo_fetch, W - PAD - 48, 120, 96)
+        if state == "final" and game.get("gei") is not None:
+            card.text(W / 2, 375, f"{float(game['gei']):.2f}", 88, BOLD)
+            card.text(W / 2, 430, "Game Excitement Index", 26, color=MUTED)
+        card.text(PAD, 590, "Score hidden", 26, color=MUTED, ha="left")
+        card.text(W - PAD, 590, "gameonpaper.com", 26, color=MUTED, ha="right")
+        return card.png()
     title = f"{away['name']} {away['score']} @ {home['name']} {home['score']}"
     card.text(W / 2, 138, title, 52, BOLD, max_w=W - 2 * (PAD + 96 + 24))
     card.logo(away, league, logo_fetch, PAD + 48, 120, 96)
@@ -483,6 +500,48 @@ def render_basketball(
     # the game excitement index, a final's only (the Worker sends none for a live game)
     if final and game.get("gei") is not None:
         card.text(PAD, 590, f"Game Excitement Index: {float(game['gei']):.2f}", 26, BOLD, ha="left")
+    card.text(W - PAD, 590, "gameonpaper.com", 26, color=MUTED, ha="right")
+    return card.png()
+
+
+def render_basketball_series(
+    body: dict,
+    league: str,
+    variant: str,
+    logo_fetch,
+    drawn: list | None = None,
+) -> bytes:
+    """A playoff series' card (nba/wnba) as PNG bytes.
+
+    `body` is the Worker's (astro basketball/seriesCard.ts), every string already formatted from the producer's
+    playoff_series_games rows: `stamp` (season and round), `a` / `b` (each side's id, abbr, name, colors, logo URL;
+    `a` has home court), `status` ("OKC wins 4-3") and `games`, each a `label` ("G1"), the two sides' scores `a` /
+    `b` and `winner` ("a", "b" or None for a game still to play). This draws strings; it computes nothing.
+
+    `variant="spoilerfree"` draws the matchup and the round only: no series score, no game, no count of games.
+    """
+    if variant not in VARIANTS:
+        raise ValueError(f"variant {variant!r}")
+    a, b = ({**body[s], "id": str(body[s].get("id")), "color": _color(body[s])} for s in ("a", "b"))
+    card = _Card(drawn)
+    card.text(W / 2, 58, body.get("stamp") or "", 26, color=MUTED, max_w=W - 2 * PAD)
+    card.text(W / 2, 138, f"{a['name']} vs. {b['name']}", 52, BOLD, max_w=W - 2 * (PAD + 96 + 24))
+    card.logo(a, league, logo_fetch, PAD + 48, 120, 96)
+    card.logo(b, league, logo_fetch, W - PAD - 48, 120, 96)
+    if variant == "spoilerfree":
+        card.text(PAD, 590, "Series score hidden", 26, color=MUTED, ha="left")
+    else:
+        card.text(W / 2, 330, body.get("status") or "", 88, BOLD, max_w=W - 2 * PAD)
+        games = (body.get("games") or [])[:7]
+        for i, g in enumerate(games):
+            cx = (2 * i + 1) * W / (2 * max(len(games), 1))
+            card.text(cx, 445, g.get("label") or "", 24, color=MUTED)
+            if g.get("winner") is None:
+                card.text(cx, 490, "-", 30, color=MUTED)
+                continue
+            won = a if g["winner"] == "a" else b
+            card.text(cx, 490, f"{g.get('a')}-{g.get('b')}", 30, BOLD, won["color"], max_w=W / max(len(games), 1) - 12)
+            card.text(cx, 528, won["abbr"], 22, color=MUTED)
     card.text(W - PAD, 590, "gameonpaper.com", 26, color=MUTED, ha="right")
     return card.png()
 

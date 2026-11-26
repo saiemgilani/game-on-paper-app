@@ -8,10 +8,10 @@ let container: AstroContainer;
 beforeAll(async () => { container = await AstroContainer.create({ renderers: await loadRenderers([svelteRenderer()]) }); });
 
 describe('the MBB Header', () => {
-    test('five pages (and Best Games and Leaderboards behind their flags; Bracketology under Tools), no featured-team entry, a switch that includes the other basketball leagues', async () => {
+    test('five pages (and Best Games, Tournaments and Leaderboards behind their flags; Bracketology under Tools), no featured-team entry, a switch that includes the other basketball leagues', async () => {
         const html = await container.renderToString(Header, { locals: { league: 'mbb', preview: true } as App.Locals });
         const items = [...html.matchAll(/<a href="(\/mbb[^"]*)" class="nav-link px-2 link-secondary">([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`);
-        expect(items).toEqual(['Scoreboard /mbb/scoreboard', 'Players /mbb/players', 'Teams /mbb/teams', 'Scatter /mbb/scatter', 'Leaders /mbb/leaders', 'Best Games /mbb/best-games', 'Leaderboards /mbb/leaderboards']);
+        expect(items).toEqual(['Scoreboard /mbb/scoreboard', 'Players /mbb/players', 'Teams /mbb/teams', 'Scatter /mbb/scatter', 'Leaders /mbb/leaders', 'Best Games /mbb/best-games', 'Tournaments /mbb/tournaments', 'Leaderboards /mbb/leaderboards']);
         expect(html).toContain('<li><a href="/mbb/bracketology" class="dropdown-item">Bracketology</a></li>');
         expect(html).not.toContain('>Nets<');
         expect(html).toContain('title="Switch league"');

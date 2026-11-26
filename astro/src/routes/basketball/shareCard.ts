@@ -18,6 +18,7 @@ import type { APIContext, APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { BASKETBALL } from '../../basketball/config';
 import { BASKETBALL_CARD_STATES, basketballCardBody, basketballCardState, type BasketballCardState } from '../../basketball/shareCard';
+import { CARD_VARIANTS, type CardVariant } from '../../utils/shareTags';
 import { ESPN_INVALID_GAME_STATUS_NAMES, retrieveGamePageGuarded } from '../../resources/espn';
 import { fromDataApi, fromProcessor, isTrue, type NbaGame } from '../../resources/nbaGame';
 import { retrieveNbaGameRows, retrieveNbaProcessedGame, retrieveNbaSchedule } from '../../resources/nbaGames';
@@ -38,25 +39,25 @@ const NO_PLAYS = ['STATUS_SCHEDULED', 'STATUS_DELAYED', ...ESPN_INVALID_GAME_STA
 class NoCard extends Error {}
 
 /** Draw the game's card, keep it for `maxAge` when `keep`, and answer with it. */
-async function draw(league: BasketballLeague, id: string, game: NbaGame, key: string, keep: boolean, cache: APIContext['cache'], maxAge?: number): Promise<Response> {
+async function draw(league: BasketballLeague, id: string, game: NbaGame, key: string, keep: boolean, cache: APIContext['cache'], variant: CardVariant, maxAge?: number): Promise<Response> {
     const state = basketballCardState(game);
-    const png = await retrieveBasketballShareCard(id, league, state, basketballCardBody(game, league));
+    const png = await retrieveBasketballShareCard(id, league, state, basketballCardBody(game, league), variant);
     if (!png) return new Response('Card unavailable', { status: 502, headers: NO_STORE });
     const ttl = maxAge ?? CARD_MAX_AGE[state];
     if (keep) await safeCachePut(env.ESPN_API_CACHE, key, png, ttl);
     return cardResponse(png, state, keep, cache, ttl);
 }
 
-async function card(league: BasketballLeague, id: string, cache: APIContext['cache']): Promise<Response> {
+async function card(league: BasketballLeague, id: string, cache: APIContext['cache'], variant: CardVariant): Promise<Response> {
     // 1. an ingested final (the page's step 1): the schedule row says final; the kept Data API card, else the rows
     let fellThrough = false;
     try {
         if (isTrue((await retrieveNbaSchedule(id, league))?.status_type_completed)) {
-            const key = cardKey(league, id, 'final', 'full', DATA_API);
+            const key = cardKey(league, id, 'final', variant, DATA_API);
             const kept = await keptCard(key);
             if (kept) return cardResponse(kept, 'final', true, cache);
             const rows = await retrieveNbaGameRows(id, league);
-            if (!sanityGate(rows, league)) return await draw(league, id, fromDataApi(rows, league), key, true, cache);
+            if (!sanityGate(rows, league)) return await draw(league, id, fromDataApi(rows, league), key, true, cache, variant);
             fellThrough = true;
         }
     } catch (e: any) {
@@ -73,7 +74,7 @@ async function card(league: BasketballLeague, id: string, cache: APIContext['cac
     const state: BasketballCardState = espnCompleted ? 'final' : 'live';
     // never kept where the page is not cached: a stale ESPN payload, a Data API final that failed its gate
     const keepable = !fellThrough && !guarded.regressed && guarded.fetchFailed !== true;
-    const key = cardKey(league, id, state, 'full');
+    const key = cardKey(league, id, state, variant);
     // a processor final is held as long as its page holds the payload (a day: late corrections, a GEI that lands after
     // ESPN's final), never the Data API final's year
     const config = getBasketballGameCacheConfig(comp.date, comp.status, BASKETBALL[league].scoreboardRefresh, league);
@@ -90,18 +91,19 @@ async function card(league: BasketballLeague, id: string, cache: APIContext['cac
         throw e;
     }
     // a payload processed in another state (it lags ESPN's transition) is drawn but never kept
-    return draw(league, id, game, key, keepable && basketballCardState(game) === state, cache, maxAge);
+    return draw(league, id, game, key, keepable && basketballCardState(game) === state, cache, variant, maxAge);
 }
 
 export function basketballShareCardRoute(league: BasketballLeague): APIRoute {
     return async ({ params, url, cache }: APIContext) => {
         const id = params.id ?? '';
         const asked = url.searchParams.get('state');
-        if (!ID.test(id) || (asked != null && !BASKETBALL_CARD_STATES.includes(asked as BasketballCardState))) {
+        const variant = (url.searchParams.get('variant') ?? 'full') as CardVariant;
+        if (!ID.test(id) || (asked != null && !BASKETBALL_CARD_STATES.includes(asked as BasketballCardState)) || !CARD_VARIANTS.includes(variant)) {
             return new Response('Bad request', { status: 400, headers: NO_STORE });
         }
         try {
-            return await card(league, id, cache);
+            return await card(league, id, cache, variant);
         } catch (e: any) {
             if (e instanceof NoCard) return new Response('Not found', { status: 404, headers: NO_STORE });
             console.error(`ERROR while loading the ${league} game ${id} for a share card: ${e?.message ?? e}`);

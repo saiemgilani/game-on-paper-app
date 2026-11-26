@@ -1,0 +1,16 @@
+---
+// src/pages/wnba/series/[id].astro: BB-G59's playoff series, behind 'bball-series'
+import PlayoffSeries from '../../../components/nba/PlayoffSeries.astro';
+import { prepareSeries } from '../../../routes/basketball/series';
+import { unavailable } from '../../../routes/basketball/cache';
+
+const r = await prepareSeries(Astro, 'wnba');
+if ('unavailable' in r) {
+    return unavailable('wnba', 'The series numbers are temporarily unavailable. Please try again shortly.');
+}
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+---
+
+<PlayoffSeries data={r} />

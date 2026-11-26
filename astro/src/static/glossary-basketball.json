@@ -4,6 +4,11 @@
             "term": "Defensive rating (DRtg, basketball)",
             "definition": "Points a team allowed per 100 possessions in a game. Lower is better. Shown in the four factors panel on NBA, WNBA and college basketball game pages.",
             "source": ""
+        },
+        {
+            "term": "Depth ladder (basketball)",
+            "definition": "A team page's players on five tiers by their WAR percentile among the league-season's players who were on the floor for at least a tenth of a team's possessions: Star (95 and up, about the top 5%), Starter (80 to under 95), Rotation (50 to under 80), Bench (20 to under 50) and Fringe (under 20). A player under that possession floor is not placed: WAR counts playing time, so a call-up who barely played would otherwise sit in the middle. Beside each tier, the league median: the median number of players per team in it, a team with nobody there counting 0. A player traded during the season is on every team they played for, with their full-season tier, and counts in each team's median. College team pages also offer conference tiers: the same ladder among the players of the team's conference, beside the conference median.",
+            "source": ""
         }
     ],
     "E": [
@@ -42,6 +47,16 @@
             "term": "PIE (Player Impact Estimate, basketball)",
             "definition": "The NBA's share-of-game-events measure: a player's points, rebounds, assists, steals, blocks and shooting, less misses, fouls and turnovers, over the same totals for everyone in the game. Shown for the NBA and WNBA from stats.nba.com and stats.wnba.com; college pages leave it out because the box-score formula does not reproduce it.",
             "source": "https://www.nba.com/stats/help/glossary#pie"
+        },
+        {
+            "term": "Playoff series (basketball)",
+            "definition": "Every playoff game between one pair of teams in a season; play-in games are not part of one. The series page shows each game with the series score after it, both teams' totals (the sum of the series' game boxes) and each player's per-game line. Shown for the NBA and WNBA.",
+            "source": ""
+        },
+        {
+            "term": "Playoff shift (basketball)",
+            "definition": "A player's per-game line in a playoff series minus the player's per-game line over the regular season (every team played for), for minutes, points, rebounds and assists, and true shooting in points. Positive is up in the series.",
+            "source": ""
         }
     ],
     "S": [
@@ -57,6 +72,11 @@
         }
     ],
     "T": [
+        {
+            "term": "Tournament run (college basketball)",
+            "definition": "One team's games in one tournament: the NCAA tournament (First Four onward), a conference tournament, the NIT or WNIT, the CBI, Crown, WBIT and the other postseason events. The run page shows each game with the record after it, the team's totals (the sum of its game boxes) and each player's per-game line against the regular season, which leaves out the conference tournament.",
+            "source": ""
+        },
         {
             "term": "True shooting percentage (TS%, basketball)",
             "definition": "PTS / (2 &times; (FGA + 0.44 &times; FTA)): scoring efficiency counting twos, threes and free throws together.",

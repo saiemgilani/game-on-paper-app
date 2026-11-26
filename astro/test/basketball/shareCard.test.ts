@@ -87,6 +87,14 @@ describe('the card body and the head tags', () => {
         expect(basketballCardBody(fromDataApi(api, 'nba'), 'nba').gei).toBeNull();
     });
 
+    test('?spoilers=off: the spoiler-free card and an alt text without the score', () => {
+        const game = fromProcessor(proc, 'nba');
+        const img = basketballShareImage(game, 'nba', Date.now(), true);
+        expect(img.url).toMatch(/card\.png\?state=final&variant=spoilerfree$/);
+        expect(img.alt).toMatch(/score hidden$/);
+        expect(img.alt).not.toMatch(/\d{2,3}/);
+        expect(basketballShareImage(game, 'nba').url).not.toContain('variant');
+    });
     test('the image URL names the state; a live one carries a five-minute bucket', () => {
         const final = basketballShareImage(fromProcessor(proc, 'nba'), 'nba');
         expect(final.url).toBe(`https://gameonpaper.com/nba/game/${ID}/card.png?state=final`);
@@ -135,7 +143,7 @@ describe('the card route', () => {
         expect(res.headers.get('Content-Type')).toBe('image/png');
         expect(res.headers.get('Cache-Control')).toBe('public, max-age=86400');
         expect(set).toHaveBeenCalledWith({ maxAge: 86400, tags: ['share-card'] });
-        expect(draw!.url).toMatch(new RegExp(`/nba/${ID}/card\\.png\\?state=final$`));
+        expect(draw!.url).toMatch(new RegExp(`/nba/${ID}/card\\.png\\?state=final&variant=full$`));
         expect(draw!.init.method).toBe('POST');
         expect(body.gei).toBe(3.54);
         // the page's own processor request: a final's day-long TTL, so the page's cache entry is the one hit
@@ -155,6 +163,16 @@ describe('the card route', () => {
         // kept apart from a processor-drawn final, which carries a GEI the Data API page has not
         expect(puts).toEqual([{ key: cardKey('nba', ID, 'final', 'full', 'data_api'), ttl: 31536000 }]);
         expect(cardKey('nba', ID, 'final', 'full', 'data_api')).not.toBe(cardKey('nba', ID, 'final', 'full'));
+    });
+
+    test('?variant=spoilerfree: the API draws the spoiler-free card, kept under its own key', async () => {
+        up.schedule.mockResolvedValue(api.schedule[0]);
+        up.rows.mockResolvedValue(api);
+        const { res, draw } = await get(`/nba/game/${ID}/card.png?state=final&variant=spoilerfree`);
+        expect(res.status).toBe(200);
+        expect(draw!.url).toMatch(/\?state=final&variant=spoilerfree$/);
+        expect(puts).toEqual([{ key: cardKey('nba', ID, 'final', 'spoilerfree', 'data_api'), ttl: 31536000 }]);
+        expect((await get(`/nba/game/${ID}/card.png?state=final&variant=blurred`)).res.status).toBe(400);
     });
 
     const KEPT = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
@@ -229,7 +247,7 @@ describe('the card route', () => {
         up.page.mockResolvedValue(espnPage(p));
         up.proc.mockResolvedValue(p);
         const { res, draw, body } = await get(`/wbb/game/${ID}/card.png?state=final`, 'wbb');
-        expect(draw!.url).toMatch(/\/wbb\/\d+\/card\.png\?state=live$/);
+        expect(draw!.url).toMatch(/\/wbb\/\d+\/card\.png\?state=live&variant=full$/);
         expect(body.gei).toBeNull();
         expect(body.detail).toBe('5:32 - 3rd Quarter');
         expect(res.headers.get('Cache-Control')).toBe('public, max-age=60');

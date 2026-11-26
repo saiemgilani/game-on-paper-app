@@ -4,7 +4,9 @@
  * render_basketball) at `/<league>/game/<id>/card.png` (routes/basketball/shareCard.ts), drawn from the body below:
  * the game the page renders (Data API final, or the processor), slimmed to what the card draws.
  *
- * A live or final game only: a pregame page keeps the site's social card. One variant: no `?spoilers=off` yet.
+ * A live or final game only: a pregame page keeps the site's social card. Two variants, as football's: the page's
+ * `?spoilers=off` shares the spoiler-free card (python/share_card.py render_basketball variant="spoilerfree": the
+ * matchup, Final or Live, the date and a final's GEI; no score, no status detail, no win probability line).
  */
 import type { NbaGame, NbaSide } from '../resources/nbaGame';
 import { isFeatureEnabled } from '../utils/features';
@@ -70,15 +72,21 @@ export function basketballCardBody(game: NbaGame, league: BasketballLeague): Bas
  * The og:image tags. The URL names the state, so a platform that cached a live card can never show it as the final,
  * and a live card's carries a five-minute bucket so a new share fetches a fresh image (as utils/shareTags.ts).
  */
-export function basketballShareImage(game: NbaGame, league: BasketballLeague, now = Date.now()): { url: string; alt: string } {
+export function basketballShareImage(game: NbaGame, league: BasketballLeague, now = Date.now(), spoilerFree = false): { url: string; alt: string } {
     const state = basketballCardState(game);
     const query = new URLSearchParams({ state });
+    if (spoilerFree) query.set('variant', 'spoilerfree');
     if (state === 'live') query.set('v', `live-${Math.floor(now / 1000 / 300)}`);
     const scored = gameTitleText(game.away.team, game.home.team, game.away.score, game.home.score);
     // says what the card draws: the GEI only where the card has one
     const final = cardGei(game) == null ? `${scored}, final: win probability chart` : `${scored}, final: win probability chart and game excitement index`;
+    const url = `https://gameonpaper.com${leaguePath(league, `/game/${game.id}`)}/card.png?${query}`;
+    if (spoilerFree) {
+        const matchup = gameTitleText(game.away.team, game.home.team, null, null);
+        return { url, alt: state === 'final' ? `${matchup}, final: score hidden` : `${matchup}, live: score hidden` };
+    }
     return {
-        url: `https://gameonpaper.com${leaguePath(league, `/game/${game.id}`)}/card.png?${query}`,
+        url,
         alt: state === 'final' ? final : `${scored}, live: win probability so far`,
     };
 }

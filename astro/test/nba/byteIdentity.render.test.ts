@@ -125,7 +125,7 @@ async function page(path: string, url: string, params: Record<string, string> = 
     // BB-G23's Header entry (Standings) is behind 'bball-playoff-picture', BB-G30's (NBA Cup, November and December only)
     // behind 'bball-nba-cup' and BB-G10's scatter views behind 'bball-impact-scatter': all off here, so these pages stay byte
     // for byte main's on any day
-    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-hub': false, 'bball-lineup-shotchart': false, 'bball-playoff-picture': false, 'bball-best-games': false, 'bball-nba-cup': false, 'bball-rolling-movers': false, 'bball-team-season': false, 'bball-lineups': false, 'bball-on-off': false, 'bball-situational': false, 'bball-poe': false, 'bball-impact': false, 'bball-player-on-off': false, 'bball-play-styles': false, 'bball-war': false, 'bball-compare': false, 'bball-play-types': false, 'bball-career': false, 'bball-shot-profile': false, 'bball-current-impact': false, 'bball-game-set': false, 'bball-game-logs': false, 'bball-rank-neighbors': false, 'bball-coaches': false, 'bball-impact-box': false, 'bball-game-flow': false, 'bball-epv': false, 'bball-pregame-projection': false, 'bball-garbage-time': false, 'bball-pbp-controls': false, 'bball-game-leaders': false, 'bball-game-shooting': false, 'bball-shot-filters': false, 'bball-shift-chart': false, 'bball-team-grid': false, 'bball-situational-box': false, 'bball-player-box-views': false, 'bball-game-info': false, 'bball-props': false, 'bball-lines': false, 'bball-wp-lenses': false, 'bball-league-shots': false, 'bball-leaderboards-v2': false, 'bball-impact-scatter': false, 'bball-share-card': false, 'bball-game-finder': false, ...flagOverrides } } as App.Locals }));
+    return normalize(await container.renderToString(Page, { params, request: new Request(`https://gameonpaper.com${url}`), locals: { preview: true, flagOverrides: { 'bball-hub': false, 'bball-lineup-shotchart': false, 'bball-playoff-picture': false, 'bball-best-games': false, 'bball-nba-cup': false, 'bball-rolling-movers': false, 'bball-team-season': false, 'bball-lineups': false, 'bball-on-off': false, 'bball-situational': false, 'bball-poe': false, 'bball-impact': false, 'bball-player-on-off': false, 'bball-play-styles': false, 'bball-war': false, 'bball-compare': false, 'bball-play-types': false, 'bball-career': false, 'bball-shot-profile': false, 'bball-current-impact': false, 'bball-game-set': false, 'bball-game-logs': false, 'bball-rank-neighbors': false, 'bball-coaches': false, 'bball-impact-box': false, 'bball-game-flow': false, 'bball-epv': false, 'bball-pregame-projection': false, 'bball-garbage-time': false, 'bball-pbp-controls': false, 'bball-game-leaders': false, 'bball-game-shooting': false, 'bball-shot-filters': false, 'bball-shift-chart': false, 'bball-team-grid': false, 'bball-situational-box': false, 'bball-player-box-views': false, 'bball-game-info': false, 'bball-props': false, 'bball-lines': false, 'bball-wp-lenses': false, 'bball-league-shots': false, 'bball-leaderboards-v2': false, 'bball-impact-scatter': false, 'bball-share-card': false, 'bball-series': false, 'bball-game-finder': false, 'bball-depth-ladder': false, ...flagOverrides } } as App.Locals }));
 }
 const snap = (name: string) => `./__byte_identity__/${name}.html`;
 const finalPage = { gameId: 401766458, gamepackageJSON: { header: proc.header } };
@@ -191,6 +191,17 @@ describe('PR 0 byte-identity: every /nba route state', () => {
         const social = 'https://gameonpaper.com/assets/img/social-card.png';
         const off = on.replace(/<meta property="og:image:alt" content="[^"]*">/, '').replaceAll(card, social);
         await expect(off).toMatchFileSnapshot(snap('game-processor'));
+    });
+    test("game: ?spoilers=off under 'bball-share-card' shares the spoiler-free card and a head with no score", async () => {
+        games.schedule.mockResolvedValueOnce(null);
+        espn.page.mockResolvedValueOnce({ page: finalPage, regressed: false, fetchFailed: false });
+        games.proc.mockResolvedValueOnce(proc);
+        const on = await page('game/[id].astro', '/nba/game/401766458?spoilers=off', { id: '401766458' }, { 'bball-share-card': true });
+        const head = on.split('</head>')[0];
+        expect(head).toContain('<meta property="og:image" content="https://gameonpaper.com/nba/game/401766458/card.png?state=final&amp;variant=spoilerfree">');
+        expect(head).toContain('<meta property="og:url" content="https://gameonpaper.com/nba/game/401766458?spoilers=off">');
+        expect(head).not.toMatch(/Atlanta Hawks 95|Orlando Magic 120|95 @|@ Orlando 120/);
+        expect(head).toContain('<title>Atlanta Hawks at Orlando Magic | Game on Paper</title>');
     });
     // G-R5: the player and team pages under 'bball-share-card': the head's image tags and a Share island, and nothing else
     const social = 'https://gameonpaper.com/assets/img/social-card.png';
