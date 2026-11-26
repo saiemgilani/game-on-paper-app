@@ -23,7 +23,7 @@ const title = `${name} Game Finder`;
 const description = `Find every ${name} ${player ? 'player' : 'team'} game that matches a stat line, and who has the most of them.`;
 const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: leaguePath(league, '/'), active: false }, { title: 'Game Finder', active: true }];
 const canonical = finderHref(path, filter, current);
-const shortDay = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+const shortDay = (d: string) => new Date(`${d.slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 const cell = (v: unknown, key: string) => (v == null ? '—' : key === 'min' ? roundNumber(Number(v), 0, 0) : String(v));
 const example = finderHref(path, { ...filter, stats: player ? { pts: 30, reb: 10 } : { pts: 120 } }, current);
 const opponent = (r: { home_away: string | null }) => (r.home_away === 'away' ? '@' : 'vs');
@@ -131,14 +131,14 @@ const opponent = (r: { home_away: string | null }) => (r.home_away === 'away' ? 
                 <th>{player ? 'Player' : 'Team'}</th>
                 <th class="text-center">Date</th>
                 <th class="text-center">Game</th>
-                {stats.map(([, s]) => (<th class="text-center" title={s.title}>{s.label}</th>))}
+                {stats.map(([, s]) => (<th class="text-center"><abbr title={s.title}>{s.label}</abbr></th>))}
               </tr>
             </thead>
             <tbody>
               {body.data.map((r) => (
                 <tr data-game-id={r.game_id}>
                   <td class="text-start text-nowrap">{player ? (r.athlete_display_name ?? r.athlete_id) : (r.team_display_name ?? r.team_id)}{player && (<span class="text-muted small ms-1">{r.team_abbreviation}</span>)}</td>
-                  <td class="text-center text-nowrap">{shortDay(r.game_date)}{r.season_type === 3 && (<span class="badge text-bg-secondary ms-1" title="Playoffs">P</span>)}</td>
+                  <td class="text-center text-nowrap">{shortDay(r.game_date)}{r.season_type === 3 && (<span class="badge text-bg-secondary ms-1" title="Playoffs"><span aria-hidden="true">P</span><span class="visually-hidden">Playoffs</span></span>)}</td>
                   <td class="text-center text-nowrap">
                     <a href={gameHref(league, r.game_id)}>{r.team_winner === true ? 'W' : r.team_winner === false ? 'L' : ''} <span class="numeral">{r.team_score ?? '—'}-{r.opponent_team_score ?? '—'}</span> {opponent(r)} {r.opponent_team_abbreviation}</a>
                   </td>

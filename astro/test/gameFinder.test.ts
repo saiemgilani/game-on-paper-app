@@ -117,11 +117,12 @@ describe('the page', () => {
         const html = await render('?unit=team&pts=100&from=2025&to=2025&ha=home&res=W');
         expect(html).toContain(`<span class="fw-bold numeral">${body.count}</span> team games with 100+ PTS, 2025 (home, wins)`);
         expect(section(html, 'game-finder-counts')).toMatch(/<a href="\/wnba\/team\/\d+/);
-        expect(section(html, 'game-finder-games')).not.toContain('title="Minutes"');
+        expect(section(html, 'game-finder-games')).not.toContain('<abbr title="Minutes">');
+        expect(section(html, 'game-finder-games')).toContain('<abbr title="Points">PTS</abbr>');
     });
     test('playoff games carry the P badge; without a threshold the page shows the form and an example', async () => {
         const html = await render('?pts=20&reb=10&from=2025&to=2025&type=3');
-        expect(section(html, 'game-finder-games')).toContain('title="Playoffs">P<');
+        expect(section(html, 'game-finder-games')).toContain('title="Playoffs"><span aria-hidden="true">P</span><span class="visually-hidden">Playoffs</span>');
         const start = await render('');
         expect(start).toContain('id="game-finder-start"');
         expect(start).not.toContain('id="game-finder-games"');
