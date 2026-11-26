@@ -120,6 +120,8 @@ const switchHref = (lg: League) => carryAdminParams(leaguePath(lg, "/"), Astro.u
                             {(league === 'mbb' || league === 'wbb') && isFeatureEnabled("bball-bracketology", Astro.locals) && (<li><a href={lp("/bracketology")} class="dropdown-item">Bracketology</a></li>)}
                             {/* behind the 'stat-search' flag: middleware 404s the page for everyone else */}
                             {football && isFeatureEnabled("stat-search", Astro.locals) && (<li><a href={lp("/search/seasons")} class="dropdown-item">Season Search</a></li>)}
+                            {/* BB-G57, behind 'bball-game-finder': the route is the site's 404 without it */}
+                            {!football && isFeatureEnabled("bball-game-finder", Astro.locals) && (<li><a href={lp("/games/find")} class="dropdown-item" id="nav-game-finder">Game Finder</a></li>)}
                             {football && isFeatureEnabled("player-compare", Astro.locals) && (<li><a href={lp("/players/compare")} class="dropdown-item" id="nav-player-compare">Player Compare</a></li>)}
                             {league === 'cfb' && isFeaturePublic("playoff-projection", Astro.locals) && (<li><a href="/playoff" class="dropdown-item">Playoff Projection</a></li>)}
                             <li><a href="/glossary" class="dropdown-item">Glossary</a></li>
