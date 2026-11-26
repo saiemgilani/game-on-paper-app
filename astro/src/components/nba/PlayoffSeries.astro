@@ -6,12 +6,11 @@
  * `?spoilers=off` keeps the result out of the head (the title and description a link preview shows); the body is the same.
  */
 import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import SeriesPlayerTables from './SeriesPlayerTables.astro';
 import { seasonLabelFor } from '../../basketball/config';
-import { fmtDec, fmtPct } from '../../nba/format';
 import { gameHref, teamHrefFromEspn } from '../../nba/links';
 import { LEAGUES, leaguePath } from '../../utils/league';
-import { generateMarginalString } from '../../utils/misc';
-import { seriesHref, seriesIndexHref, seriesSide, seriesStatus, type SeriesParams, type SeriesPlayerRow, type SeriesTeamRow } from '../../routes/basketball/series';
+import { seriesHref, seriesIndexHref, seriesSide, seriesStatus, type SeriesParams, type SeriesTeamRow } from '../../routes/basketball/series';
 
 interface Props { data: SeriesParams }
 const { league, id, season, games, teams, players, spoilerFree } = Astro.props.data;
@@ -37,10 +36,6 @@ const breadcrumbs: PageBreadcrumb[] = [
     { title: `${a.abbreviation} vs. ${b.abbreviation}`, url, active: true },
 ];
 const dash = '—';
-const n = (v: number | null | undefined, digits = 1) => (v == null ? dash : fmtDec(v, digits));
-const diff = (v: number | null | undefined) => (v == null ? dash : generateMarginalString(v, 1, 1));
-const pct = (v: number | null | undefined) => (v == null ? dash : fmtPct(v));
-const ptsDiff = (v: number | null | undefined) => (v == null ? dash : `${v >= 0 ? '+' : '−'}${Math.abs(v * 100).toFixed(1)}`);
 const teamLink = (teamId: number) => teamHrefFromEspn({ id: teamId }, league, season);
 const sides = [a, b].map((s) => ({
     ...s,
@@ -48,12 +43,6 @@ const sides = [a, b].map((s) => ({
     totals: teams.find((t) => t.team_id === s.id) as SeriesTeamRow | undefined,
     players: players.filter((p) => p.team_id === s.id),
 }));
-const LINE: [keyof SeriesPlayerRow, string, string][] = [
-    ['min_pg', 'MIN', 'Minutes per game'], ['pts_pg', 'PTS', 'Points per game'], ['reb_pg', 'REB', 'Rebounds per game'],
-    ['ast_pg', 'AST', 'Assists per game'], ['stl_pg', 'STL', 'Steals per game'], ['blk_pg', 'BLK', 'Blocks per game'],
-    ['tov_pg', 'TOV', 'Turnovers per game'], ['fg3m_pg', '3PM', 'Three-pointers made per game'],
-];
-const SHIFT: [string, string][] = [['min', 'MIN'], ['pts', 'PTS'], ['reb', 'REB'], ['ast', 'AST']];
 ---
 
 <GenericPage title={title} subtitle={`${label} ${shortName} playoffs`} description={description} slug={url} canonicalPath={shareUrl} breadcrumbs={breadcrumbs} heading={title}>
@@ -115,49 +104,7 @@ const SHIFT: [string, string][] = [['min', 'MIN'], ['pts', 'PTS'], ['reb', 'REB'
         </div>
         )}
 
-        {sides.map((s) => s.players.length > 0 && (
-        <div class="table-responsive mb-4" data-series-players={s.id}>
-            <h3 class="h6">{s.name}: per game in the series</h3>
-            <table class="table table-sm text-center">
-                <thead>
-                    <tr><th class="text-left">Player</th><th><abbr title="Series games played">GP</abbr></th>{LINE.map(([, l, h]) => <th><abbr title={h}>{l}</abbr></th>)}<th><abbr title="True shooting: PTS / (2 × (FGA + 0.44 × FTA))">TS%</abbr></th></tr>
-                </thead>
-                <tbody>
-                    {s.players.map((p) => (
-                        <tr data-series-player={p.athlete_id}>
-                            <td class="text-left">{p.athlete_display_name}</td><td class="numeral">{p.games}</td>
-                            {LINE.map(([k]) => <td class="numeral">{n(p[k] as number | null)}</td>)}
-                            <td class="numeral">{pct(p.ts_pct)}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-        ))}
-
-        {sides.map((s) => s.players.length > 0 && (
-        <div class="table-responsive mb-4" data-series-shift={s.id}>
-            <h3 class="h6">{s.name}: the series against the regular season</h3>
-            <table class="table table-sm text-center">
-                <thead>
-                    <tr>
-                        <th class="text-left">Player</th><th><abbr title="Regular-season games played">Reg GP</abbr></th>
-                        {SHIFT.map(([, l]) => <Fragment><th><abbr title={`${l} per regular-season game`}>Reg {l}</abbr></th><th><abbr title={`${l} per series game minus per regular-season game`}>± {l}</abbr></th></Fragment>)}
-                        <th><abbr title="Regular-season true shooting">Reg TS%</abbr></th><th><abbr title="Series TS% minus regular-season TS%, in points">± TS%</abbr></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {s.players.map((p) => (
-                        <tr data-series-shift-player={p.athlete_id}>
-                            <td class="text-left">{p.athlete_display_name}</td><td class="numeral">{p.reg_games ?? dash}</td>
-                            {SHIFT.map(([k]) => <Fragment><td class="numeral">{n(p[`reg_${k}_pg` as keyof SeriesPlayerRow] as number | null)}</td><td class="numeral">{diff(p[`${k}_pg_diff` as keyof SeriesPlayerRow] as number | null)}</td></Fragment>)}
-                            <td class="numeral">{pct(p.reg_ts_pct)}</td><td class="numeral">{ptsDiff(p.ts_pct_diff)}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-        ))}
+        <SeriesPlayerTables sides={sides} unit="series" />
 
         <p class="text-muted text-small" id="series-provenance">
             Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a> (ESPN box scores). A series is every playoff game between the two teams; play-in games are not part of one. Totals are the sum of the series' final game boxes, a per-game line divides by the games the player played, and the regular season counts every team the player played for.

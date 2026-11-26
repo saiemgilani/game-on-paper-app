@@ -1876,3 +1876,17 @@ API sends it. Nothing is edited.
 **To regenerate:** capture `/v1/nba/playoff_series_games?season=2025`, `/v1/nba/playoff_series_teams?season=2025&series_id=2025-11-25`
 and `/v1/nba/playoff_series_players?season=2025&series_id=2025-11-25` (and the WNBA's for `2025-11-17`), or rerun the producer on
 the same releases.
+
+## `tournament-runs-2025.json.gz`
+BB-G59's college reads (`routes/basketball/runs.ts`: sdv-db's `tournament_run_games`, `tournament_run_teams` and
+`tournament_run_players`), as `{mbb: {games, teams, players}, wbb: {...}}`. They are sportsdataverse-py BB-D43's own output
+for college (`sportsdataverse._common.tournament_runs`, branch `feat/bball-tournament-runs`), written on 2026-11-25 over
+sdv-py's `tests/fixtures/bb_tournament_runs` (the 2024-25 men's and women's ESPN schedule and box releases). `games` holds
+every tournament game of both seasons, once per side; `teams` and `players` the NCAA champions' runs (Florida `2025-22-57`,
+UConn `2025-22-41`). `game_date` is ISO text, as the Data API sends it. Nothing is edited.
+
+**Used by:** `test/tournamentRuns.test.ts`.
+
+**To regenerate:** capture `/v1/mbb/tournament_run_games?season=2025`, `/v1/mbb/tournament_run_teams?season=2025&run_id=2025-22-57`
+and `/v1/mbb/tournament_run_players?season=2025&run_id=2025-22-57` (and the WBB's for `2025-22-41`), or rerun the producer on
+the same releases.

@@ -68,6 +68,11 @@
     ],
     "T": [
         {
+            "term": "Tournament run (college basketball)",
+            "definition": "One team's games in one tournament: the NCAA tournament (First Four onward), a conference tournament, the NIT or WNIT, the CBI, Crown, WBIT and the other postseason events. The run page shows each game with the record after it, the team's totals (the sum of its game boxes) and each player's per-game line against the regular season, which leaves out the conference tournament.",
+            "source": ""
+        },
+        {
             "term": "True shooting percentage (TS%, basketball)",
             "definition": "PTS / (2 &times; (FGA + 0.44 &times; FTA)): scoring efficiency counting twos, threes and free throws together.",
             "source": "https://www.basketball-reference.com/about/glossary.html"

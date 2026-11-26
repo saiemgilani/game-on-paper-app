@@ -1,0 +1,56 @@
+---
+/**
+ * A college season's tournaments (BB-G59, behind 'bball-series'): the NCAA tournament, then the other postseason events,
+ * then the conference tournaments, each listing its teams' runs (the champion first, then by wins) with the run's
+ * record, linking to the run page. The rows are the producer's tournament_run_games (routes/basketball/runs.ts).
+ */
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import { seasonLabelFor } from '../../basketball/config';
+import { LEAGUES, leaguePath } from '../../utils/league';
+import { runHref, runsIndexHref, runStatus, type RunsIndexParams } from '../../routes/basketball/runs';
+
+interface Props { data: RunsIndexParams }
+const { league, season, seasons, current, tournaments, spoilerFree } = Astro.props.data;
+const shortName = LEAGUES[league].shortName;
+const label = seasonLabelFor(league, season);
+const url = runsIndexHref(league, season, current);
+const title = `${label} ${shortName} tournaments`;
+const link = (id: string) => runHref(league, id) + (spoilerFree ? '?spoilers=off' : '');
+const breadcrumbs: PageBreadcrumb[] = [
+    { title: shortName, url: leaguePath(league, '/'), active: false },
+    { title: 'Tournaments', url, active: true },
+];
+const KIND: Record<string, string> = { ncaa: 'NCAA tournament', postseason: 'Postseason', conference: 'Conference tournament' };
+---
+
+<GenericPage title={title} subtitle={`${label} ${shortName} postseason`} description={`Every ${label} ${shortName} tournament run: the NCAA tournament, the conference tournaments and the other postseason events, each team's games, totals and player lines.`} slug={url} canonicalPath={url} breadcrumbs={breadcrumbs} heading={title}>
+    <div class="container">
+        <form method="get" action={leaguePath(league, '/tournaments')} class="d-flex align-items-center gap-2 mb-3">
+            {spoilerFree && <input type="hidden" name="spoilers" value="off" />}
+            <label class="form-label text-muted text-small mb-0" for="runs-season">Season</label>
+            {/* every option names its season: the bare URL can fall back to last season, so it is no option's target */}
+            <select id="runs-season" name="season" class="form-select form-select-md w-auto" onchange="this.form.submit()">
+                {[...seasons].reverse().map((s) => <option value={String(s)} selected={s === season}>{seasonLabelFor(league, s)}</option>)}
+            </select>
+            <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button></noscript>
+        </form>
+        {tournaments.length === 0 && <p class="text-muted" id="runs-empty">No {label} tournament games yet.</p>}
+        {tournaments.map((t) => (
+            <section class="mb-4" data-tournament={t.key}>
+                <h2 class="h5 mb-1">{t.name}</h2>
+                <p class="text-muted text-small mb-2">{KIND[t.kind] ?? t.kind}</p>
+                <div class="row">
+                    {t.runs.map((r) => (
+                        <div class="col-6 col-md-4 col-lg-3 mb-2">
+                            <a class="card border rounded text-reset text-decoration-none p-2 h-100" href={link(r.run_id)} data-run-link={r.run_id}>
+                                <span>{r.team_display_name}</span>
+                                <span class="text-small numeral text-muted">{runStatus(r)}</span>
+                            </a>
+                        </div>
+                    ))}
+                </div>
+            </section>
+        ))}
+        <p class="text-muted text-small">Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a> (ESPN). A conference tournament ESPN's schedule does not tag is not listed.</p>
+    </div>
+</GenericPage>

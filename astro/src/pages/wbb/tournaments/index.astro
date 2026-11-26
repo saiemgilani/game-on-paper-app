@@ -1,0 +1,16 @@
+---
+// src/pages/wbb/tournaments/index.astro: BB-G59's college tournaments by season, behind 'bball-series'
+import TournamentRuns from '../../../components/nba/TournamentRuns.astro';
+import { prepareRunsIndex } from '../../../routes/basketball/runs';
+import { unavailable } from '../../../routes/basketball/cache';
+
+const r = await prepareRunsIndex(Astro, 'wbb');
+if ('unavailable' in r) {
+    return unavailable('wbb', 'The tournament numbers are temporarily unavailable. Please try again shortly.');
+}
+if ('notFound' in r) {
+    return Astro.rewrite('/404');
+}
+---
+
+<TournamentRuns data={r} />
