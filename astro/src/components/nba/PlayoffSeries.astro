@@ -1,0 +1,164 @@
+---
+/**
+ * One playoff series (BB-G59, behind 'bball-series'): the header with the series score, the game strip (each game's score
+ * and the series score after it, linking to the game page), both teams' totals, each team's per-game player lines, and each
+ * player's shift from the regular season. Every number is a producer column (routes/basketball/series.ts); one per cell.
+ * `?spoilers=off` keeps the result out of the head (the title and description a link preview shows); the body is the same.
+ */
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import { seasonLabelFor } from '../../basketball/config';
+import { fmtDec, fmtPct } from '../../nba/format';
+import { gameHref, teamHrefFromEspn } from '../../nba/links';
+import { LEAGUES, leaguePath } from '../../utils/league';
+import { generateMarginalString } from '../../utils/misc';
+import { seriesHref, seriesIndexHref, seriesSide, seriesStatus, type SeriesParams, type SeriesPlayerRow, type SeriesTeamRow } from '../../routes/basketball/series';
+
+interface Props { data: SeriesParams }
+const { league, id, season, games, teams, players, spoilerFree } = Astro.props.data;
+const shortName = LEAGUES[league].shortName;
+const label = seasonLabelFor(league, season);
+const last = games[games.length - 1];
+const a = seriesSide(games, last.team_a_id);
+const b = seriesSide(games, last.team_b_id);
+const round = last.round_name ?? 'Playoffs';
+const status = seriesStatus(last, a, b);
+const matchup = `${a.name} vs. ${b.name}`;
+const title = `${matchup}: ${label} ${round}`;
+const description = spoilerFree
+    ? `${matchup} in the ${label} ${shortName} playoffs (${round}): every game, both teams' totals and each player's series line against the regular season.`
+    : `${matchup}, ${label} ${round}: ${status}. Every game, both teams' totals and each player's series line against the regular season.`;
+const url = seriesHref(league, id);
+const lastSeason = LEAGUES[league].seasons[LEAGUES[league].seasons.length - 1];
+const breadcrumbs: PageBreadcrumb[] = [
+    { title: shortName, url: leaguePath(league, '/'), active: false },
+    { title: 'Playoff series', url: seriesIndexHref(league, season, lastSeason), active: false },
+    { title: `${a.abbreviation} vs. ${b.abbreviation}`, url, active: true },
+];
+const dash = '—';
+const n = (v: number | null | undefined, digits = 1) => (v == null ? dash : fmtDec(v, digits));
+const diff = (v: number | null | undefined) => (v == null ? dash : generateMarginalString(v, 1, 1));
+const pct = (v: number | null | undefined) => (v == null ? dash : fmtPct(v));
+const ptsDiff = (v: number | null | undefined) => (v == null ? dash : `${v >= 0 ? '+' : '−'}${Math.abs(v * 100).toFixed(1)}`);
+const teamLink = (teamId: number) => teamHrefFromEspn({ id: teamId }, league, season);
+const sides = [a, b].map((s) => ({
+    ...s,
+    href: teamLink(s.id),
+    totals: teams.find((t) => t.team_id === s.id) as SeriesTeamRow | undefined,
+    players: players.filter((p) => p.team_id === s.id),
+}));
+const LINE: [keyof SeriesPlayerRow, string, string][] = [
+    ['min_pg', 'MIN', 'Minutes per game'], ['pts_pg', 'PTS', 'Points per game'], ['reb_pg', 'REB', 'Rebounds per game'],
+    ['ast_pg', 'AST', 'Assists per game'], ['stl_pg', 'STL', 'Steals per game'], ['blk_pg', 'BLK', 'Blocks per game'],
+    ['tov_pg', 'TOV', 'Turnovers per game'], ['fg3m_pg', '3PM', 'Three-pointers made per game'],
+];
+const SHIFT: [string, string][] = [['min', 'MIN'], ['pts', 'PTS'], ['reb', 'REB'], ['ast', 'AST']];
+---
+
+<GenericPage title={title} subtitle={`${label} ${shortName} playoffs`} description={description} slug={url} canonicalPath={url} breadcrumbs={breadcrumbs} heading={title}>
+    <div class="container">
+        <div class="text-center mb-3" id="series-header">
+            <p class="text-muted text-small mb-1">{label} · {round}</p>
+            <h2 class="h4 mb-1">
+                {sides.map((s, i) => (
+                    <Fragment>
+                        {i === 1 && <span class="text-muted"> vs. </span>}
+                        {s.href ? <a href={s.href}>{s.name}</a> : <span>{s.name}</span>}
+                    </Fragment>
+                ))}
+            </h2>
+            <p class="mb-0 numeral" data-series-status>{status}</p>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-center gap-2 mb-4" id="series-strip">
+            {games.map((g) => {
+                const home = g.home_team_id === a.id ? a : b;
+                const away = g.home_team_id === a.id ? b : a;
+                const won = (t: number) => g.winner_team_id === t ? 'fw-bold' : 'text-muted';
+                return (
+                    <a class="card border rounded text-reset text-decoration-none p-2 text-center" style="min-width: 7.5rem" href={gameHref(league, g.game_id)} data-series-game={g.game_number}>
+                        <span class="text-small text-muted">Game {g.game_number}{g.game_date ? ` · ${g.game_date.slice(5)}` : ''}</span>
+                        <span class="numeral"><span class={won(g.away_team_id)}>{away.abbreviation} {g.away_score ?? ''}</span></span>
+                        <span class="numeral"><span class={won(g.home_team_id)}>@{home.abbreviation} {g.home_score ?? ''}</span></span>
+                        <span class="text-small numeral" data-series-score>{g.completed ? `${a.abbreviation} ${g.team_a_wins}-${g.team_b_wins} ${b.abbreviation}` : 'Upcoming'}</span>
+                    </a>
+                );
+            })}
+        </div>
+
+        {teams.length > 0 && (
+        <div class="table-responsive mb-4" id="series-team-totals">
+            <h3 class="h6">Team totals</h3>
+            <table class="table table-sm text-center">
+                <thead>
+                    <tr>
+                        <th class="text-left">Team</th><th><abbr title="Series wins">W</abbr></th><th><abbr title="Points scored in the series">PTS</abbr></th><th><abbr title="Points allowed in the series">OPP</abbr></th>
+                        <th>FGM</th><th>FGA</th><th>3PM</th><th>3PA</th><th>FTM</th><th>FTA</th>
+                        <th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {sides.filter((s) => s.totals).map((s) => {
+                        const t = s.totals!;
+                        return (
+                            <tr data-series-team={s.id}>
+                                <td class="text-left">{s.abbreviation}</td>
+                                <td class="numeral">{t.wins}</td><td class="numeral">{t.pts}</td><td class="numeral">{t.opp_pts}</td>
+                                {[t.fgm, t.fga, t.fg3m, t.fg3a, t.ftm, t.fta].map((v) => <td class="numeral">{v}</td>)}
+                                <td class="numeral">{t.reb}</td><td class="numeral">{t.ast}</td><td class="numeral">{t.stl}</td><td class="numeral">{t.blk}</td><td class="numeral">{t.tov}</td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+        )}
+
+        {sides.map((s) => s.players.length > 0 && (
+        <div class="table-responsive mb-4" data-series-players={s.id}>
+            <h3 class="h6">{s.name}: per game in the series</h3>
+            <table class="table table-sm text-center">
+                <thead>
+                    <tr><th class="text-left">Player</th><th><abbr title="Series games played">GP</abbr></th>{LINE.map(([, l, h]) => <th><abbr title={h}>{l}</abbr></th>)}<th><abbr title="True shooting: PTS / (2 × (FGA + 0.44 × FTA))">TS%</abbr></th></tr>
+                </thead>
+                <tbody>
+                    {s.players.map((p) => (
+                        <tr data-series-player={p.athlete_id}>
+                            <td class="text-left">{p.athlete_display_name}</td><td class="numeral">{p.games}</td>
+                            {LINE.map(([k]) => <td class="numeral">{n(p[k] as number | null)}</td>)}
+                            <td class="numeral">{pct(p.ts_pct)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+        ))}
+
+        {sides.map((s) => s.players.length > 0 && (
+        <div class="table-responsive mb-4" data-series-shift={s.id}>
+            <h3 class="h6">{s.name}: the series against the regular season</h3>
+            <table class="table table-sm text-center">
+                <thead>
+                    <tr>
+                        <th class="text-left">Player</th><th><abbr title="Regular-season games played">Reg GP</abbr></th>
+                        {SHIFT.map(([, l]) => <Fragment><th><abbr title={`${l} per regular-season game`}>Reg {l}</abbr></th><th><abbr title={`${l} per series game minus per regular-season game`}>± {l}</abbr></th></Fragment>)}
+                        <th><abbr title="Regular-season true shooting">Reg TS%</abbr></th><th><abbr title="Series TS% minus regular-season TS%, in points">± TS%</abbr></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {s.players.map((p) => (
+                        <tr data-series-shift-player={p.athlete_id}>
+                            <td class="text-left">{p.athlete_display_name}</td><td class="numeral">{p.reg_games ?? dash}</td>
+                            {SHIFT.map(([k]) => <Fragment><td class="numeral">{n(p[`reg_${k}_pg` as keyof SeriesPlayerRow] as number | null)}</td><td class="numeral">{diff(p[`${k}_pg_diff` as keyof SeriesPlayerRow] as number | null)}</td></Fragment>)}
+                            <td class="numeral">{pct(p.reg_ts_pct)}</td><td class="numeral">{ptsDiff(p.ts_pct_diff)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+        ))}
+
+        <p class="text-muted text-small" id="series-provenance">
+            Data from <a href="https://www.sportsdataverse.org">Sportsdataverse</a> (ESPN box scores). A series is every playoff game between the two teams; play-in games are not part of one. Totals are the sum of the series' final game boxes, a per-game line divides by the games the player played, and the regular season counts every team the player played for.
+        </p>
+    </div>
+</GenericPage>

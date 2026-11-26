@@ -187,6 +187,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // page's layout): each team's team_season_rates all split and team_strength rows, the team page's reads, with the
     // producer's ranks and percentiles. Off: the route is the site's 404.
     'bball-team-compare': 'preview',
+    // BB-G59: /<league>/series (a season's playoff series by round) and /<league>/series/<id> (one series: the game strip
+    // with the series score after each game, both teams' totals, each player's per-game line and his shift from the regular
+    // season), NBA and WNBA, read from sdv-db's playoff_series_games / _teams / _players (sdv-py BB-D43). Off: both routes
+    // are the site's 404.
+    'bball-series': 'preview',
     // BB-G58: four-factor point accounting, inside 'bball-team-season' (the season block's factor-points table) and
     // 'bball-lineups' (a Four-factor points basis): the net rating per 100 split into eFG, turnover, rebounding and
     // free-throw points against the league average, for offense and defense, read from sdv-db's team_season_rates and

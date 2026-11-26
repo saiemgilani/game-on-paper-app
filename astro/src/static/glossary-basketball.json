@@ -42,6 +42,16 @@
             "term": "PIE (Player Impact Estimate, basketball)",
             "definition": "The NBA's share-of-game-events measure: a player's points, rebounds, assists, steals, blocks and shooting, less misses, fouls and turnovers, over the same totals for everyone in the game. Shown for the NBA and WNBA from stats.nba.com and stats.wnba.com; college pages leave it out because the box-score formula does not reproduce it.",
             "source": "https://www.nba.com/stats/help/glossary#pie"
+        },
+        {
+            "term": "Playoff series (basketball)",
+            "definition": "Every playoff game between one pair of teams in a season; play-in games are not part of one. The series page shows each game with the series score after it, both teams' totals (the sum of the series' game boxes) and each player's per-game line. Shown for the NBA and WNBA.",
+            "source": ""
+        },
+        {
+            "term": "Playoff shift (basketball)",
+            "definition": "A player's per-game line in a playoff series minus the player's per-game line over the regular season (every team played for), for minutes, points, rebounds and assists, and true shooting in points. Positive is up in the series.",
+            "source": ""
         }
     ],
     "S": [
