@@ -77,6 +77,12 @@ describe('metric help on the team leaderboard', () => {
         expect(await renderPassing({ preview: true }, 'nfl')).not.toContain('popover');
     }, 60_000);
 
+    test('the NFL Adj EPA hover is the NFL note, never the college margins', async () => {
+        const html = await renderTeams({}, 'nfl');
+        expect(html).toContain(`<abbr title="${METHOD_NOTES.adjustedNfl}">Adj EPA/Play</abbr>`);
+        expect(html).not.toContain(ADJ_TITLE);
+    }, 60_000);
+
     test('public: no popover, the abbr hover unchanged', async () => {
         const html = await renderTeams({});
         expect(html).not.toContain('popover');
