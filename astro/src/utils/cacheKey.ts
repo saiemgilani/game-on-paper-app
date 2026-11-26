@@ -9,6 +9,7 @@
  * that ignores it only costs that route the miss it already had. test/cacheKey.test.ts scans src/ for every
  * literal searchParams read and fails when one is missing here.
  */
+import { FINDER_STATS } from './gameFinder';
 import { STAT_FILTERS } from './statSearch';
 
 export const CACHE_KEY_PARAMS: ReadonlySet<string> = new Set([
@@ -33,6 +34,8 @@ export const CACHE_KEY_PARAMS: ReadonlySet<string> = new Set([
     'flags', 'source', 'preview_key',
     // the stat search form (utils/statSearch.ts)
     ...Object.keys(STAT_FILTERS),
+    // the basketball game finder (utils/gameFinder.ts): its thresholds, read in a loop the scan cannot see, and site / result
+    ...Object.keys(FINDER_STATS), 'ha', 'res',
 ]);
 
 /** Left exactly as requested: Astro's own endpoints (server islands, actions, images) and the private,

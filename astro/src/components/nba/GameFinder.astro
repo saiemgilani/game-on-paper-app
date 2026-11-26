@@ -1,0 +1,162 @@
+---
+// src/components/nba/GameFinder.astro: /<league>/games/find (BB-G57, behind 'bball-game-finder'). The form is a GET on the page's
+// own path (select-of-URLs: every search is a shareable link); the totals, the "how many N+ games" table and the game rows are
+// sdv-db's game finder (BB-D41). Every number is the producer's; this template formats them, and each row links to its game page.
+import GenericPage, { type PageBreadcrumb } from '../../layouts/GenericPage.astro';
+import type { GameFinderParams } from '../../routes/basketball/gameFinder';
+import { FINDER_ROWS, FINDER_STATS, finderHref, thresholdLabel } from '../../utils/gameFinder';
+import { LEAGUES, leaguePath } from '../../utils/league';
+import { seasonLabelFor } from '../../basketball/config';
+import { gameHref, teamHrefFromEspn } from '../../nba/links';
+import { roundNumber } from '../../utils/misc';
+
+interface Props { data: GameFinderParams }
+const { league, seasons, current, filter, body } = Astro.props.data;
+const path = leaguePath(league, '/games/find');
+const name = LEAGUES[league].name;
+const player = filter.unit === 'player';
+const stats = Object.entries(FINDER_STATS).filter(([, s]) => s.units.includes(filter.unit));
+const asked = thresholdLabel(filter.stats);
+const span = filter.from === filter.to ? seasonLabelFor(league, filter.from) : `${seasonLabelFor(league, filter.from)} to ${seasonLabelFor(league, filter.to)}`;
+const scope = [filter.type === 2 ? 'regular season' : filter.type === 3 ? 'playoffs' : null, filter.homeAway, filter.result === 'W' ? 'wins' : filter.result === 'L' ? 'losses' : null].filter(Boolean).join(', ');
+const title = `${name} Game Finder`;
+const description = `Find every ${name} ${player ? 'player' : 'team'} game that matches a stat line, and who has the most of them.`;
+const breadcrumbs: PageBreadcrumb[] = [{ title: LEAGUES[league].shortName, url: leaguePath(league, '/'), active: false }, { title: 'Game Finder', active: true }];
+const canonical = finderHref(path, filter, current);
+const shortDay = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+const cell = (v: unknown, key: string) => (v == null ? '—' : key === 'min' ? roundNumber(Number(v), 0, 0) : String(v));
+const example = finderHref(path, { ...filter, stats: player ? { pts: 30, reb: 10 } : { pts: 120 } }, current);
+const opponent = (r: { home_away: string | null }) => (r.home_away === 'away' ? '@' : 'vs');
+---
+<GenericPage title={`${title} | Game on Paper`} subtitle={description} slug={path} breadcrumbs={breadcrumbs} description={description} canonicalPath={canonical}>
+  <link href="/assets/css/sticky-table.css" rel="stylesheet">
+  <div class="container my-4">
+    <h1 class="fs-3">{title}</h1>
+    {/* a GET form on the page's own path; empty fields are left out of the URL so a search is its shortest link */}
+    <form id="game-finder-form" method="get" action="" class="row g-2 align-items-end mb-3" onsubmit="const off = [...this.elements].filter((e) => e.name && !e.value); off.forEach((e) => (e.disabled = true)); setTimeout(() => off.forEach((e) => (e.disabled = false)))">
+      <div class="col-auto">
+        <label class="form-label small text-muted mb-0" for="game-finder-unit">Games of</label>
+        <select id="game-finder-unit" name="unit" class="form-select form-select-sm">
+          <option value="" selected={player}>Players</option>
+          <option value="team" selected={!player}>Teams</option>
+        </select>
+      </div>
+      {stats.map(([key, s]) => (
+        <div class="col-auto" style="width: 5.5rem">
+          <label class="form-label small text-muted mb-0" for={`game-finder-${key}`} title={`${s.title}, at least`}>{s.label} ≥</label>
+          <input id={`game-finder-${key}`} type="number" name={key} min="0" step="1" class="form-control form-control-sm" value={filter.stats[key] ?? undefined} />
+        </div>
+      ))}
+      <div class="col-auto">
+        <label class="form-label small text-muted mb-0" for="game-finder-from">Seasons</label>
+        <div class="d-flex align-items-center gap-1">
+          <select id="game-finder-from" name="from" class="form-select form-select-sm w-auto">
+            {[...seasons].reverse().map((s) => (<option value={String(s)} selected={s === filter.from}>{seasonLabelFor(league, s)}</option>))}
+          </select>
+          <span class="small text-muted">to</span>
+          <label class="visually-hidden" for="game-finder-to">Last season</label>
+          <select id="game-finder-to" name="to" class="form-select form-select-sm w-auto">
+            {[...seasons].reverse().map((s) => (<option value={String(s)} selected={s === filter.to}>{seasonLabelFor(league, s)}</option>))}
+          </select>
+        </div>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small text-muted mb-0" for="game-finder-type">Games</label>
+        <select id="game-finder-type" name="type" class="form-select form-select-sm">
+          <option value="" selected={filter.type === null}>All games</option>
+          <option value="2" selected={filter.type === 2}>Regular season</option>
+          <option value="3" selected={filter.type === 3}>Playoffs</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small text-muted mb-0" for="game-finder-ha">Site</label>
+        <select id="game-finder-ha" name="ha" class="form-select form-select-sm">
+          <option value="" selected={filter.homeAway === null}>Home or away</option>
+          <option value="home" selected={filter.homeAway === 'home'}>Home</option>
+          <option value="away" selected={filter.homeAway === 'away'}>Away</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small text-muted mb-0" for="game-finder-res">Result</label>
+        <select id="game-finder-res" name="res" class="form-select form-select-sm">
+          <option value="" selected={filter.result === null}>Wins or losses</option>
+          <option value="W" selected={filter.result === 'W'}>Wins</option>
+          <option value="L" selected={filter.result === 'L'}>Losses</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">Find games</button>
+        {body && (<a class="btn btn-sm btn-link" href={path} id="game-finder-clear">Clear</a>)}
+      </div>
+    </form>
+
+    {!body && (
+      <p class="text-muted" id="game-finder-start">Set at least one stat to find the games that match it, for example <a href={example}>{player ? '30+ points and 10+ rebounds' : '120+ points'}</a>. Every threshold is "at least".</p>
+    )}
+
+    {body && (
+      <p id="game-finder-summary">
+        <span class="fw-bold numeral">{body.count.toLocaleString()}</span> {player ? 'player' : 'team'} {body.count === 1 ? 'game' : 'games'} with {asked}, {span}{scope ? ` (${scope})` : ''}{body.count > 0 && (<Fragment>, by <span class="numeral">{body.entities.toLocaleString()}</span> {player ? (body.entities === 1 ? 'player' : 'players') : (body.entities === 1 ? 'team' : 'teams')}</Fragment>)}.
+      </p>
+    )}
+
+    {body && body.counts.length > 0 && (
+      <section class="mb-4" id="game-finder-counts">
+        <h2 class="fs-5">Most games with {asked}</h2>
+        <table class="table table-sm align-middle w-auto">
+          <thead><tr><th>{player ? 'Player' : 'Team'}</th><th class="text-center">Games</th></tr></thead>
+          <tbody>
+            {body.counts.map((c) => {
+              const href = player ? null : teamHrefFromEspn({ id: c.id }, league, filter.to);
+              return (
+                <tr data-count-id={c.id}>
+                  <td class="text-start">{href ? (<a href={href}>{c.name ?? c.id}</a>) : (c.name ?? c.id)}</td>
+                  <td class="text-center numeral fw-bold">{c.games}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {body.entities > body.counts.length && (<p class="small text-muted">The top {body.counts.length} of {body.entities.toLocaleString()}.</p>)}
+      </section>
+    )}
+
+    {body && body.data.length > 0 && (
+      <section id="game-finder-games">
+        <h2 class="fs-5">The games{body.count > body.data.length ? `: the first ${body.data.length} of ${body.count.toLocaleString()}` : ''}</h2>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle table-fix-first-col" id="game-finder-table">
+            <thead>
+              <tr>
+                <th>{player ? 'Player' : 'Team'}</th>
+                <th class="text-center">Date</th>
+                <th class="text-center">Game</th>
+                {stats.map(([, s]) => (<th class="text-center" title={s.title}>{s.label}</th>))}
+              </tr>
+            </thead>
+            <tbody>
+              {body.data.map((r) => (
+                <tr data-game-id={r.game_id}>
+                  <td class="text-start text-nowrap">{player ? (r.athlete_display_name ?? r.athlete_id) : (r.team_display_name ?? r.team_id)}{player && (<span class="text-muted small ms-1">{r.team_abbreviation}</span>)}</td>
+                  <td class="text-center text-nowrap">{shortDay(r.game_date)}{r.season_type === 3 && (<span class="badge text-bg-secondary ms-1" title="Playoffs">P</span>)}</td>
+                  <td class="text-center text-nowrap">
+                    <a href={gameHref(league, r.game_id)}>{r.team_winner === true ? 'W' : r.team_winner === false ? 'L' : ''} <span class="numeral">{r.team_score ?? '—'}-{r.opponent_team_score ?? '—'}</span> {opponent(r)} {r.opponent_team_abbreviation}</a>
+                  </td>
+                  {stats.map(([key]) => (<td class:list={['text-center', 'numeral', key in filter.stats && 'fw-bold']}>{cell(r[key], key)}</td>))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )}
+
+    {body && body.count === 0 && (
+      <p class="text-muted" id="game-finder-none">No {player ? 'player' : 'team'} game matches {asked}, {span}{scope ? ` (${scope})` : ''}.</p>
+    )}
+
+    <p class="small text-muted mt-3" id="game-finder-method">
+      How this works: the search runs over the ESPN box scores, one row per {player ? 'player' : 'team'} per game, from the {seasonLabelFor(league, seasons[0])} season on. A player's game counts only when the player got in, and All-Star games and other exhibitions are left out. The totals and the most-games table cover every matching game; the list shows up to {FINDER_ROWS}, the highest first by the first stat set.
+    </p>
+  </div>
+</GenericPage>

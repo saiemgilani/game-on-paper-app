@@ -1861,3 +1861,17 @@ ids, `split` / `n_players` / `lineup_id` / `poss`, the ratings and `lg_rtg` plus
 
 **To regenerate:** once sdv-db serves the columns, capture `/v1/nba_stats/team_season_rates?season=2026&team_id=1610612751&limit=10`,
 the `mbb` twin for 150 and `/v1/nba_stats/lineup_seasons?season=2025&team_id=1610612750&select=…&limit=1000` instead.
+
+## `game-finder-wnba-2025.json.gz`
+BB-G57's game finder reads (`routes/basketball/gameFinder.ts`: one `/v1/<league>/game_finder` answer per search), as
+`{<case>: {query, body}}`. Each body is sdv-db's own `find_games` (BB-D41, `python/src/sdv_db/api/game_finder_routes.py`)
+run on 2026-11-25 over the whole 2025 WNBA release season (sdv-db's `tests/fixtures/game_finder`: the `load_wnba_*`
+player box, team box and schedule releases), the route's SQL on SQLite. Three searches: 30+ point player games
+(`player_pts30`), 20-and-10 playoff player games (`player_pts20_reb10_playoffs`) and 100+ point home wins by a team
+(`team_pts100_home_w`), each with the page's caps (100 rows, 25 counts). Nothing is edited.
+
+**Used by:** `test/gameFinder.test.ts`.
+
+**To regenerate:** in an sdv-db checkout, call `find_games` over that fixture (as `tests/test_game_finder_api.py` loads it)
+with each case's `query`, or capture `/v1/wnba/game_finder?<query>&limit=100&counts_limit=25` once the route is live, and
+wrap the answers as above.
