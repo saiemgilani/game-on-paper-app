@@ -236,6 +236,8 @@ function printSpread() {
     }
 }
 const lastPlay = plays[plays.length - 1]
+// the "Current" readout's home WP: the lens shown when there are lenses, else the last play's WP flipped to the home side
+const currentHomeWp = $derived(lenses ? lensValues(lens).at(-1) : lastPlay == null ? null : (lastPlay.pos_team == homeTeam.id) ? lastPlay.winProbability.before : 1.0 - lastPlay.winProbability.before);
 const gameInProgress = !(gameStatus.type.completed == true) && ((gameStatus.type.name.includes("STATUS_IN_PROGRESS") || gameStatus.type.name.includes("STATUS_END_PERIOD") || gameStatus.type.name.includes("STATUS_HALFTIME")) && plays.length > 0);
 
 const geiVal = (Math.round((gei || 0) * 100) / 100) 
@@ -590,13 +592,8 @@ if (document.readyState !== 'loading') {
             | Lead changes: {geiExtras.leadChanges} | <span title="The largest single-play change in win probability">Biggest WP swing:</span> {geiExtras.maxSwingPts == null ? '—' : `${roundNumber(geiExtras.maxSwingPts, 0, 0)}%`}
             {/if}
             {/if}
-            {#if gameInProgress}
-                {#if (lastPlay.winProbability.before >= 0.5) }
-                {showOdds ? '| ' : ''}Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(homeTeam) : cleanAbbreviation(awayTeam)} {((Math.round(lastPlay.winProbability.before * 1000) / 1000) * 100).toFixed(1)}%
-                {/if}
-                {#if (lastPlay.winProbability.before < 0.5) }
-                {showOdds ? '| ' : ''}Current: {(lastPlay.pos_team == homeTeam.id) ? cleanAbbreviation(awayTeam) : cleanAbbreviation(homeTeam)} {((Math.round((1.0 - lastPlay.winProbability.before) * 1000) / 1000) * 100).toFixed(1)}%
-                {/if}
+            {#if gameInProgress && Number.isFinite(currentHomeWp)}
+                {showOdds ? '| ' : ''}Current: {currentHomeWp >= 0.5 ? cleanAbbreviation(homeTeam) : cleanAbbreviation(awayTeam)} {((Math.round(Math.max(currentHomeWp, 1.0 - currentHomeWp) * 1000) / 1000) * 100).toFixed(1)}%
             {/if}
             {(showOdds || gameInProgress || showGei) ? '| ' : ''}<a id="wp-download" download={`game-wp-${id}.png`} href="#">Download Chart</a>
         </p>

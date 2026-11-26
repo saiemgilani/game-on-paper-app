@@ -332,6 +332,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // it, drag reads a stretch); and under the chart the 8-0 runs, the longest drought, the last 5:00, each side's peak WP,
     // the largest swing and the winner's lowest WP. Off: no read, and the game page is today's, byte for byte.
     'bball-wp-lenses': 'preview',
+    // E2 on the college football game page: the WP chart switches between our model ("Market-aware", the pregame spread
+    // priced in) and the same model without the spread ("Score-only", the processed plays' home_wp_before_naive), shown only
+    // when every charted play has both; the "Current" readout follows the lens. Off: the chart props are today's.
+    'cfb-wp-naive-lens': 'preview',
     // B2/B3 on the college football team-season page: a Schedule Effect panel from the producer's adjusted-EPA ledger
     // (team_adjustment_ledger): the season Adj EPA/Play split into the team's raw net and what its schedule adds, the three
     // games that move it most, every game's line (raw, schedule, adjusted, how far the game moved the season value), and the
