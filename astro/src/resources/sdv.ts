@@ -1175,9 +1175,10 @@ export async function retrieveRankedRows({ table, season, metrics, idColumns, le
 // 0.19 -> 0.23), and it now equals cfb_ratings' adj_net wherever both exist. So this flat fit's
 // scale matches sportsdataverse-py's net_points_scale. That library serves a games-played slope
 // curve with its own margin_sd, which this page does not use.
-// 2024-25 near-holdout (never in the fit), 1,202 games: MAE 13.08 -> 12.81 (dMAE -0.27,
-// 95% CI -0.40 to -0.15), Brier 0.1956 -> 0.1945, calibration slope 0.777 -> 0.933. The previous
-// scale, 48.459, ran about 20% steep on the wider rating.
+// 2024-25 near-holdout, 1,202 games: these constants never saw it, but the margin rule was chosen on
+// walk-forward 2014-2025. MAE 13.08 -> 12.81 (dMAE -0.27, 95% CI -0.40 to -0.15), Brier 0.1956 -> 0.1945
+// (a tie), calibration slope 0.777 -> 0.933. The previous scale, 48.459, ran about 20% steep on the
+// wider rating. Scored by cfb_higher_models.gop_holdout_compare (cfbfastR-cfb-data 528f025).
 // Only leagues with a fit of their own get a projection. The NFL has none yet, and the CFB
 // constants have no calibration behind them on NFL ratings, so NFL pregame pages and the
 // NFL Matchup Builder show no projection until an NFL entry is added here.

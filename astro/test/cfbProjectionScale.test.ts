@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { calculatePredictedPointMargin, calculatePredictedWinProb } from '../src/resources/sdv';
+import { calculatePredictedPointMargin, calculatePredictedWinProb, SDV_RATINGS_PREDICTION_CONFIG } from '../src/resources/sdv';
 
 // The CFB projection runs on the team summaries' net_adj_epa, so its constants are fitted
 // to that rating ("gop_net_adj_epa" in cfbfastR-cfb-data models/pregame_fit.json). A scale
@@ -16,6 +16,7 @@ describe('CFB projection scale', () => {
 
     test('win probability prices the margin with the fitted spread', () => {
         // one fitted sd of margin -> Phi(1)
+        expect(SDV_RATINGS_PREDICTION_CONFIG.cfb!.margin_sd).toBe(17.1504);
         expect(calculatePredictedWinProb(17.1504)).toBeCloseTo(0.8413, 3);
     });
 });

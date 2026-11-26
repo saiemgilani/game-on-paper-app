@@ -8,7 +8,8 @@ import { buildBracket, committeeRanking, oddsShade, pct } from '../src/utils/pla
 import { calculatePredictedPointMargin, calculatePredictedWinProb } from '../src/resources/sdv';
 
 // the API's real answer for 2026 on the 11-02 Data API (python/playoff_projection.py, 1000 sims). Each field's
-// `reach` (the exact bracket odds) was re-priced with the 2026-11-26 constants; teams, sims and the field are as recorded.
+// `reach` (the exact bracket odds) was re-priced with the 2026-11-26 constants. Teams (their 11-02 ratings, on the
+// pre-#1300 scale), sim outputs and the field are as recorded under the old constants.
 const fixture = (): PlayoffProjection =>
     JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/playoff-projection-2026.json.gz', import.meta.url))).toString());
 
