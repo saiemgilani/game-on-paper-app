@@ -1863,8 +1863,8 @@ ids, `split` / `n_players` / `lineup_id` / `poss`, the ratings and `lg_rtg` plus
 the `mbb` twin for 150 and `/v1/nba_stats/lineup_seasons?season=2025&team_id=1610612750&select=…&limit=1000` instead.
 
 ## `depth-ladder-2025.json.gz`
-BB-G61's depth-ladder reads (`resources/depthLadder.ts`: the team's `player_war` rows and the league's `roster_tier_shape`), as
-`{nba: {war, shape}, mbb: {war, shape}}`. They are the producer's own output on the release data, written on 2026-11-25 with
+BB-G61's depth-ladder reads (`resources/depthLadder.ts`: the team's `roster_tiers` rows and the `roster_tier_shape` rows it reads), as
+`{nba: {rows, shape}, mbb: {rows, shape}}`. They are the producer's own output on the release data, written on 2026-11-25 with
 sportsdataverse-py BB-G61 (branch `feat/bball-war-tier`): `player_war` over the committed 2024-25 inputs of its BB-D26 tests
 (`tests/fixtures/bb_player_war`, `tests/fixtures/mbb_player_value`), which is what `nba_player_war(2025)` / `mbb_player_war(2025)`
 return on those releases, with `war_tier` (null under the producer's possession floor), and `roster_tier_shape` of the whole

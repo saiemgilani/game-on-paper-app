@@ -21,6 +21,7 @@ import { retrieveBioNames, retrieveOnOff } from '../../resources/onOff';
 import { retrieveTeamPlayStyle } from '../../resources/playStyles';
 import { retrieveTeamShotQuality, type ShotQualityRow } from '../../resources/shotQuality';
 import { retrieveDepthLadder, type DepthLadderReads, type DepthLadderResult } from '../../resources/depthLadder';
+import { parseTierView, scopeOf, type TierView } from '../../utils/depthLadder';
 import { retrieveSituational } from '../../resources/situational';
 import { retrieveTeamShotZones, type TeamZoneReads } from '../../resources/shotZones';
 import { retrieveGameSetCounts, retrieveTeamSeason, type GameSetCountReads, type TeamSeasonReads } from '../../resources/teamSeason';
@@ -88,6 +89,8 @@ export interface BasketballTeamParams {
     neighbors?: NeighborList[] | null;
     /** BB-G61, only with 'bball-depth-ladder' on and a season with a ladder: the team's tiered players and the league shape; null when a read failed */
     depthLadder?: DepthLadderReads | null;
+    /** BB-G61, college with the ladder: the ?tiers= view (Division I or the team's conference) */
+    depthLadderView?: TierView;
 }
 
 export type BasketballTeamPrep = { notFound: true } | { unavailable: true } | BasketballTeamParams;
@@ -158,6 +161,8 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const stylesOn = isFeatureEnabled('bball-play-styles', Astro.locals) && league === 'nba'; // BB-G17: only the NBA has team styles
     const zonesOn = isFeatureEnabled('bball-shot-profile', Astro.locals); // BB-G51
     const ladderOn = isFeatureEnabled('bball-depth-ladder', Astro.locals); // BB-G61
+    // college pages pick Division I or conference tiers; the pros' ladder is league-wide only and never reads ?tiers=
+    const ladderView = ladderOn && isNcaaDashboards(league) ? parseTierView(Astro.url.searchParams.get('tiers')) : undefined;
     const nearby = isFeatureEnabled('bball-rank-neighbors', Astro.locals); // BB-G12, started with the block's reads
     const neighborsP = nearby ? readTeamNeighbors(league, season, teamId, resolved.q) : undefined;
     const [seasonBlock, lineups, onOff, situations, poe, shotZones, playStyles, depthLadder] = await Promise.all([
@@ -168,7 +173,7 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
         poeOn ? readTeamPoe(league, season, teamId) : undefined,
         zonesOn ? readTeamShotZones(league, season, teamId) : undefined,
         stylesOn ? readTeamPlayStyles(season, teamId) : undefined,
-        ladderOn ? readDepthLadder(league, season, teamId) : undefined,
+        ladderOn ? readDepthLadder(league, season, teamId, ladderView ? scopeOf(ladderView) : 'league') : undefined,
     ]);
     // the block and the tabs are decorative: a failed read renders the rest of the page, never cached
     if (seasonBlock === null || lineups?.units === null || onOff?.players === null || situations?.reads === null || poe === null || shotZones === null || playStyles === null || depthLadder === null || depthLadder === 'pending') uncacheable(Astro);
@@ -187,7 +192,7 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     const scheduleContext = seasonBlock && seasonBlock.games.length > 0 && isFeatureEnabled('bball-schedule-context', Astro.locals)
         ? await retrieveScheduleContext(league, season, espnIdOf(league, season, teamId)) : undefined;
     if (scheduleContext && (!scheduleContext.lines || !scheduleContext.strength || !scheduleContext.box || !scheduleContext.proj)) uncacheable(Astro);
-    const block = { ...(flagged ? { seasonBlock, ...(gameSet ? { gameSet } : {}), ...(gameSetCounts !== undefined ? { gameSetCounts } : {}), ...(teamFlow !== undefined ? { teamFlow } : {}), ...(scheduleContext ? { scheduleContext } : {}) } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}), ...(situationsOn ? { situations } : {}), ...(poeOn ? { poe } : {}), ...(zonesOn ? { shotZones } : {}), ...(stylesOn ? { playStyles } : {}), ...(nearby ? { neighbors } : {}), ...(depthLadder !== undefined && depthLadder !== 'none' && depthLadder !== 'pending' ? { depthLadder } : {}) };
+    const block = { ...(flagged ? { seasonBlock, ...(gameSet ? { gameSet } : {}), ...(gameSetCounts !== undefined ? { gameSetCounts } : {}), ...(teamFlow !== undefined ? { teamFlow } : {}), ...(scheduleContext ? { scheduleContext } : {}) } : {}), ...(lineupsOn ? { lineups } : {}), ...(onOffOn ? { onOff } : {}), ...(situationsOn ? { situations } : {}), ...(poeOn ? { poe } : {}), ...(zonesOn ? { shotZones } : {}), ...(stylesOn ? { playStyles } : {}), ...(nearby ? { neighbors } : {}), ...(depthLadder !== undefined && depthLadder !== 'none' && depthLadder !== 'pending' ? { depthLadder, ...(ladderView ? { depthLadderView: ladderView } : {}) } : {}) };
     // the picker lists only the franchise's seasons (Golden State: 2025-2026), so no option is a 404; the NBA's: all of them;
     // college: the team's member seasons (R-P11), already filtered from resolved.seasons
     const members = memberSeasonsOf(league, teamId, season, resolved.seasons);
@@ -324,9 +329,9 @@ async function readTeamPlayStyles(season: number, teamId: number): Promise<PlayS
 }
 
 /** BB-G61's reads, keyed like the season tables (resources/depthLadder.ts: 'none' / 'pending' are no section); null when a read failed. */
-async function readDepthLadder(league: BasketballLeague, season: number, teamId: number): Promise<DepthLadderResult | null> {
+async function readDepthLadder(league: BasketballLeague, season: number, teamId: number, scope: 'league' | 'conference'): Promise<DepthLadderResult | null> {
     try {
-        return await retrieveDepthLadder(league, season, teamId);
+        return await retrieveDepthLadder(league, season, teamId, scope);
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} depth ladder for team ${teamId}: ${e}, ${e?.stack}`);
         return null;

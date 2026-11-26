@@ -17,7 +17,7 @@ export const CACHE_KEY_PARAMS: ReadonlySet<string> = new Set([
     // sortable tables and leaderboards (utils/leaderboards.ts parseControls, routes/basketball/*)
     'sort', 'dir', 'mode', 'board', 'basis', 'unit', 'impact', 'qualified', 'min', 'lsort', 'ldir',
     // basketball team and player splits
-    'situation', 'games', 'onoff', 'wowy', 'side',
+    'situation', 'games', 'onoff', 'wowy', 'side', 'tiers',
     // lineup shot chart (routes/basketball/lineupShots.ts)
     'p', 's', 'op', 'os',
     // shot chart filters (basketball/shotFilters.ts), shift chart, plays order, garbage time
