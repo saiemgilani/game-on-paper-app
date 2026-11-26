@@ -231,6 +231,60 @@ const TEAM = `/nba/team/${NETS_TEAM_ID}?season=2026&games=last10`;
 const PLAYER = `/nba/players/${PID}?season=2026&games=last5`;
 const OFF = { preview: true, flagOverrides: { 'bball-game-set': false } };
 
+describe("team: Playoffs sums the team's playoff rows (NBA / WNBA)", () => {
+    // sdv-py's wnba_team_game_possessions(2025, season_type=[regular-season, playoffs]) on its 2025 WNBA releases, the
+    // playoff rows of the team with the most playoff games, and its team_season_rates playoffs `all` row: the oracle
+    const PO = capture('game-set-playoffs-wnba-2025');
+    const playoffCounts = () => ({ games: PO.possessions, espnOf: new Map<string, string>(), conference: null });
+    test('the playoff rows summed and divided once are the producer playoff season row', () => {
+        const v = teamGameSet(NBA.rates, nets(), 'playoffs', 40, false, playoffCounts())!;
+        const all = PO.playoffsAll[0];
+        expect(v.set).toBe('playoffs');
+        expect(v.producer).toBe(false);
+        expect(v.line!.games).toBe(all.games);
+        expect(v.line!.poss).toBe(all.poss);
+        expect(v.line!.off_rtg).toBeCloseTo(all.off_rtg, 9);
+        expect(v.line!.def_rtg).toBeCloseTo(all.def_rtg, 9);
+        expect(v.line!.net_rtg).toBeCloseTo(all.net_rtg, 9);
+        expect(v.line!.pace).toBeCloseTo(all.pace, 9);
+        expect(PO.possessions.every((r: any) => r.season_type === 'playoffs' && r.split === 'all')).toBe(true);
+    });
+    test('offered for the pros only; a team with no playoff rows falls back to All games; a failed read is a null line', () => {
+        expect(teamGameSet(NBA.rates, nets(), 'all', 48, false)!.sets).toContain('playoffs');
+        expect(teamGameSet(MBB.rates, duke(), 'all', 40, true)!.sets).not.toContain('playoffs');
+        const none = teamGameSet(NBA.rates, nets(), 'playoffs', 48, false, { games: [], espnOf: new Map(), conference: null })!;
+        expect(none.set).toBe('all');
+        expect(none.producer).toBe(true);
+        expect(teamGameSet(NBA.rates, nets(), 'playoffs', 48, false, null)!.line).toBeNull();
+        expect(isSummedSet('playoffs')).toBe(true);
+        expect(BB_GAME_SETS.find((x) => x.key === 'playoffs')).toMatchObject({ label: 'Playoffs', team: true });
+    });
+    test("the player page never offers it, and a link to it is All", () => {
+        const games = playerGamesFromRows(MPJ.games)!;
+        expect(playerGameSet(games, 'playoffs')!.set).toBe('all');
+        expect(playerGameSet(games, 'all')!.sets).not.toContain('playoffs');
+    });
+    test("team, on, ?games=playoffs: the possessions read asks for the playoff rows", async () => {
+        block.counts.mockResolvedValueOnce(playoffCounts());
+        const r = ok(await prepareNbaTeam(fakeAstro(`/nba/team/${NETS_TEAM_ID}?season=2026&games=playoffs`, String(NETS_TEAM_ID), { preview: true })));
+        expect(block.counts).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, NETS_ESPN, false, true);
+        expect(r.gameSet).toBe('playoffs');
+    });
+    test("the team and player pages render under ?games=playoffs (the game logs show every game)", async () => {
+        // the game logs pick their rows from the schedule, which has no playoffs flag: pickGames gives none, so they list
+        // every game; it used to call an undefined preset and throw (a 500 on the live page)
+        const games = playerGamesFromRows(MPJ.games)!;
+        expect(games.length).toBeGreaterThan(0);
+        expect(pickGames(games, 'playoffs')).toEqual([]);
+        expect(pickGames(games, 'close')).toEqual([]);
+        block.counts.mockResolvedValue(playoffCounts());
+        const team = await page(TeamPage, `/nba/team/${NETS_TEAM_ID}?season=2026&games=playoffs`, String(NETS_TEAM_ID), { preview: true });
+        expect(team).toContain('id="season-game-set"');
+        const player = await page(PlayerPage, `/nba/players/${PID}?season=2026&games=playoffs`, String(PID), { preview: true });
+        expect(player).toContain('id="player-game-set"');
+    });
+});
+
 describe('the flag', () => {
     test("'bball-game-set' is a preview flag", () => { expect(FLAGS['bball-game-set']).toBe('preview'); });
     test("team, off: the block's read exactly (four arguments), no gameSet key", async () => {
@@ -242,7 +296,7 @@ describe('the flag', () => {
     test("team, on: the block's read unchanged; a summed set adds the possessions reads (keyed by the season tables' id)", async () => {
         const r = ok(await prepareNbaTeam(fakeAstro(TEAM, String(NETS_TEAM_ID), { preview: true })));
         expect(block.fn).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, NETS_ESPN);
-        expect(block.counts).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, NETS_ESPN, false);
+        expect(block.counts).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, NETS_ESPN, false, false);
         expect(r.gameSet).toBe('last10');
         expect(r.gameSetCounts).toEqual(netsCounts());
     });

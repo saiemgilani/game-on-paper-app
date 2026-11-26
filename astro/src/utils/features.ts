@@ -214,7 +214,7 @@ export const FLAGS: Record<string, FeatureState> = {
     // median players per team in each tier (roster_tier_shape). No tier, no rung; a season with no ladder yet has no section.
     // Off: no read, no section.
     'bball-depth-ladder': 'preview',
-    // BB-G14: the game-set filter (?games=all|home|away|close|clutch|conference|wins|losses|last5|last10|last20) on
+    // BB-G14: the game-set filter (?games=all|home|away|close|clutch|conference|playoffs|wins|losses|last5|last10|last20) on
     // /<league>/team/[id], inside 'bball-team-season' (All / Home / Away / Close / Clutch are that block's producer split
     // rows; Wins / Losses / last N / college Conference games sum the team's team_game_possessions rows, read
     // only for those sets), and on /<league>/players/[id] over the page's own per-game shot rows (no extra read; the

@@ -182,7 +182,7 @@ export async function prepareBasketballTeam(Astro: AstroGlobal, league: Basketba
     // BB-G14 rides on the block's reads; a summed set (wins, losses, last N, conference) adds the per-game possessions reads. Off,
     // ?games= is never read
     const gameSet = flagged && isFeatureEnabled('bball-game-set', Astro.locals) ? bbGameSetOf(Astro.url.searchParams.get('games')) : undefined;
-    const gameSetCounts = gameSet && seasonBlock && isSummedSet(gameSet) ? await readGameSetCounts(league, season, teamId, gameSet === 'conference') : undefined;
+    const gameSetCounts = gameSet && seasonBlock && isSummedSet(gameSet) ? await readGameSetCounts(league, season, teamId, gameSet === 'conference', gameSet === 'playoffs') : undefined;
     if (gameSetCounts === null) uncacheable(Astro);
     // BB-G50 rides on the block's schedule and rates, plus one game_flow read; off, nothing more is read
     const teamFlow = seasonBlock && isFeatureEnabled('bball-game-logs', Astro.locals) ? await readTeamFlow(league, season, teamId, seasonBlock) : undefined;
@@ -359,9 +359,9 @@ async function readTeamShotZones(league: BasketballLeague, season: number, teamI
 }
 
 /** BB-G14's summed-set reads (the per-game possessions rows and their game-id map); null when any failed (the line says so). */
-async function readGameSetCounts(league: BasketballLeague, season: number, teamId: number, conference: boolean): Promise<GameSetCountReads | null> {
+async function readGameSetCounts(league: BasketballLeague, season: number, teamId: number, conference: boolean, playoffs: boolean): Promise<GameSetCountReads | null> {
     try {
-        return await retrieveGameSetCounts(league, season, teamId, espnIdOf(league, season, teamId), conference);
+        return await retrieveGameSetCounts(league, season, teamId, espnIdOf(league, season, teamId), conference, playoffs);
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} game-set counts for team ${teamId}: ${e}, ${e?.stack}`);
         return null;

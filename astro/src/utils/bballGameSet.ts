@@ -6,7 +6,9 @@
  * season block's read), so "All games" is exactly the season block's numbers. Wins, Losses, the last-N sets and (college)
  * Conference games have no producer split row: they add up the producer's per-team-game possessions rows
  * (team_game_possessions, the play-by-play count the split rows are built from, so a season's games give its All row)
- * over the set's games, then divide once. A per-game rate is never averaged.
+ * over the set's games, then divide once. A per-game rate is never averaged. Playoffs (NBA / WNBA) sums the team's
+ * playoff rows of the same table (season_type 'playoffs', the play-in left out), so it adds up to the producer's
+ * playoff season row; every other summed set reads the regular-season rows.
  * Player page: every set sums his per-game shot counts (the page's shot_player_games read) and divides once; Close games,
  * Clutch and Conference games are team-page sets (no per-player-game producer rows), so his page offers the others.
  */
@@ -22,6 +24,7 @@ export const BB_GAME_SETS = [
     { key: 'close', label: 'Close games', team: true },
     { key: 'clutch', label: 'Clutch', team: true },
     { key: 'conference', label: 'Conference games', team: true },
+    { key: 'playoffs', label: 'Playoffs', team: true },
     { key: 'wins', label: 'Wins' },
     { key: 'losses', label: 'Losses' },
     { key: 'last5', label: 'Last 5 games', last: 5 },
@@ -44,12 +47,18 @@ export const isSummedSet = (set: BbGameSet): boolean => !PRODUCER_SETS.has(set);
 
 type Game = { game_id: string; date: string; venue: 'home' | 'away' | 'neutral'; win: boolean | null };
 /** The sets a game list can pick (no Close games / Clutch / Conference: those are the team page's). */
-type PickSet = Exclude<BbGameSet, 'close' | 'clutch' | 'conference'>;
+type PickSet = Exclude<BbGameSet, 'close' | 'clutch' | 'conference' | 'playoffs'>;
+
+/** The sets a game list can pick itself: the schedule's own flags. */
+const PRESETS: ReadonlySet<string> = new Set(['all', 'home', 'away', 'wins', 'losses']);
 
 /** The games of a set. Home and Away leave out neutral sites (the player page's presets); last N is by date. */
-export function pickGames<G extends Game>(games: G[], set: PickSet): G[] {
+export function pickGames<G extends Game>(games: G[], set: PickSet | BbGameSet): G[] {
     const n = BB_GAME_SETS.find((s) => s.key === set);
     if (n && 'last' in n) return games.toSorted((a, b) => a.date.localeCompare(b.date) || a.game_id.localeCompare(b.game_id)).slice(-n.last);
+    // a team-only set (Close games, Clutch, Conference games, Playoffs) has no per-game flag here: no game, so a caller
+    // falls back to all of them, as the select does
+    if (!PRESETS.has(set)) return [];
     const keep = new Set(presetGames(games, set as 'all' | 'home' | 'away' | 'wins' | 'losses'));
     return games.filter((g) => keep.has(g.game_id));
 }
@@ -148,6 +157,8 @@ export function teamSets(rates: TeamSeasonRateRow[], schedule: ScheduleRow[], co
     return BB_GAME_SETS.map((s) => s.key).filter((s) => {
         if (PRODUCER_SETS.has(s)) return (split.get(s)?.games ?? 0) > 0;
         if (s === 'conference') return college && done.length > 0;
+        // the pros' playoff rows are read only once the set is chosen: a team with none falls back to All games
+        if (s === 'playoffs') return !college && done.length > 0;
         return pickGames(done, s as PickSet).length > 0;
     });
 }
@@ -165,6 +176,11 @@ export function teamGameSet(rates: TeamSeasonRateRow[], schedule: ScheduleRow[],
     if (row) return { set, sets, line: producerLine(row), producer: true };
     if (counts === null) return { set, sets, line: null, producer: false };
     if (counts === undefined) return all;
+    if (set === 'playoffs') {
+        // every playoff row of the team (they are the playoffs, no schedule pick), summed and divided once
+        const games = counts.games.map((r) => ({ poss: r.poss ?? 0, opp_poss: r.opp_poss ?? 0, pts: r.pts ?? 0, opp_pts: r.opp_pts ?? 0, seconds: r.seconds ?? 0 }));
+        return games.length === 0 ? all : { set, sets, line: summedTeamLine(games, regulationMinutes), producer: false };
+    }
     const per = teamGameCounts(counts);
     const rated = finals(schedule).filter((g) => per.has(g.gameId));
     const picked = set === 'conference' ? rated.filter((g) => counts.conference?.has(g.gameId)) : pickGames(rated, set as PickSet);
@@ -174,7 +190,7 @@ export function teamGameSet(rates: TeamSeasonRateRow[], schedule: ScheduleRow[],
 
 // ---- player page -------------------------------------------------------------------------------------------------
 
-/** The player page's sets: the team page's less Close games, Clutch and Conference games. */
+/** The player page's sets: the team page's less Close games, Clutch, Conference games and Playoffs. */
 const PLAYER_SETS = BB_GAME_SETS.filter((s) => !('team' in s)).map((s) => s.key) as PickSet[];
 
 export interface PlayerGameSetView {

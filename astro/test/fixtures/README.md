@@ -1921,3 +1921,12 @@ player box, team box and schedule releases), the route's SQL on SQLite. Three se
 **To regenerate:** in an sdv-db checkout, call `find_games` over that fixture (as `tests/test_game_finder_api.py` loads it)
 with each case's `query`, or capture `/v1/wnba/game_finder?<query>&limit=100&counts_limit=25` once the route is live, and
 wrap the answers as above.
+
+## `game-set-playoffs-wnba-2025.json.gz`
+BB-G14's Playoffs set: the playoff `team_game_possessions` rows (split `all`, `season_type` `playoffs`) of the 2025 WNBA team with
+the most playoff games (stats id 1611661319, 12 games) and its `team_season_rates` playoffs `all` row, the oracle. Both are
+sportsdataverse-py's own output (`wnba_team_game_possessions(2025, season_type=["regular-season", "playoffs"])`, branch
+`feat/bball-team-games-postseason`, and `wnba_team_season_rates(2025, season_type="playoffs")`) on its
+`tests/fixtures/bb_team_season_rates` 2025 WNBA releases, written 2026-11-26. Nothing is edited.
+
+**Used by:** `test/bballGameSet.test.ts`.
