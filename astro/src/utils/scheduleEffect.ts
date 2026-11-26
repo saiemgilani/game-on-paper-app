@@ -41,6 +41,8 @@ export interface ScheduleEffect {
     /** the season Adj EPA/Play (raw + schedule) */
     adjusted: number;
     games: number;
+    /** games with fit plays on one side only (that side's mean counts them, the other does not) */
+    oneSided: number;
     offPlays: number;
     defPlays: number;
     /** the three games whose schedule part moved the value most, largest first */
@@ -64,6 +66,8 @@ export function scheduleEffect(rows: readonly LedgerRow[] | null | undefined, ev
     const schedule = rows.reduce((s, r) => s + r.schedule_contribution, 0);
     const adjusted = rows[0].net_adj_epa;
     if (!Number.isFinite(adjusted) || Math.abs(raw + schedule - adjusted) > SUM_TOLERANCE) return null;
+    // every row is raw + schedule and carries the same season value, or the ledger is not one team-season's
+    if (!rows.every((r) => r.net_adj_epa === adjusted && Math.abs(r.raw_contribution + r.schedule_contribution - r.contribution) <= SUM_TOLERANCE)) return null;
     const byGame = new Map(events.map((g) => [String(g.game_id), g]));
     const games: LedgerGame[] = rows
         .map((r) => ({ ...r, opponent: opponentName(r, byGame) }))
@@ -73,6 +77,7 @@ export function scheduleEffect(rows: readonly LedgerRow[] | null | undefined, ev
         schedule,
         adjusted,
         games: rows.length,
+        oneSided: rows.filter((r) => r.off_plays === 0 || r.def_plays === 0).length,
         offPlays: rows.reduce((s, r) => s + r.off_plays, 0),
         defPlays: rows.reduce((s, r) => s + r.def_plays, 0),
         drivers: games.toSorted((a, b) => Math.abs(b.schedule_contribution) - Math.abs(a.schedule_contribution)).slice(0, 3),
@@ -80,7 +85,8 @@ export function scheduleEffect(rows: readonly LedgerRow[] | null | undefined, ev
     };
 }
 
-const signed = (v: number, digits = 3) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(digits)}`;
+// the sign of the rounded value, so a tiny negative prints +0.000, not −0.000
+const signed = (v: number, digits = 3) => `${Number(v.toFixed(digits)) >= 0 ? '+' : '−'}${Math.abs(v).toFixed(digits)}`;
 export const fmtEpa = (v: number | null | undefined, digits = 3): string => (v == null || !Number.isFinite(v) ? '—' : signed(v, digits));
 
 /** "LSU's schedule adds +0.123 EPA/play: raw +0.016, adjusted +0.139." */
@@ -91,5 +97,6 @@ export function effectSentence(team: string, e: ScheduleEffect): string {
 
 /** B3: the weights beside the number. */
 export function weightsCaption(e: ScheduleEffect): string {
-    return `Averaged over ${e.games} FBS games, each counting equally; ${e.offPlays} offensive and ${e.defPlays} defensive plays in the fit. No preseason prior.`;
+    const partial = e.oneSided === 0 ? '' : ` (${e.oneSided} with fit plays on one side only, counted on that side)`;
+    return `Averaged over ${e.games} FBS games${partial}; ${e.offPlays} offensive and ${e.defPlays} defensive plays in the fit. No preseason prior.`;
 }

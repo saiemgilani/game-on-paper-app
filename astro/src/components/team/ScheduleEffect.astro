@@ -33,7 +33,8 @@ const site = (s: LedgerRow['site']) => (s === 'home' ? 'vs' : s === 'away' ? 'at
             <details>
                 <summary class="text-small">Every game</summary>
                 <div class="table-responsive">
-                    <table class="table table-sm text-small mb-0" id="schedule-effect-games">
+                    <p class="text-muted text-small mb-1">Raw net: the team's own net EPA/play that game, on the plays the fit uses. Schedule: what the opponent's fitted offense and defense add to it. Game moved it: how far the season value moves with the game left out.</p>
+                    <table class="table table-sm text-small mb-0" id="schedule-effect-games" aria-label="Every game's schedule effect">
                         <thead>
                             <tr>
                                 <th scope="col">Wk</th><th scope="col">Opponent</th>
