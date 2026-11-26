@@ -9,7 +9,7 @@ show them?
 is already public, on the game page. The team and player pages have no
 air-yards or direction views, hidden or otherwise, and nothing anywhere
 computes the defensive side. 2026 coverage is good (96.4% of FBS pass
-attempts). 2025 is complete only from Week 9 on. So this note changes no code.
+attempts). 2025 has high coverage (94.5%) only from Week 9 on. So this note changes no code.
 A defensive or directional view on the team or player pages would be a new
 feature, and per `docs/design-conventions.md` §9 it has to ship behind its own
 `'preview'` flag.
@@ -25,8 +25,8 @@ PRs #178, #180, #267, #274) and the unmerged remote branches.
 
 | Where | What it shows | Gate | Notes |
 |---|---|---|---|
-| `astro/src/components/game/metrics/PassingChart.astro:76` | Target Matrix: deep (12+) / short (0-12) × left / middle / right, with attempts, completions, yards, EPA, TD, aDOT and YAC per cell (#178) | None. `hidden={countableAttempts == 0}` hides it only when no pass in the game has both depth and direction | The caption (line 114) says sacks and passes without depth and direction are left out |
-| `astro/src/components/game/metrics/PlayerBoxScore.astro:71` | `airLine`: "N air yds / N YAC, N aDOT" on passer and receiver stat lines (#180) | None. Prints nothing when `aDOT` is null (no catch spot in ESPN's text) | Values come from the processor's box (`AirYds`, `aDOT`, `CompAirYds`, `YAC`, `AirYdsPct`, `astro/src/resources/python.ts:895`, `:916`) |
+| `astro/src/components/game/metrics/PassingChart.astro:76` | Target Matrix: deep (12+) / short (0-12) × left / middle / right, with total EPA, completions / attempts, yards, and aDOT and YAC per cell (#178; TDs are summed but not rendered) | None. `hidden={countableAttempts == 0}` hides it only when no pass in the game has both depth and direction | The caption (line 114) says sacks and passes without depth and direction are left out |
+| `astro/src/components/game/metrics/PlayerBoxScore.astro:71` | `airLine`: "N air yds / N YAC, N aDOT" on passer and receiver stat lines (#180), called at `:124` and `:172` | None. Prints nothing when `aDOT` is null (no catch spot in ESPN's text) | Values come from the processor's box (`AirYds`, `aDOT`, `CompAirYds`, `YAC`, `AirYdsPct`, `astro/src/resources/python.ts:895`, `:916`) |
 | `astro/src/components/game/metrics/TeamPlayerStats.astro:65` | Mounts `PassingChart` for each team | None. `'player-quarter-filter'` (preview) only adds the quarter/half select around it | Mounted from `GamePage.astro:343`, `:348` in the collapsed (`show={false}`) team panels, which is not a gate |
 | Team page (`pages/team/[id].astro`), player page (`pages/players/[id].astro`), Pro team/player pages | Nothing on air yards or direction | n/a | No component reads these fields |
 | Defense (air yards allowed, aDOT allowed) | Not computed anywhere: no component and no processor field | n/a | The box rows are per passer and per receiver, offense only |
@@ -114,7 +114,7 @@ If those views get built, the numbers above point to:
   `def_pos_team`, with the same coverage (95.6-97.0% by conference).
 - **2025 season views**: restrict them to Week 9 on, or label them clearly as
   partial. A full-season 2025 aDOT would rest on less than half the attempts,
-  all from November and later.
+  all from Week 9 (late October) on.
 - **The game page**: already handles thin games. The matrix hides when a game
   has no charted passes, the stat-line tail prints nothing when `aDOT` is null,
   and the caption says uncharted passes are left out. One small copy fix is
