@@ -102,6 +102,20 @@ export function gateQuery(gate: Gate): Record<string, string> {
     return gate === 'ranked' ? { net_rtg_pct__isnull: 'false' } : { poss__gte: gate };
 }
 
+/**
+ * Whether the season's lineup_seasons carries the four-factor points (sdv-py BB-D42, after sdv-db's season-products
+ * reload): one priced row, or false when the read fails (a table without the column answers 400), so the basis is
+ * simply not offered rather than shown as unavailable.
+ */
+export async function hasFactorPoints(league: BasketballLeague, season: number): Promise<boolean> {
+    try {
+        const rows = await retrieveRows<Record<string, unknown>>(league, 'lineup_seasons', { season: String(season), efg_pts__isnull: 'false', select: 'efg_pts', limit: '1' }, TTL, true);
+        return rows.length > 0;
+    } catch {
+        return false;
+    }
+}
+
 /** One unit size of one team-season, most possessions first, over the gate; college adds its players' names and ESPN ids. */
 export async function retrieveLineups(league: BasketballLeague, season: number, teamId: number, size: UnitSize, gate: Gate = DEFAULT_GATE[league], points = false): Promise<LineupReads> {
     const s = String(season);

@@ -53,6 +53,24 @@ the winning home team's kneel-down).
 **To regenerate:** same call; keep a game whose final play belongs to the away
 team, or the test's possession assertion fails.
 
+## `fourth-down-penalties-nfl-2025.json`
+Four real play rows of the Python API's `GET /nfl/<id>/process`, keyed by game:
+401772918 (Baltimore at Buffalo, 2025 week 1) play 4017729182338, a 4th & 2
+incompletion with defensive holding for a first down; 401772862 (Philadelphia
+at Minnesota, 2025 week 7) plays 4017728621400 (a 4th-down touchdown pass wiped
+out by an offensive foul), 4017728624041 (delay of game) and 4017728624065
+(Hurts's 4th-down kneel). Found through nflverse 2025 play-by-play
+(`down == 4`, `qb_kneel` / `first_down_penalty`).
+
+**Provenance (2026-11-25):** the Flask app in `python/` through its test client
+against ESPN's live summaries (sportsdataverse per `uv.lock`); the four plays
+copied whole from `plays`, no field edited.
+
+**Used by:** `test/fourthDownPenalties.test.ts` (which plays the decision
+summary counts).
+
+**To regenerate:** same calls; keep the four play ids.
+
 ## `pregame-401872933-nfl.json.gz`, `pregame-401858458-cfb.json.gz`
 The two ESPN payloads a *scheduled* game page reads, per league, in one object:
 `{ playbyplay, summary }`.
