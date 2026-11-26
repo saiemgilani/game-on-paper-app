@@ -1170,20 +1170,22 @@ export async function retrieveRankedRows({ table, season, metrics, idColumns, le
 // `python -m cfb_model_build.cfb_higher_models fit-pregame --seasons 2014 ... 2025 --holdout 2024 2025`
 // in sportsdataverse/cfbfastR-cfb-data ("gop_net_adj_epa" in models/pregame_fit.json):
 // margin = scale * (home - away) + hfa off neutral sites, fit on 2014-2023 as-of games.
-// These are NOT sportsdataverse-py's cfb_prediction_constants. Those are fitted to
-// cfb_ratings' adj_net, a different rating 1.37x wider (team-game sd 0.2633 vs 0.1916).
-// Applied to net_adj_epa they compressed every projection (calibration slope 1.73).
-// 2024-25 near-holdout (never in the fit; sportsdataverse-py #598 tuned net_adj_epa on
-// 2023-25), 1,202 games: MAE 13.39 -> 13.00, Brier 0.2056 -> 0.1967, calibration slope
-// 0.885 (this scale runs about 10% steep on those seasons).
+// Refit 2026-11-26 on the republish under sportsdataverse-py #1300, which drops garbage time by score
+// margin from both the opponent fit and a team's own EPA. That widened net_adj_epa (team-game sd
+// 0.19 -> 0.23), and it now equals cfb_ratings' adj_net wherever both exist. So this flat fit's
+// scale matches sportsdataverse-py's net_points_scale. That library serves a games-played slope
+// curve with its own margin_sd, which this page does not use.
+// 2024-25 near-holdout (never in the fit), 1,202 games: MAE 13.08 -> 12.81 (dMAE -0.27,
+// 95% CI -0.40 to -0.15), Brier 0.1956 -> 0.1945, calibration slope 0.777 -> 0.933. The previous
+// scale, 48.459, ran about 20% steep on the wider rating.
 // Only leagues with a fit of their own get a projection. The NFL has none yet, and the CFB
 // constants have no calibration behind them on NFL ratings, so NFL pregame pages and the
 // NFL Matchup Builder show no projection until an NFL entry is added here.
 export const SDV_RATINGS_PREDICTION_CONFIG: Partial<Record<League, { net_points_scale: number, hfa_points: number, margin_sd: number }>> = {
     cfb: {
-        net_points_scale: 48.4590,
-        hfa_points: 2.7110,
-        margin_sd: 17.1697
+        net_points_scale: 40.3653,
+        hfa_points: 2.7625,
+        margin_sd: 17.1504
     }
 };
 
