@@ -116,6 +116,28 @@ describe('the page', () => {
         expect(games).toContain(`href="/wnba/game/${body.data[0].game_id}"`);
         expect(games).toMatch(new RegExp(`<td class="text-center numeral fw-bold">${body.data[0].pts}</td>`));
     });
+    test("WNBA player names link the player page by the crosswalk's stats id; an unpaired player keeps a plain name", async () => {
+        const body = FIX.player_pts30.body;
+        const html = await render('?pts=30&from=2025&to=2025');
+        const games = section(html, 'game-finder-games');
+        for (const r of body.data.slice(0, 10)) {
+            const row = games.split(`data-game-id="${r.game_id}"`)[1].split('</tr>')[0];
+            if (r.stats_player_id) expect(row).toContain(`href="/wnba/players/${r.stats_player_id}?season=2025"`);
+            else expect(row).not.toContain('/wnba/players/');
+        }
+        expect(body.data.every((r: any) => r.stats_player_id)).toBe(true); // every 30-point scorer of 2025 is paired
+        const c = body.counts[0];
+        expect(section(html, 'game-finder-counts')).toContain(`href="/wnba/players/${c.stats_player_id}?season=2025"`);
+    });
+    test('the Tools menu links the finder only while the flag is on', async () => {
+        const { default: Header } = await import('../src/components/Header.astro');
+        const header = (flag: boolean) => container.renderToString(Header, {
+            request: new Request('https://gameonpaper.com/wnba/'),
+            locals: { league: 'wnba', preview: true, flagOverrides: { ...bballOnly('bball-game-finder'), 'bball-game-finder': flag } } as unknown as App.Locals,
+        });
+        expect(await header(true)).toContain('<a href="/wnba/games/find" class="dropdown-item" id="nav-game-finder">Game Finder</a>');
+        expect(await header(false)).not.toContain('nav-game-finder');
+    });
     test('team games: team names link their team pages', async () => {
         const body = FIX.team_pts100_home_w.body;
         const html = await render('?unit=team&pts=100&from=2025&to=2025&ha=home&res=W');

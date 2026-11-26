@@ -25,10 +25,12 @@ export interface FinderRow {
     athlete_id?: number;
     athlete_display_name?: string | null;
     starter?: boolean | null;
+    /** NBA / WNBA player unit: the stats person id the player pages key on; null when the crosswalk has no pair */
+    stats_player_id?: string | null;
     [stat: string]: unknown;
 }
 
-export interface FinderCount { id: number; name: string | null; games: number }
+export interface FinderCount { id: number; name: string | null; games: number; stats_player_id?: string | null }
 
 export interface FinderBody {
     league: BasketballLeague;

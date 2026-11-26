@@ -7,7 +7,7 @@ import type { GameFinderParams } from '../../routes/basketball/gameFinder';
 import { FINDER_ROWS, FINDER_STATS, finderHref, thresholdLabel } from '../../utils/gameFinder';
 import { LEAGUES, leaguePath } from '../../utils/league';
 import { seasonLabelFor } from '../../basketball/config';
-import { gameHref, teamHrefFromEspn } from '../../nba/links';
+import { gameHref, playerHref, seasonQuery, teamHrefFromEspn } from '../../nba/links';
 import { roundNumber } from '../../utils/misc';
 
 interface Props { data: GameFinderParams }
@@ -27,6 +27,13 @@ const shortDay = (d: string) => new Date(`${d.slice(0, 10)}T00:00:00Z`).toLocale
 const cell = (v: unknown, key: string) => (v == null ? '—' : key === 'min' ? roundNumber(Number(v), 0, 0) : String(v));
 const example = finderHref(path, { ...filter, stats: player ? { pts: 30, reb: 10 } : { pts: 120 } }, current);
 const opponent = (r: { home_away: string | null }) => (r.home_away === 'away' ? '@' : 'vs');
+// A player's page key: the stats person id for the NBA / WNBA (sdv-db pairs it through the player crosswalk; null when unpaired,
+// then no link), the ESPN athlete id for college. A row links that game's season; a count, which spans the range, its last season.
+const pro = league === 'nba' || league === 'wnba';
+const playerLink = (espnId: number | undefined, statsId: string | null | undefined, season: number) => {
+    const key = pro ? statsId : espnId;
+    return key ? playerHref(Number(key), seasonQuery(season, current), league) : null;
+};
 ---
 <GenericPage title={`${title} | Game on Paper`} subtitle={description} slug={path} breadcrumbs={breadcrumbs} description={description} canonicalPath={canonical}>
   <link href="/assets/css/sticky-table.css" rel="stylesheet">
@@ -108,7 +115,7 @@ const opponent = (r: { home_away: string | null }) => (r.home_away === 'away' ? 
           <thead><tr><th>{player ? 'Player' : 'Team'}</th><th class="text-center">Games</th></tr></thead>
           <tbody>
             {body.counts.map((c) => {
-              const href = player ? null : teamHrefFromEspn({ id: c.id }, league, filter.to);
+              const href = player ? playerLink(c.id, c.stats_player_id, filter.to) : teamHrefFromEspn({ id: c.id }, league, filter.to);
               return (
                 <tr data-count-id={c.id}>
                   <td class="text-start">{href ? (<a href={href}>{c.name ?? c.id}</a>) : (c.name ?? c.id)}</td>
@@ -138,7 +145,7 @@ const opponent = (r: { home_away: string | null }) => (r.home_away === 'away' ? 
             <tbody>
               {body.data.map((r) => (
                 <tr data-game-id={r.game_id}>
-                  <td class="text-start text-nowrap">{player ? (r.athlete_display_name ?? r.athlete_id) : (r.team_display_name ?? r.team_id)}{player && (<span class="text-muted small ms-1">{r.team_abbreviation}</span>)}</td>
+                  <td class="text-start text-nowrap">{player ? (() => { const href = playerLink(r.athlete_id, r.stats_player_id, r.season); const name = r.athlete_display_name ?? r.athlete_id; return href ? (<a href={href}>{name}</a>) : name; })() : (r.team_display_name ?? r.team_id)}{player && (<span class="text-muted small ms-1">{r.team_abbreviation}</span>)}</td>
                   <td class="text-center text-nowrap">{shortDay(r.game_date)}{r.season_type === 3 && (<span class="badge text-bg-secondary ms-1" title="Playoffs"><span aria-hidden="true">P</span><span class="visually-hidden">Playoffs</span></span>)}</td>
                   <td class="text-center text-nowrap">
                     <a href={gameHref(league, r.game_id)}>{r.team_winner === true ? 'W' : r.team_winner === false ? 'L' : ''} <span class="numeral">{r.team_score ?? '—'}-{r.opponent_team_score ?? '—'}</span> {opponent(r)} {r.opponent_team_abbreviation}</a>
