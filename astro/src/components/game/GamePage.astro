@@ -38,6 +38,7 @@ import { fourthDownSummary } from '../../utils/fourthDown';
 import { withoutUsageSections } from '../../utils/usage';
 import { officialTeamBox } from '../../utils/officialBox';
 import { wpExportTitle, type WpExportMeta } from '../../utils/chartExport';
+import { footballWpLenses } from '../../utils/wpLenses';
 
 interface Props {
    id: string | number
@@ -227,6 +228,11 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
         gameSpreadAvailable: p.gameSpreadAvailable
     }
 });
+// E2, 'cfb-wp-naive-lens' (preview): the WP chart switches between our market-aware model and the same model without the
+// spread, from the same charted plays. Off (or any play without a spread-free value): no lenses, the chart is today's.
+const wpLenses = league === 'cfb' && isFeatureEnabled('cfb-wp-naive-lens', Astro.locals)
+    ? footballWpLenses(fullGamePlays.filter(p => (p.scrimmage_play == true)), homeComp.team.id)
+    : null;
 ---
 <!DOCTYPE html>
 <html>
@@ -303,7 +309,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
      inside the Svelte charts, and a duplicate id makes getElementById hand
      Chart.js the wrapper div -- both charts then silently never draw. -->
                 <div id="wp-section" class="col-lg-6 ms-sm-auto px-md-4">
-                    <WinProbabilityChart client:only id={id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles.map(({ GEI }) => ({ GEI }))} gei={game.gei} exportMeta={wpExport} {...colorProps}>
+                    <WinProbabilityChart client:only id={id} homeComp={homeComp} awayComp={awayComp} gameStatus={game.header.competitions[0].status} homeTeamSpread={game.homeTeamSpread} overUnder={game.overUnder} plays={wpPlays} percentiles={percentiles.map(({ GEI }) => ({ GEI }))} gei={game.gei} exportMeta={wpExport} {...(wpLenses ? { lenses: wpLenses } : {})} {...colorProps}>
                         <FallbackSpinner slot="fallback" />
                     </WinProbabilityChart>
                 </div>
