@@ -41,6 +41,8 @@ describe('retrieveTeamPassPlays', () => {
             expect(u.origin + u.pathname).toBe('https://data.sportsdataverse.org/v1/cfb/pbp');
             expect(u.searchParams.get('season')).toBe('2026');
             expect(u.searchParams.get('pass_attempt')).toBe('true');
+            // spelled out, not PASS_PLAY_COLUMNS: dropping a column the panel reads fails here
+            expect(u.searchParams.get('select')?.split(',').sort()).toEqual(['EPA', 'EPA_success', 'air_yards', 'completion', 'game_id', 'pass_depth', 'pass_direction', 'sack']);
             expect(u.searchParams.get('select')?.split(',')).toEqual(PASS_PLAY_COLUMNS);
         }
         expect(urls.map((u) => [u.searchParams.get('pos_team_id'), u.searchParams.get('def_pos_team_id')]).sort())
@@ -55,6 +57,8 @@ describe('retrieveTeamPassPlays', () => {
         expect(await retrieveTeamPassPlays(2024, 61, 'cfb')).toBeNull();
         respond = () => new Response(JSON.stringify({ data: Array.from({ length: TEAM_PASS_PLAYS_LIMIT }, () => ({})), next: null }), { status: 200 });
         expect(await retrieveTeamPassPlays(2023, 61, 'cfb')).toBeNull();
+        respond = () => new Response(JSON.stringify({ data: [{}], next: 'offset=1' }), { status: 200 });
+        expect(await retrieveTeamPassPlays(2022, 61, 'cfb')).toBeNull();
         seen.length = 0;
         expect(await retrieveTeamPassPlays(2025, 14, 'nfl')).toBeNull();
         expect(seen).toEqual([]);

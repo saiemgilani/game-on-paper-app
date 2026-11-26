@@ -1526,7 +1526,8 @@ export async function retrieveTeamPassPlays(season: number, teamId: string | num
         const query = new URLSearchParams({ season: String(season), [key]: String(teamId), pass_attempt: 'true', select: PASS_PLAY_COLUMNS.join(','), limit: String(TEAM_PASS_PLAYS_LIMIT) });
         const content = await requestSDV('pbp', query, undefined, 60 * 60 * 24, true, leagueSource(league), true, TEAM_PASS_PLAYS_TIMEOUT_MS);
         if (!Array.isArray(content?.data)) throw new Error(`no data array for ${key}=${teamId}`);
-        if (content.data.length >= TEAM_PASS_PLAYS_LIMIT) throw new Error(`more rows than one ${TEAM_PASS_PLAYS_LIMIT}-row page for ${key}=${teamId}`);
+        // a continuation page, or a full page (the API leaves `next` null on a page cut short by `limit`), is truncated
+        if (content.next || content.data.length >= TEAM_PASS_PLAYS_LIMIT) throw new Error(`more rows than one ${TEAM_PASS_PLAYS_LIMIT}-row page for ${key}=${teamId}`);
         return content.data;
     };
     try {

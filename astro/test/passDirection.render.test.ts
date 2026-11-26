@@ -155,9 +155,11 @@ describe('loadSeasonTeam behind team-pass-direction', () => {
         const sets: unknown[] = [];
         const astro = fakeAstro(true);
         astro.cache = { set: (v: unknown) => sets.push(v) };
+        astro.response = { headers: new Headers() };
         const r: any = await loadSeasonTeam(astro, 'cfb');
         expect(r.passPlays).toBeNull();
         expect(sets).toContain(false);
+        expect(astro.response.headers.get('Cache-Control')).toBe('no-store');
         passAnswer = plays2026;
     });
 });
