@@ -62,6 +62,7 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     retrievePlayerSummaries: async () => [],
     // the season team page's other panels: no rows (a failed read's answers)
     retrieveTeamOpponentSplits: async () => null,
+    retrieveTeamAdjustmentLedger: async () => [], // cfb-schedule-effect: no ledger rows
     retrieveTeamTendencies: async () => [],
 }));
 vi.mock('../src/resources/espn', async (orig) => ({

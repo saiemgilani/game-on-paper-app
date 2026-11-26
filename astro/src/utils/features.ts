@@ -336,6 +336,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // priced in) and the same model without the spread ("Score-only", the processed plays' home_wp_before_naive), shown only
     // when every charted play has both; the "Current" readout follows the lens. Off: the chart props are today's.
     'cfb-wp-naive-lens': 'preview',
+    // B2/B3 on the college football team-season page: a Schedule Effect panel from the producer's adjusted-EPA ledger
+    // (team_adjustment_ledger): the season Adj EPA/Play split into the team's raw net and what its schedule adds, the three
+    // games that move it most, every game's line (raw, schedule, adjusted, how far the game moved the season value), and the
+    // weights beside the number. Off: no read, and the page is today's.
+    'cfb-schedule-effect': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

@@ -39,6 +39,7 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     },
     // the season team page's other panels: no rows, so they stay out of the way (a failed read's answers)
     retrieveTeamOpponentSplits: async () => null,
+    retrieveTeamAdjustmentLedger: async () => [], // cfb-schedule-effect: no ledger rows
     retrieveTeamTendencies: async () => [],
 }));
 

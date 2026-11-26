@@ -45,6 +45,7 @@ vi.mock('../src/resources/sdv', async (orig) => ({
         return feed.override ?? rows[req.league];
     },
     retrieveTeamOpponentSplits: async () => null, // the Results by Opponent panel: no rows
+    retrieveTeamAdjustmentLedger: async () => [], // cfb-schedule-effect: no ledger rows
 }));
 
 let container: AstroContainer;
