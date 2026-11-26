@@ -1864,14 +1864,15 @@ the `mbb` twin for 150 and `/v1/nba_stats/lineup_seasons?season=2025&team_id=161
 
 ## `depth-ladder-2025.json.gz`
 BB-G61's depth-ladder reads (`resources/depthLadder.ts`: the team's `roster_tiers` rows and the `roster_tier_shape` rows it reads), as
-`{nba: {rows, shape}, mbb: {rows, shape}}`. They are the producer's own output on the release data, written on 2026-11-25 with
-sportsdataverse-py BB-G61 (branch `feat/bball-war-tier`): `player_war` over the committed 2024-25 inputs of its BB-D26 tests
-(`tests/fixtures/bb_player_war`, `tests/fixtures/mbb_player_value`), which is what `nba_player_war(2025)` / `mbb_player_war(2025)`
-return on those releases, with `war_tier` (null under the producer's possession floor), and `roster_tier_shape` of the whole
-league with its `pct_floor` / `pct_ceiling` bands. Re-taken on 2026-11-25 after the possession floor (#1303 review). NBA: the 21 Brooklyn Nets rows
-(1610612751); MBB: the 15 Duke rows (ESPN 150). Every column of those rows; nothing is edited.
+`{nba: {rows, shape}, mbb: {rows, shape}}`. They are sportsdataverse-py #1303's own output, written on 2026-11-25: `player_war`
+over the committed 2024-25 inputs of its BB-D26 tests (`tests/fixtures/bb_player_war`, `tests/fixtures/mbb_player_value`, with the
+`bb_college_season` 2025 schedule's conferences), what `nba_player_war(2025)` / `mbb_player_war(2025)` return on those releases,
+then `roster_tiers` and `roster_tier_shape`. Ids as sdv-db writes them (bigint team and conference ids). NBA: the Brooklyn Nets'
+24 rows (1610612751; 21 players, plus Dorian Finney-Smith, D'Angelo Russell and Jaylen Martin, whose main team was another) and
+the league shape; MBB: Duke's 15 rows (ESPN 150) and the Division I and ACC (conference 2) shapes. Nothing is edited.
 
 **Used by:** `test/depthLadder.test.ts`.
 
-**To regenerate:** once sdv-db serves the column and table, capture `/v1/nba_stats/player_war?season=2025&team_id=1610612751&order=-war&limit=60`
-and `/v1/nba_stats/roster_tier_shape?season=2025&order=tier_order`, the `mbb` twins for 150, and wrap them the same way.
+**To regenerate:** once sdv-db serves the tables, capture `/v1/nba_stats/roster_tiers?season=2025&team_id=1610612751&order=-war&limit=60`
+and `/v1/nba_stats/roster_tier_shape?season=2025&scope=league&order=tier_order`, the `mbb` twins for 150 (both scopes, the
+conference one with `conference_id=2`), and wrap them the same way.
