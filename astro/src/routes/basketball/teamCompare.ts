@@ -59,6 +59,15 @@ export async function prepareTeamCompare(Astro: AstroGlobal, league: BasketballL
     const { season, seasons, current } = resolveBasketballSeason(Astro, league);
     const module = BASKETBALL[league].teams;
     const ids = parseTeamIds(Astro.url.searchParams.get('ids'));
+    // a comparison is a query over the team pages, not a page of its own: no ?ids= permutation is indexed
+    Astro.response.headers.set('X-Robots-Tag', 'noindex');
+    // an id that is no team of this league in any of its seasons (another league's, a typo) is a 404, not a "Team <id>"
+    // card. Membership is checked over every season, not the selected one: the season control keeps the ids, so a
+    // folded franchise (the 1997-2008 Houston Comets) in a later season stays a "no line" card instead of a 404.
+    if (ids.some((id) => !seasons.some((s) => module.seasonsOf(id, s) !== undefined))) {
+        uncacheable(Astro);
+        return { notFound: true };
+    }
     // the strength section renders only with 'bball-team-strength', so its read is made only then
     const withStrength = isFeatureEnabled('bball-team-strength', Astro.locals);
     let entries: TeamCompareEntry[];

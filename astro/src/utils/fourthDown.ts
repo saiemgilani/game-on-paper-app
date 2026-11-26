@@ -13,6 +13,22 @@ export function fourthDownActual(play: any): FourthDownChoice | null {
     return null;
 }
 
+/**
+ * What the per-team summary counts: only the snap that stands, read off the processor's flags. A kneel is no decision.
+ * A penalty on a punt or field goal (`punt_play` / `fg_attempt` read the play text) is skipped, and so is a no-play
+ * (a false start, delay of game, or a snap wiped out and replayed). A run or pass the defense's foul turned into a
+ * first down (`first_down_penalty`) is a "go". The per-play card keeps fourthDownActual.
+ */
+export function fourthDownDecision(play: any): FourthDownChoice | null {
+    if (play.kneel_down === true) return null;
+    if (play.penalty_flag === true) {
+        if (play.punt || play.punt_play || play.fg_attempt) return null;
+        if (play.first_down_penalty === true) return 'go';
+        if (play.penalty_no_play === true) return null;
+    }
+    return fourthDownActual(play);
+}
+
 /** A play the card grades: a fourth down with a model recommendation. */
 export const isGradedFourthDown = (play: any) => play?.start?.down == 4 && !!play.fourth_down_recommendation;
 
@@ -37,7 +53,7 @@ export function fourthDownSummary(plays: readonly any[], teamIds: readonly (stri
     const rows = new Map(teamIds.map((id) => [String(id), { teamId: String(id), decisions: 0, agreed: 0, wpLost: 0 }]));
     for (const p of plays) {
         if (!isGradedFourthDown(p)) continue;
-        const actual = fourthDownActual(p);
+        const actual = fourthDownDecision(p);
         const row = rows.get(String(p.start?.pos_team?.id));
         if (!actual || !row) continue;
         row.decisions += 1;

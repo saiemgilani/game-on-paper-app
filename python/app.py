@@ -676,6 +676,19 @@ def _process_game(league: str, game_id: int, source: str | None = None):
                 f"all-span boxes failed for {game_id}: {e}"
             )
 
+        # The full-game box without garbage time (the Team Stats All /
+        # Non-garbage toggle). College only: the margins are sportsdataverse-py's
+        # college lines. Absent when no play is garbage time; fail-open.
+        if league == "cfb":
+            try:
+                box = span_box.non_garbage_box(game)
+                if box:
+                    processed_game["advBoxScoreNonGarbage"] = box
+            except Exception as e:  # the toggle must never cost the page
+                logging.getLogger("root").warning(
+                    f"non-garbage box failed for {game_id}: {e}"
+                )
+
         # Paper Index: one who-won-on-paper share from six fitted margins
         # (python/paper_index.py; trained by tools/fit_paper_index.py).
         # Always the FULL game -- a span page still describes the whole game's

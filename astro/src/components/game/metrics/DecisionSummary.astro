@@ -22,7 +22,7 @@ const { rows, teams, season } = Astro.props;
 <Panel id="decision-summary" title="Fourth Down Decisions" show={true}>
     <div class="table-responsive" slot="panel-body">
         <table class="table table-sm" style="width: auto;">
-            <caption class="text-muted text-small">WP Lost: the bot's win probability for its pick minus the team's choice, summed over the disagreements.</caption>
+            <caption class="text-muted text-small">Decisions count the snap that stands: a run or pass the defense's penalty made a first down is a go; kneels, penalties on punts and field goals, and snaps a penalty wiped out are left out. WP Lost: the bot's win probability for its pick minus the team's choice, summed over the disagreements.</caption>
             <thead>
                 <tr>
                     <th class="box-heading">Team</th>

@@ -1086,7 +1086,7 @@ export function isTeamFavorite(favorites?: { teams?: (string | number)[], games?
     return false
 }
 
-// adapted from https://www.math.ucla.edu/~tom/distributions/normal.html?
+// The standard normal CDF by the five-term polynomial approximation in t = 1 / (1 + 0.2316419 |z|).
 export function calculateNormCdf(x: number, mean: number, sd: number): number {
     const z = (x - mean) / sd
     const T = 1 / (1+.2316419 * Math.abs(z));

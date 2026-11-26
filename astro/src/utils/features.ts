@@ -187,6 +187,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // page's layout): each team's team_season_rates all split and team_strength rows, the team page's reads, with the
     // producer's ranks and percentiles. Off: the route is the site's 404.
     'bball-team-compare': 'preview',
+    // BB-G57: /<league>/games/find?unit=&pts=&reb=&...&from=&to=&type=&ha=&res=, the game finder: every player (or team) game
+    // with at least the given stats over a season range, home / away, result and season type, the "how many N+ games" table
+    // and the game rows linking to their game pages, all from one read of sdv-db's /v1/<league>/game_finder (BB-D41: the
+    // totals and counts are the route's). Off: the route is the site's 404.
+    'bball-game-finder': 'preview',
     // BB-G58: four-factor point accounting, inside 'bball-team-season' (the season block's factor-points table) and
     // 'bball-lineups' (a Four-factor points basis): the net rating per 100 split into eFG, turnover, rebounding and
     // free-throw points against the league average, for offense and defense, read from sdv-db's team_season_rates and
@@ -514,6 +519,14 @@ export const FLAGS: Record<string, FeatureState> = {
     // ESPN's box (utils/officialBox.ts officialTeamBox), full game only. Off: the panel is unchanged.
     // The player lines' ESPN counts are a fix and are not behind this flag.
     'official-team-box': 'preview',
+    // G16: the game page's Team Stats panel gets an All / Non-garbage toggle beside "Show only" (full game, college games
+    // with garbage time: the processor's advBoxScoreNonGarbage, sportsdataverse-py's flag_garbage_time margins), and its
+    // Overall box gets Power Success Rate and Def Run Stop Rate rows. Off: the island's props and the panel are today's.
+    'non-garbage-stats': 'preview',
+    // G18: under the linescore in Scoring Plays, each team's EPA by quarter (components/game/metrics/QuarterEpa.astro,
+    // utils/quarterEpa.ts), final games only, and only when the game's net EPA lands within two touchdowns of the final
+    // margin and no snap is missing its EPA. Off: the panel is the linescore and the plays, as today.
+    'quarter-epa': 'preview',
     // G17: a "Fourth Down Decisions" panel under Team Stats, one row per team: the fourth downs the play rows'
     // Fourth Down Bot cards grade, how many agreed with the bot and the win probability lost on the rest
     // (components/game/metrics/DecisionSummary.astro, utils/fourthDown.ts). Off: no panel, no nav entry.

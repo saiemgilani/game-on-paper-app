@@ -208,7 +208,7 @@ describe('prepareNbaTeam with the flag', () => {
         const { astro, cache } = fakeAstro({ preview: true });
         const r = ok(await prepareNbaTeam(astro));
         expect(tab.fn).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, 5, '100', false);
-        expect(r.lineups).toEqual({ unit: 5, basis: 'per100', gate: '100', sort: 'poss', dir: 'desc', units: [], labels: [] });
+        expect(r.lineups).toEqual({ unit: 5, basis: 'per100', gate: '100', sort: 'poss', dir: 'desc', units: [], labels: [], points: false });
         expect(cache).toHaveLength(1);
         expect(cache[0]).not.toBe(false);
     });
@@ -231,7 +231,7 @@ describe('prepareNbaTeam with the flag', () => {
         tab.fn.mockRejectedValueOnce(new Error('down'));
         const { astro, cache, headers } = fakeAstro({ preview: true });
         const r = ok(await prepareNbaTeam(astro));
-        expect(r.lineups).toEqual({ unit: 5, basis: 'per100', gate: '100', sort: 'poss', dir: 'desc', units: null, labels: [] });
+        expect(r.lineups).toEqual({ unit: 5, basis: 'per100', gate: '100', sort: 'poss', dir: 'desc', units: null, labels: [], points: false });
         expect(r.dashboard).not.toBeNull();
         expect(cache.at(-1)).toBe(false);
         expect(headers.get('Cache-Control')).toBe('no-store');
@@ -358,5 +358,25 @@ describe('LineupsTab', () => {
         const down = await render('nba', NBA, 5, 'per100', null);
         expect(down).toContain('id="lineups-unavailable"');
         expect(down).not.toContain('id="lineups-table"');
+    });
+});
+
+describe('hasFactorPoints (BB-G58)', () => {
+    const real = async () => (await vi.importActual<typeof import('../src/resources/lineups')>('../src/resources/lineups')).hasFactorPoints;
+    test('one strict read of a priced row: true when the table has one', async () => {
+        sdv.fn.mockReset();
+        sdv.fn.mockResolvedValue([{ efg_pts: 1.25 }]);
+        expect(await (await real())('nba', 2025)).toBe(true);
+        const [league, table, q, , strict] = sdv.fn.mock.calls[0];
+        expect([league, table, strict]).toEqual(['nba', 'lineup_seasons', true]);
+        expect(q).toEqual({ season: '2025', efg_pts__isnull: 'false', select: 'efg_pts', limit: '1' });
+    });
+    test('false before the reload: a table without the column answers 400, or no row is priced', async () => {
+        const { SDVRequestError } = await vi.importActual<typeof import('../src/resources/sdv')>('../src/resources/sdv');
+        sdv.fn.mockReset();
+        sdv.fn.mockRejectedValue(new SDVRequestError(400, 'lineup_seasons', 'unknown column efg_pts'));
+        expect(await (await real())('mbb', 2026)).toBe(false);
+        sdv.fn.mockResolvedValue([]);
+        expect(await (await real())('mbb', 2026)).toBe(false);
     });
 });

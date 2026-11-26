@@ -16,6 +16,8 @@ import TeamPanel from '../../layouts/panel/TeamPanel.astro';
 import TeamPlayerStats from './metrics/TeamPlayerStats.astro';
 import PaperIndex from './metrics/PaperIndex.astro';
 import Linescore from './metrics/Linescore.astro';
+import QuarterEpa from './metrics/QuarterEpa.astro';
+import { quarterEpa } from '../../utils/quarterEpa';
 import DrivesTable from './drives/DrivesTable.astro';
 import ExpectedPointsChart from '../charts/ExpectedPointsChart.svelte';
 import WinProbabilityChart from '../charts/WinProbabilityChart.svelte';
@@ -143,6 +145,22 @@ const playerSpans = isFeatureEnabled('player-quarter-filter', Astro.locals) ? (g
 const officialTeam = isFeatureEnabled('official-team-box', Astro.locals)
     ? officialTeamBox(game.advBoxScore, [game.teamInfo.away.id, game.teamInfo.home.id], league, game.season.year)
     : null;
+// 'non-garbage-stats' (preview): Team Stats' All / Non-garbage toggle (a college game with garbage time) and the Overall
+// box's run rows. Off, the island's props are exactly what they were (no extra keys).
+const NON_GARBAGE_SECTIONS = ['team', 'situational', 'defensive', 'drives', 'turnover', 'team_usage', 'drive_scripting', 'st_team'];
+const nonGarbageProps = isFeatureEnabled('non-garbage-stats', Astro.locals) ? {
+    // only the sections Team Stats reads: the box is serialized into the island's props
+    nonGarbage: game.advBoxScoreNonGarbage ? Object.fromEntries(NON_GARBAGE_SECTIONS.map((k) => [k, (game.advBoxScoreNonGarbage as any)[k] ?? []])) : null,
+    runRows: true,
+} : {};
+// 'quarter-epa' (preview): each team's EPA by quarter under the linescore, final games only; null when the EPA fails its
+// sanity gate against the final margin (utils/quarterEpa.ts)
+// The sides are read by homeAway, as the linescore reads them, since the margin's sign depends on it.
+const sides = (['away', 'home'] as const).map((s) => game.header.competitions[0].competitors.find((c: any) => c.homeAway === s));
+const quarterEpaRows = isFeatureEnabled('quarter-epa', Astro.locals) && gameStatus.type.completed == true && sides[0] && sides[1]
+    ? quarterEpa(game.plays, [sides[0].team.id, sides[1].team.id], Number(sides[0].score) - Number(sides[1].score))
+    : null;
+const quarterEpaTeams = sides.map((c: any) => c?.team);
 // 'decision-summary' (preview): the Fourth Down Bot cards summed per team, away first; no panel when no play has a card
 const decisionRows = isFeatureEnabled('decision-summary', Astro.locals) ? fourthDownSummary(game.plays, [awayTeam.id, homeTeam.id]) : [];
 const decisionSummary = decisionRows.some((r) => r.decisions > 0);
@@ -307,7 +325,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
             <div class="row mb-3">
                 <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
                     <Panel id="team-stats" title="Team Stats" show={true} hint={isFeatureEnabled('method-notes', Astro.locals) ? METHOD_NOTES.game : undefined}>
-                        <SituationalSection client:load slot="panel-body" season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles} teamIds={[game.teamInfo.away.id, game.teamInfo.home.id]} officialTeam={officialTeam}>
+                        <SituationalSection client:load slot="panel-body" season={game.season.year} advBoxScoreSpans={withoutUsageSections(game.advBoxScoreSpans)} league={league} percentiles={percentiles} teamIds={[game.teamInfo.away.id, game.teamInfo.home.id]} officialTeam={officialTeam} {...nonGarbageProps}>
                         </SituationalSection>
                     </Panel>
                 </div>
@@ -364,6 +382,7 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
                     <Panel id="scoring-plays" title="Scoring Plays" show={false}>
                         <div class="row" slot="panel-body">
                             <Linescore competitors={game.header.competitions[0].competitors} season={game.season.year} />
+                            {quarterEpaRows && <QuarterEpa rows={quarterEpaRows} teams={quarterEpaTeams} season={game.season.year} />}
                             {
                                 (game.scoringPlays.length == 0) && (<p class="text-center text-muted">No scoring plays in this game.</p>)
                             }

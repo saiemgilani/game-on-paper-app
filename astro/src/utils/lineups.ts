@@ -73,6 +73,8 @@ export interface LineupsTab {
     units: LineupRow[] | null;
     /** one per unit */
     labels: UnitLabel[];
+    /** the four-factor points basis is offered: 'bball-factor-points' is on and the season's table carries the columns */
+    points?: boolean;
 }
 
 /** Player id -> name: the pros' from the page's season rows (stats ids), college's from ncaa_player_box (stats.ncaa.org ids). */
