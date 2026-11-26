@@ -16,10 +16,14 @@ const EMPTY_PROCESSED_BOX_SCORE = {
 }
 
 // officialTeam: utils/officialBox.ts officialTeamBox rows (the 'official-team-box' flag), full game only
-const { season, advBoxScoreSpans, league, percentiles, teamIds, officialTeam = null } = $props();
+// nonGarbage: the full-game box without garbage time and runRows: the Overall box's run rows (both 'non-garbage-stats')
+const { season, advBoxScoreSpans, league, percentiles, teamIds, officialTeam = null, nonGarbage = null, runRows = false } = $props();
 const availableSpans = Object.keys(advBoxScoreSpans).map(parseSpan).filter(p => !!p)
 let selectedSpan = $state("all");
-let selectedBoxScore = $derived(advBoxScoreSpans[selectedSpan] || EMPTY_PROCESSED_BOX_SCORE)
+// the toggle is the full game's only: a window shows every play in it
+let garbageOut = $state(false);
+const showingNonGarbage = $derived(!!nonGarbage && garbageOut && selectedSpan == "all");
+let selectedBoxScore = $derived((showingNonGarbage ? nonGarbage : advBoxScoreSpans[selectedSpan]) || EMPTY_PROCESSED_BOX_SCORE)
 
 function onChangeSpan(e: Event) {
     selectedSpan = (e.target as HTMLSelectElement).value
@@ -34,11 +38,17 @@ function onChangeSpan(e: Event) {
         <option value={s.key} selected={s.key == selectedSpan}>{s.label}</option>
         {/each}
     </select>
+    {#if nonGarbage && selectedSpan == "all"}
+    <div class="d-flex flex-wrap gap-1" role="group" aria-label="Plays counted">
+        <button type="button" class="btn btn-sm btn-outline-secondary" class:active={!garbageOut} aria-pressed={!garbageOut} onclick={() => (garbageOut = false)}>All</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" class:active={garbageOut} aria-pressed={garbageOut} title="Leaves out plays run with the margin past 43, 37, 27 and 21 points in the first to fourth quarters (overtime uses the fourth's)" onclick={() => (garbageOut = true)}>Non-garbage</button>
+    </div>
+    {/if}
 </div>
 <div class="row">
     <div class="col-md-4 ms-sm-auto col-lg-4">
-        <BinionBoxScore season={season} advancedBoxScore={selectedBoxScore} percentiles={percentiles} league={league} span={selectedSpan} />
-        {#if officialTeam && selectedSpan == "all"}
+        <BinionBoxScore season={season} advancedBoxScore={selectedBoxScore} percentiles={percentiles} league={league} span={showingNonGarbage ? "non-garbage" : selectedSpan} runRows={runRows} />
+        {#if officialTeam && selectedSpan == "all" && !showingNonGarbage}
         <TeamMetricsTable
             title="Box Score"
             league={league}

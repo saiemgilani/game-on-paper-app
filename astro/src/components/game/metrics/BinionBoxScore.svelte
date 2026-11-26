@@ -13,9 +13,11 @@ interface Props {
     league?: League
     /** the SituationalSection span shown; "all" is the full game */
     span?: string
+    /** 'non-garbage-stats': add the Power Success Rate and Def Run Stop Rate rows */
+    runRows?: boolean
 }
 
-const {season, advancedBoxScore, percentiles, league = 'cfb', span = 'all'}: Props = $props();
+const {season, advancedBoxScore, percentiles, league = 'cfb', span = 'all', runRows = false}: Props = $props();
 // the ladder is single full games: a quarter or half shows its values unranked
 const ladder = $derived(span === 'all' ? percentiles : []);
 // the population the percentiles describe: "FBS vs FBS" for college, "NFL" for the pros
@@ -28,6 +30,8 @@ const slim_title_mapping: Record<string, string> = {
     "EPA_rushing_per_play" : "EPA/Rush",
     "defensive.havoc_total" : "Havoc Rate",
     "rushing_stuff" : "Def Run Stuff Rate",
+    "rushing_stopped" : "Def Run Stop Rate",
+    "rushing_power_success" : "Power Success Rate",
     "situational.EPA_success" : "Success Rate",
     "situational.EPA_success_rate_third" : "3rd Down Success Rate",
     "situational.EPA_success_rate_rz" : "Red Zone Success Rate",
@@ -36,19 +40,21 @@ const slim_title_mapping: Record<string, string> = {
     "yards_per_play": "Yards/Play",
 }
 
-const columns = [
+const columns = $derived([
     "EPA_per_play",
-    "situational.EPA_success", 
+    "situational.EPA_success",
     "yards_per_play",
-    "EPA_passing_per_play", 
-    "EPA_rushing_per_play", 
-    "yards_per_pass", 
-    "EPA_explosive", 
-    "situational.EPA_success_rate_third", 
-    "situational.EPA_success_rate_rz", 
-    "rushing_stuff", 
+    "EPA_passing_per_play",
+    "EPA_rushing_per_play",
+    ...(runRows ? ["rushing_power_success"] : []),
+    "yards_per_pass",
+    "EPA_explosive",
+    "situational.EPA_success_rate_third",
+    "situational.EPA_success_rate_rz",
+    "rushing_stuff",
+    ...(runRows ? ["rushing_stopped"] : []),
     "defensive.havoc_total"
-]
+])
 const percentileSeason = $derived(ladder.length == 0 ? season : ladder[0].season);
 </script>
 

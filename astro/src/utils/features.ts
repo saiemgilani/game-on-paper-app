@@ -514,6 +514,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // ESPN's box (utils/officialBox.ts officialTeamBox), full game only. Off: the panel is unchanged.
     // The player lines' ESPN counts are a fix and are not behind this flag.
     'official-team-box': 'preview',
+    // G16: the game page's Team Stats panel gets an All / Non-garbage toggle beside "Show only" (full game, college games
+    // with garbage time: the processor's advBoxScoreNonGarbage, sportsdataverse-py's flag_garbage_time margins), and its
+    // Overall box gets Power Success Rate and Def Run Stop Rate rows. Off: the island's props and the panel are today's.
+    'non-garbage-stats': 'preview',
     // G18: under the linescore in Scoring Plays, each team's EPA by quarter (components/game/metrics/QuarterEpa.astro,
     // utils/quarterEpa.ts), final games only, and only when the game's net EPA lands within two touchdowns of the final
     // margin and no snap is missing its EPA. Off: the panel is the linescore and the plays, as today.
