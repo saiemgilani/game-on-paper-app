@@ -192,6 +192,17 @@ describe('PR 0 byte-identity: every /nba route state', () => {
         const off = on.replace(/<meta property="og:image:alt" content="[^"]*">/, '').replaceAll(card, social);
         await expect(off).toMatchFileSnapshot(snap('game-processor'));
     });
+    test("game: ?spoilers=off under 'bball-share-card' shares the spoiler-free card and a head with no score", async () => {
+        games.schedule.mockResolvedValueOnce(null);
+        espn.page.mockResolvedValueOnce({ page: finalPage, regressed: false, fetchFailed: false });
+        games.proc.mockResolvedValueOnce(proc);
+        const on = await page('game/[id].astro', '/nba/game/401766458?spoilers=off', { id: '401766458' }, { 'bball-share-card': true });
+        const head = on.split('</head>')[0];
+        expect(head).toContain('<meta property="og:image" content="https://gameonpaper.com/nba/game/401766458/card.png?state=final&amp;variant=spoilerfree">');
+        expect(head).toContain('<meta property="og:url" content="https://gameonpaper.com/nba/game/401766458?spoilers=off">');
+        expect(head).not.toMatch(/Atlanta Hawks 95|Orlando Magic 120|95 @|@ Orlando 120/);
+        expect(head).toContain('<title>Atlanta Hawks at Orlando Magic | Game on Paper</title>');
+    });
     // G-R5: the player and team pages under 'bball-share-card': the head's image tags and a Share island, and nothing else
     const social = 'https://gameonpaper.com/assets/img/social-card.png';
     const shareIsland = /<astro-island uid="" component-url="<astro-root>\/src\/components\/game\/ShareButton\.svelte"[\s\S]*?<\/astro-island>/;
