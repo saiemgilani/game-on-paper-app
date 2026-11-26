@@ -13,7 +13,7 @@ import { NBA_READ_TIMEOUT_MS } from '../../resources/nbaGames';
 import { isFeatureEnabled } from '../../utils/features';
 import { LEAGUES, leaguePath } from '../../utils/league';
 import type { ProLeague } from '../../utils/playoffPicture';
-import { seasonCache, setCache, uncacheable } from './cache';
+import { playerCache, seasonCache, setCache, uncacheable } from './cache';
 
 /** The series tables follow the nightly season products. */
 const TTL = 6 * 60 * 60;
@@ -73,6 +73,9 @@ export type SeriesPlayerRow = {
     athlete_id: number;
     athlete_display_name: string | null;
     games: number;
+    /** series totals over the games played */
+    min: number; pts: number; fgm: number; fga: number; fg3m: number; fg3a: number; ftm: number; fta: number;
+    oreb: number; dreb: number; reb: number; ast: number; stl: number; blk: number; tov: number; pf: number;
     ts_pct: number | null;
     reg_games: number | null;
     reg_ts_pct: number | null;
@@ -153,7 +156,9 @@ export async function prepareSeries(Astro: AstroGlobal, league: ProLeague): Prom
         uncacheable(Astro);
         return { notFound: true };
     }
-    setCache(Astro, seasonCache(league));
+    // a series whose games are in but whose totals are not (a part-written load) is never held for the cache window
+    if (teams.length === 0 || players.length === 0) uncacheable(Astro);
+    else setCache(Astro, seasonCache(league));
     return { league, id: key.id, season: key.season, games, teams, players, spoilerFree: Astro.url.searchParams.get('spoilers') === 'off' };
 }
 
@@ -174,6 +179,8 @@ export interface SeriesIndexParams {
     current: number;
     /** newest round first; a round's series in the order of their first game */
     rounds: { round: number | null; name: string | null; series: SeriesIndexEntry[] }[];
+    /** the page's ?spoilers=off, carried to each series link */
+    spoilerFree: boolean;
 }
 
 export type SeriesIndexPrep = { notFound: true } | { unavailable: true } | SeriesIndexParams;
@@ -210,6 +217,7 @@ export async function prepareSeriesIndex(Astro: AstroGlobal, league: ProLeague):
     let season = all.includes(asked) ? asked : current;
     const columns = 'season,series_id,round,round_code,round_name,game_number,game_id,game_date,completed,home_team_id,home_abbreviation,home_display_name,home_score,away_team_id,away_abbreviation,away_display_name,away_score,winner_team_id,team_a_id,team_b_id,team_a_wins,team_b_wins,series_games,decided,series_winner_team_id';
     let rows: SeriesGameRow[];
+    let fellBack = false;
     try {
         const seasonRows = (s: number) => read<SeriesGameRow>(league, 'playoff_series_games', { season: String(s), select: columns, limit: '500' });
         rows = await seasonRows(season);
@@ -217,12 +225,14 @@ export async function prepareSeriesIndex(Astro: AstroGlobal, league: ProLeague):
         if (rows.length === 0 && season === current && !all.includes(asked) && all.length > 1) {
             season = all[all.length - 2];
             rows = await seasonRows(season);
+            fellBack = true;
         }
     } catch (e: any) {
         console.error(`ERROR while loading the ${league} ${season} playoff series: ${e}, ${e?.stack}`);
         uncacheable(Astro);
         return { unavailable: true };
     }
-    setCache(Astro, seasonCache(league));
-    return { league, season, seasons: all, current, rounds: seriesIndex(rows) };
+    // the bare URL's fallback turns into the current season the day its first series lands: hold it an hour, not six
+    setCache(Astro, fellBack ? playerCache(league) : seasonCache(league));
+    return { league, season, seasons: all, current, rounds: seriesIndex(rows), spoilerFree: Astro.url.searchParams.get('spoilers') === 'off' };
 }

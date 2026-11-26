@@ -9,8 +9,8 @@ export default async (page, base) => {
   await page.waitForLoadState('networkidle', { timeout: 60_000 });
   if ((await page.locator('[data-series-game]').count()) !== 7) throw new Error('expected 7 games');
   await page.waitForTimeout(2000);
-  await page.goto(base + '/wnba/series', { waitUntil: 'networkidle', timeout: 90_000 });
+  await page.goto(base + '/wnba/series?season=2024', { waitUntil: 'networkidle', timeout: 90_000 });
   await page.locator('#series-season').selectOption({ label: '2025' });
-  await page.waitForURL(/season=2025|\/wnba\/series$/, { timeout: 30_000 });
+  await page.waitForURL(/season=2025/, { timeout: 30_000 });
   await page.waitForTimeout(1500);
 };

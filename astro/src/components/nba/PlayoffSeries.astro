@@ -28,6 +28,8 @@ const description = spoilerFree
     ? `${matchup} in the ${label} ${shortName} playoffs (${round}): every game, both teams' totals and each player's series line against the regular season.`
     : `${matchup}, ${label} ${round}: ${status}. Every game, both teams' totals and each player's series line against the regular season.`;
 const url = seriesHref(league, id);
+// the spoiler-free share URL is its own page in the head (og:url / twitter:url / canonical), as the game page's (utils/shareTags.ts)
+const shareUrl = spoilerFree ? `${url}?spoilers=off` : url;
 const lastSeason = LEAGUES[league].seasons[LEAGUES[league].seasons.length - 1];
 const breadcrumbs: PageBreadcrumb[] = [
     { title: shortName, url: leaguePath(league, '/'), active: false },
@@ -54,7 +56,7 @@ const LINE: [keyof SeriesPlayerRow, string, string][] = [
 const SHIFT: [string, string][] = [['min', 'MIN'], ['pts', 'PTS'], ['reb', 'REB'], ['ast', 'AST']];
 ---
 
-<GenericPage title={title} subtitle={`${label} ${shortName} playoffs`} description={description} slug={url} canonicalPath={url} breadcrumbs={breadcrumbs} heading={title}>
+<GenericPage title={title} subtitle={`${label} ${shortName} playoffs`} description={description} slug={url} canonicalPath={shareUrl} breadcrumbs={breadcrumbs} heading={title}>
     <div class="container">
         <div class="text-center mb-3" id="series-header">
             <p class="text-muted text-small mb-1">{label} · {round}</p>
@@ -76,7 +78,7 @@ const SHIFT: [string, string][] = [['min', 'MIN'], ['pts', 'PTS'], ['reb', 'REB'
                 const won = (t: number) => g.winner_team_id === t ? 'fw-bold' : 'text-muted';
                 return (
                     <a class="card border rounded text-reset text-decoration-none p-2 text-center" style="min-width: 7.5rem" href={gameHref(league, g.game_id)} data-series-game={g.game_number}>
-                        <span class="text-small text-muted">Game {g.game_number}{g.game_date ? ` · ${g.game_date.slice(5)}` : ''}</span>
+                        <span class="text-small text-muted">Game {g.game_number}{g.game_date ? ` · ${g.game_date.slice(0, 10).slice(5)}` : ''}</span>
                         <span class="numeral"><span class={won(g.away_team_id)}>{away.abbreviation} {g.away_score ?? ''}</span></span>
                         <span class="numeral"><span class={won(g.home_team_id)}>@{home.abbreviation} {g.home_score ?? ''}</span></span>
                         <span class="text-small numeral" data-series-score>{g.completed ? `${a.abbreviation} ${g.team_a_wins}-${g.team_b_wins} ${b.abbreviation}` : 'Upcoming'}</span>

@@ -21,13 +21,15 @@ vi.mock('../src/resources/sdv', () => ({
         calls.push([source.schema, table, q]);
         if (read.fail) throw new Error('503');
         const rows: any[] = FIX[source.schema]?.[TABLE[table]] ?? [];
-        return rows.filter((r) => String(r.season) === q.season && (!q.series_id || r.series_id === q.series_id))
-            .sort((x, y) => (q.order === 'game_number' ? x.game_number - y.game_number : 0));
+        const kept = rows.filter((r) => String(r.season) === q.season && (!q.series_id || r.series_id === q.series_id));
+        // the API's ?order=: ascending, or descending with a leading '-'
+        const [desc, col] = q.order?.startsWith('-') ? [true, q.order.slice(1)] : [false, q.order];
+        return col ? [...kept].sort((x, y) => (desc ? y[col] - x[col] : x[col] - y[col])) : kept;
     },
     retrieveRows: async () => { throw new Error('unexpected read'); },
 }));
 
-import { parseSeriesId, prepareSeries, seriesIndex, seriesStatus, seriesSide } from '../src/routes/basketball/series';
+import { parseSeriesId, prepareSeries, prepareSeriesIndex, seriesIndex, seriesStatus, seriesSide } from '../src/routes/basketball/series';
 import { FLAGS } from '../src/utils/features';
 import { bballOnly } from './helpers/flags';
 
@@ -41,10 +43,10 @@ const render = async (league: 'nba' | 'wnba', path: string, locals: Record<strin
     const url = new URL(`https://gameonpaper.com/${league}${path}`);
     return container.renderToString(Page, { request: new Request(url), params: page === '[id]' ? { id: url.pathname.split('/').pop()! } : {}, locals: locals as unknown as App.Locals });
 };
-const prep = (league: 'nba' | 'wnba', id: string, locals: Record<string, unknown> = on(), query = '') => {
-    const astro: any = { locals, params: { id }, url: new URL(`https://gameonpaper.com/${league}/series/${id}${query}`), response: { headers: new Headers() }, cache: { set: vi.fn() } };
-    return prepareSeries(astro, league);
-};
+const astroFor = (url: string, locals: Record<string, unknown>, params: Record<string, string> = {}): any =>
+    ({ locals, params, url: new URL(url), response: { headers: new Headers() }, cache: { set: vi.fn() } });
+const prep = (league: 'nba' | 'wnba', id: string, locals: Record<string, unknown> = on(), query = '') =>
+    prepareSeries(astroFor(`https://gameonpaper.com/${league}/series/${id}${query}`, locals, { id }), league);
 const text = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 const after = (html: string, marker: string) => html.split(`${marker}>`)[1]?.split('</tr>')[0] ?? '';
 
@@ -62,7 +64,30 @@ describe("'bball-series'", () => {
         expect(FLAGS['bball-series']).toBe('preview');
         calls.length = 0;
         expect(await prep('nba', FINALS, { preview: false })).toEqual({ notFound: true });
+        expect(await prepareSeriesIndex(astroFor('https://gameonpaper.com/nba/series?season=2025', { preview: false }), 'nba')).toEqual({ notFound: true });
         expect(calls).toEqual([]);
+    });
+    test('off, the header has no Playoffs link; on, it does', async () => {
+        const { default: Header } = await import('../src/components/Header.astro');
+        const header = (locals: Record<string, unknown>) => container.renderToString(Header, { locals: { league: 'nba', ...locals } as any });
+        expect(await header({ preview: false })).not.toContain('href="/nba/series"');
+        expect(await header(on())).toContain('href="/nba/series"');
+    });
+    test('the players are read in the order the page shows them, most points first', async () => {
+        calls.length = 0;
+        const r = await prep('nba', FINALS);
+        expect(calls.find(([, t]) => t === 'playoff_series_players')?.[2].order).toBe('-pts');
+        const pts = 'players' in r ? r.players.map((p) => p.pts) : [];
+        expect(pts.length).toBeGreaterThan(20);
+        expect(pts).toEqual([...pts].sort((x, y) => y - x));
+    });
+    test('a series with games but no totals yet (a part-written load) is never cached', async () => {
+        const astro = astroFor(`https://gameonpaper.com/nba/series/${FINALS}`, on(), { id: FINALS });
+        const saved = FIX.nba.teams;
+        FIX.nba.teams = [];
+        try { await prepareSeries(astro, 'nba'); } finally { FIX.nba.teams = saved; }
+        expect(astro.cache.set).toHaveBeenCalledWith(false);
+        expect(astro.response.headers.get('Cache-Control')).toBe('no-store');
     });
     test('reads the three series tables from the ESPN game schema, nothing else', async () => {
         calls.length = 0;
@@ -106,6 +131,10 @@ describe('the pages', () => {
         const shift = text(after(html, `data-series-shift-player="${top.athlete_id}"`));
         const sign = (v: number) => (v >= 0 ? '+' : '') + v.toFixed(1);
         expect(shift.startsWith(`${top.athlete_display_name} ${top.reg_games} ${top.reg_min_pg.toFixed(1)} ${sign(top.min_pg_diff)} ${top.reg_pts_pg.toFixed(1)} ${sign(top.pts_pg_diff)}`)).toBe(true);
+        // ts_pct_diff is a fraction (0.031 = 3.1 points): the cell shows it once, in points
+        expect(Math.abs(top.ts_pct_diff)).toBeLessThan(1);
+        const tsPts = `${top.ts_pct_diff >= 0 ? '+' : '\u2212'}${Math.abs(top.ts_pct_diff * 100).toFixed(1)}`;
+        expect(shift.endsWith(`${(top.reg_ts_pct * 100).toFixed(1)}% ${tsPts}`)).toBe(true);
         // every team's players, and only the series' (both Finals teams)
         expect(new Set([...html.matchAll(/data-series-players="(\d+)"/g)].map((m) => m[1]))).toEqual(new Set(['25', '11']));
     });
@@ -117,6 +146,11 @@ describe('the pages', () => {
         expect(head(safe)).not.toContain('wins 4-3');
         expect(head(safe)).toContain('NBA Finals');
         expect(safe).toContain('data-series-status>OKC wins 4-3');
+        // the share URLs in the head are the spoiler-free page's, so a link preview never points back at the full one
+        for (const tag of ['property="og:url"', 'name="twitter:url"']) {
+            expect(head(safe)).toMatch(new RegExp(`<meta ${tag} content="https://gameonpaper.com/nba/series/${FINALS}\\?spoilers=off"`));
+            expect(head(full)).toMatch(new RegExp(`<meta ${tag} content="https://gameonpaper.com/nba/series/${FINALS}"`));
+        }
     });
     test('the WNBA Finals sweep', async () => {
         const html = await render('wnba', '/series/2025-11-17');
@@ -136,5 +170,23 @@ describe('the pages', () => {
         const html = await render('wnba', '/series');
         expect(html.match(/data-series-link="/g)).toHaveLength(7);
         expect(calls.map(([, , q]) => q.season)).toEqual(['2026', '2025']);
+        // the select names every season (no option is the bare URL, which can fall back), and 2025 is the one shown
+        expect(html).toMatch(/<option value="2025" selected/);
+        expect(html).toContain('<noscript><button type="submit"');
+    });
+    test('an explicit ?season= never falls back, and the fallback is held an hour, not six', async () => {
+        calls.length = 0;
+        const astro = astroFor('https://gameonpaper.com/wnba/series?season=2026', on());
+        const r = await prepareSeriesIndex(astro, 'wnba');
+        expect('rounds' in r && r.season === 2026 && r.rounds).toEqual([]);
+        expect(calls.map(([, , q]) => q.season)).toEqual(['2026']);
+        const bare = astroFor('https://gameonpaper.com/wnba/series', on());
+        await prepareSeriesIndex(bare, 'wnba');
+        expect(bare.cache.set).toHaveBeenCalledWith(expect.objectContaining({ maxAge: 60 * 60 }));
+    });
+    test('?spoilers=off rides from the index to each series link', async () => {
+        const html = await render('nba', '/series?season=2025&spoilers=off');
+        expect(html).toContain(`href="/nba/series/${FINALS}?spoilers=off"`);
+        expect(html).toContain('<input type="hidden" name="spoilers" value="off">');
     });
 });

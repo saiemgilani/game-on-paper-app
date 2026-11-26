@@ -9,7 +9,8 @@ import { LEAGUES, leaguePath } from '../../utils/league';
 import { seriesHref, seriesIndexHref, seriesStatus, type SeriesIndexParams } from '../../routes/basketball/series';
 
 interface Props { data: SeriesIndexParams }
-const { league, season, seasons, current, rounds } = Astro.props.data;
+const { league, season, seasons, current, rounds, spoilerFree } = Astro.props.data;
+const link = (id: string) => seriesHref(league, id) + (spoilerFree ? '?spoilers=off' : '');
 const shortName = LEAGUES[league].shortName;
 const label = seasonLabelFor(league, season);
 const url = seriesIndexHref(league, season, current);
@@ -22,12 +23,15 @@ const breadcrumbs: PageBreadcrumb[] = [
 
 <GenericPage title={title} subtitle={`${label} ${shortName} playoffs`} description={`Every ${label} ${shortName} playoff series: each game, both teams' totals and each player's series line against the regular season.`} slug={url} canonicalPath={url} breadcrumbs={breadcrumbs} heading={title}>
     <div class="container">
-        <div class="d-flex align-items-center gap-2 mb-3">
+        <form method="get" action={leaguePath(league, '/series')} class="d-flex align-items-center gap-2 mb-3">
+            {spoilerFree && <input type="hidden" name="spoilers" value="off" />}
             <label class="form-label text-muted text-small mb-0" for="series-season">Season</label>
-            <select id="series-season" class="form-select form-select-md w-auto" onchange="window.location.href = this.value">
-                {[...seasons].reverse().map((s) => <option value={seriesIndexHref(league, s, current)} selected={s === season}>{seasonLabelFor(league, s)}</option>)}
+            {/* every option names its season: the bare URL can fall back to last season, so it is no option's target */}
+            <select id="series-season" name="season" class="form-select form-select-md w-auto" onchange="this.form.submit()">
+                {[...seasons].reverse().map((s) => <option value={String(s)} selected={s === season}>{seasonLabelFor(league, s)}</option>)}
             </select>
-        </div>
+            <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button></noscript>
+        </form>
         {rounds.length === 0 && <p class="text-muted" id="series-empty">No {label} playoff series yet.</p>}
         {rounds.map((r) => (
             <section class="mb-4" data-series-round={r.round ?? r.name}>
@@ -35,7 +39,7 @@ const breadcrumbs: PageBreadcrumb[] = [
                 <div class="row">
                     {r.series.map((s) => (
                         <div class="col-12 col-md-6 col-lg-3 mb-2">
-                            <a class="card border rounded text-reset text-decoration-none p-2 h-100" href={seriesHref(league, s.id)} data-series-link={s.id}>
+                            <a class="card border rounded text-reset text-decoration-none p-2 h-100" href={link(s.id)} data-series-link={s.id}>
                                 <span>{s.a.name} vs. {s.b.name}</span>
                                 <span class="text-small numeral text-muted">{seriesStatus(s.last, s.a, s.b)}</span>
                             </a>
