@@ -48,6 +48,30 @@ export function wpLenses(plays: readonly NbaPlay[], rows: readonly WpLensRow[] |
     return out.length > 1 ? out : null;
 }
 
+/** E2, behind 'cfb-wp-naive-lens': the college football lens labels. Our model prices the pregame spread in; the score-only
+ * lens is the same model without it (`home_wp_before_naive`: score, clock, field position and possession). */
+export const FOOTBALL_LENS_LABELS = { model: 'Market-aware', naive: 'Score-only' } as const;
+
+/** One charted football play: who has the ball, our model's WP for that side, and the home side's spread-free WP. */
+export interface FootballWpPlay { pos_team: unknown; winProbability: { before: number }; home_wp_before_naive?: number | null }
+
+/**
+ * Football's two lenses, home WP per charted play in chart order. The market-aware lens is exactly what the chart draws without
+ * lenses (the possession team's WP, flipped to the home side); the score-only lens reads `home_wp_before_naive`. Null (no switch)
+ * when a charted play lacks a finite spread-free value.
+ */
+export function footballWpLenses(plays: readonly FootballWpPlay[], homeId: unknown): Lens[] | null {
+    if (plays.length === 0) return null;
+    const naive = plays.map((p) => p.home_wp_before_naive);
+    if (!naive.every(finite)) return null;
+    const home = String(homeId);
+    const model = plays.map((p) => (String(p.pos_team) === home ? p.winProbability.before : 1 - p.winProbability.before));
+    return [
+        { key: 'model', label: FOOTBALL_LENS_LABELS.model, values: model },
+        { key: 'naive', label: FOOTBALL_LENS_LABELS.naive, values: naive },
+    ];
+}
+
 /** "Q3 4:12": a play's period and clock. */
 export const stampOf = (p: Pick<NbaPlay, 'period' | 'clock'>, regulation: number, kind: PeriodKind) => `${periodShort(p.period, regulation, kind)} ${p.clock}`.trim();
 
