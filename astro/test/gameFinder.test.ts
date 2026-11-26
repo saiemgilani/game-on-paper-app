@@ -13,7 +13,7 @@ afterAll(() => { vi.unstubAllGlobals(); expect(fetched).toEqual([]); });
 
 const FIX = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/game-finder-wnba-2025.json.gz', import.meta.url))).toString());
 const calls: [string, string, Record<string, string>][] = [];
-const read = vi.hoisted(() => ({ fail: false }));
+const read = vi.hoisted(() => ({ fail: false, bare: false }));
 // the filters a query carries, order-free (the page adds the unit, its sort and the caps)
 const strip = ({ order: _o, limit: _l, counts_limit: _c, unit: _u, ...rest }: Record<string, string>) => Object.entries(rest).sort();
 vi.mock('../src/resources/sdv', () => ({
@@ -22,7 +22,7 @@ vi.mock('../src/resources/sdv', () => ({
         if (read.fail) throw new Error('503');
         const hit = Object.values(FIX).find((f: any) => JSON.stringify(strip(f.query)) === JSON.stringify(strip(q)) && f.body.unit === q.unit) as any;
         if (!hit) throw new Error(`no fixture for ${JSON.stringify(q)}`);
-        return hit.body;
+        return read.bare ? { data: hit.body.data } : hit.body;
     },
     retrieveRows: async () => { throw new Error('unexpected read'); },
     retrieveRowsFrom: async () => { throw new Error('unexpected read'); },
@@ -93,6 +93,10 @@ describe("'bball-game-finder'", () => {
     test('a failed read is the 503', async () => {
         read.fail = true;
         try { expect(await prep('?pts=30&from=2025&to=2025')).toEqual({ unavailable: true }); } finally { read.fail = false; }
+    });
+    test('an answer with rows but no totals or counts is the 503 too, never a page that cannot print them', async () => {
+        read.bare = true;
+        try { expect(await prep('?pts=30&from=2025&to=2025')).toEqual({ unavailable: true }); } finally { read.bare = false; }
     });
 });
 

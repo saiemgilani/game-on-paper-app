@@ -44,6 +44,9 @@ export const FINDER_TIMEOUT_MS = 15_000;
 /** The boxes move with the nightly ingest. */
 const TTL = 60 * 60;
 
-export function retrieveGameFinder(league: BasketballLeague, query: Record<string, string>): Promise<FinderBody> {
-    return retrieveBodyFrom<FinderBody>(BASKETBALL[league].gamesSource, 'game_finder', query, TTL, FINDER_TIMEOUT_MS);
+/** Strict: a failed read, or an answer without the totals and counts the page prints, throws (the page's 503). */
+export async function retrieveGameFinder(league: BasketballLeague, query: Record<string, string>): Promise<FinderBody> {
+    const body = await retrieveBodyFrom<FinderBody>(BASKETBALL[league].gamesSource, 'game_finder', query, TTL, FINDER_TIMEOUT_MS);
+    if (typeof body.count !== 'number' || typeof body.entities !== 'number' || !Array.isArray(body.counts)) throw new Error('game finder: no totals or counts in the response');
+    return body;
 }

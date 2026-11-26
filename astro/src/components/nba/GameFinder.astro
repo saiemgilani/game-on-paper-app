@@ -32,8 +32,9 @@ const opponent = (r: { home_away: string | null }) => (r.home_away === 'away' ? 
   <link href="/assets/css/sticky-table.css" rel="stylesheet">
   <div class="container my-4">
     <h1 class="fs-3">{title}</h1>
-    {/* a GET form on the page's own path; empty fields are left out of the URL so a search is its shortest link */}
-    <form id="game-finder-form" method="get" action="" class="row g-2 align-items-end mb-3" onsubmit="const off = [...this.elements].filter((e) => e.name && !e.value); off.forEach((e) => (e.disabled = true)); setTimeout(() => off.forEach((e) => (e.disabled = false)))">
+    {/* a GET form on the page's own path; empty fields and the season selects left on the current season (data-default) stay out of
+        the URL, so a search is its shortest link (a missing from or to is the current season) */}
+    <form id="game-finder-form" method="get" action="" class="row g-2 align-items-end mb-3" onsubmit="const off = [...this.elements].filter((e) => e.name && (!e.value || e.value === e.dataset.default)); off.forEach((e) => (e.disabled = true)); setTimeout(() => off.forEach((e) => (e.disabled = false)))">
       <div class="col-auto">
         <label class="form-label small text-muted mb-0" for="game-finder-unit">Games of</label>
         <select id="game-finder-unit" name="unit" class="form-select form-select-sm">
@@ -50,12 +51,12 @@ const opponent = (r: { home_away: string | null }) => (r.home_away === 'away' ? 
       <div class="col-auto">
         <label class="form-label small text-muted mb-0" for="game-finder-from">Seasons</label>
         <div class="d-flex align-items-center gap-1">
-          <select id="game-finder-from" name="from" class="form-select form-select-sm w-auto">
+          <select id="game-finder-from" name="from" data-default={String(current)} class="form-select form-select-sm w-auto">
             {[...seasons].reverse().map((s) => (<option value={String(s)} selected={s === filter.from}>{seasonLabelFor(league, s)}</option>))}
           </select>
           <span class="small text-muted">to</span>
           <label class="visually-hidden" for="game-finder-to">Last season</label>
-          <select id="game-finder-to" name="to" class="form-select form-select-sm w-auto">
+          <select id="game-finder-to" name="to" data-default={String(current)} class="form-select form-select-sm w-auto">
             {[...seasons].reverse().map((s) => (<option value={String(s)} selected={s === filter.to}>{seasonLabelFor(league, s)}</option>))}
           </select>
         </div>
