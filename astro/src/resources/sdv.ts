@@ -760,6 +760,16 @@ export async function retrieveRows<T>(league: League, table: string, query: Reco
     return retrieveRowsFrom<T>(leagueSource(league), table, query, cacheTTL, strict);
 }
 
+/**
+ * A hand-written route's whole answer (`{ count, data, ... }`), where the rows alone would drop what the route adds beside
+ * them (the game finder's totals and counts). Strict: a failed read, or a body without a `data` array, throws.
+ */
+export async function retrieveBodyFrom<T extends { data: unknown[] }>(source: SdvSource, endpoint: string, query: Record<string, string>, cacheTTL: number, timeoutMs?: number): Promise<T> {
+    const content = await requestSDV(endpoint, new URLSearchParams(query), undefined, cacheTTL, true, source, true, timeoutMs);
+    if (!Array.isArray(content?.data)) throw new SDVRequestError(502, endpoint, 'no data array in the response');
+    return content as T;
+}
+
 export interface SDVQaRow {
     game_id: number | string
     season: number
