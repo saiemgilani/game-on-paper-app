@@ -1,0 +1,60 @@
+---
+// src/components/nba/TeamDepthLadder.astro
+// BB-G61, behind 'bball-depth-ladder': the team page's depth ladder. One row per tier, best first: the team's players the
+// producer put in it (sdv-db's roster_tiers: every player the team used, a traded player on each of his teams with his
+// full-season tier, marked when most of his season was elsewhere), how many, and the median players per team in that tier
+// (sdv-db's roster_tier_shape). College pages pick Division I or conference tiers (?tiers=d1|conference, select-of-URLs).
+// Every tier and median is sdv-py's (BB-G61); a player without a tier stays off. A name links to the player page when the
+// roster has one (`pages`: the roster's ids, ESPN's in college like roster_tiers'). `data` null: a failed read, and the
+// section says so.
+import type { DepthLadderReads } from '../../resources/depthLadder';
+import { fmtDec, fmtInt } from '../../nba/format';
+import { playerHref, withParams } from '../../nba/links';
+import { basketball, seasonLabelFor } from '../../basketball/config';
+import { CONFERENCE_NOTE, DEPTH_LADDER_NOTE, TIER_VIEWS, TIER_VIEW_LABEL, depthLadder, type TierView } from '../../utils/depthLadder';
+
+interface Props {
+    data: DepthLadderReads | null; season: number; current: number; seasonQuery: string; teamName: string; pages: ReadonlySet<string>;
+    basePath: string;
+    /** college only: the `?tiers=` view, which shows the toggle */
+    view?: TierView;
+}
+const { data, season, current, seasonQuery, teamName, pages, basePath, view } = Astro.props;
+const league = basketball(Astro.locals.league).league;
+const label = seasonLabelFor(league, season);
+const scope = data?.scope ?? 'league';
+const rungs = data ? depthLadder(data.players, data.shape, scope) : [];
+const href = (id: string) => (pages.has(id) ? playerHref(Number(id), seasonQuery, league) : null);
+const viewHref = (v: TierView) => `${withParams(basePath, { season: String(season), tiers: v }, { season: String(current), tiers: 'd1' })}#depth-ladder`;
+const whose = scope === 'conference' ? 'conference' : view ? 'Division I' : 'league';
+---
+<section id="depth-ladder" aria-label="Depth ladder" class="mb-4">
+  <h2 class="h5">Depth ladder</h2>
+  {view && (
+    <div class="mb-2">
+      <label class="visually-hidden" for="depth-ladder-tiers">Tiers</label>
+      <select id="depth-ladder-tiers" class="form-select form-select-sm w-auto" onchange="window.location.href = this.value">
+        {TIER_VIEWS.map((v) => (<option value={viewHref(v)} selected={v === view}>{TIER_VIEW_LABEL[v]}</option>))}
+      </select>
+    </div>
+  )}
+  {data === null ? (<p class="text-muted" id="depth-ladder-unavailable">The {label} depth ladder is temporarily unavailable.</p>) : (<Fragment>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-1" id="depth-ladder-table" data-scope={scope}>
+      <caption class="small text-muted">{teamName}'s {label} players by WAR tier, beside the {whose} median roster.</caption>
+      <thead><tr class="text-nowrap"><th scope="col">Tier</th><th scope="col">Players</th><th scope="col" class="text-end">Team players</th><th scope="col" class="text-end"><abbr title={`The median number of players per ${whose} team in this tier`}>{scope === 'conference' ? 'Conference median' : 'League median'}</abbr></th></tr></thead>
+      <tbody>
+        {rungs.map((r) => (
+          <tr data-tier={r.tier}>
+            <th scope="row" class="text-nowrap">{r.tier}{r.band && (<span class="d-block small text-muted fw-normal">percentile {r.band}</span>)}</th>
+            <td>{r.players.length === 0 ? (<Fragment><span class="text-muted" aria-hidden="true">—</span><span class="visually-hidden">No players</span></Fragment>) : r.players.map((p, i) => (<Fragment>{i > 0 && ', '}{href(p.id) ? (<a href={href(p.id)!}>{p.name}</a>) : p.name}{p.other && (<span class="text-muted small" title="Played most of the season for another team" data-other-team><span aria-hidden="true">*</span><span class="visually-hidden"> (most of the season with another team)</span></span>)}</Fragment>))}</td>
+            <td class="numeral text-end">{fmtInt(r.players.length)}</td>
+            <td class="numeral text-end">{r.median == null ? (<Fragment><span aria-hidden="true">—</span><span class="visually-hidden">No median</span></Fragment>) : fmtDec(r.median, 1)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p class="small text-muted mb-0" id="depth-ladder-note">{DEPTH_LADDER_NOTE}{rungs.some((r) => r.players.some((p) => p.other)) && ' * Most of the season with another team.'}{scope === 'conference' && ` ${CONFERENCE_NOTE}`}</p>
+  </Fragment>)}
+</section>
