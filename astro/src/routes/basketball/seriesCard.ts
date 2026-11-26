@@ -5,7 +5,8 @@
  *
  * Not behind the flags (a link-preview crawler never carries the preview cookie), but inside the league's namespace gate
  * (middleware.ts), as the game card is; nothing links here while the flags are off. A decided series' card is held a
- * day, one in progress ten minutes (the games-played `v` in the page's og:image URL refreshes it after each game).
+ * day, one in progress ten minutes, the spoiler-free card a day. The games-played `v` in the page's og:image URL is not
+ * part of the cache key (cacheKey.ts), so a share after a game can see the previous card for up to those ten minutes.
  */
 import type { APIContext, APIRoute } from 'astro';
 import { seriesCardBody, SERIES_CARD_VARIANTS } from '../../basketball/seriesCard';
@@ -21,6 +22,11 @@ const NO_STORE = { 'Cache-Control': 'no-store' };
 const DECIDED_MAX_AGE = 24 * 60 * 60;
 const LIVE_MAX_AGE = 10 * 60;
 
+/** Seconds a card is held: a day once decided, and always for the spoiler-free card (it never changes); else ten minutes. */
+export function seriesCardMaxAge(variant: CardVariant, games: SeriesGameRow[]): number {
+    return variant === 'spoilerfree' || games[games.length - 1].decided ? DECIDED_MAX_AGE : LIVE_MAX_AGE;
+}
+
 export function basketballSeriesCardRoute(league: ProLeague): APIRoute {
     return async ({ params, url, cache }: APIContext) => {
         const key = parseSeriesId(params.id);
@@ -35,9 +41,12 @@ export function basketballSeriesCardRoute(league: ProLeague): APIRoute {
             return new Response('Card unavailable', { status: 502, headers: NO_STORE });
         }
         if (games.length === 0) return new Response('Not found', { status: 404, headers: NO_STORE });
-        const png = await retrieveBasketballSeriesCard(league, key.id, variant, seriesCardBody(league, games));
+        // the spoiler-free card is sent no series score and no game, so the renderer cannot draw one
+        const full = seriesCardBody(league, games);
+        const body = variant === 'spoilerfree' ? { ...full, status: '', games: [] } : full;
+        const png = await retrieveBasketballSeriesCard(league, key.id, variant, body);
         if (!png) return new Response('Card unavailable', { status: 502, headers: NO_STORE });
-        const maxAge = games[games.length - 1].decided ? DECIDED_MAX_AGE : LIVE_MAX_AGE;
+        const maxAge = seriesCardMaxAge(variant, games);
         try { cache?.set({ maxAge, tags: [league, 'share-card'] }); } catch { /* cache provider absent in dev and tests */ }
         return new Response(png, { headers: { 'Content-Type': 'image/png', 'Cache-Control': `public, max-age=${maxAge}` } });
     };

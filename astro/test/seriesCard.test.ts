@@ -74,7 +74,17 @@ describe('the card route', () => {
         expect(set).toHaveBeenCalledWith({ maxAge: 86400, tags: ['nba', 'share-card'] });
         const [league, id, variant, body] = up.card.mock.calls[0];
         expect([league, id, variant]).toEqual(['nba', FINALS, 'spoilerfree']);
-        expect(body).toEqual(seriesCardBody('nba', games('nba', FINALS)));
+        // the spoiler-free card is sent no series score and no game
+        expect(body).toEqual({ ...seriesCardBody('nba', games('nba', FINALS)), status: '', games: [] });
+        await get('nba', FINALS, '?variant=full');
+        expect(up.card.mock.calls[1][3]).toEqual(seriesCardBody('nba', games('nba', FINALS)));
+    });
+    test('a spoiler-free card of a series in progress is held a day; the full card ten minutes', async () => {
+        const live = games('nba', FINALS).slice(0, 5).map((g) => ({ ...g, decided: false }));
+        expect(live.length).toBe(5);
+        const { seriesCardMaxAge } = await import('../src/routes/basketball/seriesCard');
+        expect(seriesCardMaxAge('spoilerfree', live)).toBe(86400);
+        expect(seriesCardMaxAge('full', live)).toBe(600);
     });
     test('the WNBA Finals sweep', async () => {
         up.card.mockResolvedValue(PNG.buffer);
