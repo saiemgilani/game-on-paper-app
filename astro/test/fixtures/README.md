@@ -1883,7 +1883,9 @@ BB-G59's college reads (`routes/basketball/runs.ts`: sdv-db's `tournament_run_ga
 for college (`sportsdataverse._common.tournament_runs`, branch `feat/bball-tournament-runs`), written on 2026-11-25 over
 sdv-py's `tests/fixtures/bb_tournament_runs` (the 2024-25 men's and women's ESPN schedule and box releases). `games` holds
 every tournament game of both seasons, once per side; `teams` and `players` the NCAA champions' runs (Florida `2025-22-57`,
-UConn `2025-22-41`). `game_date` is ISO text, as the Data API sends it. Nothing is edited.
+UConn `2025-22-41`). `game_date` is ISO text, as the Data API sends it. Nothing is edited. The women's `games` were re-written
+on 2026-11-26 from the producer's fixed champion rule (no champion while the release ends on a round of several games:
+11 conference tournaments and the WBIT, 18 rows now `alive`).
 
 **Used by:** `test/tournamentRuns.test.ts`.
 
