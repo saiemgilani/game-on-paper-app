@@ -84,11 +84,16 @@ describe('the game page behind cfb-wp-naive-lens', () => {
         expect(props.lenses.map((l: any) => l.key)).toEqual(['model', 'naive']);
         expect(props.lenses[1].values).toHaveLength(props.plays.length);
         expect(props.lenses[1].values).toEqual(charted().map((p: any) => p.home_wp_before_naive));
+        // the market-aware lens is the chart's own flip of the plays it is handed (WinProbabilityChart's homeTeamWP)
+        const home = String(props.homeComp.team.id);
+        expect(props.lenses[0].values).toEqual(props.plays.map((p: any) => (String(p.pos_team) === home ? p.winProbability.before : 1 - p.winProbability.before)));
     });
 
-    test('off: no lenses prop, and the chart props are the same as with the flag left at its default for the public', async () => {
+    test('off: no lenses prop, and the chart props are the flag-on props minus the lenses', async () => {
         const off = wpIsland(await render({ flagOverrides: { 'cfb-wp-naive-lens': false } }));
         expect(off).not.toHaveProperty('lenses');
+        // a public viewer (no preview cookie, no override) is the flag-off render
+        expect(wpIsland(await render({}))).toEqual(off);
         const on = wpIsland(await render({ flagOverrides: { 'cfb-wp-naive-lens': true } }));
         const { lenses: _l, ...rest } = on;
         expect(rest).toEqual(off);
