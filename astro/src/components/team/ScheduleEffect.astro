@@ -1,0 +1,63 @@
+---
+// B2/B3, behind 'cfb-schedule-effect': how much of the season Adj EPA/Play is the team and how much its schedule, the
+// three games that move it most, and every game's line in an expandable table. Rows from the producer's ledger
+// (routes/seasonTeam.ts); nothing here is fitted, only added up.
+import GenericPanel from '../../layouts/panel/GenericPanel.astro';
+import type { SDVGame } from '../../resources/sdv';
+import { METHOD_NOTES } from '../../utils/methodNotes';
+import { leaguePath } from '../../utils/league';
+import { effectSentence, fmtEpa, scheduleEffect, weightsCaption, type LedgerRow } from '../../utils/scheduleEffect';
+
+interface Props {
+    team: string
+    rows: LedgerRow[]
+    events: SDVGame[]
+}
+
+const { team, rows, events } = Astro.props;
+const effect = scheduleEffect(rows, events);
+const site = (s: LedgerRow['site']) => (s === 'home' ? 'vs' : s === 'away' ? 'at' : 'neutral');
+---
+
+{effect && (
+    <GenericPanel id="schedule-effect" title="Schedule Effect" show={true}>
+        <p slot="panel-subtitle" class="text-muted text-small m-0">{weightsCaption(effect)} {METHOD_NOTES.adjusted}</p>
+        <div slot="panel-body">
+            <p class="mb-2" id="schedule-effect-summary">{effectSentence(team, effect)}</p>
+            <p class="text-small mb-1"><strong>The games that move it most</strong> (the opponent's fitted strength, as this game's share of the season value):</p>
+            <ul class="text-small mb-2">
+                {effect.drivers.map((g) => (
+                    <li><a href={leaguePath('cfb', `/game/${g.game_id}`)}>{site(g.site)} {g.opponent}</a>: {fmtEpa(g.schedule_contribution)} (raw {fmtEpa(g.raw_net_epa, 2)}, adjusted {fmtEpa(g.adj_net_epa, 2)} that game)</li>
+                ))}
+            </ul>
+            <details>
+                <summary class="text-small">Every game</summary>
+                <div class="table-responsive">
+                    <table class="table table-sm text-small mb-0" id="schedule-effect-games">
+                        <thead>
+                            <tr>
+                                <th scope="col">Wk</th><th scope="col">Opponent</th>
+                                <th scope="col" class="text-end" title="The team's own net EPA/play that game, on the plays the fit uses">Raw net</th>
+                                <th scope="col" class="text-end" title="What the opponent's fitted offense and defense add to that game">Schedule</th>
+                                <th scope="col" class="text-end">Adjusted</th>
+                                <th scope="col" class="text-end" title="How far the season value moves with this game left out">Game moved it</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {effect.rows.map((g) => (
+                                <tr>
+                                    <td>{g.season_type === 3 ? 'Post' : (g.week ?? '')}</td>
+                                    <td><a href={leaguePath('cfb', `/game/${g.game_id}`)}>{site(g.site)} {g.opponent}</a></td>
+                                    <td class="text-end">{fmtEpa(g.raw_net_epa, 2)}</td>
+                                    <td class="text-end">{fmtEpa(g.schedule_adj, 2)}</td>
+                                    <td class="text-end">{fmtEpa(g.adj_net_epa, 2)}</td>
+                                    <td class="text-end">{fmtEpa(g.game_influence)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+        </div>
+    </GenericPanel>
+)}

@@ -6,7 +6,7 @@
 import type { AstroGlobal } from 'astro';
 import { retrieveTeamInformation, type ESPNTeam } from '../resources/espn';
 import {
-    SummaryType, retrievePlayerSummaries, retrieveSeasonOpponentSplits, retrieveTeamOpponentSplits, retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveTeamTendencies, teamSummaryColumns,
+    SummaryType, retrievePlayerSummaries, retrieveSeasonOpponentSplits, retrieveTeamAdjustmentLedger, retrieveTeamOpponentSplits, retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveTeamTendencies, teamSummaryColumns,
     type SDVPassingSummary, type SDVReceivingSummary, type SDVRushingSummary, type SDVTeamSeasonInformation, type SDVTeamSummary, type SDVTeamTendency,
 } from '../resources/sdv';
 import { isFeatureEnabled } from '../utils/features';
@@ -15,6 +15,7 @@ import { gameSetOf, gameSetTable, seasonTeams, type GameSetTable, type GameSplit
 import type { League } from '../utils/league';
 import { TEAM_NEIGHBOR_METRICS, teamNeighborLists, type NeighborList } from '../utils/neighbors';
 import { teamSplitColumns } from '../utils/teamSplits';
+import type { LedgerRow } from '../utils/scheduleEffect';
 
 export interface SeasonTeamData {
     league: League;
@@ -35,6 +36,8 @@ export interface SeasonTeamData {
     seasonTendencies?: SDVTeamTendency[];
     /** 'game-set-filter' only: the Team Stats panel for `?games=`; null with the flag off (no read, `?games=` unread) or when the season read failed */
     gameSet: GameSetTable | null;
+    /** 'cfb-schedule-effect' only: the team-season's ledger rows; null with the flag off (no read) or when the read failed */
+    ledger?: LedgerRow[] | null;
 }
 
 export type SeasonTeamResult = { notFound: true } | SeasonTeamData;
@@ -81,6 +84,7 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
     const gameSetOn = isFeatureEnabled('game-set-filter', Astro.locals);
     const seasonSplits = gameSetOn ? retrieveSeasonOpponentSplits(Number(year), league) : undefined;
     const opponentSplits = isFeatureEnabled('vs-opponent', Astro.locals) ? await retrieveTeamOpponentSplits(Number(year), id, league) : null;
+    const ledger = league === 'cfb' && isFeatureEnabled('cfb-schedule-effect', Astro.locals) ? await retrieveTeamAdjustmentLedger(Number(year), id, league) : null;
     const seasonTendencies = await tendencies;
     const teamTendency = seasonTendencies?.find((t) => String(t.pos_team_id) === id);
     // Nearby ranks ('rank-neighbors'): one season-wide read, the same URL (so the
@@ -103,5 +107,5 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
         try { Astro.cache?.set(false); } catch { /* as above */ }
         try { Astro.response?.headers?.set('Cache-Control', 'no-store'); } catch { /* as above */ }
     }
-    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies, neighborLists, gameSet };
+    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies, neighborLists, gameSet, ledger };
 }

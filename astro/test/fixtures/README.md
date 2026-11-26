@@ -1930,3 +1930,13 @@ sportsdataverse-py's own output (`wnba_team_game_possessions(2025, season_type=[
 `tests/fixtures/bb_team_season_rates` 2025 WNBA releases, written 2026-11-26. Nothing is edited.
 
 **Used by:** `test/bballGameSet.test.ts`.
+
+## `team-adjustment-ledger-2025.json.gz`
+B2's Schedule Effect panel: the 2025 `cfb_adjusted_epa_ledger` rows of LSU (99) and Georgia (61) and their schedule rows
+(`game_id`, `week`, home / away id and name). The ledger is sportsdataverse-py's own output (branch
+`feat/cfb-adjustment-ledger`) on the 2025 FBS-vs-FBS pass/rush plays of the released `play_by_play_2025` asset; the schedule
+rows are `load_cfb_schedule([2025])`. Written 2026-11-26. The ledger's per-team sums equal the published
+`cfb_team_summaries_2025` `net_adj_epa` for all 136 rated teams (max difference 2e-16, checked the same day): LSU 0.139188,
+Georgia 0.342839. Nothing is edited.
+
+**Used by:** `test/scheduleEffect.render.test.ts`.
