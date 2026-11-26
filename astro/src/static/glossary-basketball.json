@@ -4,6 +4,11 @@
             "term": "Defensive rating (DRtg, basketball)",
             "definition": "Points a team allowed per 100 possessions in a game. Lower is better. Shown in the four factors panel on NBA, WNBA and college basketball game pages.",
             "source": ""
+        },
+        {
+            "term": "Depth ladder (basketball)",
+            "definition": "A team page's players on five tiers by their WAR percentile among every player of the league-season: Star (top 5%), Starter (5-20%), Rotation (20-50%), Bench (50-80%) and Fringe (the bottom 20%). Beside each tier, the league median: the median number of players per team in it, a team with nobody there counting 0. A player counts for the team they played the most possessions for; a season with fewer than ten rated players has no tiers.",
+            "source": ""
         }
     ],
     "E": [

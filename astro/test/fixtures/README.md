@@ -1861,3 +1861,16 @@ ids, `split` / `n_players` / `lineup_id` / `poss`, the ratings and `lg_rtg` plus
 
 **To regenerate:** once sdv-db serves the columns, capture `/v1/nba_stats/team_season_rates?season=2026&team_id=1610612751&limit=10`,
 the `mbb` twin for 150 and `/v1/nba_stats/lineup_seasons?season=2025&team_id=1610612750&select=…&limit=1000` instead.
+
+## `depth-ladder-2025.json.gz`
+BB-G61's depth-ladder reads (`resources/depthLadder.ts`: the team's `player_war` rows and the league's `roster_tier_shape`), as
+`{nba: {war, shape}, mbb: {war, shape}}`. They are the producer's own output on the release data, written on 2026-11-25 with
+sportsdataverse-py BB-G61 (branch `feat/bball-war-tier`): `player_war` over the committed 2024-25 inputs of its BB-D26 tests
+(`tests/fixtures/bb_player_war`, `tests/fixtures/mbb_player_value`), which is what `nba_player_war(2025)` / `mbb_player_war(2025)`
+return on those releases, with `war_tier`, and `roster_tier_shape` of the whole league. NBA: the 21 Brooklyn Nets rows
+(1610612751); MBB: the 15 Duke rows (ESPN 150). Every column of those rows; nothing is edited.
+
+**Used by:** `test/depthLadder.test.ts`.
+
+**To regenerate:** once sdv-db serves the column and table, capture `/v1/nba_stats/player_war?season=2025&team_id=1610612751&order=-war&limit=60`
+and `/v1/nba_stats/roster_tier_shape?season=2025&order=tier_order`, the `mbb` twins for 150, and wrap them the same way.
