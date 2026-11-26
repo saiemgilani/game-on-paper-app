@@ -270,6 +270,19 @@ describe("team: Playoffs sums the team's playoff rows (NBA / WNBA)", () => {
         expect(block.counts).toHaveBeenCalledWith('nba', 2026, NETS_TEAM_ID, NETS_ESPN, false, true);
         expect(r.gameSet).toBe('playoffs');
     });
+    test("the team and player pages render under ?games=playoffs (the game logs show every game)", async () => {
+        // the game logs pick their rows from the schedule, which has no playoffs flag: pickGames gives none, so they list
+        // every game; it used to call an undefined preset and throw (a 500 on the live page)
+        const games = playerGamesFromRows(MPJ.games)!;
+        expect(games.length).toBeGreaterThan(0);
+        expect(pickGames(games, 'playoffs')).toEqual([]);
+        expect(pickGames(games, 'close')).toEqual([]);
+        block.counts.mockResolvedValue(playoffCounts());
+        const team = await page(TeamPage, `/nba/team/${NETS_TEAM_ID}?season=2026&games=playoffs`, String(NETS_TEAM_ID), { preview: true });
+        expect(team).toContain('id="season-game-set"');
+        const player = await page(PlayerPage, `/nba/players/${PID}?season=2026&games=playoffs`, String(PID), { preview: true });
+        expect(player).toContain('id="player-game-set"');
+    });
 });
 
 describe('the flag', () => {

@@ -49,10 +49,16 @@ type Game = { game_id: string; date: string; venue: 'home' | 'away' | 'neutral';
 /** The sets a game list can pick (no Close games / Clutch / Conference: those are the team page's). */
 type PickSet = Exclude<BbGameSet, 'close' | 'clutch' | 'conference' | 'playoffs'>;
 
+/** The sets a game list can pick itself: the schedule's own flags. */
+const PRESETS: ReadonlySet<string> = new Set(['all', 'home', 'away', 'wins', 'losses']);
+
 /** The games of a set. Home and Away leave out neutral sites (the player page's presets); last N is by date. */
-export function pickGames<G extends Game>(games: G[], set: PickSet): G[] {
+export function pickGames<G extends Game>(games: G[], set: PickSet | BbGameSet): G[] {
     const n = BB_GAME_SETS.find((s) => s.key === set);
     if (n && 'last' in n) return games.toSorted((a, b) => a.date.localeCompare(b.date) || a.game_id.localeCompare(b.game_id)).slice(-n.last);
+    // a team-only set (Close games, Clutch, Conference games, Playoffs) has no per-game flag here: no game, so a caller
+    // falls back to all of them, as the select does
+    if (!PRESETS.has(set)) return [];
     const keep = new Set(presetGames(games, set as 'all' | 'home' | 'away' | 'wins' | 'losses'));
     return games.filter((g) => keep.has(g.game_id));
 }
