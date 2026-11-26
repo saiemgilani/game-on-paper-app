@@ -1862,6 +1862,21 @@ ids, `split` / `n_players` / `lineup_id` / `poss`, the ratings and `lg_rtg` plus
 **To regenerate:** once sdv-db serves the columns, capture `/v1/nba_stats/team_season_rates?season=2026&team_id=1610612751&limit=10`,
 the `mbb` twin for 150 and `/v1/nba_stats/lineup_seasons?season=2025&team_id=1610612750&select=…&limit=1000` instead.
 
+## `playoff-series-2025.json.gz`
+BB-G59's series reads (`routes/basketball/series.ts`: sdv-db's `playoff_series_games`, `playoff_series_teams` and
+`playoff_series_players`), as `{nba: {games, teams, players}, wnba: {...}}`. They are sportsdataverse-py BB-D43's own output
+(`sportsdataverse._common.playoff_series`, branch `feat/bball-playoff-series`), the frames sdv-db loads into those tables,
+written on 2026-11-25 over sdv-py's `tests/fixtures/bb_playoff_series` (the 2024-25 NBA and 2025 WNBA ESPN schedule and box
+releases). `games` holds every postseason game of both seasons; `teams` and `players` the two Finals (NBA `2025-11-25`,
+Oklahoma City over Indiana in seven; WNBA `2025-11-17`, Las Vegas over Phoenix in four). `game_date` is ISO text, as the Data
+API sends it. Nothing is edited.
+
+**Used by:** `test/playoffSeries.test.ts`.
+
+**To regenerate:** capture `/v1/nba/playoff_series_games?season=2025`, `/v1/nba/playoff_series_teams?season=2025&series_id=2025-11-25`
+and `/v1/nba/playoff_series_players?season=2025&series_id=2025-11-25` (and the WNBA's for `2025-11-17`), or rerun the producer on
+the same releases.
+
 ## `depth-ladder-2025.json.gz`
 BB-G61's depth-ladder reads (`resources/depthLadder.ts`: the team's `roster_tiers` rows and the `roster_tier_shape` rows it reads), as
 `{nba: {rows, shape}, mbb: {rows, shape}}`. They are sportsdataverse-py #1303's own output, written on 2026-11-25: `player_war`
