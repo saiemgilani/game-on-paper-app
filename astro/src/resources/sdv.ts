@@ -1495,11 +1495,12 @@ export async function retrieveTeamOpponentSplits(season: number, teamId: string 
  * `cfb_adjusted_epa_ledger`, table `team_adjustment_ledger`). College only. Null on any failure or a non-array body,
  * so the page drops the panel rather than show a partial sum.
  */
+export const TEAM_LEDGER_TIMEOUT_MS = 8000;
 export async function retrieveTeamAdjustmentLedger(season: number, teamId: string | number, league: League = 'cfb'): Promise<LedgerRow[] | null> {
     if (league !== 'cfb' || !LEAGUES[league].sdvEnabled) return null;
     try {
         const query = new URLSearchParams({ season: String(season), team_id: String(teamId), select: LEDGER_COLUMNS.join(',') });
-        const content = await requestSDV('team_adjustment_ledger', query, undefined, 60 * 60 * 24, true, leagueSource(league), true);
+        const content = await requestSDV('team_adjustment_ledger', query, undefined, 60 * 60 * 24, true, leagueSource(league), true, TEAM_LEDGER_TIMEOUT_MS);
         if (!Array.isArray(content?.data)) throw new Error(`no data array for team_id=${teamId}`);
         return content.data;
     } catch (e) {

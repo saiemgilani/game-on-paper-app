@@ -84,7 +84,13 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
     const gameSetOn = isFeatureEnabled('game-set-filter', Astro.locals);
     const seasonSplits = gameSetOn ? retrieveSeasonOpponentSplits(Number(year), league) : undefined;
     const opponentSplits = isFeatureEnabled('vs-opponent', Astro.locals) ? await retrieveTeamOpponentSplits(Number(year), id, league) : null;
-    const ledger = league === 'cfb' && isFeatureEnabled('cfb-schedule-effect', Astro.locals) ? await retrieveTeamAdjustmentLedger(Number(year), id, league) : null;
+    const ledgerOn = league === 'cfb' && isFeatureEnabled('cfb-schedule-effect', Astro.locals);
+    const ledger = ledgerOn ? await retrieveTeamAdjustmentLedger(Number(year), id, league) : null;
+    // a failed ledger read drops the panel: keep that render out of the cache, as the game-set read below does
+    if (ledgerOn && ledger == null) {
+        try { Astro.cache?.set(false); } catch { /* absent under the Container API */ }
+        try { Astro.response?.headers?.set('Cache-Control', 'no-store'); } catch { /* as above */ }
+    }
     const seasonTendencies = await tendencies;
     const teamTendency = seasonTendencies?.find((t) => String(t.pos_team_id) === id);
     // Nearby ranks ('rank-neighbors'): one season-wide read, the same URL (so the

@@ -62,6 +62,8 @@ const opponentName = (row: LedgerRow, byGame: Map<string, SDVGame>): string => {
 
 export function scheduleEffect(rows: readonly LedgerRow[] | null | undefined, events: readonly SDVGame[] = []): ScheduleEffect | null {
     if (!rows?.length) return null;
+    const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+    if (!rows.every((r) => finite(r.raw_contribution) && finite(r.schedule_contribution) && finite(r.contribution))) return null;
     const raw = rows.reduce((s, r) => s + r.raw_contribution, 0);
     const schedule = rows.reduce((s, r) => s + r.schedule_contribution, 0);
     const adjusted = rows[0].net_adj_epa;
@@ -92,7 +94,7 @@ export const fmtEpa = (v: number | null | undefined, digits = 3): string => (v =
 /** "LSU's schedule adds +0.123 EPA/play: raw +0.016, adjusted +0.139." */
 export function effectSentence(team: string, e: ScheduleEffect): string {
     const verb = e.schedule >= 0 ? 'adds' : 'takes away';
-    return `${team}'s schedule ${verb} ${fmtEpa(Math.abs(e.schedule))} EPA/play: raw ${fmtEpa(e.raw)}, adjusted ${fmtEpa(e.adjusted)}.`;
+    return `${team}'s schedule ${verb} ${Math.abs(e.schedule).toFixed(3)} EPA/play: raw ${fmtEpa(e.raw)}, adjusted ${fmtEpa(e.adjusted)}.`;
 }
 
 /** B3: the weights beside the number. */

@@ -26,6 +26,7 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     retrievePlayerSummaries: async () => [],
     retrieveTeamTendencies: async () => [],
     retrieveTeamOpponentSplits: async () => null,
+    retrieveTeamAdjustmentLedger: async () => [], // cfb-schedule-effect: no ledger rows
 }));
 vi.mock('../src/resources/espn', async (orig) => ({
     ...(await orig<typeof import('../src/resources/espn')>()),

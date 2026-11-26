@@ -18,7 +18,12 @@ describe('scheduleEffect on real ledger rows', () => {
         expect(e.raw + e.schedule).toBeCloseTo(published, 6);
         expect(e.adjusted).toBeCloseTo(published, 6);
         expect(e.games).toBe(rowsOf(team).length);
-        expect(e.rows.map((r) => r.opponent).every((n) => !/^\d+$/.test(n))).toBe(true); // every opponent named
+        // every opponent is the other side of that game in the schedule rows
+        const other = (r: LedgerRow) => {
+            const g = fixture.events.find((x: any) => String(x.game_id) === String(r.game_id));
+            return String(g.home_id) === String(r.opponent_id) ? g.home_team : g.away_team;
+        };
+        expect(e.rows.map((r) => r.opponent).sort()).toEqual(rowsOf(team).map(other).sort());
     });
 
     test('LSU 2025: the schedule carries most of the value, and the drivers are the three largest schedule parts', () => {
@@ -26,13 +31,15 @@ describe('scheduleEffect on real ledger rows', () => {
         expect(e.schedule / e.adjusted).toBeGreaterThan(0.8);
         const parts = rowsOf('99').map((r) => Math.abs(r.schedule_contribution)).sort((a, b) => b - a).slice(0, 3);
         expect(e.drivers.map((d) => Math.abs(d.schedule_contribution))).toEqual(parts);
-        expect(effectSentence('LSU', e)).toBe(`LSU's schedule adds +${e.schedule.toFixed(3)} EPA/play: raw +${e.raw.toFixed(3)}, adjusted +${e.adjusted.toFixed(3)}.`);
+        expect(effectSentence('LSU', e)).toBe(`LSU's schedule adds ${e.schedule.toFixed(3)} EPA/play: raw +${e.raw.toFixed(3)}, adjusted +${e.adjusted.toFixed(3)}.`);
+        expect(effectSentence('X', { ...e, schedule: -0.05 })).toContain('takes away 0.050 EPA/play');
     });
 
     test('rows that do not add up to their season value, or none, draw nothing', () => {
         const broken = rowsOf('99').map((r, i) => (i === 0 ? { ...r, schedule_contribution: r.schedule_contribution + 0.01 } : r));
         expect(scheduleEffect(broken, fixture.events)).toBeNull();
         expect(scheduleEffect([], fixture.events)).toBeNull();
+        expect(scheduleEffect(rowsOf('99').map((r, i) => (i === 1 ? { ...r, contribution: NaN } : r)), fixture.events)).toBeNull();
         expect(scheduleEffect(null)).toBeNull();
     });
 });
@@ -48,7 +55,7 @@ describe('the ScheduleEffect panel', () => {
     test('renders the split, three drivers and one table row per game', async () => {
         const html = await render(rowsOf('99'));
         expect(html).toContain('id="schedule-effect"');
-        expect(html).toMatch(/LSU(&#39;|')s schedule adds \+0\.123 EPA\/play/);
+        expect(html).toMatch(/LSU(&#39;|')s schedule adds 0\.123 EPA\/play: raw \+0\.016, adjusted \+0\.139\./);
         expect((html.match(/<li>/g) ?? []).length).toBe(3);
         const body = html.slice(html.indexOf('<tbody>'), html.indexOf('</tbody>'));
         expect((body.match(/<tr>/g) ?? []).length).toBe(rowsOf('99').length);

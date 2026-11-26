@@ -47,12 +47,12 @@ const site = (s: LedgerRow['site']) => (s === 'home' ? 'vs' : s === 'away' ? 'at
                         <tbody>
                             {effect.rows.map((g) => (
                                 <tr>
-                                    <td>{g.season_type === 3 ? 'Post' : (g.week ?? '')}</td>
+                                    <td class="numeral">{g.season_type === 3 ? 'Post' : (g.week ?? '')}</td>
                                     <td><a href={leaguePath('cfb', `/game/${g.game_id}`)}>{site(g.site)} {g.opponent}</a></td>
-                                    <td class="text-end">{fmtEpa(g.raw_net_epa, 2)}</td>
-                                    <td class="text-end">{fmtEpa(g.schedule_adj, 2)}</td>
-                                    <td class="text-end">{fmtEpa(g.adj_net_epa, 2)}</td>
-                                    <td class="text-end">{fmtEpa(g.game_influence)}</td>
+                                    <td class="text-end numeral">{fmtEpa(g.raw_net_epa, 2)}</td>
+                                    <td class="text-end numeral">{fmtEpa(g.schedule_adj, 2)}</td>
+                                    <td class="text-end numeral">{fmtEpa(g.adj_net_epa, 2)}</td>
+                                    <td class="text-end numeral">{fmtEpa(g.game_influence)}</td>
                                 </tr>
                             ))}
                         </tbody>
