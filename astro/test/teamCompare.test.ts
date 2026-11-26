@@ -132,6 +132,14 @@ describe('ids from another league, and indexing', () => {
         expect((await prepWith('mbb', '?ids=150,1610612738&season=2026')).r).toEqual({ notFound: true });
         expect(calls).toEqual([]);
     });
+    test("a folded WNBA franchise in a season after it folded is a 'no line' card, not a 404", async () => {
+        calls.length = 0;
+        const astro: any = { locals: on(), url: new URL('https://gameonpaper.com/wnba/teams/compare?ids=1611661316&season=2009'), params: {}, response: { headers: new Headers() }, cache: { set: vi.fn() } };
+        const r: any = await prepareTeamCompare(astro, 'wnba');
+        expect(r.notFound).toBeUndefined();
+        expect(r.entries).toEqual([{ id: 1611661316, missing: true }]);
+        expect(calls).toEqual([]);
+    });
     test('every compare URL is noindex, the 404 and the comparison alike', async () => {
         const ok = await prepWith('nba', '?ids=1610612751,1610612738&season=2026');
         expect('entries' in ok.r).toBe(true);
