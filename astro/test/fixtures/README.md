@@ -1940,3 +1940,13 @@ rows are `load_cfb_schedule([2025])`. Written 2026-11-26. The ledger's per-team 
 Georgia 0.342839. Nothing is edited.
 
 **Used by:** `test/scheduleEffect.render.test.ts`.
+
+## `pass-plays-cfb-{2025,2026}-333-{off,def}.json.gz`
+The Passing Direction panel ('team-pass-direction'): Alabama's (333) 2025 and 2026 pass attempts from the Data API's
+`cfb.pbp` table, its own (`pos_team_id=333`) and its opponents' (`def_pos_team_id=333`), each the body of
+`/v1/cfb/pbp?season=<season>&<side>=333&pass_attempt=true&select=game_id,week,seasonType,sack,completion,pass_td,pass_direction,pass_depth,air_yards,yards_after_catch,yds_receiving,EPA,EPA_success&limit=3000`
+(a superset of `PASS_PLAY_COLUMNS`), read 2026-11-26. 2026 runs through the week the table had then (11 games); its
+offense charts 275 of 315 attempts, because the Week 1 game's ESPN text has no depth or direction. 2025 charts only
+from Week 9 on (238 of 525). The test's expected numbers were computed from these files in Python. Nothing is edited.
+
+**Used by:** `test/passDirection.render.test.ts`.

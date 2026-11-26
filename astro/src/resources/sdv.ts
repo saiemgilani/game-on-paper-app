@@ -13,6 +13,7 @@ import { PLAYER_SPLITS, isEspnAthleteId, playerBoardSort } from '../utils/player
 import { statSearchQuery } from '../utils/statSearch';
 import { earliestFinals, FIRST_FINAL_SPAN, type FinalScoreRow } from '../utils/finalScore';
 import { LEDGER_COLUMNS, type LedgerRow } from '../utils/scheduleEffect';
+import { PASS_PLAY_COLUMNS, type PassPlay } from '../utils/passDirection';
 
 const SDV_MAX_LOOKBACK_YEAR = 2004;
 
@@ -1505,6 +1506,34 @@ export async function retrieveTeamAdjustmentLedger(season: number, teamId: strin
         return content.data;
     } catch (e) {
         console.error(`ERROR while loading team_adjustment_ledger (${season} ${teamId}): ${e}`);
+        return null;
+    }
+}
+
+export const TEAM_PASS_PLAYS_TIMEOUT_MS = 8000;
+// a team-season is ~300-550 attempts a side; a full page means the read was cut short
+export const TEAM_PASS_PLAYS_LIMIT = 3000;
+
+/**
+ * 'team-pass-direction': one team-season's pass attempts from the pbp table, its own (`off`, `pos_team_id`) and its
+ * opponents' (`def`, `def_pos_team_id`), carrying only `PASS_PLAY_COLUMNS`. College only. Null on any failure, a
+ * timeout or a truncated page included, so the page drops the panel rather than chart part of a season. The cache
+ * key carries the pbp ingest stamp, so a re-ingest is read fresh.
+ */
+export async function retrieveTeamPassPlays(season: number, teamId: string | number, league: League = 'cfb'): Promise<{ off: PassPlay[], def: PassPlay[] } | null> {
+    if (league !== 'cfb' || !LEAGUES[league].sdvEnabled) return null;
+    const side = async (key: 'pos_team_id' | 'def_pos_team_id'): Promise<PassPlay[]> => {
+        const query = new URLSearchParams({ season: String(season), [key]: String(teamId), pass_attempt: 'true', select: PASS_PLAY_COLUMNS.join(','), limit: String(TEAM_PASS_PLAYS_LIMIT) });
+        const content = await requestSDV('pbp', query, undefined, 60 * 60 * 24, true, leagueSource(league), true, TEAM_PASS_PLAYS_TIMEOUT_MS);
+        if (!Array.isArray(content?.data)) throw new Error(`no data array for ${key}=${teamId}`);
+        if (content.data.length >= TEAM_PASS_PLAYS_LIMIT) throw new Error(`more rows than one ${TEAM_PASS_PLAYS_LIMIT}-row page for ${key}=${teamId}`);
+        return content.data;
+    };
+    try {
+        const [off, def] = await Promise.all([side('pos_team_id'), side('def_pos_team_id')]);
+        return { off, def };
+    } catch (e) {
+        console.error(`ERROR while loading pass plays (${season} ${teamId}): ${e}`);
         return null;
     }
 }

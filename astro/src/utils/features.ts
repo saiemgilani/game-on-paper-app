@@ -341,6 +341,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // games that move it most, every game's line (raw, schedule, adjusted, how far the game moved the season value), and the
     // weights beside the number. Off: no read, and the page is today's.
     'cfb-schedule-effect': 'preview',
+    // The college football team-season page's Passing Direction panel: the team's pass attempts (offense) and its
+    // opponents' (defense) by depth (short / deep) and direction (left / middle / right), from the pbp table's
+    // pass_depth / pass_direction / air_yards (utils/passDirection.ts). ESPN's text carries them from 2025 Week 9 on,
+    // so the panel says how many attempts it charts. Off: no read, and the page is today's.
+    'team-pass-direction': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts

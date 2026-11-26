@@ -6,7 +6,7 @@
 import type { AstroGlobal } from 'astro';
 import { retrieveTeamInformation, type ESPNTeam } from '../resources/espn';
 import {
-    SummaryType, retrievePlayerSummaries, retrieveSeasonOpponentSplits, retrieveTeamAdjustmentLedger, retrieveTeamOpponentSplits, retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveTeamTendencies, teamSummaryColumns,
+    SummaryType, retrievePlayerSummaries, retrieveSeasonOpponentSplits, retrieveTeamAdjustmentLedger, retrieveTeamOpponentSplits, retrieveTeamPassPlays, retrieveTeamSummaries, retrieveTeamSeasonInformation, retrieveTeamTendencies, teamSummaryColumns,
     type SDVPassingSummary, type SDVReceivingSummary, type SDVRushingSummary, type SDVTeamSeasonInformation, type SDVTeamSummary, type SDVTeamTendency,
 } from '../resources/sdv';
 import { isFeatureEnabled } from '../utils/features';
@@ -16,6 +16,7 @@ import type { League } from '../utils/league';
 import { TEAM_NEIGHBOR_METRICS, teamNeighborLists, type NeighborList } from '../utils/neighbors';
 import { teamSplitColumns } from '../utils/teamSplits';
 import type { LedgerRow } from '../utils/scheduleEffect';
+import type { PassPlay } from '../utils/passDirection';
 
 export interface SeasonTeamData {
     league: League;
@@ -38,6 +39,8 @@ export interface SeasonTeamData {
     gameSet: GameSetTable | null;
     /** 'cfb-schedule-effect' only: the team-season's ledger rows; null with the flag off (no read) or when the read failed */
     ledger?: LedgerRow[] | null;
+    /** 'team-pass-direction' only: the team-season's pass attempts, its own and its opponents'; null with the flag off (no read) or when either read failed */
+    passPlays?: { off: PassPlay[], def: PassPlay[] } | null;
 }
 
 export type SeasonTeamResult = { notFound: true } | SeasonTeamData;
@@ -77,6 +80,9 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
     const tendencies = isFeatureEnabled('team-splits', Astro.locals)
         ? retrieveTeamTendencies({ season: Number(year), league, columns: teamSplitColumns(league) })
         : undefined;
+    // started before the player reads and awaited after them, as the tendency read is; never rejects (null on any failure)
+    const passDirectionOn = league === 'cfb' && isFeatureEnabled('team-pass-direction', Astro.locals);
+    const passPlaysRead = passDirectionOn ? retrieveTeamPassPlays(Number(year), id, league) : undefined;
     const passers = (await retrievePlayerSummaries(Number(year), SummaryType.PASSING, Number(id), "plays", false, 10, Number(year), league)) as SDVPassingSummary[];
     const rushers = (await retrievePlayerSummaries(Number(year), SummaryType.RUSHING, Number(id), "plays", false, 20, Number(year), league)) as SDVRushingSummary[];
     const receivers = (await retrievePlayerSummaries(Number(year), SummaryType.RECEIVING, Number(id), "plays", false, 25, Number(year), league)) as SDVReceivingSummary[];
@@ -88,6 +94,12 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
     const ledger = ledgerOn ? await retrieveTeamAdjustmentLedger(Number(year), id, league) : null;
     // a failed ledger read drops the panel: keep that render out of the cache, as the game-set read below does
     if (ledgerOn && ledger == null) {
+        try { Astro.cache?.set(false); } catch { /* absent under the Container API */ }
+        try { Astro.response?.headers?.set('Cache-Control', 'no-store'); } catch { /* as above */ }
+    }
+    const passPlays = passPlaysRead ? await passPlaysRead : null;
+    // a failed pass-play read drops the panel: keep that render out of the cache, as the ledger read does
+    if (passDirectionOn && passPlays == null) {
         try { Astro.cache?.set(false); } catch { /* absent under the Container API */ }
         try { Astro.response?.headers?.set('Cache-Control', 'no-store'); } catch { /* as above */ }
     }
@@ -113,5 +125,5 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
         try { Astro.cache?.set(false); } catch { /* as above */ }
         try { Astro.response?.headers?.set('Cache-Control', 'no-store'); } catch { /* as above */ }
     }
-    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies, neighborLists, gameSet, ledger };
+    return { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies, neighborLists, gameSet, ledger, passPlays };
 }
