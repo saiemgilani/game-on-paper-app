@@ -7,7 +7,7 @@ import type { League } from './league';
 export const METHOD_NOTES = {
     cfbSeason: 'Data shown is from FBS vs FBS games only. Not adjusted for opponent or garbage time.',
     nflSeason: 'Data shown is from regular season games only. Not adjusted for opponent or garbage time.',
-    adjusted: 'Adjusted for opponent strength, fit with a home-field term in FBS vs FBS games. Garbage time (a lead of more than 43, 37, 27 or 21 points in quarters 1-4) is left out of both the fit and the team\'s own EPA.',
+    adjusted: 'Adjusted for opponent strength, fit with a home-field term in FBS vs FBS games. Garbage time (a lead of more than 43, 37, 27 or 21 points in quarters 1-4, and 21 in overtime) is left out of both the fit and the team\'s own EPA.',
     game: 'Every play, garbage time included. Not adjusted for opponent.',
 } as const;
 
