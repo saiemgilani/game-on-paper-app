@@ -138,6 +138,8 @@ export interface TeamGamePossRow {
 const POSS_SELECT = 'game_id,poss,opp_poss,pts,opp_pts,seconds';
 /** One row per regular-season team-game (82 for an NBA team); the cap keeps a bad filter from paging silently. */
 const POSS_LIMIT = '100';
+/** The pros' rows carry the season type (sdv-db's team_game_possessions holds the regular season and the playoffs). */
+const PRO_POSS_TYPE = { regular: { season_type: 'regular-season' }, playoffs: { season_type: 'playoffs' } } as const;
 
 export interface GameSetCountReads {
     /** the team's per-game possessions rows, keyed by the producer's game id */
@@ -153,13 +155,16 @@ export interface GameSetCountReads {
  * (team_game_possessions, the play-by-play count the All / Home / Away split rows add up) and the map from their game ids
  * to ESPN's. The pros' ids map through
  * the games schema's schedule_crosswalk (both sides), college's through ncaa_team_box (contest id -> ESPN game id).
- * `conference` (college) adds the schedule's conference_competition flags. Strict, in parallel.
+ * `conference` (college) adds the schedule's conference_competition flags. `playoffs` (the pros' Playoffs set) reads
+ * the team's playoff rows alone: they are the set, so no id map is read. Strict, in parallel.
  */
-export async function retrieveGameSetCounts(league: BasketballLeague, season: number, teamId: number, espnId: number, conference: boolean): Promise<GameSetCountReads> {
+export async function retrieveGameSetCounts(league: BasketballLeague, season: number, teamId: number, espnId: number, conference: boolean, playoffs = false): Promise<GameSetCountReads> {
     const s = String(season);
     const src = BASKETBALL[league].gamesSource;
     const pro = PRO_LEAGUES.includes(league);
-    const games = retrieveRows<TeamGamePossRow>(league, 'team_game_possessions', { season: s, team_id: String(teamId), split: 'all', select: POSS_SELECT, limit: POSS_LIMIT }, TTL, true);
+    const type = pro ? PRO_POSS_TYPE[playoffs ? 'playoffs' : 'regular'] : {};
+    const games = retrieveRows<TeamGamePossRow>(league, 'team_game_possessions', { season: s, team_id: String(teamId), split: 'all', ...type, select: POSS_SELECT, limit: POSS_LIMIT }, TTL, true);
+    if (pro && playoffs) return { games: await games, espnOf: new Map(), conference: null };
     const key = `${league}_game_id`; // nba_game_id / wnba_game_id
     const crosswalk = (side: 'home' | 'away') => retrieveRowsFrom<Record<string, string | number | null>>(src, 'schedule_crosswalk', { season: s, [`${side}_espn_team_id`]: String(espnId), select: `espn_game_id,${key}`, limit: GAME_LIMIT }, TTL, true);
     const pairs: Promise<[unknown, unknown][]> = pro
