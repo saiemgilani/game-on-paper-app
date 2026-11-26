@@ -2,6 +2,7 @@
 import { getSecret } from "astro:env/server"
 import { LEAGUES } from "../utils/league"
 import { isFeatureEnabled } from "../utils/features"
+import FeedbackButton from "./FeedbackButton.astro"
 
 const APP_VERSION = getSecret("APP_VERSION");
 const preview = Astro.locals.preview === true;
@@ -42,7 +43,7 @@ const preview = Astro.locals.preview === true;
       </p>
     </div>
   </div>
-</div>
+</div>{/* 'feedback-inbox': renders nothing, not a byte, unless the viewer is an authenticated admin (the component checks) */}<FeedbackButton />
 <!-- Floating back-to-top: shared by the game, pre-game and scoreboard pages via
      this footer. Hidden until the reader has scrolled a screen's worth, bottom-right
      so it never covers the play table's left-aligned text; 44px touch target. -->

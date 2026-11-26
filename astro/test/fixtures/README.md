@@ -1813,3 +1813,33 @@ Keyed `cfb_401856889` / `nfl_401873054`. No hand edits.
 **Used by:** `test/officialBox.test.ts`, `test/officialBox.render.test.ts`.
 
 **To regenerate:** rerun the two processors on the same ids and keep the same sections and columns.
+
+## `team-compare-2026.json.gz`
+BB-G60's team compare reads (`routes/basketball/teamCompare.ts`: each team's `team_season_rates` `all` split row and its
+`team_strength` row), as `{nba: {rates, strength}, mbb: {rates, strength}}`. They are the producers' own output on the
+release data, written on 2026-11-25 with sportsdataverse-py (`nba_team_season_rates(2026)`, `nba_team_strength(2026)`,
+`mbb_team_season_rates(2026)`, `mbb_team_strength(2026)`), the frames sdv-db loads into those tables. NBA: the Brooklyn
+Nets (1610612751), Boston Celtics (1610612738) and New York Knicks (1610612752). MBB: Duke (150) and North Carolina
+(153). The rates rows are projected to main's `team_season_rates` columns and the strength rows to `STRENGTH_SELECT`.
+Nothing is edited.
+
+**Used by:** `test/teamCompare.test.ts`.
+
+**To regenerate:** capture `/v1/nba_stats/team_season_rates?season=2026&team_id=<id>&split=all&limit=1` and
+`/v1/nba_stats/team_strength?season=2026&team_id=<id>&select=…&limit=1` for each team (the `mbb` twins for college), and wrap
+them as above.
+
+## `factor-points.json.gz`
+BB-G58's four-factor points (sdv-py BB-D42, sportsdataverse-py #1287) before sdv-db reloads `team_season_rates` and
+`lineup_seasons` with the new columns: the producer's own output on the release data, written on 2026-11-25 from that
+PR's branch, as `{nba, mbb, units}`. `nba`: `nba_team_season_rates(2026)` filtered to the Brooklyn Nets (1610612751),
+the five split rows; `mbb`: `mbb_team_season_rates(2026)` filtered to Duke (150); `units`:
+`nba_lineup_seasons(2025)` filtered to the Minnesota Timberwolves (1610612750), all 816 units. Each is projected to the
+ids, `split` / `n_players` / `lineup_id` / `poss`, the ratings and `lg_rtg` plus the factor columns (`off_*_pts`,
+`def_*_pts`, `efg_pts`, `tov_pts`, `orb_pts`, `ft_pts`); nothing is edited. The test joins the team rows onto
+`team-season-*-2026.json.gz` by split (the factor columns and `lg_rtg` only).
+
+**Used by:** `test/factorPoints.test.ts`.
+
+**To regenerate:** once sdv-db serves the columns, capture `/v1/nba_stats/team_season_rates?season=2026&team_id=1610612751&limit=10`,
+the `mbb` twin for 150 and `/v1/nba_stats/lineup_seasons?season=2025&team_id=1610612750&select=…&limit=1000` instead.

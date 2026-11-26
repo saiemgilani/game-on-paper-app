@@ -251,10 +251,10 @@ async function readSeasonBlock(league: BasketballLeague, season: number, teamId:
 async function readLineups(Astro: AstroGlobal, league: BasketballLeague, season: number, teamId: number, rows: SeasonPlayerRow[]): Promise<LineupsTab> {
     const q = Astro.url.searchParams;
     const unit = parseUnit(q.get('unit'));
-    const basis = parseBasis(q.get('basis'), league);
+    const basis = parseBasis(q.get('basis'), league, isFeatureEnabled('bball-factor-points', Astro.locals));
     const controls = { unit, basis, gate: parseGate(q.get('min'), league), sort: parseLineupSort(q.get('lsort'), basis), dir: parseDir(q.get('ldir')) };
     try {
-        const read = await retrieveLineups(league, season, teamId, unit, controls.gate);
+        const read = await retrieveLineups(league, season, teamId, unit, controls.gate, basis === 'points');
         const college = isNcaaDashboards(league);
         const units = sortUnits(read.units, controls.sort, controls.dir);
         // the season rows are ESPN-keyed in college: they name no unit (stats.ncaa.org ids), they only say which pages exist

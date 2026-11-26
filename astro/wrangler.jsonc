@@ -27,6 +27,8 @@
 			"enabled": true,
 			"invocation_logs": true
 		},
+		// Traces record subrequest URLs: turned on, they would store the DISCORD_INBOX_WEBHOOK_URL token
+		// (POST /admin/api/feedback). Keep them off, or move that secret first.
 		"traces": {
 			"enabled": false
 		}
