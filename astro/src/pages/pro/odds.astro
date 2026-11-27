@@ -1,0 +1,79 @@
+---
+/**
+ * Odds board (flag 'pro-odds', preview): every book's moneyline for each upcoming game, the book's hold,
+ * its no-vig fair %, the consensus and the best price per side. Read from gop-pro odds.py's
+ * `pro/odds/odds.json`. Rendered only: the JSON is never offered as a file (The Odds API terms).
+ */
+import GenericPage from '../../layouts/GenericPage.astro';
+import Panel from '../../layouts/panel/GenericPanel.astro';
+import ProNav from '../../components/pro/ProNav.astro';
+import { proObject } from '../../resources/pro';
+import { isFeatureEnabled } from '../../utils/features';
+import { fmtAmerican, fmtPct, fmtStart, implied, pickLeague, type OddsBoard } from '../../utils/proOdds';
+
+if (!isFeatureEnabled('pro-odds', Astro.locals)) return Astro.rewrite('/404');
+if (!Astro.locals.pro) return Astro.redirect('/pricing', 302);
+const doc = await proObject<OddsBoard>('pro/odds/odds.json');
+if (!doc) return Astro.rewrite('/404');
+const league = pickLeague(doc, Astro.url.searchParams.get('league'));
+---
+<GenericPage title="Odds Board | Game on Paper Pro" subtitle="Moneylines, hold and no-vig fair odds" slug="/pro/odds"
+    breadcrumbs={[{ title: 'Pro', url: '/pro', active: false }, { title: 'Odds', active: true }]} heading="Odds Board">
+    <ProNav active="odds" />
+    <div class="container">
+        <h1 class="fs-3">Odds Board</h1>
+        <p class="text-muted text-small">{doc.headlines.join('. ')}. Fair % is each book's price with its margin removed; hold is that margin.</p>
+        <div class="d-flex flex-wrap gap-1 mb-3" id="odds-leagues">
+            {doc.leagues.map((l) => (
+                <a href={`/pro/odds?league=${l.key}`} class:list={['btn btn-sm btn-outline-secondary', { active: l.key === league?.key }]}>
+                    {l.name} ({l.games.length})
+                </a>
+            ))}
+        </div>
+        {league && league.games.length === 0 && <p class="text-muted" id="odds-empty">No upcoming {league.name} games in this snapshot.</p>}
+        {league?.games.map((g) => (
+            <Panel id={`odds-${g.id}`} title={`${g.away} at ${g.home}`} show={true} class="mb-md-3">
+                <p slot="panel-subtitle" class="m-0 text-muted text-small">{fmtStart(g.start)}, {g.books.length} book{g.books.length === 1 ? '' : 's'}</p>
+                <Fragment slot="panel-body">
+                    <div class="row g-2 mb-2 text-small odds-summary">
+                        {(['away', 'home'] as const).map((s) => (
+                            <div class="col-12 col-md-6">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="fw-bold">{s === 'away' ? g.away : g.home} <span class="text-muted fw-normal">({s})</span></div>
+                                    <div>Consensus fair <span class="numeral fw-bold">{fmtPct(g.consensus?.[s] ?? null)}</span></div>
+                                    <div>Best price <span class="numeral fw-bold">{fmtAmerican(g.best[s].price)}</span> <span class="text-muted">{g.best[s].book}</span>
+                                        {' '}<span class="text-muted">(implied <span class="numeral">{fmtPct(implied(g.best[s].price))}</span>)</span></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <p class="text-small mb-2">Best prices together: hold <span class="numeral">{fmtPct(g.best_hold)}</span>{g.crossed && <span class="text-danger fw-bold"> (the best prices cross)</span>}</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm odds-books">
+                            <thead><tr><th class="text-left">Book</th><th class="text-center">Away</th><th class="text-center">Home</th>
+                                <th class="text-center">Hold</th><th class="text-center">Fair away</th><th class="text-center">Fair home</th></tr></thead>
+                            <tbody>{g.books.map((b) => (
+                                <tr>
+                                    <td class="text-left text-nowrap">{b.book}</td>
+                                    <td class:list={['text-center numeral', { 'fw-bold': b.away_price === g.best.away.price }]}>{fmtAmerican(b.away_price)}</td>
+                                    <td class:list={['text-center numeral', { 'fw-bold': b.home_price === g.best.home.price }]}>{fmtAmerican(b.home_price)}</td>
+                                    <td class="text-center numeral">{fmtPct(b.hold)}</td>
+                                    <td class="text-center numeral">{fmtPct(b.away_fair)}</td>
+                                    <td class="text-center numeral">{fmtPct(b.home_fair)}{b.note && <span class="text-muted"> ({b.note})</span>}</td>
+                                </tr>
+                            ))}</tbody>
+                        </table>
+                    </div>
+                </Fragment>
+            </Panel>
+        ))}
+        <div class="alert alert-warning mb-3" id="odds-limits">
+            <p class="fw-bold mb-1">What these numbers are, and aren't</p>
+            <ul class="mb-0">{doc.limits.map((l) => <li>{l}</li>)}</ul>
+        </div>
+        <p class="text-muted text-small" id="odds-provenance">
+            Lines from The Odds API, snapshot {doc.snapshot}, rendered {fmtStart(doc.rendered)}. Book names identify the source of each
+            price only; no book endorses or sponsors this page.
+        </p>
+    </div>
+</GenericPage>
