@@ -84,4 +84,4 @@ const metric = (p: { metric: string; value: number }) =>
         </table>
     </div>
 )}
-<p class="small text-muted mb-0">+/- is {view.decided ? "the winner's value less the loser's" : "the home side's value less the away side's"}, in {view.unitLabel === 'EPA' ? 'expected points added' : 'points'}.</p>
+<p class="small text-muted mb-0">+/- is {view.decided ? "the winner's value less the loser's" : "the home side's value less the away side's"}, in {view.unitLabel === 'EPA' ? 'expected points added' : 'points'}.{view.edges.some((e) => isRateEdge(e.edge)) && ' A rate is priced in that unit, not subtracted: the rate gap times the plays, at the game\'s worth of a success.'}</p>
