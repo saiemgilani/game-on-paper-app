@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import math
 from typing import Any
 
 import polars as pl
 from sportsdataverse.nba.nba_game_page import game_excitement
+
+import game_story
 
 PLAY_COLUMNS = [
     "id", "sequence_number", "game_play_number", "period_number", "clock_display_value",
@@ -31,6 +34,15 @@ def _int_or_none(v: Any) -> int | None:
     try:
         return int(float(v))
     except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def _story(frames: dict, completed: bool) -> dict | None:
+    """The game story, or None: a failure here must never cost the page."""
+    try:
+        return game_story.basketball(frames, completed)
+    except Exception:  # noqa: BLE001 - fail-open, like every derived block of the payload
+        logging.getLogger("root").exception(f"game story: {frames.get('league')} story failed; the panel is left out")
         return None
 
 
@@ -95,6 +107,9 @@ def build_payload(game_id: int, final: dict, frames: dict, regulation_periods: i
         ),
         # sdv-py BB-D31, counted from the plays (live too): each side's team split row (null before the tip) and its
         # players' split rows. Additive; the page reads the team rows only under 'bball-team-grid' (BB-G32).
+        # sdv-py's game story (how the winner won it), finals only and fail-open; the page reads it only under
+        # the 'game-story' preview flag (components/GameStory.astro).
+        "gameStory": _story(frames, bool(status.get("type", {}).get("completed", False))),
         "splits": {
             ha: {
                 "team": next(iter(_rows(frames["team_game_splits"].filter(pl.col("team_id") == int(side["id"])))), None),

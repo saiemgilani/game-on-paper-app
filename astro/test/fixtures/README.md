@@ -1961,3 +1961,10 @@ offense charts 275 of 315 attempts, because the Week 1 game's ESPN text has no d
 from Week 9 on (238 of 525). The test's expected numbers were computed from these files in Python. Nothing is edited.
 
 **Used by:** `test/passDirection.render.test.ts`.
+
+## `game-story-{cfb-401628333,nfl-401772921,nba-401810169}.json`
+The `gameStory` object the processor adds to a final's payload (`python/game_story.py`, 'game-story' preview), for a
+2024 college overtime game (34-27), the 2025 GB 40, DAL 40 NFL tie and a 2025-26 NBA game. **Provenance
+(2026-11-26):** `python/game_story.py` run on the released plays in `python/tests/fixtures/game_story/` (copied from
+sportsdataverse-py's game-story fixtures), with sportsdataverse-py's game-story branch installed. **Used by:**
+`test/gameStory.test.ts`.

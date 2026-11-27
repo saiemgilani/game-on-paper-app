@@ -32,6 +32,7 @@ from telemetry import TEL, stage, init_flask
 import gop_routes
 import espn_proxy
 import dq
+import game_story
 import paper_index
 import qa
 import share_card
@@ -706,6 +707,17 @@ def _process_game(league: str, game_id: int, source: str | None = None):
             logging.getLogger("root").warning(
                 f"paper index failed for {game_id}: {e}"
             )
+
+        # Game story (how the winner won it): sdv-py's cfb_game_story / nfl_game_story on the same frame, finals
+        # only; the page reads it only under the 'game-story' preview flag. Fail-open like everything else here.
+        try:
+            completed = bool((((processed_game.get("header") or {}).get("competitions") or [{}])[0].get("status") or {}).get("type", {}).get("completed"))
+            with stage(timings, "game_story"):
+                story = game_story.football(getattr(game, "plays_frame", None), league, completed)
+            if story:
+                processed_game["gameStory"] = story
+        except Exception as e:  # the story must never cost the page
+            logging.getLogger("root").warning(f"game story failed for {game_id}: {e}")
 
         # Drive starts in EP units (the Drives table's EP row), for the whole game
         # and every window. sportsdataverse-py ships it in the drives box

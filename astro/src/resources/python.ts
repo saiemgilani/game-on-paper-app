@@ -1,3 +1,4 @@
+import type { GameStory } from '../utils/gameStory';
 import { getSecret } from "astro:env/server"
 import { env } from 'cloudflare:workers'
 import cacheGenerationFile from '../../../python/CACHE_GENERATION?raw'
@@ -1115,6 +1116,8 @@ export interface ProcessedGame {
     plays: ProcessedPlay[]
     drives: { previous?: ProcessedDrive[], current?: ProcessedDrive }
     scoringPlays: ProcessedPlay[]
+    /** 'game-story': sdv-py's game story of a final (python/game_story.py); absent before the final or on an older pin */
+    gameStory?: GameStory
     /** who-won-on-paper share + margins, computed server-side (paper_index.py) */
     paperIndex?: {
         homeShare: number

@@ -16,7 +16,7 @@ import pathlib
 FIX = pathlib.Path(__file__).parent / "fixtures"
 SUMMARY = FIX / "nba_summary_401585607.json.gz"
 SNAP = FIX / "nba_process_401585607.payload.json"
-ADDED_IN_PR0 = {"regulation_periods", "excitement", "splits", "expected"}  # excitement: BB-G29, splits: BB-G32, expected: BB-G33 (test_game_expected_payload)
+ADDED_IN_PR0 = {"regulation_periods", "excitement", "splits", "expected", "gameStory"}  # excitement: BB-G29, splits: BB-G32, expected: BB-G33 (test_game_expected_payload), gameStory: game-story (test_game_story)
 
 
 class _Resp:
