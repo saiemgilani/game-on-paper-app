@@ -1,0 +1,87 @@
+---
+/**
+ * 'game-story' (preview): the "How they won it" panel body, shared by the football and basketball game pages.
+ * The numbers are sportsdataverse-py's game story as the processor passed it (utils/gameStory.ts picks and labels).
+ * The scoring by period is left out: the page's linescore already shows it.
+ */
+import { edgeLabel, isRateEdge, type StoryView } from '../utils/gameStory';
+import { generateMarginalString, roundNumber } from '../utils/misc';
+
+interface Props {
+    view: StoryView;
+    /** team id -> the abbreviation to print (already cleaned by the caller) */
+    abbr: Record<string, string>;
+    /** the home and away team ids: a tie's columns read home, then away */
+    homeId: number;
+    awayId: number;
+}
+const { view, abbr, homeId, awayId } = Astro.props;
+const cols = view.decided && view.winnerId != null && view.loserId != null ? [view.winnerId, view.loserId] : [homeId, awayId];
+const name = (id: number | null) => (id == null ? '' : abbr[String(id)] ?? String(id));
+const value = (edge: string, v: number | null) =>
+    v == null ? '-' : isRateEdge(edge) ? `${roundNumber(v * 100, 0, 0)}%` : Number.isInteger(v) ? roundNumber(v, 0, 0) : roundNumber(v, 1, 1);
+const m = view.moment;
+const swing = m ? (view.decided ? m.winner_wpa : m.wpa) : null;
+// the period as the page's linescore names it (Q4, H2, OT), from the story's own period labels
+const periodLabel = m ? (view.periods.find((p) => p.period === m.period)?.period_label ?? `Period ${m.period}`) : '';
+const metric = (p: { metric: string; value: number }) =>
+    p.metric === 'epa' ? `${roundNumber(p.value, 1, 1)} EPA` : p.metric === 'wpa' ? `${generateMarginalString(p.value * 100, 0, 0)}% WPA` : `${roundNumber(p.value, 0, 0)} ${p.metric === 'points' ? 'pts' : p.metric.replace(/_/g, ' + ')}`;
+---
+<p class="mb-2">
+    {view.decided ? <Fragment><strong>{name(view.winnerId)}</strong> won by {view.margin}.</Fragment> : <Fragment>Tied {view.homeScore}-{view.awayScore}.</Fragment>}
+</p>
+<div class="table-responsive">
+    <table class="table table-sm numeral w-auto" aria-label="Largest edges">
+        <thead>
+            <tr>
+                <th scope="col" class="text-start">Edge</th>
+                {cols.map((id) => <th scope="col" class="text-center">{name(id)}</th>)}
+                <th scope="col" class="text-center">{view.decided ? `${name(view.winnerId)} +/-` : `${name(homeId)} +/-`} ({view.unitLabel})</th>
+            </tr>
+        </thead>
+        <tbody>
+            {view.edges.map((e) => (
+                <tr>
+                    <th scope="row" class="fw-normal text-start">{edgeLabel(e.edge)}</th>
+                    <td class="text-center">{value(e.edge, e.winner_value)}</td>
+                    <td class="text-center">{value(e.edge, e.loser_value)}</td>
+                    <td class="text-center"><strong>{generateMarginalString(e.points_worth, 1, 1)}</strong></td>
+                </tr>
+            ))}
+        </tbody>
+    </table>
+</div>
+{m && (
+    <p class="mb-2">
+        <strong>{m.rule === 'max_abs_wpa' ? 'Biggest swing' : 'Deciding score'}:</strong>{' '}
+        {m.clock ? `${periodLabel} ${m.clock}` : periodLabel}: {m.text}
+        {swing != null && <span class="text-muted"> ({generateMarginalString(swing * 100, 0, 0)}% win probability)</span>}
+    </p>
+)}
+{(view.runs.length > 0 || view.performers.length > 0) && (
+    <div class="table-responsive">
+        <table class="table table-sm w-auto" aria-label="Runs and top performers">
+            <thead>
+                <tr>
+                    <th scope="col" class="text-start">Team</th>
+                    <th scope="col" class="text-center">Largest run</th>
+                    <th scope="col" class="text-start">Top performer</th>
+                </tr>
+            </thead>
+            <tbody>
+                {cols.map((id) => {
+                    const run = view.runs.find((r) => r.team_id === id);
+                    const p = view.performers.find((r) => r.team_id === id);
+                    return (
+                        <tr>
+                            <th scope="row" class="fw-normal text-start">{name(id)}</th>
+                            <td class="numeral text-center">{run ? `${run.points}-0` : '-'}</td>
+                            <td class="text-start">{p ? <Fragment>{p.player_name ?? ''}{' '}<span class="text-muted">{metric(p)}</span></Fragment> : '-'}</td>
+                        </tr>
+                    );
+                })}
+            </tbody>
+        </table>
+    </div>
+)}
+<p class="small text-muted mb-0">+/- is {view.decided ? "the winner's value less the loser's" : "the home side's value less the away side's"}, in {view.unitLabel === 'EPA' ? 'expected points added' : 'points'}.{view.edges.some((e) => isRateEdge(e.edge)) && ' A rate is priced in that unit, not subtracted: the rate gap times the plays, at the game\'s worth of a success.'}</p>

@@ -1,0 +1,234 @@
+{
+ "summary": {
+  "game_id": 401628333,
+  "home_team_id": 238,
+  "away_team_id": 259,
+  "home_score": 34,
+  "away_score": 27,
+  "winner_team_id": 238,
+  "loser_team_id": 259,
+  "margin": 7,
+  "decided": true,
+  "periods_agree": true,
+  "n_periods": 5,
+  "overtime": true
+ },
+ "edges": [
+  {
+   "game_id": 401628333,
+   "winner_team_id": 238,
+   "loser_team_id": 259,
+   "edge": "red_zone",
+   "kind": "split",
+   "unit": "points",
+   "winner_value": 12.52065372467041,
+   "loser_value": -2.772897958755493,
+   "points_worth": 15.293551683425903,
+   "rank": 1
+  },
+  {
+   "game_id": 401628333,
+   "winner_team_id": 238,
+   "loser_team_id": 259,
+   "edge": "turnovers",
+   "kind": "split",
+   "unit": "points",
+   "winner_value": 0.0,
+   "loser_value": -6.931901931762695,
+   "points_worth": 6.931901931762695,
+   "rank": 2
+  },
+  {
+   "game_id": 401628333,
+   "winner_team_id": 238,
+   "loser_team_id": 259,
+   "edge": "success_rate",
+   "kind": "split",
+   "unit": "points",
+   "winner_value": 0.515625,
+   "loser_value": 0.484375,
+   "points_worth": 4.336637356318533,
+   "rank": 3
+  },
+  {
+   "game_id": 401628333,
+   "winner_team_id": 238,
+   "loser_team_id": 259,
+   "edge": "other",
+   "kind": "accounting",
+   "unit": "points",
+   "winner_value": -0.5446509718894958,
+   "loser_value": -2.5742028951644897,
+   "points_worth": 2.029551923274994,
+   "rank": 4
+  },
+  {
+   "game_id": 401628333,
+   "winner_team_id": 238,
+   "loser_team_id": 259,
+   "edge": "rushing",
+   "kind": "accounting",
+   "unit": "points",
+   "winner_value": 2.0689697563648224,
+   "loser_value": 0.9033868461847305,
+   "points_worth": 1.1655829101800919,
+   "rank": 5
+  },
+  {
+   "game_id": 401628333,
+   "winner_team_id": 238,
+   "loser_team_id": 259,
+   "edge": "special_teams",
+   "kind": "accounting",
+   "unit": "points",
+   "winner_value": 2.4178768545389175,
+   "loser_value": 2.2184064984321594,
+   "points_worth": 0.19947035610675812,
+   "rank": 6
+  },
+  {
+   "game_id": 401628333,
+   "winner_team_id": 238,
+   "loser_team_id": 259,
+   "edge": "passing",
+   "kind": "accounting",
+   "unit": "points",
+   "winner_value": 13.10138139128685,
+   "loser_value": 14.116762325167656,
+   "points_worth": -1.015380933880806,
+   "rank": 7
+  },
+  {
+   "game_id": 401628333,
+   "winner_team_id": 238,
+   "loser_team_id": 259,
+   "edge": "late_downs",
+   "kind": "split",
+   "unit": "points",
+   "winner_value": 6.378895729780197,
+   "loser_value": 12.503116607666016,
+   "points_worth": -6.1242208778858185,
+   "rank": 8
+  },
+  {
+   "game_id": 401628333,
+   "winner_team_id": 238,
+   "loser_team_id": 259,
+   "edge": "explosive_plays",
+   "kind": "split",
+   "unit": "points",
+   "winner_value": 18.743672370910645,
+   "loser_value": 26.248988151550293,
+   "points_worth": -7.505315780639648,
+   "rank": 9
+  }
+ ],
+ "moment": {
+  "game_id": 401628333,
+  "play_id": 401628333104957801,
+  "order": 141,
+  "period": 4,
+  "clock": "4:21",
+  "team_id": 259,
+  "text": "Kyron Drones pass complete to Ali Jennings for 62 yds for a TD (John Love KICK)",
+  "wpa": -0.28762805461883545,
+  "winner_wpa": -0.28762805461883545,
+  "home_score": 20,
+  "away_score": 27,
+  "rule": "max_abs_wpa"
+ },
+ "periods": [
+  {
+   "game_id": 401628333,
+   "period": 1,
+   "period_label": "Q1",
+   "is_overtime": false,
+   "home_pts": 3,
+   "away_pts": 0,
+   "home_cum": 3,
+   "away_cum": 0
+  },
+  {
+   "game_id": 401628333,
+   "period": 2,
+   "period_label": "Q2",
+   "is_overtime": false,
+   "home_pts": 14,
+   "away_pts": 3,
+   "home_cum": 17,
+   "away_cum": 3
+  },
+  {
+   "game_id": 401628333,
+   "period": 3,
+   "period_label": "Q3",
+   "is_overtime": false,
+   "home_pts": 3,
+   "away_pts": 10,
+   "home_cum": 20,
+   "away_cum": 13
+  },
+  {
+   "game_id": 401628333,
+   "period": 4,
+   "period_label": "Q4",
+   "is_overtime": false,
+   "home_pts": 7,
+   "away_pts": 14,
+   "home_cum": 27,
+   "away_cum": 27
+  },
+  {
+   "game_id": 401628333,
+   "period": 5,
+   "period_label": "OT",
+   "is_overtime": true,
+   "home_pts": 7,
+   "away_pts": 0,
+   "home_cum": 34,
+   "away_cum": 27
+  }
+ ],
+ "runs": [
+  {
+   "game_id": 401628333,
+   "team_id": 238,
+   "points": 17,
+   "start_order": 12,
+   "end_order": 49,
+   "start_period": 1,
+   "end_period": 2,
+   "home_score_after": 17,
+   "away_score_after": 0
+  },
+  {
+   "game_id": 401628333,
+   "team_id": 259,
+   "points": 17,
+   "start_order": 114,
+   "end_order": 141,
+   "start_period": 3,
+   "end_period": 4,
+   "home_score_after": 20,
+   "away_score_after": 27
+  }
+ ],
+ "performers": [
+  {
+   "game_id": 401628333,
+   "team_id": 238,
+   "player_id": 5084180,
+   "player_name": "Diego Pavia",
+   "metric": "epa",
+   "value": 18.62319067120552
+  },
+  {
+   "game_id": 401628333,
+   "team_id": 259,
+   "player_id": 4678010,
+   "player_name": "Kyron Drones",
+   "metric": "epa",
+   "value": 16.792218551039696
+  }
+ ]
+}

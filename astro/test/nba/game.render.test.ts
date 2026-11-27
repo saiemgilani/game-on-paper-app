@@ -220,6 +220,23 @@ describe('/nba/game/[id] render', () => {
         expect(body).not.toMatch(/NaN|undefined/);
         expect(body).not.toContain(' · ');
     });
+    test("'game-story': the processor's game story renders the panel on, and nothing of it off", async () => {
+        const story = JSON.parse(readFileSync(new URL('../fixtures/game-story-nba-401810169.json', import.meta.url), 'utf8'));
+        const j = { ...read('game_401766458_processor'), gameStory: story };
+        expect(fromProcessor(j, 'nba').story).toEqual(story);
+        prep.mockResolvedValueOnce({ game: fromProcessor(j, 'nba') });
+        const on = await render({ 'game-story': true });
+        expect(on).toContain('How they won it');
+        expect(on).toContain('Free throws');
+        expect(on).toContain('href="#story"');
+        prep.mockResolvedValueOnce({ game: fromProcessor(j, 'nba') });
+        const off = await render({ 'game-story': false });
+        expect(off).not.toContain('How they won it');
+        // no story in the payload (the Data API path, or an older sdv-py pin): on renders as off
+        prep.mockResolvedValueOnce({ game: fromProcessor(read('game_401766458_processor'), 'nba') });
+        expect(await render({ 'game-story': true })).not.toContain('How they won it');
+        expect(fromDataApi(read('game_401766458_api'), 'nba').story).toBeUndefined();
+    });
     test("'bball-gei': the processor's GEI reaches the chart island on, and nothing of it off", async () => {
         const j = { ...read('game_401766458_processor'), excitement: { gei: 3.5370793861546774, lead_changes: 6, max_swing_pts: 9.34, completed: true } };
         expect(fromProcessor(j, 'nba').excitement).toEqual({ gei: 3.5370793861546774, leadChanges: 6, maxSwingPts: 9.34, completed: true });
