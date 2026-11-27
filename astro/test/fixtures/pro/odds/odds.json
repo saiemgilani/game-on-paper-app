@@ -1,0 +1,26 @@
+{
+ "snapshot": "fixture",
+ "rendered": "2026-11-26T00:00:00Z",
+ "headlines": ["2 upcoming games across 1 leagues"],
+ "limits": ["Fixture limit one.", "Information only. 21+."],
+ "leagues": [
+  {"key": "cfb", "name": "College football", "games": [
+   {"id": "g1", "start": "2026-11-28T17:00:00Z", "away": "Fixture Tech", "home": "Fixture State",
+    "consensus": {"away": 0.38, "home": 0.62},
+    "best": {"away": {"book": "Book B", "price": 160, "edge": 0.0046}, "home": {"book": "Book A", "price": -150, "edge": -0.02}},
+    "best_hold": -0.0154, "crossed": true,
+    "books": [
+     {"book": "Book A", "updated": "2026-11-26T00:00:00Z", "away_price": 140, "home_price": -150, "hold": 0.0167, "away_fair": 0.4098, "home_fair": 0.5902, "note": null},
+     {"book": "Book B", "updated": "2026-11-26T00:00:00Z", "away_price": 160, "home_price": -190, "hold": 0.0397, "away_fair": 0.3699, "home_fair": 0.6301, "note": null}
+    ]},
+   {"id": "g2", "start": "2026-11-28T20:30:00Z", "away": "Fixture Rival", "home": "Fixture College",
+    "consensus": null,
+    "best": {"away": {"book": "Book A", "price": 100, "edge": null}, "home": {"book": "Book A", "price": -120, "edge": null}},
+    "best_hold": 0.0455, "crossed": false,
+    "books": [
+     {"book": "Book A", "updated": "2026-11-26T00:00:00Z", "away_price": 100, "home_price": -120, "hold": 0.0455, "away_fair": null, "home_fair": null, "note": "draw possible but not priced"}
+    ]}
+  ]},
+  {"key": "nhl", "name": "NHL", "games": []}
+ ]
+}

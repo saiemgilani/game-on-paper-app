@@ -494,6 +494,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // needs a live entitlement (utils/pro.ts, resources/pro.ts) except login,
     // auth, logout and methodology. Promote to 'on' at launch.
     'pro': 'preview',
+    // The Pro odds board (/pro/odds, ACC-2026-0066): every book's moneyline per upcoming game, its hold and no-vig fair %,
+    // the consensus and the best price per side, read from gop-pro odds.py's pro/odds/odds.json. Inside 'pro' (and its
+    // entitlement); off, the page is the site's 404 and ProNav has no Odds link. Promote once reviewed.
+    'pro-odds': 'preview',
     // The team page's lineup shot chart (BB-G52) on /<league>/team/[id], inside each league's flag: the team's offense or
     // defense season shots with up to five of its players on or off the floor, by square or zone against the league (sdv-db's
     // shot_lineups, filtered in the route). Off: no read and the team page is today's, byte for byte.
