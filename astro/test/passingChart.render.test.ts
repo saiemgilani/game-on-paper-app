@@ -38,6 +38,13 @@ describe('the Target Matrix depth labels', () => {
         expect(await render('cfb')).toContain('<caption>Built off ESPN&#39;s play-by-play text, which carries depth and direction from 2025 Week 9 on. Sacks and passes');
     });
 
+    test('the rush matrix makes no date claim: college text carries rush direction in 2004 and 2007-13 games too', async () => {
+        const { default: Chart } = await import('../src/components/game/metrics/RushingChart.astro');
+        const html = await container.renderToString(Chart, { props: { plays } });
+        expect(html).toMatch(/<caption>Built off ESPN(&#39;|')s play-by-play text\. Rush attempts that lack direction information are not included\.<\/caption>/);
+        expect(html).not.toContain('2025');
+    });
+
     test('the split per league', () => {
         expect([passDepthSplit('cfb'), passDepthSplit('nfl')]).toEqual([20, 16]);
     });

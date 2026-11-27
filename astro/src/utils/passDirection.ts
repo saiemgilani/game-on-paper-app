@@ -2,20 +2,25 @@
  * Behind 'team-pass-direction': the team-season page's Passing Direction panel. A side's pass attempts (sacks out),
  * grouped by the depth and direction sportsdataverse-py reads from ESPN's play text (`pass_depth`: short / deep;
  * `pass_direction`: left / middle / right), the same cells as the game page's Target Matrix
- * (components/game/metrics/PassingChart.astro). ESPN's "deep" is a throw of 20+ air yards and "short" anything under,
- * behind the line included (all 2025-26 FBS charted attempts, measured 2026-11-26: 99.9% of deep at 20+, 99.98% of
- * short under 20; the Alabama fixtures pin the split in test/passDirection.render.test.ts). The text
- * carries depth and direction from 2025 Week 9 on, so a season charts only part of its attempts: `charted` and
- * `coverage` say how many.
+ * (components/game/metrics/PassingChart.astro). See `passDepthSplit` for what "short" and "deep" mean. The text
+ * carries depth and direction from 2025 Week 9 on (2025 by week: 0-3.3% through Week 8, 89.8% in Week 9, 90-96% after;
+ * 2026: 94-97% from Week 1), so a 2025 season charts only part of its attempts: `charted` and `coverage` say how many.
  */
 import type { League } from './league';
 import { numberOrNull } from './misc';
 
 /**
  * Where ESPN's play text splits "short" from "deep", in air yards: deep is this many or more, short anything under it,
- * behind the line included. College: 20 (above). NFL: 16, the league's own 15-yard short pass (2025 sdv ESPN NFL
- * release, measured 2026-11-26: 99.9% of 3,426 deep attempts at 16+, none of 14,862 short at 16+). The game page's
- * Target Matrix labels its rows with it.
+ * behind the line included. Measured 2026-11-26 on full seasons, the label read from the text with sportsdataverse-py's
+ * own `\s(short|deep)\s` match against an air-yards figure from elsewhere:
+ * - college, 20: every 2025 and 2026 pass attempt in `espn_cfb_pbp`, air yards from the text's catch / throw spot. At
+ *   19 air yards 974 short / 4 deep, at 20 one short / 942 deep; 15 of 71,430 charted attempts cross the line, each a
+ *   bad spot in the text (a "caught at Miami00" touchdown, a play written twice).
+ * - NFL, 16: every 2006-2025 pass attempt in the sdv ESPN NFL release, air yards the league's own. At 15 air yards
+ *   8,359 short / 29 deep, at 16 two short / 7,080 deep; 136 of 366,286 cross, each a throw into or at the end
+ *   zone (124) or a reversed or nullified play.
+ * The game page's Target Matrix labels its rows with it; the Alabama fixtures pin the college split in
+ * test/passDirection.render.test.ts.
  */
 export const passDepthSplit = (league: League): number => (league === 'nfl' ? 16 : 20);
 
@@ -37,8 +42,8 @@ export const PASS_PLAY_COLUMNS = ['game_id', 'sack', 'completion', 'pass_directi
 export const DEPTHS = [['short', 'Short'], ['deep', 'Deep']] as const;
 export const DIRECTIONS = [['left', 'Left'], ['middle', 'Middle'], ['right', 'Right']] as const;
 
-/** The first season with charted attempts to speak of: 2023 has 42 across 40 games, 2024 one, earlier none (Data API
- *  pbp, 2026-11-26). The page reads no pass plays for an earlier season, so no panel stands on one attempt. */
+/** The first season with charted attempts to speak of: 2023 has 42 across 40 games (Weeks 9-13), 2024 one, and every
+ *  season 2004-2022 none (Data API pbp, each season read 2026-11-26). The page reads no pass plays for an earlier season, so no panel stands on one attempt. */
 export const PASS_DIRECTION_FIRST_SEASON = 2025;
 
 /** Below this share of charted attempts the panel says the season is partly charted. */
