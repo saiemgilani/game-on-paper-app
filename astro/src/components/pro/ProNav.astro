@@ -3,9 +3,10 @@
  * A signed-in viewer sees only the sections their tier and add-ons open (utils/pro.ts
  * proAllows), so no link bounces them to /pricing; a signed-out viewer sees them all. */
 import { proAllows } from '../../utils/pro';
+import { isFeatureEnabled } from '../../utils/features';
 
 interface Props {
-    active?: 'players' | 'compare' | 'portal' | 'teams' | 'rosters' | 'positions' | 'market' | 'roles' | 'methodology'
+    active?: 'players' | 'compare' | 'portal' | 'teams' | 'rosters' | 'positions' | 'market' | 'roles' | 'odds' | 'methodology'
 }
 const { active } = Astro.props;
 const viewer = Astro.locals.pro ?? null;
@@ -18,8 +19,11 @@ const links: [string, string, Props['active']][] = ([
     ['/pro/positions', 'Positions', 'positions'],
     ['/pro/market', 'Market', 'market'],
     ['/pro/roles', 'Role reports', 'roles'],
+    ['/pro/odds', 'Odds', 'odds'],
     ['/pro/methodology', 'Methodology', 'methodology'],
-] as [string, string, Props['active']][]).filter(([href]) => !viewer || proAllows(viewer, href));
+] as [string, string, Props['active']][])
+    .filter(([href]) => href !== '/pro/odds' || isFeatureEnabled('pro-odds', Astro.locals))
+    .filter(([href]) => !viewer || proAllows(viewer, href));
 ---
 <div class="container mb-3">
     <div class="d-flex align-items-center flex-wrap gap-1" id="pro-nav">

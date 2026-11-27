@@ -19,6 +19,8 @@ export const CACHE_KEY_PARAMS: ReadonlySet<string> = new Set([
     'sort', 'dir', 'mode', 'board', 'basis', 'unit', 'impact', 'qualified', 'min', 'lsort', 'ldir',
     // basketball team and player splits
     'situation', 'games', 'onoff', 'wowy', 'side', 'tiers',
+    // the football team-season page's Passing Direction side select (components/team/PassDirectionTable.astro)
+    'pass_side',
     // lineup shot chart (routes/basketball/lineupShots.ts)
     'p', 's', 'op', 'os',
     // shot chart filters (basketball/shotFilters.ts), shift chart, plays order, garbage time

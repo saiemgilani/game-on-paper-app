@@ -332,6 +332,20 @@ export const FLAGS: Record<string, FeatureState> = {
     // it, drag reads a stretch); and under the chart the 8-0 runs, the longest drought, the last 5:00, each side's peak WP,
     // the largest swing and the winner's lowest WP. Off: no read, and the game page is today's, byte for byte.
     'bball-wp-lenses': 'preview',
+    // E2 on the college football game page: the WP chart switches between our model ("Market-aware", the pregame spread
+    // priced in) and the same model without the spread ("Score-only", the processed plays' home_wp_before_naive), shown only
+    // when every charted play has both; the "Current" readout follows the lens. Off: the chart props are today's.
+    'cfb-wp-naive-lens': 'preview',
+    // B2/B3 on the college football team-season page: a Schedule Effect panel from the producer's adjusted-EPA ledger
+    // (team_adjustment_ledger): the season Adj EPA/Play split into the team's raw net and what its schedule adds, the three
+    // games that move it most, every game's line (raw, schedule, adjusted, how far the game moved the season value), and the
+    // weights beside the number. Off: no read, and the page is today's.
+    'cfb-schedule-effect': 'preview',
+    // The college football team-season page's Passing Direction panel: the team's pass attempts (offense) and its
+    // opponents' (defense) by depth (short / deep) and direction (left / middle / right), from the pbp table's
+    // pass_depth / pass_direction / air_yards (utils/passDirection.ts). ESPN's text carries them from 2025 Week 9 on,
+    // so the panel says how many attempts it charts and an earlier season reads nothing. Off: no read, and the page is today's.
+    'team-pass-direction': 'preview',
     // The head-coach boards for both leagues: /year/N/coaches/*, /coaches/* and
     // their /nfl twins, the header's Head Coaches section and the sitemap's
     // coach URLs. Gated in middleware exactly like 'nfl' (utils/coaches.ts
@@ -485,6 +499,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // needs a live entitlement (utils/pro.ts, resources/pro.ts) except login,
     // auth, logout and methodology. Promote to 'on' at launch.
     'pro': 'preview',
+    // The Pro odds board (/pro/odds, ACC-2026-0066): every book's moneyline per upcoming game, its hold and no-vig fair %,
+    // the consensus and the best price per side, read from gop-pro odds.py's pro/odds/odds.json. Inside 'pro' (and its
+    // entitlement); off, the page is the site's 404 and ProNav has no Odds link. Promote once reviewed.
+    'pro-odds': 'preview',
     // The team page's lineup shot chart (BB-G52) on /<league>/team/[id], inside each league's flag: the team's offense or
     // defense season shots with up to five of its players on or off the floor, by square or zone against the league (sdv-db's
     // shot_lineups, filtered in the route). Off: no read and the team page is today's, byte for byte.

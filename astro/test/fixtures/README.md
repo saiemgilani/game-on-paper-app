@@ -1930,3 +1930,23 @@ sportsdataverse-py's own output (`wnba_team_game_possessions(2025, season_type=[
 `tests/fixtures/bb_team_season_rates` 2025 WNBA releases, written 2026-11-26. Nothing is edited.
 
 **Used by:** `test/bballGameSet.test.ts`.
+
+## `team-adjustment-ledger-2025.json.gz`
+B2's Schedule Effect panel: the 2025 `cfb_adjusted_epa_ledger` rows of LSU (99) and Georgia (61) and their schedule rows
+(`game_id`, `week`, home / away id and name). The ledger is sportsdataverse-py's own output (branch
+`feat/cfb-adjustment-ledger`) on the 2025 FBS-vs-FBS pass/rush plays of the released `play_by_play_2025` asset; the schedule
+rows are `load_cfb_schedule([2025])`. Written 2026-11-26. The ledger's per-team sums equal the published
+`cfb_team_summaries_2025` `net_adj_epa` for all 136 rated teams (max difference 2e-16, checked the same day): LSU 0.139188,
+Georgia 0.342839. Nothing is edited.
+
+**Used by:** `test/scheduleEffect.render.test.ts`.
+
+## `pass-plays-cfb-{2025,2026}-333-{off,def}.json.gz`
+The Passing Direction panel ('team-pass-direction'): Alabama's (333) 2025 and 2026 pass attempts from the Data API's
+`cfb.pbp` table, its own (`pos_team_id=333`) and its opponents' (`def_pos_team_id=333`), each the body of
+`/v1/cfb/pbp?season=<season>&<side>=333&pass_attempt=true&select=game_id,week,seasonType,sack,completion,pass_td,pass_direction,pass_depth,air_yards,yards_after_catch,yds_receiving,EPA,EPA_success&limit=3000`
+(a superset of `PASS_PLAY_COLUMNS`), read 2026-11-26. 2026 runs through the week the table had then (11 games); its
+offense charts 275 of 315 attempts, because the Week 1 game's ESPN text has no depth or direction. 2025 charts only
+from Week 9 on (238 of 525). The test's expected numbers were computed from these files in Python. Nothing is edited.
+
+**Used by:** `test/passDirection.render.test.ts`.

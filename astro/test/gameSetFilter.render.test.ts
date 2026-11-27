@@ -26,6 +26,8 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     retrieveTeamSeasonInformation: async () => ({ team: null, events: [], record: '0-0' }),
     retrievePlayerSummaries: async () => [],
     retrieveTeamOpponentSplits: async () => null,
+    retrieveTeamAdjustmentLedger: async () => [], // cfb-schedule-effect: no ledger rows
+    retrieveTeamPassPlays: async () => ({ off: [], def: [] }), // team-pass-direction: no pass attempts
     retrieveTeamTendencies: async () => [],
     // the season read (columns given) is the membership; the page's own read is the TeamCard's
     retrieveTeamSummaries: async ({ columns, league = 'cfb' }: any) => (columns ? fixtures[league].summaries.data : []),

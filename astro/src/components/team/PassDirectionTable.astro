@@ -1,0 +1,83 @@
+---
+// Behind 'team-pass-direction': a side's pass attempts by depth and direction (utils/passDirection.ts), laid out as the
+// Situational Splits panel is (TeamSplitsTable.astro): one table, a side select, each depth's directions indented under it.
+import { formatNumber, formatPercent } from '../../utils/misc';
+import { PASS_DIRECTION_COVERAGE_FLOOR, passDepthSplit, passDirectionTable, type PassPlay } from '../../utils/passDirection';
+import TeamPlayerTable from './tables/TeamPlayerTable.astro';
+
+interface Props {
+    plays: { off: PassPlay[], def: PassPlay[] }
+    season: number
+}
+
+const { plays, season } = Astro.props;
+// the caveat under a side charting less than PASS_DIRECTION_COVERAGE_FLOOR of its attempts
+const thin = season <= 2025
+    ? ' ESPN\'s play text carries depth and direction from 2025 Week 9 on.'
+    : ' Some games\' play text carries no depth or direction.';
+// both sides render; the select shows one, and ?pass_side=def opens on Defense
+const side = Astro.url.searchParams.get('pass_side') === 'def' ? 'def' : 'off';
+const sides = [['off', 'Offense'], ['def', 'Defense']] as const;
+// the route mounts this only when a side charts an attempt (utils/passDirection.ts anyCharted)
+const bySide = sides.map(([s]) => [s, passDirectionTable(plays[s])] as const);
+const note = 'All regular-season and postseason games, FCS opponents included.';
+const split = passDepthSplit('cfb');
+const caption = `Defense = opponents' pass attempts against this team. Short = under ${split} air yards, throws behind the line included; Deep = ${split}+. Share = of the charted attempts. aDOT = average depth of target (air yards per attempt). Sacks and passes without depth and direction are left out.`;
+---
+
+<TeamPlayerTable id="pass-direction" title="Passing Direction" show={true} note={note} caption={caption}>
+    <Fragment slot="subtitle">Metrics from SportsDataverse.</Fragment>
+    <div slot="controls" class="mb-2">
+        <div class="d-flex justify-content-start align-items-center mb-2">
+            <label class="visually-hidden" for="pass-direction-side">Side</label>
+            <select id="pass-direction-side" class="form-select form-select-sm w-auto" autocomplete="off" data-pass-side>
+                {sides.map(([v, label]) => <option value={v} selected={v === side}>{label}</option>)}
+            </select>
+        </div>
+        {/* how much of the season the table stands on: ESPN's text carries depth and direction from 2025 Week 9 on */}
+        {bySide.map(([s, t]) => (
+            <p data-side={s} class:list={["text-small text-muted m-0", s !== side && 'd-none']}>
+                Charted: {formatNumber(t.charted, 0)} of {formatNumber(t.attempts, 0)} pass attempts ({formatPercent(t.coverage)}).
+                {t.coverage !== null && t.coverage < PASS_DIRECTION_COVERAGE_FLOOR && thin}
+            </p>
+        ))}
+    </div>
+    <Fragment slot="header">
+        <th rowspan="1" colspan="1"></th>
+        <th rowspan="1" colspan="1" class="text-center">Comp/Att</th>
+        <th rowspan="1" colspan="1" class="text-center">Share</th>
+        <th rowspan="1" colspan="1" class="text-center">EPA/Play</th>
+        <th rowspan="1" colspan="1" class="text-center">Success Rate</th>
+        <th rowspan="1" colspan="1" class="text-center"><abbr title="Average depth of target">aDOT</abbr></th>
+    </Fragment>
+
+    <Fragment slot="rows">
+        {bySide.map(([s, t]) => t.rows.map((r) => (
+            <tr data-side={s} data-split={r.key} class:list={[s !== side && 'd-none']}>
+                <td class:list={["text-left", "text-nowrap", r.sub && "ps-4 text-muted text-small"]}>{r.label}</td>
+                <td class="numeral text-center">{r.completions}/{r.attempts}</td>
+                <td class="numeral text-center">{formatPercent(r.share)}</td>
+                <td class="numeral text-center">{formatNumber(r.epa_per_play, 2)}</td>
+                <td class="numeral text-center">{formatPercent(r.success_rate)}</td>
+                <td class="numeral text-center">{formatNumber(r.adot, 1, 1)}</td>
+            </tr>
+        )))}
+    </Fragment>
+</TeamPlayerTable>
+
+<script>
+    // As TeamSplitsTable.astro's: both sides are already in the markup, so this only swaps which rows (and which
+    // charted line) show, and keeps ?pass_side= in the URL for a shared link. With no JS the server's side stays.
+    for (const select of document.querySelectorAll('[data-pass-side]')) {
+        const scope = select.closest('.panel-body');
+        select.addEventListener('change', () => {
+            const value = select.querySelector('option:checked')?.getAttribute('value') ?? 'off';
+            for (const el of scope?.querySelectorAll('[data-side]') ?? []) {
+                el.classList.toggle('d-none', el.getAttribute('data-side') !== value);
+            }
+            const url = new URL(window.location.href);
+            url.searchParams.set('pass_side', value);
+            history.replaceState(history.state, '', url);
+        });
+    }
+</script>
