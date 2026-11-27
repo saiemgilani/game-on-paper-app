@@ -80,6 +80,7 @@ vi.mock('../src/resources/sdv', async (orig) => ({
     retrieveTeamOpponentSplits: async () => null,
     retrieveTeamTendencies: async () => [],
     retrieveTeamAdjustmentLedger: async (...a: unknown[]) => { ledgerReads.push(a); return rowsOf('99'); },
+    retrieveTeamPassPlays: async () => ({ off: [], def: [] }), // team-pass-direction: no pass attempts
 }));
 vi.mock('../src/resources/espn', async (orig) => ({
     ...(await orig<typeof import('../src/resources/espn')>()),
