@@ -1,0 +1,212 @@
+{
+ "summary": {
+  "game_id": 401810169,
+  "home_team_id": 19,
+  "away_team_id": 4,
+  "home_score": 125,
+  "away_score": 120,
+  "winner_team_id": 19,
+  "loser_team_id": 4,
+  "margin": 5,
+  "decided": true,
+  "periods_agree": true,
+  "n_periods": 4,
+  "overtime": false
+ },
+ "edges": [
+  {
+   "game_id": 401810169,
+   "winner_team_id": 19,
+   "loser_team_id": 4,
+   "edge": "free_throws",
+   "kind": "accounting",
+   "unit": "points",
+   "winner_value": 2.93771043771044,
+   "loser_value": -2.9377104377104355,
+   "points_worth": 5.875420875420875,
+   "rank": 1
+  },
+  {
+   "game_id": 401810169,
+   "winner_team_id": 19,
+   "loser_team_id": 4,
+   "edge": "rebounding",
+   "kind": "accounting",
+   "unit": "points",
+   "winner_value": 1.2049332274051374,
+   "loser_value": -1.2049332274051374,
+   "points_worth": 2.409866454810275,
+   "rank": 2
+  },
+  {
+   "game_id": 401810169,
+   "winner_team_id": 19,
+   "loser_team_id": 4,
+   "edge": "turnovers",
+   "kind": "accounting",
+   "unit": "points",
+   "winner_value": 0.6874298540965208,
+   "loser_value": -0.6874298540965208,
+   "points_worth": 1.3748597081930416,
+   "rank": 3
+  },
+  {
+   "game_id": 401810169,
+   "winner_team_id": 19,
+   "loser_team_id": 4,
+   "edge": "shooting",
+   "kind": "accounting",
+   "unit": "points",
+   "winner_value": -2.3300735192120983,
+   "loser_value": 2.3300735192120934,
+   "points_worth": -4.660147038424192,
+   "rank": 4
+  },
+  {
+   "game_id": 401810169,
+   "winner_team_id": 19,
+   "loser_team_id": 4,
+   "edge": "three_pt_points",
+   "kind": "split",
+   "unit": "points",
+   "winner_value": 27.0,
+   "loser_value": 48.0,
+   "points_worth": -21.0,
+   "rank": 5
+  },
+  {
+   "game_id": 401810169,
+   "winner_team_id": 19,
+   "loser_team_id": 4,
+   "edge": "points_off_turnovers",
+   "kind": "split",
+   "unit": "points",
+   "winner_value": 19.0,
+   "loser_value": null,
+   "points_worth": null,
+   "rank": 6
+  },
+  {
+   "game_id": 401810169,
+   "winner_team_id": 19,
+   "loser_team_id": 4,
+   "edge": "fast_break_points",
+   "kind": "split",
+   "unit": "points",
+   "winner_value": 21.0,
+   "loser_value": null,
+   "points_worth": null,
+   "rank": 7
+  },
+  {
+   "game_id": 401810169,
+   "winner_team_id": 19,
+   "loser_team_id": 4,
+   "edge": "points_in_paint",
+   "kind": "split",
+   "unit": "points",
+   "winner_value": 62.0,
+   "loser_value": null,
+   "points_worth": null,
+   "rank": 8
+  }
+ ],
+ "moment": {
+  "game_id": 401810169,
+  "play_id": 401810169672,
+  "order": 461,
+  "period": 4,
+  "clock": "3:23",
+  "team_id": 19,
+  "text": "Desmond Bane makes 25-foot three point jumper (Jalen Suggs assists)",
+  "wpa": 0.22018730640411377,
+  "winner_wpa": 0.22018730640411377,
+  "home_score": 112,
+  "away_score": 111,
+  "rule": "max_abs_wpa"
+ },
+ "periods": [
+  {
+   "game_id": 401810169,
+   "period": 1,
+   "period_label": "Q1",
+   "is_overtime": false,
+   "home_pts": 29,
+   "away_pts": 26,
+   "home_cum": 29,
+   "away_cum": 26
+  },
+  {
+   "game_id": 401810169,
+   "period": 2,
+   "period_label": "Q2",
+   "is_overtime": false,
+   "home_pts": 24,
+   "away_pts": 27,
+   "home_cum": 53,
+   "away_cum": 53
+  },
+  {
+   "game_id": 401810169,
+   "period": 3,
+   "period_label": "Q3",
+   "is_overtime": false,
+   "home_pts": 32,
+   "away_pts": 32,
+   "home_cum": 85,
+   "away_cum": 85
+  },
+  {
+   "game_id": 401810169,
+   "period": 4,
+   "period_label": "Q4",
+   "is_overtime": false,
+   "home_pts": 40,
+   "away_pts": 35,
+   "home_cum": 125,
+   "away_cum": 120
+  }
+ ],
+ "runs": [
+  {
+   "game_id": 401810169,
+   "team_id": 19,
+   "points": 11,
+   "start_order": 74,
+   "end_order": 101,
+   "start_period": 1,
+   "end_period": 1,
+   "home_score_after": 29,
+   "away_score_after": 24
+  },
+  {
+   "game_id": 401810169,
+   "team_id": 4,
+   "points": 9,
+   "start_order": 189,
+   "end_order": 216,
+   "start_period": 2,
+   "end_period": 2,
+   "home_score_after": 49,
+   "away_score_after": 51
+  }
+ ],
+ "performers": [
+  {
+   "game_id": 401810169,
+   "team_id": 4,
+   "player_id": 4871145,
+   "player_name": "Josh Giddey",
+   "metric": "points",
+   "value": 22.0
+  },
+  {
+   "game_id": 401810169,
+   "team_id": 19,
+   "player_id": 4066320,
+   "player_name": "Desmond Bane",
+   "metric": "points",
+   "value": 37.0
+  }
+ ]
+}

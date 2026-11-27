@@ -1,5 +1,6 @@
 // One game, one shape, two sources. The adapters rename and group; the numbers are Python's
 // (sportsdataverse.nba.nba_game_page), live through the processor or nightly through sdv-db.
+import type { GameStory } from '../utils/gameStory';
 import type { ESPNGameHeader } from './espn';
 import type { GameSituationalRow } from './teamGrid';
 import type { ProcessedGame } from './python';
@@ -128,6 +129,8 @@ export interface NbaGame {
     hasOvertime: boolean
     /** sdv-py's game_excitement (BB-D28) on the game's WP series, from the processor only; absent otherwise (see fromDataApi) */
     excitement?: NbaExcitement
+    /** 'game-story': sdv-py's game story of a final, from the processor only (python/game_story.py); absent otherwise */
+    story?: GameStory
     /** BB-G45 ('bball-wp-lenses'): a Data API final's play_wp variants (routes/basketball/game.ts); absent otherwise */
     wpLenses?: WpLensRow[]
 }
@@ -161,6 +164,8 @@ export interface NbaProcessorPayload {
     plays: Record<string, any>[]
     /** BB-G29; absent from a payload cached before it */
     excitement?: { gei: number | null; lead_changes: number; max_swing_pts: number | null; completed: boolean }
+    /** python/game_story.py: a final's game story, or null */
+    gameStory?: GameStory | null
     /** BB-D31's game splits (python/nba_game.py); absent from a payload cached before them. The team rows feed BB-G32, the player rows BB-G34. */
     splits?: Record<'home' | 'away', { team: Record<string, any> | null; players: Record<string, any>[] }>
     /** BB-D40's team_game_expected rows (python/nba_game.py); absent from a payload cached before them. */
@@ -320,6 +325,7 @@ export function fromProcessor(j: NbaProcessorPayload, league: BasketballLeague):
         date: comp.date, venue: j.venue ?? null, periods: j.periods, season, regulation: reg.periods, periodKind: reg.kind,
         prior: { homeWinProb: j.prior.home_win_prob, source: priorSource(j.prior.source), homeTeamSpread: j.prior.home_team_spread, gameSpreadAvailable: j.prior.game_spread_available },
         home: side('home'), away: side('away'), plays: j.plays.map((r) => play(r)), hasOvertime: j.periods > reg.periods,
+        ...(j.gameStory ? { story: j.gameStory } : {}),
         ...(j.excitement ? { excitement: { gei: num(j.excitement.gei), leadChanges: j.excitement.lead_changes, maxSwingPts: num(j.excitement.max_swing_pts), completed: j.excitement.completed === true } } : {}),
     })
 }

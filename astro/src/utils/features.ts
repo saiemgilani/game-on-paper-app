@@ -91,6 +91,11 @@ export const FLAGS: Record<string, FeatureState> = {
     // for a final, with its lead changes and biggest WP swing beside it. Off: the chart island's props are today's. A Data API-served game page still has no GEI
     // (resources/nbaGame.ts fromDataApi).
     'bball-gei': 'preview',
+    // "How they won it" on the football and basketball game pages (components/GameStory.astro): sdv-py's game story
+    // (cfb_game_story / nfl_game_story / nba_game_story) as the processor passes it (python/game_story.py), finals only:
+    // the winner's three largest edges in points, the biggest win-probability swing, each side's largest run and top
+    // performer. A Data API-served basketball page has no story yet (resources/nbaGame.ts fromDataApi). Off: no panel.
+    'game-story': 'preview',
     // Basketball game link previews (nba/wnba/mbb/wbb, so inside each league's flag), as 'share-card' is for football:
     // a live or final game page's og:image is its 1200x630 card (`/<league>/game/<id>/card.png`, routes/basketball/
     // shareCard.ts, python/share_card.py render_basketball): the score, the teams, the WP line and, on a final, the GEI.

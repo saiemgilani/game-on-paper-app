@@ -1,0 +1,234 @@
+{
+ "summary": {
+  "game_id": 401772921,
+  "home_team_id": 6,
+  "away_team_id": 9,
+  "home_score": 40,
+  "away_score": 40,
+  "winner_team_id": null,
+  "loser_team_id": null,
+  "margin": 0,
+  "decided": false,
+  "periods_agree": true,
+  "n_periods": 5,
+  "overtime": true
+ },
+ "edges": [
+  {
+   "game_id": 401772921,
+   "winner_team_id": null,
+   "loser_team_id": null,
+   "edge": "passing",
+   "kind": "accounting",
+   "unit": "points",
+   "winner_value": 22.354873031261377,
+   "loser_value": 16.779065452275972,
+   "points_worth": 5.575807578985405,
+   "rank": 1
+  },
+  {
+   "game_id": 401772921,
+   "winner_team_id": null,
+   "loser_team_id": null,
+   "edge": "red_zone",
+   "kind": "split",
+   "unit": "points",
+   "winner_value": 6.80527046174393,
+   "loser_value": 2.05709179850237,
+   "points_worth": 4.748178663241561,
+   "rank": 2
+  },
+  {
+   "game_id": 401772921,
+   "winner_team_id": null,
+   "loser_team_id": null,
+   "edge": "success_rate",
+   "kind": "split",
+   "unit": "points",
+   "winner_value": 0.5441176470588235,
+   "loser_value": 0.5189873417721519,
+   "points_worth": 3.3170247746689396,
+   "rank": 3
+  },
+  {
+   "game_id": 401772921,
+   "winner_team_id": null,
+   "loser_team_id": null,
+   "edge": "turnovers",
+   "kind": "split",
+   "unit": "points",
+   "winner_value": 0.0,
+   "loser_value": -3.002908843336627,
+   "points_worth": 3.002908843336627,
+   "rank": 4
+  },
+  {
+   "game_id": 401772921,
+   "winner_team_id": null,
+   "loser_team_id": null,
+   "edge": "other",
+   "kind": "accounting",
+   "unit": "points",
+   "winner_value": -3.1534997562412173,
+   "loser_value": -5.316555706929648,
+   "points_worth": 2.163055950688431,
+   "rank": 5
+  },
+  {
+   "game_id": 401772921,
+   "winner_team_id": null,
+   "loser_team_id": null,
+   "edge": "special_teams",
+   "kind": "accounting",
+   "unit": "points",
+   "winner_value": -5.220558345376048,
+   "loser_value": -2.0795181031062384,
+   "points_worth": -3.14104024226981,
+   "rank": 6
+  },
+  {
+   "game_id": 401772921,
+   "winner_team_id": null,
+   "loser_team_id": null,
+   "edge": "rushing",
+   "kind": "accounting",
+   "unit": "points",
+   "winner_value": 1.8322106264531612,
+   "loser_value": 5.389259625619161,
+   "points_worth": -3.5570489991659997,
+   "rank": 7
+  },
+  {
+   "game_id": 401772921,
+   "winner_team_id": null,
+   "loser_team_id": null,
+   "edge": "explosive_plays",
+   "kind": "split",
+   "unit": "points",
+   "winner_value": 15.669387686939444,
+   "loser_value": 19.247244175749074,
+   "points_worth": -3.57785648880963,
+   "rank": 8
+  },
+  {
+   "game_id": 401772921,
+   "winner_team_id": null,
+   "loser_team_id": null,
+   "edge": "late_downs",
+   "kind": "split",
+   "unit": "points",
+   "winner_value": 5.0795501292159315,
+   "loser_value": 18.527794877467386,
+   "points_worth": -13.448244748251454,
+   "rank": 9
+  }
+ ],
+ "moment": {
+  "game_id": 401772921,
+  "play_id": 4017729214182,
+  "order": 175,
+  "period": 4,
+  "clock": "0:43",
+  "team_id": 6,
+  "text": "George Pickens 28 Yd pass from Dak Prescott (Brandon Aubrey Kick)",
+  "wpa": 0.517183780670166,
+  "winner_wpa": null,
+  "home_score": 37,
+  "away_score": 34,
+  "rule": "max_abs_wpa"
+ },
+ "periods": [
+  {
+   "game_id": 401772921,
+   "period": 1,
+   "period_label": "Q1",
+   "is_overtime": false,
+   "home_pts": 0,
+   "away_pts": 7,
+   "home_cum": 0,
+   "away_cum": 7
+  },
+  {
+   "game_id": 401772921,
+   "period": 2,
+   "period_label": "Q2",
+   "is_overtime": false,
+   "home_pts": 40,
+   "away_pts": 33,
+   "home_cum": 40,
+   "away_cum": 40
+  },
+  {
+   "game_id": 401772921,
+   "period": 3,
+   "period_label": "Q3",
+   "is_overtime": false,
+   "home_pts": -17,
+   "away_pts": -20,
+   "home_cum": 23,
+   "away_cum": 20
+  },
+  {
+   "game_id": 401772921,
+   "period": 4,
+   "period_label": "Q4",
+   "is_overtime": false,
+   "home_pts": 14,
+   "away_pts": 17,
+   "home_cum": 37,
+   "away_cum": 37
+  },
+  {
+   "game_id": 401772921,
+   "period": 5,
+   "period_label": "OT",
+   "is_overtime": true,
+   "home_pts": 3,
+   "away_pts": 3,
+   "home_cum": 40,
+   "away_cum": 40
+  }
+ ],
+ "runs": [
+  {
+   "game_id": 401772921,
+   "team_id": 6,
+   "points": 16,
+   "start_order": 49,
+   "end_order": 86,
+   "start_period": 2,
+   "end_period": 2,
+   "home_score_after": 16,
+   "away_score_after": 13
+  },
+  {
+   "game_id": 401772921,
+   "team_id": 9,
+   "points": 13,
+   "start_order": 10,
+   "end_order": 48,
+   "start_period": 1,
+   "end_period": 2,
+   "home_score_after": 0,
+   "away_score_after": 13
+  }
+ ],
+ "performers": [
+  {
+   "game_id": 401772921,
+   "team_id": 6,
+   "player_id": 2577417,
+   "player_name": "Dak Prescott",
+   "metric": "epa",
+   "value": 22.75302920793183
+  },
+  {
+   "game_id": 401772921,
+   "team_id": 9,
+   "player_id": 4036378,
+   "player_name": "Jordan Love",
+   "metric": "epa",
+   "value": 22.11400316583604
+  }
+ ]
+}

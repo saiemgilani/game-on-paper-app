@@ -3,7 +3,7 @@ import NavScroller, { type ScrollerItem } from '../../components/NavScroller.ast
 import { type ProcessedGame } from '../../resources/python';
 import { GAME_PAGE_MANIFEST, evaluateManifest, salvageGame } from '../../utils/manifest';
 import { gopStorage } from '../../utils/telemetry';
-import { cleanLocation, isChampionshipEvent, deduplicateByKey, pickGameColors } from '../../utils/misc';
+import { cleanAbbreviation, cleanLocation, isChampionshipEvent, deduplicateByKey, pickGameColors } from '../../utils/misc';
 import { isFeatureEnabled } from '../../utils/features';
 import { METHOD_NOTES } from '../../utils/methodNotes';
 import Panel from '../../layouts/panel/GenericPanel.astro';
@@ -15,6 +15,8 @@ import { threeAndOutPlays } from '../../utils/playIcons';
 import TeamPanel from '../../layouts/panel/TeamPanel.astro';
 import TeamPlayerStats from './metrics/TeamPlayerStats.astro';
 import PaperIndex from './metrics/PaperIndex.astro';
+import GameStory from '../GameStory.astro';
+import { storyView } from '../../utils/gameStory';
 import Linescore from './metrics/Linescore.astro';
 import QuarterEpa from './metrics/QuarterEpa.astro';
 import { quarterEpa } from '../../utils/quarterEpa';
@@ -163,6 +165,9 @@ const quarterEpaRows = isFeatureEnabled('quarter-epa', Astro.locals) && gameStat
     : null;
 const quarterEpaTeams = sides.map((c: any) => c?.team);
 // 'decision-summary' (preview): the Fourth Down Bot cards summed per team, away first; no panel when no play has a card
+// 'game-story' (preview): the processor's game story of a final (python/game_story.py); null hides the panel
+const storyPanel = isFeatureEnabled('game-story', Astro.locals) && gameStatus.type.completed == true ? storyView(game.gameStory, true) : null;
+const storyAbbr = { [String(homeTeam.id)]: cleanAbbreviation(homeTeam), [String(awayTeam.id)]: cleanAbbreviation(awayTeam) };
 const decisionRows = isFeatureEnabled('decision-summary', Astro.locals) ? fourthDownSummary(game.plays, [awayTeam.id, homeTeam.id]) : [];
 const decisionSummary = decisionRows.some((r) => r.decisions > 0);
 const lastPlay: any = game.plays.at(-1);
@@ -175,6 +180,7 @@ const scrollerItems: ScrollerItem[] = [
     ...(latestPlays.length > 0 ? [{ href: "#latest", title: "Latest" }] : []),
     { href: "#wp-section", title: "WP Chart" },
     { href: "#ep-section", title: "EPA Chart" },
+    ...(storyPanel ? [{ href: "#game-story-panel", title: "How they won it" }] : []),
     ...((game.paperIndex && gameStatus.type.completed == true) ? [{ href: "#paper-index-panel", title: "Deserved Win %" }] : []),
     { href: "#team-stats-panel", title: "Team Stats" },
     ...(decisionSummary ? [{ href: "#decision-summary-panel", title: "4th Downs" }] : []),
@@ -319,6 +325,17 @@ const wpLenses = league === 'cfb' && isFeatureEnabled('cfb-wp-naive-lens', Astro
                     </ExpectedPointsChart>
                 </div>
             </div>
+            {
+                storyPanel && (
+                    <div class="row mb-3">
+                        <div class="col-md-12 ms-sm-auto col-lg-12 px-md-4">
+                            <Panel id="game-story" title="How they won it" show={true} class="mb-md-3">
+                                <div slot="panel-body"><GameStory view={storyPanel} abbr={storyAbbr} homeId={parseInt(homeTeam.id)} awayId={parseInt(awayTeam.id)} /></div>
+                            </Panel>
+                        </div>
+                    </div>
+                )
+            }
             {
                 (game.paperIndex && gameStatus.type.completed == true) && (
                     <div class="row mb-3">
