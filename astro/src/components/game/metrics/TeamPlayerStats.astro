@@ -62,7 +62,7 @@ const rowsOf = (b: Partial<ProcessedBoxScore>, k: keyof ProcessedBoxScore, key =
         league={league}
     />
     <UsageBoxScore box={w.box} teamId={teamId} season={season} />
-    <PassingChart plays={w.plays.filter(p => p.pos_team == teamId)} />
+    <PassingChart plays={w.plays.filter(p => p.pos_team == teamId)} league={league} />
     <RushingChart plays={w.plays.filter(p => p.pos_team == teamId)} />
 </div>
 ))}

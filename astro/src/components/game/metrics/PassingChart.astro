@@ -1,12 +1,15 @@
 ---
 import type { ProcessedPlay } from "../../../resources/python";
+import type { League } from "../../../utils/league";
 import { roundNumber } from "../../../utils/misc";
+import { passDepthSplit } from "../../../utils/passDirection";
 
 interface Props {
     plays: ProcessedPlay[]
+    league?: League
 }
 
-const { plays } = Astro.props;
+const { plays, league = 'cfb' } = Astro.props;
 
 const DEPTHS = ["deep", "short"] as const;
 const DIRECTIONS = ["left", "middle", "right"] as const;
@@ -34,7 +37,7 @@ for (const d of DEPTHS) {
 
 for (const p of plays) {
     if (Number(p.pass) != 1) continue;
-    // sdv-py extracts these from the ESPN text (null for sacks / pre-2025 games)
+    // sdv-py extracts these from the ESPN text (null for sacks, and in college for games before 2025 Week 9)
     const depth = p.pass_depth;
     const direction = p.pass_direction;
     if (!depth || !direction) continue;
@@ -66,9 +69,16 @@ const sumRow = (depth: string): Cell =>
     }, emptyCell());
 
 const aDOT = (c: Cell): string => c.airAttempts > 0 ? roundNumber(c.airYards / c.airAttempts, 2, 1) : "—";
+// ESPN's play-text split, per league (utils/passDirection.ts): short is anything under it, behind the line included
+const split = passDepthSplit(league);
+// ESPN's college play text carries depth and direction from 2025 Week 9 on; its NFL text has for years (~99% of
+// attempts in every season since 2016, sdv ESPN NFL release), so the NFL caption makes no date claim
+const since = league === 'nfl'
+    ? "Built off ESPN's play-by-play text. "
+    : "Built off ESPN's play-by-play text, which carries depth and direction from 2025 Week 9 on. ";
 const rowLabel: Record<string, { title: string, sub: string }> = {
-    deep: { title: "Deep", sub: "12+ air yards" },
-    short: { title: "Short", sub: "0-12 air yards" },
+    deep: { title: "Deep", sub: `${split}+ air yards` },
+    short: { title: "Short", sub: `Under ${split} air yards` },
 };
 ---
 
@@ -111,7 +121,7 @@ const rowLabel: Record<string, { title: string, sub: string }> = {
                     <th class="align-middle">Right</th>
                 </tr>
             </tbody>
-            <caption>Built off play-by-play data that started appearing in 2025. Sacks and passes that lack depth and direction information are not included. aDOT = average depth of target (air yards per attempt); YAC = yards after catch.</caption>
+            <caption>{since}Sacks and passes that lack depth and direction information are not included. aDOT = average depth of target (air yards per attempt); YAC = yards after catch.</caption>
         </table>
     </div>
 </div>

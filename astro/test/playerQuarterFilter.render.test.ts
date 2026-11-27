@@ -111,6 +111,10 @@ describe('player sections: quarter filter', () => {
             expect(html).not.toMatch(/<script[^>]*(TeamPlayerStats|PlayerSpanSelect)\.astro/);
             for (const id of ['away-stats-panel', 'home-stats-panel']) {
                 expect(panel(html, id)).toMatch(/<div class="panel-body">\s*<div class="row">/);
+                // the Target Matrix gets the page's league: ESPN's depth split (utils/passDirection.ts passDepthSplit)
+                const split = league === 'nfl' ? 16 : 20;
+                expect(panel(html, id)).toContain(`<small>${split}+ air yards</small>`);
+                expect(panel(html, id)).toContain(`<small>Under ${split} air yards</small>`);
             }
         }, 60_000);
     }
