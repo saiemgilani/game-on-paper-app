@@ -26,11 +26,13 @@ import NeighborRanks from "../../components/leaderboards/NeighborRanks.astro";
 import { resumeRows } from "../../utils/resume";
 import { seasonNote } from "../../utils/methodNotes";
 import ScheduleEffect from "../../components/team/ScheduleEffect.astro";
+import PassDirectionTable from "../../components/team/PassDirectionTable.astro";
+import { anyCharted } from "../../utils/passDirection";
 
 // Route component: routes/seasonTeam.ts (per-league page) checked the params,
 // read ESPN + the season tables and made the not-found decision; this renders.
 type Props = SeasonTeamData;
-const { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies, neighborLists, gameSet, ledger } = Astro.props;
+const { league, year, id, team, teamSeason, teamSummaries, passers, rushers, receivers, opponentSplits, teamTendency, seasonTendencies, neighborLists, gameSet, ledger, passPlays } = Astro.props;
 
 const teamData = teamSummaries.map((t:any) => {
     t.color = team.color
@@ -146,6 +148,12 @@ const breadcrumbs: PageBreadcrumb[] = [
     {isFeatureEnabled('team-splits', Astro.locals) && teamTendency && (
         <div class="container mb-3">
             <TeamSplitsTable row={teamTendency} season={seasonTendencies ?? []} />
+        </div>
+    )}
+    {/* passPlays is read only with 'team-pass-direction' on (college only); a season with no charted attempt has no panel */}
+    {passPlays && anyCharted(passPlays) && (
+        <div class="container mb-3">
+            <PassDirectionTable plays={passPlays} season={Number(year)} />
         </div>
     )}
     {/* no games, no panel: the read is empty before a season's first kickoff */}
