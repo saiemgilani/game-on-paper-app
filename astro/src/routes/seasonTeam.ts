@@ -16,7 +16,7 @@ import type { League } from '../utils/league';
 import { TEAM_NEIGHBOR_METRICS, teamNeighborLists, type NeighborList } from '../utils/neighbors';
 import { teamSplitColumns } from '../utils/teamSplits';
 import type { LedgerRow } from '../utils/scheduleEffect';
-import type { PassPlay } from '../utils/passDirection';
+import { PASS_DIRECTION_FIRST_SEASON, type PassPlay } from '../utils/passDirection';
 
 export interface SeasonTeamData {
     league: League;
@@ -81,7 +81,8 @@ export async function loadSeasonTeam(Astro: AstroGlobal, league: League): Promis
         ? retrieveTeamTendencies({ season: Number(year), league, columns: teamSplitColumns(league) })
         : undefined;
     // started before the player reads and awaited after them, as the tendency read is; never rejects (null on any failure)
-    const passDirectionOn = league === 'cfb' && isFeatureEnabled('team-pass-direction', Astro.locals);
+    // an earlier season has (next to) no charted attempt: no read, so no panel and no uncacheable failure for nothing
+    const passDirectionOn = league === 'cfb' && Number(year) >= PASS_DIRECTION_FIRST_SEASON && isFeatureEnabled('team-pass-direction', Astro.locals);
     const passPlaysRead = passDirectionOn ? retrieveTeamPassPlays(Number(year), id, league) : undefined;
     const passers = (await retrievePlayerSummaries(Number(year), SummaryType.PASSING, Number(id), "plays", false, 10, Number(year), league)) as SDVPassingSummary[];
     const rushers = (await retrievePlayerSummaries(Number(year), SummaryType.RUSHING, Number(id), "plays", false, 20, Number(year), league)) as SDVRushingSummary[];

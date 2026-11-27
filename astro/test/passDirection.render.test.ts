@@ -57,6 +57,16 @@ describe('passDirectionTable on real pass attempts', () => {
         expect(row(plays2025.off, 'deep-left').adot).toBeCloseTo(29.571429, 5);
     });
 
+    test('the caption\'s depths: ESPN\'s "deep" is 20+ air yards, "short" anything under, behind the line included', () => {
+        const air = (plays: PassPlay[], depth: string) => plays
+            .filter((p) => p.sack !== true && p.pass_depth === depth && p.air_yards != null).map((p) => Number(p.air_yards));
+        for (const plays of [plays2026.off, plays2026.def, plays2025.off, plays2025.def]) {
+            expect(Math.max(...air(plays, 'short'))).toBeLessThan(20);
+            expect(Math.min(...air(plays, 'deep'))).toBeGreaterThanOrEqual(20);
+            expect(air(plays, 'short').some((y) => y < 0)).toBe(true);
+        }
+    });
+
     test('no charted attempt on either side: no panel', () => {
         const uncharted = { off: plays2026.off.map((p) => ({ ...p, pass_direction: null })), def: [] };
         expect(anyCharted(uncharted)).toBe(false);
@@ -107,6 +117,7 @@ describe('the PassDirectionTable panel', () => {
         expect(off[0].cells).toEqual(['All', '194/275', '100.0%', '0.52', '57.5%', '9.1']);
         expect(off[5].cells).toEqual(['Deep', '26/44', '16.0%', '1.45', '59.1%', '27.8']);
         expect(off[6].cells[0]).toBe('Left');
+        expect(html).toContain('Short = under 20 air yards, throws behind the line included; Deep = 20+.');
     });
 
     test('a side below 90% charted says why; one at or above does not', async () => {
@@ -147,6 +158,21 @@ describe('loadSeasonTeam behind team-pass-direction', () => {
         expect(passReads).toEqual([]);
         expect(off.passPlays).toBeNull();
         expect(nfl.passPlays).toBeNull();
+    });
+
+    test('a season before 2025 reads nothing and stays cacheable', async () => {
+        const { loadSeasonTeam } = await import('../src/routes/seasonTeam');
+        passReads.length = 0;
+        const sets: unknown[] = [];
+        const astro = fakeAstro(true, '2024');
+        astro.cache = { set: (v: unknown) => sets.push(v) };
+        const r: any = await loadSeasonTeam(astro, 'cfb');
+        expect(passReads).toEqual([]);
+        expect(r.passPlays).toBeNull();
+        expect(sets).not.toContain(false);
+        const r2025: any = await loadSeasonTeam(fakeAstro(true, '2025'), 'cfb');
+        expect(passReads).toEqual([[2025, '333', 'cfb']]);
+        expect(r2025.passPlays.off).toHaveLength(317);
     });
 
     test('a failed read keeps the render out of the cache', async () => {

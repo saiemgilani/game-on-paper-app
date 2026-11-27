@@ -1,9 +1,11 @@
 /**
  * Behind 'team-pass-direction': the team-season page's Passing Direction panel. A side's pass attempts (sacks out),
- * grouped by the depth and direction sportsdataverse-py reads from ESPN's play text (`pass_depth`: short is 0-12 air
- * yards, deep is 12+; `pass_direction`: left / middle / right), the same cells as the game page's Target Matrix
- * (components/game/metrics/PassingChart.astro). ESPN's text carries depth and direction from 2025 Week 9 on, so a
- * season charts only part of its attempts: `charted` and `coverage` say how many.
+ * grouped by the depth and direction sportsdataverse-py reads from ESPN's play text (`pass_depth`: short / deep;
+ * `pass_direction`: left / middle / right), the same cells as the game page's Target Matrix
+ * (components/game/metrics/PassingChart.astro). ESPN's "deep" is a throw of 20+ air yards and "short" anything under,
+ * behind the line included (2025-26 FBS charted attempts: 99.9% of deep at 20+, 99.98% of short under 20). The text
+ * carries depth and direction from 2025 Week 9 on, so a season charts only part of its attempts: `charted` and
+ * `coverage` say how many.
  */
 import { numberOrNull } from './misc';
 
@@ -24,6 +26,10 @@ export const PASS_PLAY_COLUMNS = ['game_id', 'sack', 'completion', 'pass_directi
 
 export const DEPTHS = [['short', 'Short'], ['deep', 'Deep']] as const;
 export const DIRECTIONS = [['left', 'Left'], ['middle', 'Middle'], ['right', 'Right']] as const;
+
+/** The first season with charted attempts to speak of: 2023 has 42 across 40 games, 2024 one, earlier none (Data API
+ *  pbp, 2026-11-26). The page reads no pass plays for an earlier season, so no panel stands on one attempt. */
+export const PASS_DIRECTION_FIRST_SEASON = 2025;
 
 /** Below this share of charted attempts the panel says the season is partly charted. */
 export const PASS_DIRECTION_COVERAGE_FLOOR = 0.9;
