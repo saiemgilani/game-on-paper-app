@@ -29,6 +29,13 @@ describe('the Target Matrix depth labels', () => {
         const html = await render('nfl');
         expect(subs(html)).toEqual([['Deep', '16+ air yards'], ['Short', 'Under 16 air yards']]);
         expect(html).not.toMatch(/0-12|12\+/);
+        // NFL text has carried depth and direction for years: no 2025 claim
+        expect(html).toContain('<caption>Built off ESPN&#39;s play-by-play text. Sacks and passes');
+        expect(html).not.toContain('2025');
+    });
+
+    test('the college caption dates the text: depth and direction from 2025 Week 9 on', async () => {
+        expect(await render('cfb')).toContain('<caption>Built off ESPN&#39;s play-by-play text, which carries depth and direction from 2025 Week 9 on. Sacks and passes');
     });
 
     test('the split per league', () => {
