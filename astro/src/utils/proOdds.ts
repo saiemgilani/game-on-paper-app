@@ -7,6 +7,7 @@ export interface OddsBook {
 export interface OddsGame {
     id: string; start: string; away: string; home: string
     consensus: { away: number; home: number } | null
+    /** edge: consensus fair minus the best price's implied chance; positive = the price pays more than fair. */
     best: Record<'away' | 'home', { book: string; price: number; edge: number | null }>
     best_hold: number; crossed: boolean; books: OddsBook[]
 }

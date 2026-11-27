@@ -7,7 +7,7 @@
   {"key": "cfb", "name": "College football", "games": [
    {"id": "g1", "start": "2026-11-28T17:00:00Z", "away": "Fixture Tech", "home": "Fixture State",
     "consensus": {"away": 0.38, "home": 0.62},
-    "best": {"away": {"book": "Book B", "price": 160, "edge": 0.0046}, "home": {"book": "Book A", "price": -150, "edge": -0.02}},
+    "best": {"away": {"book": "Book B", "price": 160, "edge": -0.0046}, "home": {"book": "Book A", "price": -150, "edge": 0.02}},
     "best_hold": -0.0154, "crossed": true,
     "books": [
      {"book": "Book A", "updated": "2026-11-26T00:00:00Z", "away_price": 140, "home_price": -150, "hold": 0.0167, "away_fair": 0.4098, "home_fair": 0.5902, "note": null},

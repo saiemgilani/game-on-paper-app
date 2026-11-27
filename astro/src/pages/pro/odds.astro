@@ -72,7 +72,7 @@ const league = pickLeague(doc, Astro.url.searchParams.get('league'));
             <ul class="mb-0">{doc.limits.map((l) => <li>{l}</li>)}</ul>
         </div>
         <p class="text-muted text-small" id="odds-provenance">
-            Lines from The Odds API, snapshot {doc.snapshot}, rendered {doc.rendered}. Book names identify the source of each
+            Lines from The Odds API, snapshot {doc.snapshot}, rendered {fmtStart(doc.rendered)}. Book names identify the source of each
             price only; no book endorses or sponsors this page.
         </p>
     </div>
