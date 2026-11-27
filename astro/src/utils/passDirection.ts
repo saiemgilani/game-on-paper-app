@@ -8,7 +8,16 @@
  * carries depth and direction from 2025 Week 9 on, so a season charts only part of its attempts: `charted` and
  * `coverage` say how many.
  */
+import type { League } from './league';
 import { numberOrNull } from './misc';
+
+/**
+ * Where ESPN's play text splits "short" from "deep", in air yards: deep is this many or more, short anything under it,
+ * behind the line included. College: 20 (above). NFL: 16, the league's own 15-yard short pass (2025 sdv ESPN NFL
+ * release, measured 2026-11-26: 99.9% of 3,426 deep attempts at 16+, none of 14,862 short at 16+). The game page's
+ * Target Matrix labels its rows with it.
+ */
+export const passDepthSplit = (league: League): number => (league === 'nfl' ? 16 : 20);
 
 /** One pass attempt from the pbp table (the columns `retrieveTeamPassPlays` asks for). */
 export interface PassPlay {

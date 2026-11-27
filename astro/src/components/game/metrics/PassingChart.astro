@@ -1,12 +1,15 @@
 ---
 import type { ProcessedPlay } from "../../../resources/python";
+import type { League } from "../../../utils/league";
 import { roundNumber } from "../../../utils/misc";
+import { passDepthSplit } from "../../../utils/passDirection";
 
 interface Props {
     plays: ProcessedPlay[]
+    league?: League
 }
 
-const { plays } = Astro.props;
+const { plays, league = 'cfb' } = Astro.props;
 
 const DEPTHS = ["deep", "short"] as const;
 const DIRECTIONS = ["left", "middle", "right"] as const;
@@ -66,9 +69,11 @@ const sumRow = (depth: string): Cell =>
     }, emptyCell());
 
 const aDOT = (c: Cell): string => c.airAttempts > 0 ? roundNumber(c.airYards / c.airAttempts, 2, 1) : "—";
+// ESPN's play-text split, per league (utils/passDirection.ts): short is anything under it, behind the line included
+const split = passDepthSplit(league);
 const rowLabel: Record<string, { title: string, sub: string }> = {
-    deep: { title: "Deep", sub: "12+ air yards" },
-    short: { title: "Short", sub: "0-12 air yards" },
+    deep: { title: "Deep", sub: `${split}+ air yards` },
+    short: { title: "Short", sub: `Under ${split} air yards` },
 };
 ---
 
