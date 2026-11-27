@@ -37,7 +37,7 @@ for (const d of DEPTHS) {
 
 for (const p of plays) {
     if (Number(p.pass) != 1) continue;
-    // sdv-py extracts these from the ESPN text (null for sacks / pre-2025 games)
+    // sdv-py extracts these from the ESPN text (null for sacks, and in college for games before 2025 Week 9)
     const depth = p.pass_depth;
     const direction = p.pass_direction;
     if (!depth || !direction) continue;
