@@ -18,9 +18,12 @@ interface Props {
 const { view, abbr, homeId, awayId } = Astro.props;
 const cols = view.decided && view.winnerId != null && view.loserId != null ? [view.winnerId, view.loserId] : [homeId, awayId];
 const name = (id: number | null) => (id == null ? '' : abbr[String(id)] ?? String(id));
-const value = (edge: string, v: number | null) => (v == null ? '-' : isRateEdge(edge) ? `${roundNumber(v * 100, 0, 0)}%` : roundNumber(v, 1, 1));
+const value = (edge: string, v: number | null) =>
+    v == null ? '-' : isRateEdge(edge) ? `${roundNumber(v * 100, 0, 0)}%` : Number.isInteger(v) ? roundNumber(v, 0, 0) : roundNumber(v, 1, 1);
 const m = view.moment;
 const swing = m ? (view.decided ? m.winner_wpa : m.wpa) : null;
+// the period as the page's linescore names it (Q4, H2, OT), from the story's own period labels
+const periodLabel = m ? (view.periods.find((p) => p.period === m.period)?.period_label ?? `Period ${m.period}`) : '';
 const metric = (p: { metric: string; value: number }) =>
     p.metric === 'epa' ? `${roundNumber(p.value, 1, 1)} EPA` : p.metric === 'wpa' ? `${generateMarginalString(p.value * 100, 0, 0)}% WPA` : `${roundNumber(p.value, 0, 0)} ${p.metric === 'points' ? 'pts' : p.metric.replace(/_/g, ' + ')}`;
 ---
@@ -51,7 +54,7 @@ const metric = (p: { metric: string; value: number }) =>
 {m && (
     <p class="mb-2">
         <strong>{m.rule === 'max_abs_wpa' ? 'Biggest swing' : 'Deciding score'}:</strong>{' '}
-        {m.clock ? `${m.clock} in period ${m.period}` : `Period ${m.period}`}: {m.text}
+        {m.clock ? `${periodLabel} ${m.clock}` : periodLabel}: {m.text}
         {swing != null && <span class="text-muted"> ({generateMarginalString(swing * 100, 0, 0)}% win probability)</span>}
     </p>
 )}
@@ -73,7 +76,7 @@ const metric = (p: { metric: string; value: number }) =>
                         <tr>
                             <th scope="row" class="fw-normal text-start">{name(id)}</th>
                             <td class="numeral text-center">{run ? `${run.points}-0` : '-'}</td>
-                            <td class="text-start">{p ? <Fragment>{p.player_name ?? ''} <span class="text-muted">{metric(p)}</span></Fragment> : '-'}</td>
+                            <td class="text-start">{p ? <Fragment>{p.player_name ?? ''}{' '}<span class="text-muted">{metric(p)}</span></Fragment> : '-'}</td>
                         </tr>
                     );
                 })}
@@ -81,4 +84,4 @@ const metric = (p: { metric: string; value: number }) =>
         </table>
     </div>
 )}
-<p class="small text-muted mb-0">The +/- column is each edge in points{view.unitLabel === 'EPA' ? ' of expected points added' : ''}: the winner's less the loser's.</p>
+<p class="small text-muted mb-0">The +/- column is each edge in {view.unitLabel === 'EPA' ? 'expected points added' : 'points'}: the winner's less the loser's.</p>
