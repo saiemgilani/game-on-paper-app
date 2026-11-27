@@ -20,7 +20,7 @@ team-season page's Passing Direction panel, offense and defense, behind
 `'team-pass-direction'`), and #517 corrected the game page's depth labels,
 which said 0-12 / 12+ air yards. ESPN's "deep" is 20+ air yards in college and
 16+ in the NFL; §2 *What short and deep mean* has the full-season evidence.
-The inventory below is as of `main` after #517.
+The inventory below is as of `main` after #517, which this branch includes.
 
 ## 1. Inventory
 
@@ -33,15 +33,15 @@ PRs #178, #180, #267, #274) and the unmerged remote branches.
 
 | Where | What it shows | Gate | Notes |
 |---|---|---|---|
-| `astro/src/components/game/metrics/PassingChart.astro:86` | Target Matrix: deep / short (ESPN's split: 20 air yards in college, 16 in the NFL, rows labelled since #517) × left / middle / right, with total EPA, completions / attempts, yards, and aDOT and YAC per cell (#178; TDs are summed but not rendered) | None. `hidden={countableAttempts == 0}` hides it only when no pass in the game has both depth and direction | The caption (line 124) says sacks and passes without depth and direction are left out |
+| `astro/src/components/game/metrics/PassingChart.astro:86` | Target Matrix: deep / short (ESPN's split: 20 air yards in college, 16 in the NFL, rows labelled since #517) × left / middle / right, with total EPA, completions / attempts, yards, and aDOT and YAC per cell (#178; TDs are summed but not rendered) | None. `hidden={countableAttempts == 0}` hides a team's matrix only when none of that team's passes has both depth and direction (`TeamPlayerStats.astro:65` passes it the team's plays alone) | The caption (line 124) says sacks and passes without depth and direction are left out |
 | `astro/src/components/game/metrics/PlayerBoxScore.astro:71` | `airLine`: "N air yds / N YAC, N aDOT" on passer and receiver stat lines (#180), called at `:124` and `:172` | None. Prints nothing when `aDOT` is null (no catch spot in ESPN's text) | Values come from the processor's box (`AirYds`, `aDOT`, `CompAirYds`, `YAC`, `AirYdsPct`, `astro/src/resources/python.ts:895`, `:916`) |
 | `astro/src/components/game/metrics/TeamPlayerStats.astro:65` | Mounts `PassingChart` for each team | None. `'player-quarter-filter'` (preview) only adds the quarter/half select around it | Mounted from `GamePage.astro:349`, `:354` in the collapsed (`show={false}`) team panels, which is not a gate |
-| Team-season page (`/year/<season>/team/<id>`): Passing Direction, `astro/src/components/routes/SeasonTeamRoute.astro:154` (#515, after this note) | Offense and Defense pass attempts by depth and direction: Comp/Att, share, EPA/play, success rate, aDOT, and how many attempts each side charts | `'team-pass-direction'` (`astro/src/utils/features.ts:348`), `'preview'`. College only, 2025 on | New UI, so it ships behind the flag; promotion to `'on'` is its own reviewed change |
+| Team-season page (`/year/<season>/team/<id>`): Passing Direction, `astro/src/components/routes/SeasonTeamRoute.astro:154` (#515, added after this note was first written) | Offense and Defense pass attempts by depth and direction: Comp/Att, share, EPA/play, success rate, aDOT, and how many attempts each side charts | `'team-pass-direction'` (`astro/src/utils/features.ts:348`), `'preview'`. College only, 2025 on | New UI, so it ships behind the flag; promotion to `'on'` is its own reviewed change |
 | Team page (`pages/team/[id].astro`), player page (`pages/players/[id].astro`), Pro team/player pages | Nothing on air yards or direction | n/a | No component reads these fields |
 | Defense (air yards allowed, aDOT allowed) | The Passing Direction panel's Defense side (#515): the opponents' attempts against the team | `'team-pass-direction'` | Nowhere else: the game page's box rows are per passer and per receiver, offense only |
 
 On the deployed site, `/game/401862833` (2026, Week 12) renders the Target
-Matrix and the aDOT tails. `/game/401754532` (2025, Week 3) renders the matrix
+Matrix and the aDOT tails. `/game/401754532` (2025, Week 3) renders both teams' matrices
 `hidden`, because none of its passes carry direction, not because of a flag.
 
 The fields come from sportsdataverse-py's ESPN play-by-play processor:
