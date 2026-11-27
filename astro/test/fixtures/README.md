@@ -53,6 +53,17 @@ the winning home team's kneel-down).
 **To regenerate:** same call; keep a game whose final play belongs to the away
 team, or the test's possession assertion fails.
 
+## `game-401671789-nfl.json.gz`
+A real NFL `ProcessedGame`: the body the Python API serves for `GET /nfl/401671789/process` (Baltimore Ravens at
+Kansas City Chiefs, 2024 REG week 1, Final, KC -2.5; 184 plays, 133 scrimmage plays). ~3.8 MB raw, ~270 KB gzipped.
+
+**Provenance (2026-11-27):** the Flask app in `python/` through its test client (`app.app.test_client()`, telemetry and
+the DQ push stubbed) against ESPN's live summary, on sdv-py `2443d9ffd` (the commit `python/uv.lock` pins). No hand
+edits. Unlike `game-401772944-nfl.json.gz` (captured before sdv-py emitted it for the NFL) every scrimmage play carries
+`home_wp_before_naive`, the spread-free WP beside the spread WP `home_wp_before`.
+
+**Used by:** `test/nflWpLens.render.test.ts` ('nfl-wp-naive-lens').
+
 ## `fourth-down-penalties-nfl-2025.json`
 Four real play rows of the Python API's `GET /nfl/<id>/process`, keyed by game:
 401772918 (Baltimore at Buffalo, 2025 week 1) play 4017729182338, a 4th & 2
