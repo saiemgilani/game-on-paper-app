@@ -1392,7 +1392,7 @@ wheels = [
 [[package]]
 name = "sportsdataverse"
 version = "0.2.0b1"
-source = { git = "https://github.com/sportsdataverse/sportsdataverse-py?branch=main#2443d9ffd8f5a493d189079814fef8d33f767bf0" }
+source = { git = "https://github.com/sportsdataverse/sportsdataverse-py?branch=main#a42b65a39d4f427ebfbefda49b6b811fdc2b7d27" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "cyclopts" },
