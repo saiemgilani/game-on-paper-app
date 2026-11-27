@@ -5,11 +5,12 @@ aDOT allowed; direction: left / middle / right, short / deep) does the site
 compute but hide behind a preview flag, and is ESPN's coverage good enough to
 show them?
 
-**Short answer:** there is no gate to remove. Every air-yards view the site has
-is already public, on the game page. The team and player pages have no
-air-yards or direction views, hidden or otherwise, and nothing anywhere
-computes the defensive side. 2026 coverage is good (96.4% of FBS pass
-attempts). 2025 has high coverage (94.5%) only from Week 9 on. So this note changes no code.
+**Short answer, when this note was written:** there was no gate to remove. Every
+air-yards view the site had was already public, on the game page. The team and
+player pages had no air-yards or direction views, hidden or otherwise, and
+nothing anywhere computed the defensive side. 2026 coverage is good (96.4% of
+FBS pass attempts carry air yards). 2025 has high coverage (94.5% carry air
+yards) only from Week 9 on. So this note changes no code.
 A defensive or directional view on the team or player pages would be a new
 feature, and per `docs/design-conventions.md` §9 it has to ship behind its own
 `'preview'` flag.
@@ -131,7 +132,8 @@ pass depth or direction ("scrambles right end") and lost the direction of 5,437
 incompletions whose text ends on it ("pass incomplete short right."), so the
 charted completion rate ran 63.9% against 62.7% for all attempts. Anchored on
 the pass phrase (sportsdataverse/sportsdataverse-py#1355), the NFL charts 99.1% of attempts at a
-63.0% completion rate. College changes on 6 of 114,319 pass rows, each a fix.
+63.0% completion rate. In college it changes 6 of the 114,319 2025-26 rows flagged
+as passes (every pass row, charted or not), each a fix.
 
 When the text carries the phrase, measured the same way:
 
