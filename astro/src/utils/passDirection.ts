@@ -3,7 +3,8 @@
  * grouped by the depth and direction sportsdataverse-py reads from ESPN's play text (`pass_depth`: short / deep;
  * `pass_direction`: left / middle / right), the same cells as the game page's Target Matrix
  * (components/game/metrics/PassingChart.astro). ESPN's "deep" is a throw of 20+ air yards and "short" anything under,
- * behind the line included (2025-26 FBS charted attempts: 99.9% of deep at 20+, 99.98% of short under 20). The text
+ * behind the line included (all 2025-26 FBS charted attempts, measured 2026-11-26: 99.9% of deep at 20+, 99.98% of
+ * short under 20; the Alabama fixtures pin the split in test/passDirection.render.test.ts). The text
  * carries depth and direction from 2025 Week 9 on, so a season charts only part of its attempts: `charted` and
  * `coverage` say how many.
  */

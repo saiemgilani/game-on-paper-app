@@ -139,6 +139,42 @@ describe('the PassDirectionTable panel', () => {
     });
 });
 
+describe('the team-season page', () => {
+    let page: AstroContainer;
+    beforeAll(async () => {
+        const { loadRenderers } = await import('astro:container');
+        const { getContainerRenderer } = await import('@astrojs/svelte/container-renderer');
+        page = await AstroContainer.create({ renderers: await loadRenderers([getContainerRenderer()]) });
+    });
+    const render = async (preview: boolean) => {
+        const { default: Page } = await import('../src/pages/year/[year]/team/[id].astro');
+        return page.renderToString(Page, {
+            params: { year: '2026', id: '333' },
+            request: new Request('https://gameonpaper.com/year/2026/team/333'),
+            locals: (preview ? { preview: true } : {}) as App.Locals,
+        });
+    };
+
+    test('a preview viewer gets the panel; anyone else gets today\'s page and no read', async () => {
+        passReads.length = 0;
+        passAnswer = plays2026;
+        const on = await render(true);
+        expect(passReads).toEqual([[2026, '333', 'cfb']]);
+        expect(on).toContain('id="pass-direction-panel"');
+        expect(on).toContain('Charted: 275 of 315 pass attempts (87.3%).');
+        passReads.length = 0;
+        const off = await render(false);
+        expect(passReads).toEqual([]);
+        expect(off).not.toContain('pass-direction');
+    });
+
+    test('no charted attempt on either side: the page mounts no panel', async () => {
+        passAnswer = { off: plays2026.off.map((p) => ({ ...p, pass_depth: null })), def: [] };
+        expect(await render(true)).not.toContain('pass-direction');
+        passAnswer = plays2026;
+    });
+});
+
 const fakeAstro = (flag: boolean, year = '2026') => ({
     params: { year, id: '333' }, locals: { flagOverrides: { 'team-pass-direction': flag } } as any,
     url: new URL(`https://gameonpaper.com/year/${year}/team/333`), cache: { set: () => {} },

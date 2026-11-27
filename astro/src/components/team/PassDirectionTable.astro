@@ -21,7 +21,7 @@ const sides = [['off', 'Offense'], ['def', 'Defense']] as const;
 // the route mounts this only when a side charts an attempt (utils/passDirection.ts anyCharted)
 const bySide = sides.map(([s]) => [s, passDirectionTable(plays[s])] as const);
 const note = 'All regular-season and postseason games, FCS opponents included.';
-const caption = 'Short = under 20 air yards, throws behind the line included; Deep = 20+. Share = of the charted attempts. aDOT = average depth of target (air yards per attempt). Sacks and passes without depth and direction are left out.';
+const caption = 'Defense = opponents\' pass attempts against this team. Short = under 20 air yards, throws behind the line included; Deep = 20+. Share = of the charted attempts. aDOT = average depth of target (air yards per attempt). Sacks and passes without depth and direction are left out.';
 ---
 
 <TeamPlayerTable id="pass-direction" title="Passing Direction" show={true} note={note} caption={caption}>
