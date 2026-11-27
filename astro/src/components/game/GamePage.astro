@@ -234,9 +234,11 @@ const wpPlays = fullGamePlays.filter(p => (p.scrimmage_play == true)).map(p => {
         gameSpreadAvailable: p.gameSpreadAvailable
     }
 });
-// E2, 'cfb-wp-naive-lens' (preview): the WP chart switches between our market-aware model and the same model without the
-// spread, from the same charted plays. Off (or any play without a spread-free value): no lenses, the chart is today's.
-const wpLenses = league === 'cfb' && isFeatureEnabled('cfb-wp-naive-lens', Astro.locals)
+// E2, 'cfb-wp-naive-lens' / 'nfl-wp-naive-lens' (preview, one flag per league): the WP chart switches between our
+// market-aware model and the same model without the spread, from the same charted plays. Off (or any play without a
+// spread-free value): no lenses, the chart is today's.
+const wpLensFlag = league === 'cfb' ? 'cfb-wp-naive-lens' : league === 'nfl' ? 'nfl-wp-naive-lens' : null;
+const wpLenses = wpLensFlag && isFeatureEnabled(wpLensFlag, Astro.locals)
     ? footballWpLenses(fullGamePlays.filter(p => (p.scrimmage_play == true)), homeComp.team.id)
     : null;
 ---

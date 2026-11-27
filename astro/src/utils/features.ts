@@ -341,6 +341,10 @@ export const FLAGS: Record<string, FeatureState> = {
     // priced in) and the same model without the spread ("Score-only", the processed plays' home_wp_before_naive), shown only
     // when every charted play has both; the "Current" readout follows the lens. Off: the chart props are today's.
     'cfb-wp-naive-lens': 'preview',
+    // N3 on the NFL game page: the same two lenses. "Market-aware" is the processed play's spread WP (`vegas_wp`),
+    // "Score-only" the same model's spread-free WP (`wp`, emitted per play as home_wp_before_naive). Its own flag, so the
+    // NFL switch is promoted on its own. Off: the chart props are today's.
+    'nfl-wp-naive-lens': 'preview',
     // B2/B3 on the college football team-season page: a Schedule Effect panel from the producer's adjusted-EPA ledger
     // (team_adjustment_ledger): the season Adj EPA/Play split into the team's raw net and what its schedule adds, the three
     // games that move it most, every game's line (raw, schedule, adjusted, how far the game moved the season value), and the
