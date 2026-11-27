@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import math
 from typing import Any
 
@@ -41,6 +42,7 @@ def _story(frames: dict, completed: bool) -> dict | None:
     try:
         return game_story.basketball(frames, completed)
     except Exception:  # noqa: BLE001 - fail-open, like every derived block of the payload
+        logging.getLogger("root").exception(f"game story: {frames.get('league')} story failed; the panel is left out")
         return None
 
 
