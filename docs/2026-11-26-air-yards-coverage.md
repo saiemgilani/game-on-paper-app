@@ -14,6 +14,13 @@ A defensive or directional view on the team or player pages would be a new
 feature, and per `docs/design-conventions.md` §9 it has to ship behind its own
 `'preview'` flag.
 
+**Since this note was written (same day):** #515 built that view (the
+team-season page's Passing Direction panel, offense and defense, behind
+`'team-pass-direction'`), and #517 corrected the game page's depth labels,
+which said 0-12 / 12+ air yards. ESPN's "deep" is 20+ air yards in college and
+16+ in the NFL; §2 *What short and deep mean* has the full-season evidence.
+The inventory below is as of `main` after #517.
+
 ## 1. Inventory
 
 Searched `astro/src`, `astro/public/assets/css`, `python/` and `docs/` for
@@ -25,11 +32,12 @@ PRs #178, #180, #267, #274) and the unmerged remote branches.
 
 | Where | What it shows | Gate | Notes |
 |---|---|---|---|
-| `astro/src/components/game/metrics/PassingChart.astro:76` | Target Matrix: deep (12+) / short (0-12) × left / middle / right, with total EPA, completions / attempts, yards, and aDOT and YAC per cell (#178; TDs are summed but not rendered) | None. `hidden={countableAttempts == 0}` hides it only when no pass in the game has both depth and direction | The caption (line 114) says sacks and passes without depth and direction are left out |
+| `astro/src/components/game/metrics/PassingChart.astro:86` | Target Matrix: deep / short (ESPN's split: 20 air yards in college, 16 in the NFL, rows labelled since #517) × left / middle / right, with total EPA, completions / attempts, yards, and aDOT and YAC per cell (#178; TDs are summed but not rendered) | None. `hidden={countableAttempts == 0}` hides it only when no pass in the game has both depth and direction | The caption (line 124) says sacks and passes without depth and direction are left out |
 | `astro/src/components/game/metrics/PlayerBoxScore.astro:71` | `airLine`: "N air yds / N YAC, N aDOT" on passer and receiver stat lines (#180), called at `:124` and `:172` | None. Prints nothing when `aDOT` is null (no catch spot in ESPN's text) | Values come from the processor's box (`AirYds`, `aDOT`, `CompAirYds`, `YAC`, `AirYdsPct`, `astro/src/resources/python.ts:895`, `:916`) |
-| `astro/src/components/game/metrics/TeamPlayerStats.astro:65` | Mounts `PassingChart` for each team | None. `'player-quarter-filter'` (preview) only adds the quarter/half select around it | Mounted from `GamePage.astro:343`, `:348` in the collapsed (`show={false}`) team panels, which is not a gate |
+| `astro/src/components/game/metrics/TeamPlayerStats.astro:65` | Mounts `PassingChart` for each team | None. `'player-quarter-filter'` (preview) only adds the quarter/half select around it | Mounted from `GamePage.astro:349`, `:354` in the collapsed (`show={false}`) team panels, which is not a gate |
+| Team-season page (`/year/<season>/team/<id>`): Passing Direction, `astro/src/components/routes/SeasonTeamRoute.astro:154` (#515, after this note) | Offense and Defense pass attempts by depth and direction: Comp/Att, share, EPA/play, success rate, aDOT, and how many attempts each side charts | `'team-pass-direction'` (`astro/src/utils/features.ts:348`), `'preview'`. College only, 2025 on | New UI, so it ships behind the flag; promotion to `'on'` is its own reviewed change |
 | Team page (`pages/team/[id].astro`), player page (`pages/players/[id].astro`), Pro team/player pages | Nothing on air yards or direction | n/a | No component reads these fields |
-| Defense (air yards allowed, aDOT allowed) | Not computed anywhere: no component and no processor field | n/a | The box rows are per passer and per receiver, offense only |
+| Defense (air yards allowed, aDOT allowed) | The Passing Direction panel's Defense side (#515): the opponents' attempts against the team | `'team-pass-direction'` | Nowhere else: the game page's box rows are per passer and per receiver, offense only |
 
 On the deployed site, `/game/401862833` (2026, Week 12) renders the Target
 Matrix and the aDOT tails. `/game/401754532` (2025, Week 3) renders the matrix
@@ -37,7 +45,9 @@ Matrix and the aDOT tails. `/game/401754532` (2025, Week 3) renders the matrix
 
 The fields come from sportsdataverse-py's ESPN play-by-play processor:
 `pass_depth` and `pass_direction` from a `\s(short|deep)\s` /
-`\s(left|middle|right)\s` match on the play text. `air_yards` is the line of
+`\s(left|middle|right)\s` match on the play text (sportsdataverse/sportsdataverse-py#1355
+anchors both on the "pass [complete|incomplete] short|deep left|middle|right"
+phrase; §2 *What short and deep mean* says why). `air_yards` is the line of
 scrimmage minus the spot in the text ("caught at X" on completions, "thrown to
 X" on incompletions), and `yards_after_catch = statYardage - air_yards` on completions.
 
@@ -99,6 +109,40 @@ Plays whose text has no direction or spot: scoring passes written as
 spikes, two-point tries, and the older wording in a few games. That is a
 text-extraction limit in sportsdataverse-py, not something the site can fill in.
 
+### What short and deep mean
+
+`pass_depth` is ESPN's own word, not a cut the processor makes, so its meaning
+was measured: the label read from the text with sportsdataverse-py's match,
+against an air-yards figure from elsewhere, over full seasons.
+
+| League | Seasons, source | Air yards at the boundary | Crossings |
+|---|---|---|---|
+| College | every 2025 and 2026 pass attempt, `espn_cfb_pbp` (air yards from the text's catch / throw spot) | at 19: 974 short, 4 deep; at 20: 1 short, 942 deep | 15 of 71,430 charted attempts, each a bad spot in the text (a "caught at Miami00" touchdown, a play written twice) |
+| NFL | every 2006-2025 pass attempt, the sdv ESPN NFL release (air yards the league's own) | at 15: 8,359 short, 29 deep; at 16: 2 short, 7,080 deep | 136 of 366,286, each a throw into or at the end zone (124) or a reversed or nullified play |
+
+So deep is **20+ air yards in college and 16+ in the NFL** (the league's
+15-yard short pass), short is anything under, and short includes throws behind
+the line (about 20% of college short attempts). The game page labelled the rows
+0-12 / 12+ until #517.
+
+The old `\s(short|deep)\s` / `\s(left|middle|right)\s` match also read those
+words anywhere in the text. On the NFL release that gave 16,645 scrambles a
+pass depth or direction ("scrambles right end") and lost the direction of 5,437
+incompletions whose text ends on it ("pass incomplete short right."), so the
+charted completion rate ran 63.9% against 62.7% for all attempts. Anchored on
+the pass phrase (sportsdataverse/sportsdataverse-py#1355), the NFL charts 99.1% of attempts at a
+63.0% completion rate. College changes on 6 of 114,319 pass rows, each a fix.
+
+When the text carries the phrase, measured the same way:
+
+- **College passes:** 0-3.3% of attempts through 2025 Week 8, 89.8% in Week 9,
+  90-96% after; 94-97% every week of 2026. Before 2025, 43 charted attempts in
+  total (2023: 42 across 40 games, 2024: one; every season 2004-2022: none).
+- **College rushes:** the same 2025 step (93.0% of rushes in Week 9), plus some
+  older games: 463 in 2004 and 52-104 a season in 2007-2013.
+- **NFL:** 93-99% of pass attempts and about 96% of rushes in every season
+  2006-2025.
+
 ## 3. Decision
 
 No code change in this PR. Coverage clears the 90% bar for 2026, but there is
@@ -123,3 +167,15 @@ If those views get built, the numbers above point to:
 
 Each of these is new UI, so it ships behind a `'preview'` flag, and promoting it
 to `'on'` is a separate reviewed one-liner.
+
+What happened to each, later the same day:
+
+- **Team page splits, offense and defense:** built in #515 as the Passing
+  Direction panel, behind `'team-pass-direction'`. Each side shows how many of
+  its attempts it charts, and a season before 2025 reads nothing.
+- **2025:** the panel says how much of the season it charts and why ("ESPN's
+  play text carries depth and direction from 2025 Week 9 on").
+- **The game page:** #517 put ESPN's split in the row labels (20 / 16 air
+  yards), dated the pass caption to 2025 Week 9 for college games, and dropped
+  the date from the NFL caption and from the rush matrix, whose text predates
+  2025 in both leagues.
