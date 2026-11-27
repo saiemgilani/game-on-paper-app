@@ -15,16 +15,16 @@ import pytest
 import game_story
 
 FIX = Path(__file__).parent / "fixtures" / "game_story"
-needs_story = pytest.mark.skipif(
-    game_story.cfb_game_story is None,
-    reason="installed sportsdataverse-py has no game story",
-)
+def _needs(fn: object) -> pytest.MarkDecorator:
+    return pytest.mark.skipif(fn is None, reason="installed sportsdataverse-py has no such game story")
 
 
-@needs_story
 @pytest.mark.parametrize(
     ("league", "name"),
-    [("cfb", "espn_cfb_pbp_games.parquet"), ("nfl", "espn_nfl_pbp_games.parquet")],
+    [
+        pytest.param("cfb", "espn_cfb_pbp_games.parquet", marks=_needs(game_story.cfb_game_story)),
+        pytest.param("nfl", "espn_nfl_pbp_games.parquet", marks=_needs(game_story.nfl_game_story)),
+    ],
 )
 def test_football_payload_on_real_games(league: str, name: str) -> None:
     frame = pl.read_parquet(FIX / name)
@@ -44,7 +44,7 @@ def test_football_payload_on_real_games(league: str, name: str) -> None:
         assert len(story["performers"]) == 2
 
 
-@needs_story
+@_needs(game_story.nba_game_story)
 def test_basketball_payload_on_a_real_game() -> None:
     frames = {
         "pbp": pl.read_parquet(FIX / "nba_401810169_pbp.parquet"),

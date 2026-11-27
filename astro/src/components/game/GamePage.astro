@@ -167,7 +167,7 @@ const quarterEpaTeams = sides.map((c: any) => c?.team);
 // 'decision-summary' (preview): the Fourth Down Bot cards summed per team, away first; no panel when no play has a card
 // 'game-story' (preview): the processor's game story of a final (python/game_story.py); null hides the panel
 const storyPanel = isFeatureEnabled('game-story', Astro.locals) && gameStatus.type.completed == true ? storyView(game.gameStory, true) : null;
-const storyAbbr = { [String(homeTeam.id)]: cleanAbbreviation(homeTeam), [String(awayTeam.id)]: cleanAbbreviation(awayTeam) };
+const storyAbbr = storyPanel ? { [String(homeTeam.id)]: cleanAbbreviation(homeTeam), [String(awayTeam.id)]: cleanAbbreviation(awayTeam) } : {};
 const decisionRows = isFeatureEnabled('decision-summary', Astro.locals) ? fourthDownSummary(game.plays, [awayTeam.id, homeTeam.id]) : [];
 const decisionSummary = decisionRows.some((r) => r.decisions > 0);
 const lastPlay: any = game.plays.at(-1);

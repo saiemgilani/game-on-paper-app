@@ -100,14 +100,14 @@ def build_payload(game_id: int, final: dict, frames: dict, regulation_periods: i
         "plays": _rows(frames["pbp"], PLAY_COLUMNS),
         # sdv-py BB-D28 on the same WP series as `plays`: {gei, lead_changes, max_swing_pts, completed}.
         # Additive; the page reads it only under the 'bball-gei' flag (NbaWinProbability.astro).
-        # sdv-py's game story (how the winner won it), finals only and fail-open; the page reads it only under
-        # the 'game-story' preview flag (components/GameStoryPanel.astro).
-        "gameStory": _story(frames, bool(status.get("type", {}).get("completed", False))),
         "excitement": game_excitement(
             frames["pbp"], league=frames["league"], regulation_periods=frames["regulation_periods"]
         ),
         # sdv-py BB-D31, counted from the plays (live too): each side's team split row (null before the tip) and its
         # players' split rows. Additive; the page reads the team rows only under 'bball-team-grid' (BB-G32).
+        # sdv-py's game story (how the winner won it), finals only and fail-open; the page reads it only under
+        # the 'game-story' preview flag (components/GameStory.astro).
+        "gameStory": _story(frames, bool(status.get("type", {}).get("completed", False))),
         "splits": {
             ha: {
                 "team": next(iter(_rows(frames["team_game_splits"].filter(pl.col("team_id") == int(side["id"])))), None),

@@ -11,7 +11,7 @@ interface Props {
     view: StoryView;
     /** team id -> the abbreviation to print (already cleaned by the caller) */
     abbr: Record<string, string>;
-    /** home team id, for a tie's column order */
+    /** the home and away team ids: a tie's columns read home, then away */
     homeId: number;
     awayId: number;
 }
@@ -28,7 +28,7 @@ const metric = (p: { metric: string; value: number }) =>
     p.metric === 'epa' ? `${roundNumber(p.value, 1, 1)} EPA` : p.metric === 'wpa' ? `${generateMarginalString(p.value * 100, 0, 0)}% WPA` : `${roundNumber(p.value, 0, 0)} ${p.metric === 'points' ? 'pts' : p.metric.replace(/_/g, ' + ')}`;
 ---
 <p class="mb-2">
-    {view.decided ? <Fragment><strong>{name(view.winnerId)}</strong> won by {view.margin}.</Fragment> : <Fragment>A tie.</Fragment>}
+    {view.decided ? <Fragment><strong>{name(view.winnerId)}</strong> won by {view.margin}.</Fragment> : <Fragment>Tied {view.homeScore}-{view.awayScore}.</Fragment>}
 </p>
 <div class="table-responsive">
     <table class="table table-sm numeral w-auto" aria-label="Largest edges">
@@ -84,4 +84,4 @@ const metric = (p: { metric: string; value: number }) =>
         </table>
     </div>
 )}
-<p class="small text-muted mb-0">The +/- column is each edge in {view.unitLabel === 'EPA' ? 'expected points added' : 'points'}: the winner's less the loser's.</p>
+<p class="small text-muted mb-0">+/- is {view.decided ? "the winner's value less the loser's" : "the home side's value less the away side's"}, in {view.unitLabel === 'EPA' ? 'expected points added' : 'points'}.</p>

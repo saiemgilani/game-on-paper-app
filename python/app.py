@@ -712,7 +712,8 @@ def _process_game(league: str, game_id: int, source: str | None = None):
         # only; the page reads it only under the 'game-story' preview flag. Fail-open like everything else here.
         try:
             completed = bool((((processed_game.get("header") or {}).get("competitions") or [{}])[0].get("status") or {}).get("type", {}).get("completed"))
-            story = game_story.football(getattr(game, "plays_frame", None), league, completed)
+            with stage(timings, "game_story"):
+                story = game_story.football(getattr(game, "plays_frame", None), league, completed)
             if story:
                 processed_game["gameStory"] = story
         except Exception as e:  # the story must never cost the page

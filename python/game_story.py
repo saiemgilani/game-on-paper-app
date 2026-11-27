@@ -8,21 +8,26 @@ never depends on it. The Astro page renders the payload's `gameStory` only under
 
 from __future__ import annotations
 
+import importlib
+import logging
 import math
 from typing import Any
 
 import polars as pl
 
-try:  # sportsdataverse-py ships the game story from its game-story release on
-    from sportsdataverse.cfb.cfb_game_story import cfb_game_story
-    from sportsdataverse.nba.nba_game_story import nba_game_story
-    from sportsdataverse.nfl.nfl_game_story import nfl_game_story
-except ImportError:  # pragma: no cover - depends on the deployed sdv-py pin
-    cfb_game_story = nfl_game_story = nba_game_story = None
 
-#: edges shown on the page: the largest few by points worth
-TOP_EDGES = 3
+def _load(module: str, name: str):
+    """One adapter, or None (logged once) when the installed sportsdataverse-py predates it."""
+    try:
+        return getattr(importlib.import_module(module), name)
+    except (ImportError, AttributeError):  # depends on the deployed sdv-py pin
+        logging.getLogger("root").warning(f"game story: {module}.{name} not in the installed sportsdataverse-py")
+        return None
 
+
+cfb_game_story = _load("sportsdataverse.cfb.cfb_game_story", "cfb_game_story")
+nfl_game_story = _load("sportsdataverse.nfl.nfl_game_story", "nfl_game_story")
+nba_game_story = _load("sportsdataverse.nba.nba_game_story", "nba_game_story")
 
 def _rows(df: pl.DataFrame) -> list[dict[str, Any]]:
     out = df.to_dicts()

@@ -48,6 +48,8 @@ export interface StoryView {
     winnerId: number | null
     loserId: number | null
     margin: number
+    homeScore: number
+    awayScore: number
     edges: StoryEdge[]
     moment: StoryMoment | null
     periods: StoryPeriod[]
@@ -71,12 +73,14 @@ export function storyView(story: GameStory | null | undefined, epa: boolean): St
     const edges = [...(story.edges ?? [])].filter((e) => finite(e.points_worth)).sort((a, b) => a.rank - b.rank).slice(0, STORY_EDGES);
     if (!edges.length) return null;
     const first = s.decided && s.winner_team_id != null ? s.winner_team_id : s.home_team_id;
-    const order = <T extends { team_id: number }>(rows: T[]) => [...rows].sort((a, b) => Number(b.team_id === first) - Number(a.team_id === first));
+    const order = <T extends { team_id: number }>(rows: T[]) => [...rows].sort((a, b) => Number(Number(b.team_id) === Number(first)) - Number(Number(a.team_id) === Number(first)));
     return {
         decided: s.decided,
         winnerId: s.decided ? s.winner_team_id : null,
         loserId: s.decided ? s.loser_team_id : null,
         margin: s.margin,
+        homeScore: s.home_score,
+        awayScore: s.away_score,
         edges,
         moment: story.moment ?? null,
         periods: story.periods ?? [],
